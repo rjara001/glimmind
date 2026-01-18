@@ -1,19 +1,20 @@
+"use client";
 
 import React, { useState, useEffect } from 'react';
-import { Dashboard } from './components/Dashboard';
-import { GameView } from './components/GameView';
-import { ListEditor } from './components/ListEditor';
-import { Auth } from './components/Auth';
-import { AssociationList, Association, AssociationStatus } from './types';
-import { auth, db, onAuthStateChanged, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, isConfigured } from './firebase';
+import { Dashboard } from '@/components/Dashboard';
+import { GameView } from '@/components/GameView';
+import { ListEditor } from '@/components/ListEditor';
+import { Auth } from '@/components/Auth';
+import { AssociationList, Association, AssociationStatus } from '@/lib/types';
+import { auth, db, onAuthStateChanged, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, isConfigured } from '@/lib/firebase';
 
 const MOCK_USER = {
   uid: 'guest-user-123',
-  displayName: 'Invitado (Glimmind)',
-  photoURL: 'https://ui-avatars.com/api/?name=Glim+Mind&background=6366f1&color=fff'
+  displayName: 'Invitado (Modo Local)',
+  photoURL: 'https://ui-avatars.com/api/?name=Guest+User&background=6366f1&color=fff'
 };
 
-const App: React.FC = () => {
+export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
@@ -30,7 +31,7 @@ const App: React.FC = () => {
     }
 
     if (isConfigured && auth) {
-      return onAuthStateChanged(auth, (u: any) => {
+      return onAuthStateChanged(auth, (u) => {
         setUser(u);
         setLoading(false);
       });
@@ -53,8 +54,8 @@ const App: React.FC = () => {
 
     if (isConfigured && db) {
       const q = query(collection(db, "lists"), where("userId", "==", user.uid));
-      const unsubscribe = onSnapshot(q, (snapshot: any) => {
-        setLists(snapshot.docs.map((d: any) => d.data() as AssociationList));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setLists(snapshot.docs.map(doc => doc.data() as AssociationList));
       });
       return () => unsubscribe();
     }
@@ -102,6 +103,7 @@ const App: React.FC = () => {
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100">G</div>
           <h1 className="text-xl font-black tracking-tight text-slate-900">Glimmind</h1>
         </div>
+        
         <div className="flex items-center gap-4">
           {view === 'game' && (
             <button 
@@ -126,8 +128,19 @@ const App: React.FC = () => {
           <Dashboard 
             lists={lists} 
             onCreate={(name, concept, initialAssocs) => {
+              // Fix: Explicitly type newList as AssociationList to ensure correct inference of literal types like GameMode
               const newList: AssociationList = {
-                id: crypto.randomUUID(), userId: user.uid, name, concept, associations: initialAssocs, settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 }, createdAt: Date.now()
+                id: crypto.randomUUID(), 
+                userId: user.uid, 
+                name, 
+                concept, 
+                associations: initialAssocs, 
+                settings: { 
+                  mode: 'training', 
+                  flipOrder: 'normal', 
+                  threshold: 0.95 
+                }, 
+                createdAt: Date.now()
               };
               handleUpdateList(newList);
               setSelectedListId(newList.id);
@@ -153,6 +166,4 @@ const App: React.FC = () => {
       </main>
     </div>
   );
-};
-
-export default App;
+}
