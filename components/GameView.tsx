@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AssociationList, Association, AssociationStatus, GameCycle, GameState } from '../types';
+import { AssociationList, Association, AssociationStatus, GameCycle, GameState, GameMode } from '../types';
 import { calculateSimilarity } from '../utils/similarity';
 
 interface GameViewProps {
@@ -102,6 +102,20 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     }
   };
 
+  const handleResetProgress = () => {
+    if (confirm('¿Quieres reiniciar todo tu progreso en esta lista?')) {
+      const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
+      setAssociations(reset);
+      onUpdateList({ ...list, associations: reset });
+      startCycle(1, reset);
+      setShowSettings(false);
+    }
+  };
+
+  const handleToggleMode = (mode: GameMode) => {
+    onUpdateList({ ...list, settings: { ...list.settings, mode } });
+  };
+
   if (gameState.isFinished) return (
     <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-slate-100">
       <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -141,7 +155,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         
         <div className="min-h-[100px] flex items-center justify-center">
           {gameState.revealed ? (
-            <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300">
+            <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300 text-center">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Asociación:</span>
               <p className="text-3xl font-black text-indigo-600 bg-indigo-50 px-8 py-3 rounded-2xl border border-indigo-100 inline-block">
                 {currentAssoc?.definition}
@@ -157,6 +171,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         </div>
       </div>
 
+      {/* FOOTER ACTIONS */}
       <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none">
         <div className="max-w-2xl w-full grid grid-cols-3 gap-4 pointer-events-auto">
           <button onClick={handleNext} className="bg-white border-2 border-slate-200 text-slate-600 h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition hover:bg-slate-50">Siguiente</button>
@@ -169,6 +184,51 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
           </button>
         </div>
       </div>
+
+      {/* SETTINGS MODAL */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Ajustes de Sesión</h3>
+            
+            <div className="space-y-8">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Modo de Estudio</label>
+                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
+                  <button 
+                    onClick={() => handleToggleMode('training')}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${list.settings.mode === 'training' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Flashcard
+                  </button>
+                  <button 
+                    onClick={() => handleToggleMode('real')}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${list.settings.mode === 'real' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    Escritura
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <button 
+                  onClick={handleResetProgress}
+                  className="w-full bg-rose-50 text-rose-600 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95"
+                >
+                  Reiniciar Progreso
+                </button>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="w-full mt-10 bg-slate-900 text-white py-4 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-lg"
+            >
+              Cerrar Ajustes
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
