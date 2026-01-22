@@ -32,6 +32,7 @@ export interface AssociationList {
   associations: Association[];
   settings: ListSettings;
   createdAt: number;
+  updatedAt?: number;
 }
 
 export type GameCycle = 1 | 2 | 3 | 4;

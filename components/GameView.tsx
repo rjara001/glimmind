@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AssociationList, Association, AssociationStatus, GameCycle, GameState, GameMode } from '../types';
-import { calculateSimilarity } from '../utils/similarity';
 
 interface GameViewProps {
   list: AssociationList;
@@ -36,7 +35,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     }
 
     const queue = currentAssocs
-      .filter(a => a.status === filter && !a.history)
+      .filter(a => a.status === filter)
       .map(a => a.id)
       .sort(() => Math.random() - 0.5);
 
@@ -59,35 +58,16 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   useEffect(() => {
     startCycle(1, associations);
-  }, [startCycle]);
+  }, []);
 
   const currentAssoc = useMemo(() => 
     associations.find(a => a.id === gameState.queue[gameState.currentIndex]),
     [associations, gameState.queue, gameState.currentIndex]
   );
 
-  const handleNext = () => {
-    if (!currentAssoc) return;
-    let nextStatus = currentAssoc.status;
-
-    if (gameState.currentCycle === 1) nextStatus = AssociationStatus.DESCUBIERTA;
-    else if (gameState.currentCycle === 2) nextStatus = AssociationStatus.RECONOCIDA;
-    else if (gameState.currentCycle === 3) nextStatus = AssociationStatus.CONOCIDA;
-
-    advance(nextStatus);
-  };
-
-  const handleCorrect = () => {
-    if (!currentAssoc || gameState.wasRevealed || gameState.revealed) return;
-    if (gameState.currentCycle === 1) {
-      advance(AssociationStatus.APRENDIDA);
-    } else {
-      advance(currentAssoc.status);
-    }
-  };
-
   const advance = (nextStatus: AssociationStatus) => {
-    const updated = associations.map(a => a.id === currentAssoc?.id ? { ...a, status: nextStatus } : a);
+    if (!currentAssoc) return;
+    const updated = associations.map(a => a.id === currentAssoc.id ? { ...a, status: nextStatus } : a);
     setAssociations(updated);
     
     if (gameState.currentIndex < gameState.queue.length - 1) {
@@ -102,34 +82,51 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     }
   };
 
-  const handleResetProgress = () => {
-    if (confirm('¿Quieres reiniciar todo tu progreso en esta lista?')) {
-      const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
-      setAssociations(reset);
-      onUpdateList({ ...list, associations: reset });
-      startCycle(1, reset);
-      setShowSettings(false);
-    }
+  const handleCorrect = () => {
+    if (!currentAssoc || gameState.wasRevealed || gameState.revealed) return;
+    advance(gameState.currentCycle === 1 ? AssociationStatus.APRENDIDA : currentAssoc.status);
   };
 
-  const handleToggleMode = (mode: GameMode) => {
-    onUpdateList({ ...list, settings: { ...list.settings, mode } });
+  const handleNext = () => {
+    if (!currentAssoc) return;
+    let nextStatus = currentAssoc.status;
+    if (gameState.currentCycle === 1) nextStatus = AssociationStatus.DESCUBIERTA;
+    else if (gameState.currentCycle === 2) nextStatus = AssociationStatus.RECONOCIDA;
+    else if (gameState.currentCycle === 3) nextStatus = AssociationStatus.CONOCIDA;
+    advance(nextStatus);
   };
+
+  // Keyboard Support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSettings || gameState.isFinished) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!gameState.revealed) {
+          setGameState(p => ({ ...p, revealed: true, wasRevealed: true }));
+        } else {
+          handleNext();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState.revealed, showSettings, gameState.isFinished]);
 
   if (gameState.isFinished) return (
-    <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-slate-100">
+    <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-slate-100 animate-in zoom-in-95 duration-500">
       <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
       </div>
-      <h2 className="text-3xl font-black text-slate-900 mb-2">¡Completado!</h2>
-      <p className="text-slate-500 mb-8">Has repasado todas las asociaciones de esta sesión.</p>
+      <h2 className="text-3xl font-black text-slate-900 mb-2">¡Sesión Lista!</h2>
+      <p className="text-slate-500 mb-8 font-medium">Has fortalecido {gameState.queue.length} conexiones hoy.</p>
       <div className="flex flex-col gap-3">
         <button onClick={() => {
            const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
            setAssociations(reset);
            startCycle(1, reset);
-        }} className="bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 active:scale-95 transition">Reiniciar todo</button>
-        <button onClick={onBack} className="text-slate-400 font-bold py-2 hover:text-slate-600 transition">Volver al Dashboard</button>
+        }} className="bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition">Estudiar de nuevo</button>
+        <button onClick={onBack} className="text-slate-400 font-bold py-2 hover:text-indigo-600 transition text-sm">Regresar al Panel</button>
       </div>
     </div>
   );
@@ -139,7 +136,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       <div className="w-full flex justify-between items-center mb-8">
         <div className="flex gap-2 items-center">
           {[1,2,3,4].map(c => (
-            <div key={c} className={`w-3 h-3 rounded-full transition-all duration-500 ${gameState.currentCycle >= c ? 'bg-indigo-600 scale-125' : 'bg-slate-200'}`}></div>
+            <div key={c} className={`w-3 h-3 rounded-full transition-all duration-500 ${gameState.currentCycle >= c ? 'bg-indigo-600 scale-125 shadow-sm shadow-indigo-200' : 'bg-slate-200'}`}></div>
           ))}
           <span className="ml-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Etapa {gameState.currentCycle}</span>
         </div>
@@ -148,83 +145,66 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         </span>
       </div>
 
-      <div className="w-full bg-white rounded-[3rem] shadow-2xl border-4 border-white p-12 text-center relative overflow-hidden group">
+      <div className="w-full bg-white rounded-[3rem] shadow-2xl border-4 border-white p-12 text-center relative overflow-hidden group min-h-[400px] flex flex-col justify-center transition-all">
         <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600/5"></div>
-        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-2">{list.concept}</span>
-        <h2 className="text-5xl font-black text-slate-900 mb-10 break-words">{currentAssoc?.term}</h2>
+        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-2">{list.concept.split('/')[0] || 'Término'}</span>
+        <h2 className="text-5xl md:text-6xl font-black text-slate-900 mb-10 break-words leading-tight">{currentAssoc?.term}</h2>
         
-        <div className="min-h-[100px] flex items-center justify-center">
+        <div className="min-h-[120px] flex items-center justify-center">
           {gameState.revealed ? (
             <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300 text-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Asociación:</span>
-              <p className="text-3xl font-black text-indigo-600 bg-indigo-50 px-8 py-3 rounded-2xl border border-indigo-100 inline-block">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{list.concept.split('/')[1] || 'Definición'}</span>
+              <p className="text-3xl font-black text-indigo-600 bg-indigo-50 px-8 py-3 rounded-2xl border border-indigo-100 inline-block shadow-sm">
                 {currentAssoc?.definition}
               </p>
             </div>
           ) : (
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="w-6 h-10 bg-slate-100 rounded-lg animate-pulse border-2 border-slate-50 shadow-inner flex items-center justify-center text-slate-200 font-black text-xs">?</div>
+            <div className="flex gap-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="w-8 h-12 bg-slate-50 rounded-xl animate-pulse border border-slate-100 flex items-center justify-center text-slate-200 font-black text-xl">?</div>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* FOOTER ACTIONS */}
       <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none">
-        <div className="max-w-2xl w-full grid grid-cols-3 gap-4 pointer-events-auto">
-          <button onClick={handleNext} className="bg-white border-2 border-slate-200 text-slate-600 h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition hover:bg-slate-50">Siguiente</button>
-          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition ${gameState.revealed ? 'bg-indigo-200 text-indigo-900 border-2 border-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
-            {gameState.revealed ? 'Ocultar' : 'Revelar'}
+        <div className="max-w-2xl w-full grid grid-cols-3 gap-4 pointer-events-auto bg-white/50 backdrop-blur-lg p-4 rounded-3xl border border-white shadow-2xl">
+          <button onClick={handleNext} className="bg-white border-2 border-slate-100 text-slate-600 h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-sm active:scale-95 transition hover:bg-slate-50">Pasar</button>
+          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md active:scale-95 transition flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800' : 'bg-indigo-50 text-indigo-600'}`}>
+            <span>{gameState.revealed ? 'Ocultar' : 'Revelar'}</span>
+            <span className="text-[8px] opacity-50 font-normal">[Enter]</span>
           </button>
-          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-100 text-slate-300' : 'bg-indigo-600 text-white shadow-indigo-100'}`}>
+          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md active:scale-95 transition flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-50 text-slate-300' : 'bg-indigo-600 text-white shadow-indigo-200'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
             Correcta
           </button>
         </div>
       </div>
 
-      {/* SETTINGS MODAL */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Ajustes de Sesión</h3>
-            
-            <div className="space-y-8">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Modo de Estudio</label>
-                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
-                  <button 
-                    onClick={() => handleToggleMode('training')}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${list.settings.mode === 'training' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    Flashcard
-                  </button>
-                  <button 
-                    onClick={() => handleToggleMode('real')}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${list.settings.mode === 'real' ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    Escritura
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <button 
-                  onClick={handleResetProgress}
-                  className="w-full bg-rose-50 text-rose-600 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95"
-                >
-                  Reiniciar Progreso
-                </button>
-              </div>
-            </div>
-
+            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Sesión</h3>
+            <button 
+              onClick={() => {
+                if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
+                   const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
+                   setAssociations(reset);
+                   onUpdateList({ ...list, associations: reset });
+                   startCycle(1, reset);
+                   setShowSettings(false);
+                }
+              }}
+              className="w-full bg-rose-50 text-rose-600 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95 mb-4"
+            >
+              Reiniciar Progreso
+            </button>
             <button 
               onClick={() => setShowSettings(false)}
-              className="w-full mt-10 bg-slate-900 text-white py-4 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-lg"
+              className="w-full bg-slate-900 text-white py-4 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition active:scale-95"
             >
-              Cerrar Ajustes
+              Cerrar
             </button>
           </div>
         </div>
