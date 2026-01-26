@@ -3,17 +3,17 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs, connectFirestoreEmulator } from 'firebase/firestore';
 
-// Configuración de Firebase - Reemplazar con tus credenciales reales para producción
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "YOUR_API_KEY", // Estos valores se inyectan en producción
   authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
+  projectId: "demo-no-project", // Usamos el ID del emulador por defecto
   storageBucket: "YOUR_STORAGE_BUCKET",
   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
 
-const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" || window.location.hostname === 'localhost';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" || isLocalhost;
 
 let app, auth: any, db: any;
 const googleProvider = new GoogleAuthProvider();
@@ -23,14 +23,13 @@ if (isConfigured) {
   auth = getAuth(app);
   db = getFirestore(app);
 
-  // Conectar a emuladores si estamos en localhost para desarrollo
-  if (window.location.hostname === 'localhost') {
-    console.log("🛠️ Conectando a emuladores de Firebase...");
-    try {
+  if (isLocalhost) {
+    // Evitar reconexiones múltiples durante Hot Reload
+    if (!(auth as any)._emulatorConnected) {
+      console.log("🛠️ Conectando a emuladores locales...");
       connectAuthEmulator(auth, "http://localhost:9099");
       connectFirestoreEmulator(db, "localhost", 8080);
-    } catch (e) {
-      console.warn("Emuladores ya conectados o error de conexión:", e);
+      (auth as any)._emulatorConnected = true;
     }
   }
 }

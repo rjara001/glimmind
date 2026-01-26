@@ -6,9 +6,6 @@ const COLLECTION_NAME = "lists";
 const GUEST_PREFIX = "guest-user-";
 
 export const listService = {
-  /**
-   * Suscribirse a las listas del usuario (Cloud o Local)
-   */
   subscribeToLists: (userId: string, onUpdate: (lists: AssociationList[]) => void) => {
     if (userId.startsWith(GUEST_PREFIX)) {
       const loadLocal = () => {
@@ -25,14 +22,11 @@ export const listService = {
       return onSnapshot(q, (snapshot) => {
         const lists = snapshot.docs.map(d => ({ ...d.data() } as AssociationList));
         onUpdate(lists);
-      });
+      }, (err) => console.error("Firestore Subscribe Error:", err));
     }
     return () => {};
   },
 
-  /**
-   * Guarda una lista en el backend correspondiente
-   */
   saveList: async (userId: string, list: AssociationList) => {
     if (userId.startsWith(GUEST_PREFIX)) {
       const storageKey = `glimmind_lists_${userId}`;
@@ -48,7 +42,8 @@ export const listService = {
     }
 
     if (isConfigured && db) {
-      await setDoc(doc(db, COLLECTION_NAME, list.id), {
+      const listRef = doc(db, COLLECTION_NAME, list.id);
+      await setDoc(listRef, {
         ...list,
         userId,
         updatedAt: Date.now()
@@ -56,9 +51,6 @@ export const listService = {
     }
   },
 
-  /**
-   * Migra datos locales de un invitado a la cuenta de un usuario recién autenticado
-   */
   migrateGuestData: async (guestId: string, userId: string) => {
     const storageKey = `glimmind_lists_${guestId}`;
     const saved = localStorage.getItem(storageKey);
@@ -67,16 +59,13 @@ export const listService = {
     const localLists: AssociationList[] = JSON.parse(saved);
     if (localLists.length === 0) return;
 
-    console.log(`🚀 Migrando ${localLists.length} listas a la nube...`);
-    
     for (const list of localLists) {
       await listService.saveList(userId, {
         ...list,
-        userId // Reasignar al nuevo ID de usuario real
+        userId
       });
     }
 
-    // Limpiar localstorage después de migrar con éxito
     localStorage.removeItem(storageKey);
     localStorage.removeItem('glimmind_guest_user');
   },

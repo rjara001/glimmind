@@ -19,27 +19,21 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [showGameSettings, setShowGameSettings] = useState(false);
 
-  // 1. Manejo de Auth y Migración
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
-    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
-        // Si hay un usuario invitado previo, migramos sus datos antes de mostrar la UI
         if (savedGuest) {
           setIsSyncing(true);
-          try {
-            await listService.migrateGuestData(GUEST_ID, firebaseUser.uid);
-          } catch (e) {
-            console.error("Error migrando datos:", e);
-          } finally {
-            setIsSyncing(false);
-          }
+          try { await listService.migrateGuestData(GUEST_ID, firebaseUser.uid); }
+          catch (e) { console.error("Migration error:", e); }
+          finally { setIsSyncing(false); }
         }
         setUser(firebaseUser);
       } else if (savedGuest) {
@@ -49,11 +43,9 @@ const App: React.FC = () => {
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // 2. Suscripción a datos
   useEffect(() => {
     if (!user) return;
     const unsubscribe = listService.subscribeToLists(user.uid, (updatedLists) => {
@@ -65,9 +57,14 @@ const App: React.FC = () => {
   const handleSaveList = async (updatedList: AssociationList) => {
     if (!user) return;
     try {
+      setIsSyncing(true);
       await listService.saveList(user.uid, updatedList);
+      setLastSaved(Date.now());
+      setTimeout(() => setLastSaved(null), 2000);
     } catch (error) {
-      console.error("Error al guardar:", error);
+      console.error("Save error:", error);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -76,19 +73,14 @@ const App: React.FC = () => {
     try {
       await listService.deleteList(user.uid, id);
     } catch (error) {
-      console.error("Error al eliminar:", error);
+      console.error("Delete error:", error);
     }
   };
 
-  if (loading || isSyncing) return (
+  if (loading || isSyncing && lists.length === 0) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="relative">
-        <div className="w-16 h-16 border-4 border-indigo-100 rounded-full"></div>
-        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-      </div>
-      <p className="mt-6 text-slate-400 font-bold tracking-tight animate-pulse uppercase text-[10px]">
-        {isSyncing ? 'Sincronizando tus datos con la nube...' : 'Cargando Glimmind...'}
-      </p>
+      <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Glimmind Sincronizando...</p>
     </div>
   );
 
@@ -100,13 +92,22 @@ const App: React.FC = () => {
   const currentList = lists.find(l => l.id === selectedListId);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50">
+    <div className="min-h-screen flex flex-col bg-slate-50/30">
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-200 group-hover:rotate-6 transition-transform">G</div>
+          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100 group-hover:rotate-6 transition-transform">G</div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
-            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em]">Learning Engine</span>
+            <div className="flex items-center gap-1.5 mt-1">
+               {isSyncing ? (
+                 <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
+               ) : lastSaved ? (
+                 <svg className="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+               ) : null}
+               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                 {isSyncing ? 'Guardando...' : lastSaved ? 'Sincronizado' : 'En línea'}
+               </span>
+            </div>
           </div>
         </div>
         
@@ -114,7 +115,7 @@ const App: React.FC = () => {
           {view === 'game' && (
             <button 
               onClick={() => setShowGameSettings(true)}
-              className="p-2.5 text-slate-400 hover:text-indigo-600 transition bg-slate-50 rounded-xl border border-slate-100"
+              className="p-2.5 text-slate-400 hover:text-indigo-600 transition bg-slate-50 rounded-xl border border-slate-100 shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
