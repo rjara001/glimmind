@@ -5,14 +5,15 @@ import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { Auth } from './components/Auth';
 import { AssociationList } from './types';
-import { auth, onAuthStateChanged, isConfigured } from './firebase';
+import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 
-const GUEST_ID = 'guest-user-default';
+// Cambiamos el ID para que en local lo veamos como un usuario real en la DB
+const GUEST_ID = 'dev-user-local'; 
 const MOCK_USER = {
   uid: GUEST_ID,
-  displayName: 'Invitado (Local)',
-  photoURL: 'https://ui-avatars.com/api/?name=Glim+Mind&background=6366f1&color=fff'
+  displayName: 'Developer (Local DB)',
+  photoURL: 'https://ui-avatars.com/api/?name=Dev+Local&background=10b981&color=fff'
 };
 
 const App: React.FC = () => {
@@ -23,18 +24,12 @@ const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const [showGameSettings, setShowGameSettings] = useState(false);
+  const [showGameSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
-        if (savedGuest) {
-          setIsSyncing(true);
-          try { await listService.migrateGuestData(GUEST_ID, firebaseUser.uid); }
-          catch (e) { console.error("Migration error:", e); }
-          finally { setIsSyncing(false); }
-        }
         setUser(firebaseUser);
       } else if (savedGuest) {
         setUser(JSON.parse(savedGuest));
@@ -77,10 +72,10 @@ const App: React.FC = () => {
     }
   };
 
-  if (loading || isSyncing && lists.length === 0) return (
+  if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Glimmind Sincronizando...</p>
+      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Glimmind Cargando...</p>
     </div>
   );
 
@@ -105,7 +100,7 @@ const App: React.FC = () => {
                  <svg className="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
                ) : null}
                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                 {isSyncing ? 'Guardando...' : lastSaved ? 'Sincronizado' : 'En línea'}
+                 {isSyncing ? 'Escribiendo en DB...' : 'Firestore Conectado'}
                </span>
             </div>
           </div>
@@ -114,7 +109,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-3">
           {view === 'game' && (
             <button 
-              onClick={() => setShowGameSettings(true)}
+              onClick={() => setShowSettings(true)}
               className="p-2.5 text-slate-400 hover:text-indigo-600 transition bg-slate-50 rounded-xl border border-slate-100 shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,7 +163,7 @@ const App: React.FC = () => {
             onUpdateList={handleSaveList} 
             onBack={() => setView('dashboard')} 
             showSettings={showGameSettings}
-            setShowSettings={setShowGameSettings}
+            setShowSettings={setShowSettings}
           />
         )}
       </main>

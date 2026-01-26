@@ -5,9 +5,14 @@ import { AssociationList } from '../types';
 const COLLECTION_NAME = "lists";
 const GUEST_PREFIX = "guest-user-";
 
+// Detectar si estamos en localhost para priorizar el emulador sobre el localStorage
+const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 export const listService = {
   subscribeToLists: (userId: string, onUpdate: (lists: AssociationList[]) => void) => {
-    if (userId.startsWith(GUEST_PREFIX)) {
+    // Si es invitado Y NO estamos en local, usamos localStorage
+    // Pero si estamos en local, queremos ver la data en el emulador (Firestore)
+    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
       const loadLocal = () => {
         const saved = localStorage.getItem(`glimmind_lists_${userId}`);
         onUpdate(saved ? JSON.parse(saved) : []);
@@ -18,6 +23,7 @@ export const listService = {
     }
 
     if (isConfigured && db) {
+      console.log(`📡 Suscribiéndose a Firestore para el usuario: ${userId}`);
       const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
       return onSnapshot(q, (snapshot) => {
         const lists = snapshot.docs.map(d => ({ ...d.data() } as AssociationList));
@@ -28,7 +34,8 @@ export const listService = {
   },
 
   saveList: async (userId: string, list: AssociationList) => {
-    if (userId.startsWith(GUEST_PREFIX)) {
+    // Si es local, siempre mandamos a Firestore para poder debuguear en el emulador
+    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
       const storageKey = `glimmind_lists_${userId}`;
       const saved = localStorage.getItem(storageKey);
       let lists: AssociationList[] = saved ? JSON.parse(saved) : [];
@@ -42,6 +49,7 @@ export const listService = {
     }
 
     if (isConfigured && db) {
+      console.log("💾 Guardando en Firestore Emulated...", list.id);
       const listRef = doc(db, COLLECTION_NAME, list.id);
       await setDoc(listRef, {
         ...list,
@@ -71,7 +79,7 @@ export const listService = {
   },
 
   deleteList: async (userId: string, listId: string) => {
-    if (userId.startsWith(GUEST_PREFIX)) {
+    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
       const storageKey = `glimmind_lists_${userId}`;
       const saved = localStorage.getItem(storageKey);
       if (saved) {
