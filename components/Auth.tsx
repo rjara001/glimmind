@@ -25,8 +25,10 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
         <div className="mb-12">
           <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-indigo-100 mb-6 group hover:rotate-6 transition-transform">
              <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 4.5V2.25M7.5 7L5.5 5M4.5 12h-2.25M7.5 17L5.5 19M12 19.5v2.25M16.5 17L18.5 19M19.5 12h2.25M16.5 7L18.5 5" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="12" cy="12" r="3" fill="white" />
+               <path d="M9.5 14.5C9.5 14.5 6.5 14 6.5 10C6.5 6 9.5 5.5 9.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M14.5 14.5C14.5 14.5 17.5 14 17.5 10C17.5 6 14.5 5.5 14.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M12 18.5V21.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <circle cx="12" cy="10" r="3.5" fill="white" stroke="white" />
             </svg>
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimmind</h1>
