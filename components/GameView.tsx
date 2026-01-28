@@ -99,7 +99,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     [associations, gameState.queue, gameState.currentIndex]
   );
 
-  // Lógica de FLIP (Invertir caras)
+  // Lógica de FLIP (Invertir caras) - Usar directamente de la lista
   const isReversed = list.settings.flipOrder === 'reversed';
   const displayTerm = isReversed ? currentAssoc?.definition : currentAssoc?.term;
   const displayDef = isReversed ? currentAssoc?.term : currentAssoc?.definition;
@@ -205,7 +205,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 flex flex-col items-center">
-      {/* Indicador de Etapas Sofisticado con Conteos */}
+      {/* Indicador de Etapas */}
       <div className="w-full mb-12">
         <div className="relative flex justify-between items-center max-w-2xl mx-auto">
           <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full"></div>
@@ -283,14 +283,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       </div>
 
       {/* Controles Flotantes */}
-      <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none">
-        <div className="max-w-xl w-full grid grid-cols-3 gap-5 pointer-events-auto bg-white/80 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white shadow-[0_30px_100px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none z-[60]">
+        <div className="max-w-xl w-full grid grid-cols-3 gap-5 pointer-events-auto bg-white/90 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white shadow-[0_30px_100px_rgba(0,0,0,0.1)]">
           <button onClick={handleNext} className="bg-slate-50 border-2 border-slate-100 text-slate-600 h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-sm active:scale-90 transition-all hover:bg-white hover:border-indigo-100 hover:text-indigo-600">Pasar</button>
-          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-md active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800' : 'bg-white text-indigo-600 border-2 border-indigo-50'}`}>
+          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-md active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border-2 border-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-50'}`}>
             <span>{gameState.revealed ? 'Ocultar' : 'Revelar'}</span>
             <span className="text-[8px] opacity-40 font-bold mt-1 tracking-normal">[ESPACIO]</span>
           </button>
-          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-100 text-slate-300' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}`}>
+          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7"/></svg>
             Correcta
           </button>
@@ -300,42 +300,51 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
-            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Opciones</h3>
+            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Configuración</h3>
             
             <div className="mb-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Configuración de Sesión</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Ajustes de Sesión</p>
               <button 
                 onClick={toggleFlip}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${isReversed ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-slate-600 border border-slate-200'}`}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all shadow-sm ${isReversed ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
               >
-                <span className="text-xs font-bold">Invertir Caras</span>
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <span className="text-xs font-bold">Invertir Caras</span>
+                </div>
                 <div className={`w-10 h-6 rounded-full relative transition-colors ${isReversed ? 'bg-indigo-400' : 'bg-slate-200'}`}>
-                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isReversed ? 'left-5' : 'left-1'}`}></div>
+                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isReversed ? 'left-5' : 'left-1'}`}></div>
                 </div>
               </button>
-              <p className="mt-3 text-[9px] text-slate-400 font-medium px-2 italic">Si está activo, verás primero la definición y luego el término.</p>
+              <p className="mt-4 text-[9px] text-slate-400 font-medium px-2 leading-relaxed">
+                Muestra primero la <strong>Definición</strong> y oculta el <strong>Término</strong>. Ideal para practicar traducción inversa.
+              </p>
             </div>
 
-            <button 
-              onClick={() => {
-                if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
-                   const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
-                   setAssociations(reset);
-                   onUpdateList({ ...list, associations: reset, resumeState: undefined });
-                   startCycle(1, reset);
-                   setShowSettings(false);
-                }
-              }}
-              className="w-full bg-rose-50 text-rose-600 py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest hover:bg-rose-100 transition active:scale-95 mb-4"
-            >
-              Reiniciar Lista
-            </button>
-            <button 
-              onClick={() => setShowSettings(false)}
-              className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-xl shadow-slate-200"
-            >
-              Cerrar
-            </button>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
+                     const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
+                     setAssociations(reset);
+                     onUpdateList({ ...list, associations: reset, resumeState: undefined });
+                     startCycle(1, reset);
+                     setShowSettings(false);
+                  }
+                }}
+                className="w-full bg-rose-50 text-rose-600 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95"
+              >
+                Reiniciar Lista
+              </button>
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-xl shadow-slate-200"
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         </div>
       )}
