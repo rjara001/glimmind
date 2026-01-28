@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AssociationList, Association, AssociationStatus, GameCycle, GameState, GameMode } from '../types';
+import { AssociationList, Association, AssociationStatus, GameCycle, GameState } from '../types';
 
 interface GameViewProps {
   list: AssociationList;
@@ -9,6 +9,13 @@ interface GameViewProps {
   showSettings: boolean;
   setShowSettings: (val: boolean) => void;
 }
+
+const STAGE_NAMES = [
+  "Introducción",
+  "Descubrimiento",
+  "Reconocimiento",
+  "Maestría"
+];
 
 export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, showSettings, setShowSettings }) => {
   const [gameState, setGameState] = useState<GameState>({
@@ -96,7 +103,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     advance(nextStatus);
   };
 
-  // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showSettings || gameState.isFinished) return;
@@ -133,59 +139,93 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 flex flex-col items-center">
-      <div className="w-full flex justify-between items-center mb-8">
-        <div className="flex gap-2 items-center">
-          {[1,2,3,4].map(c => (
-            <div key={c} className={`w-3 h-3 rounded-full transition-all duration-500 ${gameState.currentCycle >= c ? 'bg-indigo-600 scale-125 shadow-sm shadow-indigo-200' : 'bg-slate-200'}`}></div>
+      {/* Indicador de Etapas Sofisticado */}
+      <div className="w-full mb-12">
+        <div className="relative flex justify-between items-center max-w-2xl mx-auto">
+          {/* Línea de fondo */}
+          <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full"></div>
+          {/* Línea de progreso activa */}
+          <div 
+            className="absolute top-1/2 left-0 h-1 bg-indigo-600 -translate-y-1/2 rounded-full transition-all duration-700 ease-out"
+            style={{ width: `${((gameState.currentCycle - 1) / 3) * 100}%` }}
+          ></div>
+
+          {[1, 2, 3, 4].map((c) => (
+            <div key={c} className="relative z-10 flex flex-col items-center">
+              <div 
+                className={`w-8 h-8 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${
+                  gameState.currentCycle > c 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
+                    : gameState.currentCycle === c 
+                      ? 'bg-white border-indigo-600 scale-125 shadow-xl shadow-indigo-100 ring-4 ring-indigo-50' 
+                      : 'bg-white border-slate-100 text-slate-300'
+                }`}
+              >
+                {gameState.currentCycle > c ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                ) : (
+                  <span className="text-[10px] font-black">{c}</span>
+                )}
+              </div>
+              <span className={`absolute -bottom-7 whitespace-nowrap text-[9px] font-black uppercase tracking-tighter transition-colors duration-300 ${
+                gameState.currentCycle === c ? 'text-indigo-600' : 'text-slate-400'
+              }`}>
+                {STAGE_NAMES[c-1]}
+              </span>
+            </div>
           ))}
-          <span className="ml-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Etapa {gameState.currentCycle}</span>
         </div>
-        <span className="bg-white px-3 py-1 rounded-full border border-slate-100 text-[10px] font-black text-indigo-600 uppercase tracking-widest shadow-sm">
-          {gameState.currentIndex + 1} / {gameState.queue.length}
-        </span>
+        
+        <div className="mt-14 flex justify-center">
+           <span className="bg-indigo-50 px-4 py-1.5 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm animate-pulse">
+            Progreso: {gameState.currentIndex + 1} de {gameState.queue.length}
+          </span>
+        </div>
       </div>
 
-      <div className="w-full bg-white rounded-[3rem] shadow-2xl border-4 border-white p-12 text-center relative overflow-hidden group min-h-[400px] flex flex-col justify-center transition-all">
-        <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600/5"></div>
-        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-2">{list.concept.split('/')[0] || 'Término'}</span>
-        <h2 className="text-5xl md:text-6xl font-black text-slate-900 mb-10 break-words leading-tight">{currentAssoc?.term}</h2>
+      {/* Carta de Juego */}
+      <div className="w-full bg-white rounded-[3.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.1)] border-4 border-white p-12 text-center relative overflow-hidden group min-h-[420px] flex flex-col justify-center transition-all hover:shadow-[0_30px_60px_rgba(79,70,229,0.15)]">
+        <div className="absolute top-0 left-0 w-full h-3 bg-indigo-600/10"></div>
+        <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] block mb-3">{list.concept.split('/')[0] || 'Término'}</span>
+        <h2 className="text-5xl md:text-7xl font-black text-slate-900 mb-12 break-words leading-tight tracking-tight">{currentAssoc?.term}</h2>
         
-        <div className="min-h-[120px] flex items-center justify-center">
+        <div className="min-h-[140px] flex items-center justify-center">
           {gameState.revealed ? (
-            <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300 text-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{list.concept.split('/')[1] || 'Definición'}</span>
-              <p className="text-3xl font-black text-indigo-600 bg-indigo-50 px-8 py-3 rounded-2xl border border-indigo-100 inline-block shadow-sm">
+            <div className="animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 text-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">{list.concept.split('/')[1] || 'Definición'}</span>
+              <p className="text-4xl font-black text-indigo-600 bg-indigo-50/50 px-10 py-4 rounded-[2rem] border-2 border-indigo-100/50 inline-block shadow-inner">
                 {currentAssoc?.definition}
               </p>
             </div>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="w-8 h-12 bg-slate-50 rounded-xl animate-pulse border border-slate-100 flex items-center justify-center text-slate-200 font-black text-xl">?</div>
+                <div key={i} className="w-10 h-16 bg-slate-50 rounded-2xl animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-2xl shadow-sm">?</div>
               ))}
             </div>
           )}
         </div>
       </div>
 
+      {/* Controles Flotantes */}
       <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none">
-        <div className="max-w-2xl w-full grid grid-cols-3 gap-4 pointer-events-auto bg-white/50 backdrop-blur-lg p-4 rounded-3xl border border-white shadow-2xl">
-          <button onClick={handleNext} className="bg-white border-2 border-slate-100 text-slate-600 h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-sm active:scale-95 transition hover:bg-slate-50">Pasar</button>
-          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md active:scale-95 transition flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800' : 'bg-indigo-50 text-indigo-600'}`}>
+        <div className="max-w-xl w-full grid grid-cols-3 gap-5 pointer-events-auto bg-white/80 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white shadow-[0_30px_100px_rgba(0,0,0,0.1)]">
+          <button onClick={handleNext} className="bg-slate-50 border-2 border-slate-100 text-slate-600 h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-sm active:scale-90 transition-all hover:bg-white hover:border-indigo-100 hover:text-indigo-600">Pasar</button>
+          <button onClick={() => setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}))} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-md active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800' : 'bg-white text-indigo-600 border-2 border-indigo-50'}`}>
             <span>{gameState.revealed ? 'Ocultar' : 'Revelar'}</span>
-            <span className="text-[8px] opacity-50 font-normal">[Enter]</span>
+            <span className="text-[8px] opacity-40 font-bold mt-1 tracking-normal">[ESPACIO]</span>
           </button>
-          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md active:scale-95 transition flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-50 text-slate-300' : 'bg-indigo-600 text-white shadow-indigo-200'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
+          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed ? 'bg-slate-100 text-slate-300' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7"/></svg>
             Correcta
           </button>
         </div>
       </div>
 
       {showSettings && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Sesión</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
+            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Opciones</h3>
             <button 
               onClick={() => {
                 if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
@@ -196,13 +236,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                    setShowSettings(false);
                 }
               }}
-              className="w-full bg-rose-50 text-rose-600 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95 mb-4"
+              className="w-full bg-rose-50 text-rose-600 py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest hover:bg-rose-100 transition active:scale-95 mb-4"
             >
-              Reiniciar Progreso
+              Reiniciar Lista
             </button>
             <button 
               onClick={() => setShowSettings(false)}
-              className="w-full bg-slate-900 text-white py-4 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition active:scale-95"
+              className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-xl shadow-slate-200"
             >
               Cerrar
             </button>
