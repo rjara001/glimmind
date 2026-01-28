@@ -8,7 +8,10 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "app/**",
+      "lib/**",
+      "functions/**"
     ],
     "rewrites": [
       {
