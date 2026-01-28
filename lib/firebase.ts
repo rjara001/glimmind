@@ -1,23 +1,39 @@
 
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, deleteDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, doc, setDoc, deleteDoc, collection, query, where, onSnapshot, connectFirestoreEmulator } from 'firebase/firestore';
 
+// Usamos el mismo ID de proyecto demo para activar el modo offline/emulador automáticamente
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "YOUR_API_KEY",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "YOUR_AUTH_DOMAIN",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "YOUR_STORAGE_BUCKET",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "YOUR_APP_ID"
+  apiKey: "fake-api-key", 
+  authDomain: "demo-glimmind.firebaseapp.com",
+  projectId: "demo-glimmind", 
+  storageBucket: "demo-glimmind.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
 };
+
+const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+if (isLocalhost) {
+  if (!(globalThis as any)._fb_emulators_connected_lib) {
+    console.log("🚀 (Lib) Conectando Glimmind a Emuladores locales...");
+    try {
+      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+      connectFirestoreEmulator(db, "localhost", 8080);
+      (globalThis as any)._fb_emulators_connected_lib = true;
+    } catch (e) {
+      console.warn("Aviso de conexión de emuladores en Lib:", e);
+    }
+  }
+}
+
+export const isConfigured = true;
 
 export { 
   auth, 
@@ -31,6 +47,5 @@ export {
   onSnapshot,
   doc,
   setDoc,
-  deleteDoc,
-  isConfigured
+  deleteDoc
 };
