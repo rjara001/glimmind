@@ -99,6 +99,23 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     [associations, gameState.queue, gameState.currentIndex]
   );
 
+  // Lógica de FLIP (Invertir caras)
+  const isReversed = list.settings.flipOrder === 'reversed';
+  const displayTerm = isReversed ? currentAssoc?.definition : currentAssoc?.term;
+  const displayDef = isReversed ? currentAssoc?.term : currentAssoc?.definition;
+  
+  const conceptParts = list.concept.split('/');
+  const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
+  const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
+
+  const toggleFlip = () => {
+    const newOrder = isReversed ? 'normal' : 'reversed';
+    onUpdateList({
+      ...list,
+      settings: { ...list.settings, flipOrder: newOrder }
+    });
+  };
+
   const advance = (nextStatus: AssociationStatus) => {
     if (!currentAssoc) return;
     
@@ -244,15 +261,15 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       {/* Carta de Juego */}
       <div className="w-full bg-white rounded-[3.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.1)] border-4 border-white p-12 text-center relative overflow-hidden group min-h-[420px] flex flex-col justify-center transition-all hover:shadow-[0_30px_60px_rgba(79,70,229,0.15)]">
         <div className="absolute top-0 left-0 w-full h-3 bg-indigo-600/10"></div>
-        <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] block mb-3">{list.concept.split('/')[0] || 'Término'}</span>
-        <h2 className="text-5xl md:text-7xl font-black text-slate-900 mb-12 break-words leading-tight tracking-tight">{currentAssoc?.term}</h2>
+        <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] block mb-3">{labelTerm}</span>
+        <h2 className="text-5xl md:text-7xl font-black text-slate-900 mb-12 break-words leading-tight tracking-tight">{displayTerm}</h2>
         
         <div className="min-h-[140px] flex items-center justify-center">
           {gameState.revealed ? (
             <div className="animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 text-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">{list.concept.split('/')[1] || 'Definición'}</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">{labelDef}</span>
               <p className="text-4xl font-black text-indigo-600 bg-indigo-50/50 px-10 py-4 rounded-[2rem] border-2 border-indigo-100/50 inline-block shadow-inner">
-                {currentAssoc?.definition}
+                {displayDef}
               </p>
             </div>
           ) : (
@@ -284,6 +301,21 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
             <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Opciones</h3>
+            
+            <div className="mb-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Configuración de Sesión</p>
+              <button 
+                onClick={toggleFlip}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${isReversed ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-slate-600 border border-slate-200'}`}
+              >
+                <span className="text-xs font-bold">Invertir Caras</span>
+                <div className={`w-10 h-6 rounded-full relative transition-colors ${isReversed ? 'bg-indigo-400' : 'bg-slate-200'}`}>
+                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isReversed ? 'left-5' : 'left-1'}`}></div>
+                </div>
+              </button>
+              <p className="mt-3 text-[9px] text-slate-400 font-medium px-2 italic">Si está activo, verás primero la definición y luego el término.</p>
+            </div>
+
             <button 
               onClick={() => {
                 if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
