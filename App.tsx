@@ -66,11 +66,10 @@ const App: React.FC = () => {
     }
   }, [user, lists, isSyncing]);
 
-  // Auto-sync al salir (Visibility Change es más robusto que beforeunload)
+  // Auto-sync al salir
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && hasUnsavedChanges && user) {
-        // Ejecución en segundo plano sin esperar resolución
         listService.syncAllToCloud(user.uid, lists);
       }
     };
@@ -80,8 +79,11 @@ const App: React.FC = () => {
 
   // Manejar cambios (Persistencia Local Primaria)
   const handleLocalUpdate = (updatedList: AssociationList) => {
-    const updatedLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
-    if (!lists.find(l => l.id === updatedList.id)) updatedLists.push(updatedList);
+    // IMPORTANTE: Actualizar el timestamp local para que el merge sobreviva al refresh
+    const listWithTimestamp = { ...updatedList, updatedAt: Date.now() };
+    
+    const updatedLists = lists.map(l => l.id === listWithTimestamp.id ? listWithTimestamp : l);
+    if (!lists.find(l => l.id === listWithTimestamp.id)) updatedLists.push(listWithTimestamp);
     
     setLists(updatedLists);
     setHasUnsavedChanges(true);
@@ -100,10 +102,10 @@ const App: React.FC = () => {
       concept, 
       associations: initialAssocs, 
       settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 }, 
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
     
-    // Al crear o cargar CSV, vamos directo a GCP como respaldo inmediato
     setIsSyncing(true);
     try {
       await listService.saveToCloudDirect(user.uid, newList);
@@ -113,7 +115,6 @@ const App: React.FC = () => {
       setSelectedListId(newList.id);
       setView('game');
     } catch (e) {
-      console.warn("Fallo guardado directo, guardando localmente.");
       handleLocalUpdate(newList);
     } finally {
       setIsSyncing(false);
@@ -130,7 +131,7 @@ const App: React.FC = () => {
     try {
       await listService.deleteFromCloud(id);
     } catch (e) {
-      console.warn("Borrado local, pendiente sync de nube.");
+      console.warn("Borrado local pendiente.");
     }
   };
 
@@ -169,11 +170,10 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Botón de Sincronización Manual */}
           {hasUnsavedChanges && !isSyncing && (
             <button 
               onClick={handleCloudSync}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all animate-in slide-in-from-right-4 shadow-sm active:scale-95"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
