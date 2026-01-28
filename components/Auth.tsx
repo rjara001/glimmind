@@ -9,52 +9,50 @@ interface AuthProps {
 export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
   const handleGoogleLogin = async () => {
     if (!isConfigured) {
-      alert("Firebase no está configurado. Usa el 'Modo Desarrollador' para probar la app localmente.");
+      alert("Firebase no está configurado correctamente.");
       return;
     }
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Error logging in:", error);
-      alert("Error al iniciar sesión. Revisa la configuración de Firebase.");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="max-w-md w-full text-center">
-        <div className="mb-8">
-          <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white text-4xl font-black mx-auto shadow-xl mb-4">G</div>
-          <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Glimmind</h1>
-          <p className="text-gray-500">Domina cualquier asociación de palabras.</p>
+        <div className="mb-12">
+          <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-indigo-100 mb-6 group hover:rotate-6 transition-transform">
+             <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+               <path d="M9.5 14.5C9.5 14.5 6.5 14 6.5 10C6.5 6 9.5 5.5 9.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M14.5 14.5C14.5 14.5 17.5 14 17.5 10C17.5 6 14.5 5.5 14.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M12 18.5V21.5" strokeLinecap="round" strokeLinejoin="round"/>
+               <circle cx="12" cy="10" r="3.5" fill="white" stroke="white" />
+            </svg>
+          </div>
+          <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimmind</h1>
+          <p className="text-slate-500 font-medium italic">"Flashcards con esteroides para tu cerebro"</p>
         </div>
         
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
+        <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
           <button 
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 py-3 px-4 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition shadow-sm mb-4"
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-4 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 hover:border-indigo-100 transition shadow-sm mb-4"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-6 h-6" alt="Google" />
-            Continuar con Google
+            Iniciar con Google
           </button>
           
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-400">O prueba la app ahora</span></div>
-          </div>
-
           <button 
             onClick={onLoginDev}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 py-3 px-4 rounded-xl font-bold hover:bg-indigo-100 transition"
+            className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 py-4 px-4 rounded-2xl font-bold hover:bg-indigo-100 transition"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-            Entrar como Invitado (Modo Dev)
+            Acceso Local (Modo Invitado)
           </button>
-
-          <p className="text-xs text-gray-400 mt-6">
-            El modo invitado guarda tus datos localmente en este navegador.
+          
+          <p className="text-[10px] text-slate-400 mt-8 font-black uppercase tracking-widest leading-relaxed">
+            Memorización por ciclos de 4 etapas
           </p>
         </div>
       </div>
