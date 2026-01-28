@@ -31,6 +31,17 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   const [associations, setAssociations] = useState<Association[]>(list.associations);
 
+  // Calcular conteos por etapa para el encabezado
+  const stageCounts = useMemo(() => {
+    return {
+      1: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
+      2: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
+      3: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
+      4: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length,
+      learned: associations.filter(a => a.status === AssociationStatus.APRENDIDA).length
+    };
+  }, [associations]);
+
   const startCycle = useCallback((cycle: GameCycle, currentAssocs: Association[]) => {
     let filter: AssociationStatus;
     switch(cycle) {
@@ -63,18 +74,15 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
     setGameState(newState);
     
-    // Guardar el inicio del nuevo ciclo
     onUpdateList({
       ...list,
       associations: currentAssocs,
       resumeState: { cycle, queue, index: 0 }
     });
-  }, [onUpdateList, list]);
+  }, [onUpdateList, list, gameState]);
 
-  // Inicialización inteligente
   useEffect(() => {
     if (list.resumeState && list.resumeState.queue.length > 0) {
-      // Reanudando sesión existente
       setGameState(prev => ({
         ...prev,
         currentCycle: list.resumeState!.cycle,
@@ -82,7 +90,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         currentIndex: list.resumeState!.index
       }));
     } else {
-      // Nueva sesión
       startCycle(1, associations);
     }
   }, []);
@@ -107,7 +114,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         wasRevealed: false 
       }));
 
-      // PERSISTENCIA INMEDIATA: Guardar el progreso de la fila actual
       onUpdateList({
         ...list,
         associations: updatedAssocs,
@@ -118,12 +124,10 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         }
       });
     } else {
-      // Fin del ciclo
       if (gameState.currentCycle < 4) {
         startCycle((gameState.currentCycle + 1) as GameCycle, updatedAssocs);
       } else {
         setGameState(prev => ({ ...prev, isFinished: true }));
-        // Limpiar estado de reanudación al terminar
         onUpdateList({
           ...list,
           associations: updatedAssocs,
@@ -144,6 +148,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     if (gameState.currentCycle === 1) nextStatus = AssociationStatus.DESCUBIERTA;
     else if (gameState.currentCycle === 2) nextStatus = AssociationStatus.RECONOCIDA;
     else if (gameState.currentCycle === 3) nextStatus = AssociationStatus.CONOCIDA;
+    else if (gameState.currentCycle === 4) nextStatus = AssociationStatus.APRENDIDA;
     advance(nextStatus);
   };
 
@@ -169,13 +174,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
       </div>
       <h2 className="text-3xl font-black text-slate-900 mb-2">¡Sesión Lista!</h2>
-      <p className="text-slate-500 mb-8 font-medium">Has fortalecido {gameState.queue.length} conexiones hoy.</p>
+      <p className="text-slate-500 mb-8 font-medium">Has fortalecido todas las conexiones de esta lista.</p>
       <div className="flex flex-col gap-3">
         <button onClick={() => {
            const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
            setAssociations(reset);
            startCycle(1, reset);
-        }} className="bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition">Estudiar de nuevo</button>
+        }} className="bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition">Reiniciar Aprendizaje</button>
         <button onClick={onBack} className="text-slate-400 font-bold py-2 hover:text-indigo-600 transition text-sm">Regresar al Panel</button>
       </div>
     </div>
@@ -183,46 +188,55 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 flex flex-col items-center">
-      {/* Indicador de Etapas Sofisticado */}
+      {/* Indicador de Etapas Sofisticado con Conteos */}
       <div className="w-full mb-12">
         <div className="relative flex justify-between items-center max-w-2xl mx-auto">
-          {/* Línea de fondo */}
           <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full"></div>
-          {/* Línea de progreso activa */}
           <div 
             className="absolute top-1/2 left-0 h-1 bg-indigo-600 -translate-y-1/2 rounded-full transition-all duration-700 ease-out"
             style={{ width: `${((gameState.currentCycle - 1) / 3) * 100}%` }}
           ></div>
 
-          {[1, 2, 3, 4].map((c) => (
-            <div key={c} className="relative z-10 flex flex-col items-center">
-              <div 
-                className={`w-8 h-8 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${
-                  gameState.currentCycle > c 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
-                    : gameState.currentCycle === c 
-                      ? 'bg-white border-indigo-600 scale-125 shadow-xl shadow-indigo-100 ring-4 ring-indigo-50' 
-                      : 'bg-white border-slate-100 text-slate-300'
-                }`}
-              >
-                {gameState.currentCycle > c ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                ) : (
-                  <span className="text-[10px] font-black">{c}</span>
-                )}
+          {[1, 2, 3, 4].map((c) => {
+            const count = stageCounts[c as keyof typeof stageCounts];
+            const isActive = gameState.currentCycle === c;
+            const isCompleted = gameState.currentCycle > c;
+
+            return (
+              <div key={c} className="relative z-10 flex flex-col items-center">
+                <div 
+                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center border-4 transition-all duration-500 ${
+                    isCompleted 
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
+                      : isActive 
+                        ? 'bg-white border-indigo-600 scale-110 shadow-xl shadow-indigo-100 ring-4 ring-indigo-50' 
+                        : 'bg-white border-slate-100 text-slate-300'
+                  }`}
+                >
+                  {isCompleted ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                  ) : (
+                    <span className="text-[11px] font-black">{count}</span>
+                  )}
+                </div>
+                <div className="absolute -bottom-8 flex flex-col items-center whitespace-nowrap">
+                   <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors duration-300 ${
+                    isActive ? 'text-indigo-600' : 'text-slate-400'
+                  }`}>
+                    {STAGE_NAMES[c-1]}
+                  </span>
+                </div>
               </div>
-              <span className={`absolute -bottom-7 whitespace-nowrap text-[9px] font-black uppercase tracking-tighter transition-colors duration-300 ${
-                gameState.currentCycle === c ? 'text-indigo-600' : 'text-slate-400'
-              }`}>
-                {STAGE_NAMES[c-1]}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
-        <div className="mt-14 flex justify-center">
-           <span className="bg-indigo-50 px-4 py-1.5 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm animate-pulse">
-            Progreso: {gameState.currentIndex + 1} de {gameState.queue.length}
+        <div className="mt-16 flex justify-center gap-4">
+           <span className="bg-indigo-50 px-4 py-1.5 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm">
+            Fila: {gameState.currentIndex + 1} / {gameState.queue.length}
+          </span>
+          <span className="bg-emerald-50 px-4 py-1.5 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest border border-emerald-100 shadow-sm">
+            Aprendidas: {stageCounts.learned}
           </span>
         </div>
       </div>
