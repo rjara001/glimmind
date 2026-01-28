@@ -1,80 +1,70 @@
 
-import { db, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, isConfigured } from '../firebase';
+import { db, collection, query, where, doc, setDoc, deleteDoc, isConfigured, getDocs } from '../firebase';
 import { AssociationList } from '../types';
 
 const COLLECTION_NAME = "lists";
 
-// Detectar si estamos en local para forzar uso de base de datos
-const isLocal = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
 export const listService = {
-  subscribeToLists: (userId: string, onUpdate: (lists: AssociationList[]) => void) => {
-    if (!userId) return () => {};
-
-    // Si no es local y es un invitado, usamos localStorage por persistencia simple
-    if (!isLocal && userId.startsWith("guest-")) {
-      const loadLocal = () => {
-        const saved = localStorage.getItem(`glimmind_lists_${userId}`);
-        onUpdate(saved ? JSON.parse(saved) : []);
-      };
-      loadLocal();
-      window.addEventListener('storage', loadLocal);
-      return () => window.removeEventListener('storage', loadLocal);
-    }
+  /**
+   * Carga inicial: Prioriza LocalStorage para velocidad instantánea, 
+   * luego intenta refrescar desde Firestore.
+   */
+  fetchInitialLists: async (userId: string): Promise<AssociationList[]> => {
+    if (!userId) return [];
+    
+    const localData = localStorage.getItem(`glimmind_cache_${userId}`);
+    const cachedLists = localData ? JSON.parse(localData) : [];
 
     if (isConfigured && db) {
-      console.log(`📡 [Firestore] Suscribiendo UID: ${userId} en modo ${isLocal ? 'LOCAL EMULATOR' : 'CLOUD'}`);
-      const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
-      
-      return onSnapshot(q, (snapshot) => {
-        const lists = snapshot.docs.map(d => ({ ...d.data() } as AssociationList));
-        console.log(`📦 [Firestore] ${lists.length} listas recuperadas para el usuario.`);
-        onUpdate(lists);
-      }, (err) => {
-        console.error("❌ [Firestore] Error en suscripción:", err);
-      });
-    }
-    return () => {};
-  },
-
-  saveList: async (userId: string, list: AssociationList) => {
-    if (!userId) throw new Error("userId es requerido");
-
-    // Lógica localStorage solo para producción sin login
-    if (!isLocal && userId.startsWith("guest-")) {
-      const storageKey = `glimmind_lists_${userId}`;
-      const saved = localStorage.getItem(storageKey);
-      let lists: AssociationList[] = saved ? JSON.parse(saved) : [];
-      const index = lists.findIndex(l => l.id === list.id);
-      if (index >= 0) lists[index] = list;
-      else lists.push(list);
-      localStorage.setItem(storageKey, JSON.stringify(lists));
-      return;
-    }
-
-    if (isConfigured && db) {
-      console.log(`💾 [Firestore] Intentando guardar lista "${list.name}"...`);
       try {
-        const listRef = doc(db, COLLECTION_NAME, list.id);
-        const payload = {
-          ...list,
-          userId,
-          updatedAt: Date.now()
-        };
-        await setDoc(listRef, payload, { merge: true });
-        console.log("✅ [Firestore] Guardado con éxito en el emulador.");
+        const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
+        const snapshot = await getDocs(q);
+        const remoteLists = snapshot.docs.map(d => d.data() as AssociationList);
+        
+        // Guardar en cache lo que viene de la nube
+        localStorage.setItem(`glimmind_cache_${userId}`, JSON.stringify(remoteLists));
+        return remoteLists.length > 0 ? remoteLists : cachedLists;
       } catch (e) {
-        console.error("❌ [Firestore] Error crítico al guardar:", e);
-        throw e;
+        console.warn("Modo Offline: Usando datos de LocalStorage.");
+        return cachedLists;
       }
     }
+    return cachedLists;
   },
 
-  deleteList: async (userId: string, listId: string) => {
+  /**
+   * Sincronización Manual: Toma todas las listas locales y las empuja a la nube.
+   */
+  syncAllToCloud: async (userId: string, lists: AssociationList[]) => {
+    if (!isConfigured || !db || !userId) return;
+    
+    console.log(`☁️ Sincronizando ${lists.length} listas con GCP...`);
+    const batchPromises = lists.map(list => {
+      const listRef = doc(db, COLLECTION_NAME, list.id);
+      // Aseguramos que el userId esté presente
+      return setDoc(listRef, { ...list, userId, updatedAt: Date.now() }, { merge: true });
+    });
+
+    await Promise.all(batchPromises);
+    console.log("✅ Sincronización completada con éxito.");
+  },
+
+  /**
+   * Guardado Directo: Usado para creaciones nuevas o cargas masivas (CSV).
+   */
+  saveToCloudDirect: async (userId: string, list: AssociationList) => {
+    if (!isConfigured || !db) return;
+    const listRef = doc(db, COLLECTION_NAME, list.id);
+    await setDoc(listRef, { ...list, userId, updatedAt: Date.now() }, { merge: true });
+  },
+
+  deleteFromCloud: async (listId: string) => {
     if (isConfigured && db) {
-      console.log(`🗑️ [Firestore] Eliminando lista ${listId}`);
-      await deleteDoc(doc(db, COLLECTION_NAME, listId));
+      try {
+        await deleteDoc(doc(db, COLLECTION_NAME, listId));
+      } catch (e) {
+        console.error("Error al borrar de la nube:", e);
+      }
     }
   }
 };
