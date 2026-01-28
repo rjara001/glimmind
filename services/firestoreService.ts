@@ -4,15 +4,16 @@ import { AssociationList } from '../types';
 
 const COLLECTION_NAME = "lists";
 const GUEST_PREFIX = "guest-user-";
+const DEV_PREFIX = "dev-user-";
 
-// Detectar si estamos en localhost para priorizar el emulador sobre el localStorage
 const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 export const listService = {
   subscribeToLists: (userId: string, onUpdate: (lists: AssociationList[]) => void) => {
-    // Si es invitado Y NO estamos en local, usamos localStorage
-    // Pero si estamos en local, queremos ver la data en el emulador (Firestore)
-    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
+    // Si NO estamos en local y es un invitado, usamos localStorage
+    const isGuest = userId.startsWith(GUEST_PREFIX) || userId.startsWith(DEV_PREFIX);
+    
+    if (isGuest && !isLocalhost) {
       const loadLocal = () => {
         const saved = localStorage.getItem(`glimmind_lists_${userId}`);
         onUpdate(saved ? JSON.parse(saved) : []);
@@ -23,19 +24,23 @@ export const listService = {
     }
 
     if (isConfigured && db) {
-      console.log(`📡 Suscribiéndose a Firestore para el usuario: ${userId}`);
+      console.log(`📡 [Service] Suscribiéndose a Firestore para UID: ${userId} (${isLocalhost ? 'EMULADOR' : 'CLOUD'})`);
       const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
       return onSnapshot(q, (snapshot) => {
         const lists = snapshot.docs.map(d => ({ ...d.data() } as AssociationList));
+        console.log(`✅ [Service] Datos recibidos: ${lists.length} listas.`);
         onUpdate(lists);
-      }, (err) => console.error("Firestore Subscribe Error:", err));
+      }, (err) => {
+        console.error("❌ Firestore Subscribe Error:", err);
+      });
     }
     return () => {};
   },
 
   saveList: async (userId: string, list: AssociationList) => {
-    // Si es local, siempre mandamos a Firestore para poder debuguear en el emulador
-    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
+    const isGuest = userId.startsWith(GUEST_PREFIX) || userId.startsWith(DEV_PREFIX);
+
+    if (isGuest && !isLocalhost) {
       const storageKey = `glimmind_lists_${userId}`;
       const saved = localStorage.getItem(storageKey);
       let lists: AssociationList[] = saved ? JSON.parse(saved) : [];
@@ -49,37 +54,26 @@ export const listService = {
     }
 
     if (isConfigured && db) {
-      console.log("💾 Guardando en Firestore Emulated...", list.id);
-      const listRef = doc(db, COLLECTION_NAME, list.id);
-      await setDoc(listRef, {
-        ...list,
-        userId,
-        updatedAt: Date.now()
-      }, { merge: true });
+      console.log(`💾 [Service] Guardando en Firestore... ID: ${list.id} para UID: ${userId}`);
+      try {
+        const listRef = doc(db, COLLECTION_NAME, list.id);
+        const payload = {
+          ...list,
+          userId,
+          updatedAt: Date.now()
+        };
+        await setDoc(listRef, payload, { merge: true });
+        console.log("✨ [Service] Guardado exitoso.");
+      } catch (e) {
+        console.error("❌ [Service] Error al guardar en Firestore:", e);
+      }
     }
-  },
-
-  migrateGuestData: async (guestId: string, userId: string) => {
-    const storageKey = `glimmind_lists_${guestId}`;
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return;
-
-    const localLists: AssociationList[] = JSON.parse(saved);
-    if (localLists.length === 0) return;
-
-    for (const list of localLists) {
-      await listService.saveList(userId, {
-        ...list,
-        userId
-      });
-    }
-
-    localStorage.removeItem(storageKey);
-    localStorage.removeItem('glimmind_guest_user');
   },
 
   deleteList: async (userId: string, listId: string) => {
-    if (userId.startsWith(GUEST_PREFIX) && !isLocalhost) {
+    const isGuest = userId.startsWith(GUEST_PREFIX) || userId.startsWith(DEV_PREFIX);
+
+    if (isGuest && !isLocalhost) {
       const storageKey = `glimmind_lists_${userId}`;
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -91,6 +85,7 @@ export const listService = {
     }
 
     if (isConfigured && db) {
+      console.log(`🗑️ [Service] Eliminando lista ${listId}`);
       await deleteDoc(doc(db, COLLECTION_NAME, listId));
     }
   }
