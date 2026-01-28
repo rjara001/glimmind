@@ -6,14 +6,14 @@ const COLLECTION_NAME = "lists";
 
 export const listService = {
   /**
-   * Carga inicial: Prioriza LocalStorage para velocidad instantánea, 
-   * luego intenta refrescar desde Firestore.
+   * Carga inicial con Merge Inteligente:
+   * No sobreescribe cambios locales que sean más recientes que los de la nube.
    */
   fetchInitialLists: async (userId: string): Promise<AssociationList[]> => {
     if (!userId) return [];
     
     const localData = localStorage.getItem(`glimmind_cache_${userId}`);
-    const cachedLists = localData ? JSON.parse(localData) : [];
+    const cachedLists: AssociationList[] = localData ? JSON.parse(localData) : [];
 
     if (isConfigured && db) {
       try {
@@ -21,37 +21,55 @@ export const listService = {
         const snapshot = await getDocs(q);
         const remoteLists = snapshot.docs.map(d => d.data() as AssociationList);
         
-        // Guardar en cache lo que viene de la nube
-        localStorage.setItem(`glimmind_cache_${userId}`, JSON.stringify(remoteLists));
-        return remoteLists.length > 0 ? remoteLists : cachedLists;
+        // --- Lógica de Merge ---
+        const mergedLists = [...cachedLists];
+
+        remoteLists.forEach(remote => {
+          const localIndex = mergedLists.findIndex(l => l.id === remote.id);
+          
+          if (localIndex === -1) {
+            // Si no existe localmente, la agregamos
+            mergedLists.push(remote);
+          } else {
+            // Si existe en ambos, comparamos timestamps
+            const local = mergedLists[localIndex];
+            const remoteTime = remote.updatedAt || 0;
+            const localTime = local.updatedAt || 0;
+
+            if (remoteTime > localTime) {
+              // La nube es más nueva, actualizamos local
+              mergedLists[localIndex] = remote;
+            } else {
+              // Lo local es más nuevo o igual (cambios pendientes), mantenemos local
+              console.log(`📍 Manteniendo cambios locales pendientes para: ${local.name}`);
+            }
+          }
+        });
+
+        // Actualizar el cache local con el resultado del merge
+        localStorage.setItem(`glimmind_cache_${userId}`, JSON.stringify(mergedLists));
+        return mergedLists;
       } catch (e) {
-        console.warn("Modo Offline: Usando datos de LocalStorage.");
+        console.warn("Modo Offline: Usando datos de LocalStorage exclusivamente.");
         return cachedLists;
       }
     }
     return cachedLists;
   },
 
-  /**
-   * Sincronización Manual: Toma todas las listas locales y las empuja a la nube.
-   */
   syncAllToCloud: async (userId: string, lists: AssociationList[]) => {
     if (!isConfigured || !db || !userId) return;
     
     console.log(`☁️ Sincronizando ${lists.length} listas con GCP...`);
     const batchPromises = lists.map(list => {
       const listRef = doc(db, COLLECTION_NAME, list.id);
-      // Aseguramos que el userId esté presente
-      return setDoc(listRef, { ...list, userId, updatedAt: Date.now() }, { merge: true });
+      return setDoc(listRef, { ...list, userId, updatedAt: list.updatedAt || Date.now() }, { merge: true });
     });
 
     await Promise.all(batchPromises);
-    console.log("✅ Sincronización completada con éxito.");
+    console.log("✅ Sincronización completada.");
   },
 
-  /**
-   * Guardado Directo: Usado para creaciones nuevas o cargas masivas (CSV).
-   */
   saveToCloudDirect: async (userId: string, list: AssociationList) => {
     if (!isConfigured || !db) return;
     const listRef = doc(db, COLLECTION_NAME, list.id);
