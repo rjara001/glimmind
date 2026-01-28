@@ -33,6 +33,12 @@ export interface AssociationList {
   settings: ListSettings;
   createdAt: number;
   updatedAt?: number;
+  // Estado para persistir el progreso entre sesiones
+  resumeState?: {
+    cycle: GameCycle;
+    queue: string[];
+    index: number;
+  };
 }
 
 export type GameCycle = 1 | 2 | 3 | 4;
