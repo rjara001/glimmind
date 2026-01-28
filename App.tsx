@@ -47,6 +47,13 @@ const App: React.FC = () => {
       const initial = await listService.fetchInitialLists(user.uid);
       setLists(initial);
       setLoading(false);
+      
+      // Comprobar si hay cambios pendientes locales después de cargar (opcional pero recomendado)
+      const localData = localStorage.getItem(`glimmind_cache_${user.uid}`);
+      if (localData) {
+        // Si hay datos locales, marcamos como pendientes si queremos forzar el sync inicial
+        // setHasUnsavedChanges(true); 
+      }
     };
     load();
   }, [user]);
@@ -79,7 +86,6 @@ const App: React.FC = () => {
 
   // Manejar cambios (Persistencia Local Primaria)
   const handleLocalUpdate = (updatedList: AssociationList) => {
-    // IMPORTANTE: Actualizar el timestamp local para que el merge sobreviva al refresh
     const listWithTimestamp = { ...updatedList, updatedAt: Date.now() };
     
     const updatedLists = lists.map(l => l.id === listWithTimestamp.id ? listWithTimestamp : l);
@@ -151,10 +157,10 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/30">
-      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
           <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100 group-hover:rotate-6 transition-transform">G</div>
-          <div>
+          <div className="hidden xs:block">
             <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
             <div className="flex items-center gap-1.5 mt-1.5">
                {isSyncing ? (
@@ -169,16 +175,18 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Botón de Sincronización Manual - Ahora visible en todos los tamaños */}
           {hasUnsavedChanges && !isSyncing && (
             <button 
               onClick={handleCloudSync}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 animate-pulse"
+              title="Guardar cambios en la nube"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Guardar en la nube
+              <span className="hidden xs:inline">Guardar</span>
             </button>
           )}
 
@@ -194,10 +202,10 @@ const App: React.FC = () => {
             </button>
           )}
           
-          <div className="h-11 pl-1.5 pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-3">
+          <div className="h-11 pl-1.5 pr-1.5 sm:pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2 sm:gap-3">
             <img src={user.photoURL} className="w-8 h-8 rounded-xl shadow-sm border border-white" alt="Profile" />
             <span className="hidden md:block text-xs font-black text-slate-700 max-w-[120px] truncate">{user.displayName}</span>
-            <button onClick={() => { auth?.signOut(); localStorage.clear(); setUser(null); setView('dashboard'); }} className="text-slate-300 hover:text-rose-500 transition-colors ml-2">
+            <button onClick={() => { auth?.signOut(); localStorage.clear(); setUser(null); setView('dashboard'); }} className="text-slate-300 hover:text-rose-500 transition-colors ml-1 sm:ml-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
