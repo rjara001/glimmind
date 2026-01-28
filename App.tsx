@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
@@ -8,24 +8,24 @@ import { AssociationList } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 
-// Cambiamos el ID para que en local lo veamos como un usuario real en la DB
 const GUEST_ID = 'dev-user-local'; 
 const MOCK_USER = {
   uid: GUEST_ID,
-  displayName: 'Developer (Local DB)',
-  photoURL: 'https://ui-avatars.com/api/?name=Dev+Local&background=10b981&color=fff'
+  displayName: 'Invitado Local',
+  photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff'
 };
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [showGameSettings, setShowSettings] = useState(false);
 
+  // Inicialización y Auth
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
@@ -36,28 +36,85 @@ const App: React.FC = () => {
       } else {
         setUser(null);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // Carga de datos inicial
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = listService.subscribeToLists(user.uid, (updatedLists) => {
-      setLists(updatedLists);
-    });
-    return () => unsubscribe();
+    const load = async () => {
+      const initial = await listService.fetchInitialLists(user.uid);
+      setLists(initial);
+      setLoading(false);
+    };
+    load();
   }, [user]);
 
-  const handleSaveList = async (updatedList: AssociationList) => {
-    if (!user) return;
+  // Sincronización manual a GCP
+  const handleCloudSync = useCallback(async () => {
+    if (!user || isSyncing) return;
+    setIsSyncing(true);
     try {
-      setIsSyncing(true);
-      await listService.saveList(user.uid, updatedList);
-      setLastSaved(Date.now());
-      setTimeout(() => setLastSaved(null), 2000);
+      await listService.syncAllToCloud(user.uid, lists);
+      setHasUnsavedChanges(false);
     } catch (error) {
-      console.error("Save error:", error);
+      console.error("Error de sincronización:", error);
+      alert("Hubo un problema al guardar en la nube. Se intentará de nuevo luego.");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user, lists, isSyncing]);
+
+  // Auto-sync al salir (Visibility Change es más robusto que beforeunload)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && hasUnsavedChanges && user) {
+        // Ejecución en segundo plano sin esperar resolución
+        listService.syncAllToCloud(user.uid, lists);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hasUnsavedChanges, user, lists]);
+
+  // Manejar cambios (Persistencia Local Primaria)
+  const handleLocalUpdate = (updatedList: AssociationList) => {
+    const updatedLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
+    if (!lists.find(l => l.id === updatedList.id)) updatedLists.push(updatedList);
+    
+    setLists(updatedLists);
+    setHasUnsavedChanges(true);
+    
+    if (user) {
+      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+    }
+  };
+
+  const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
+    if (!user) return;
+    const newList: AssociationList = {
+      id: crypto.randomUUID(), 
+      userId: user.uid, 
+      name, 
+      concept, 
+      associations: initialAssocs, 
+      settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 }, 
+      createdAt: Date.now()
+    };
+    
+    // Al crear o cargar CSV, vamos directo a GCP como respaldo inmediato
+    setIsSyncing(true);
+    try {
+      await listService.saveToCloudDirect(user.uid, newList);
+      const updatedLists = [...lists, newList];
+      setLists(updatedLists);
+      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+      setSelectedListId(newList.id);
+      setView('game');
+    } catch (e) {
+      console.warn("Fallo guardado directo, guardando localmente.");
+      handleLocalUpdate(newList);
     } finally {
       setIsSyncing(false);
     }
@@ -65,17 +122,22 @@ const App: React.FC = () => {
 
   const handleDeleteList = async (id: string) => {
     if (!user || !confirm('¿Eliminar esta lista permanentemente?')) return;
+    const updatedLists = lists.filter(l => l.id !== id);
+    setLists(updatedLists);
+    setHasUnsavedChanges(true);
+    localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+    
     try {
-      await listService.deleteList(user.uid, id);
-    } catch (error) {
-      console.error("Delete error:", error);
+      await listService.deleteFromCloud(id);
+    } catch (e) {
+      console.warn("Borrado local, pendiente sync de nube.");
     }
   };
 
-  if (loading) return (
+  if (loading && user) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Glimmind Cargando...</p>
+      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Sincronizando...</p>
     </div>
   );
 
@@ -93,27 +155,40 @@ const App: React.FC = () => {
           <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100 group-hover:rotate-6 transition-transform">G</div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1.5 mt-1.5">
                {isSyncing ? (
                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
-               ) : lastSaved ? (
-                 <svg className="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-               ) : null}
+               ) : (
+                 <div className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-amber-400' : 'bg-emerald-400'}`}></div>
+               )}
                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                 {isSyncing ? 'Escribiendo en DB...' : 'Firestore Conectado'}
+                 {isSyncing ? 'Sincronizando...' : hasUnsavedChanges ? 'Cambios pendientes' : 'Datos en la nube'}
                </span>
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Botón de Sincronización Manual */}
+          {hasUnsavedChanges && !isSyncing && (
+            <button 
+              onClick={handleCloudSync}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all animate-in slide-in-from-right-4 shadow-sm active:scale-95"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Guardar en la nube
+            </button>
+          )}
+
           {view === 'game' && (
             <button 
               onClick={() => setShowSettings(true)}
               className="p-2.5 text-slate-400 hover:text-indigo-600 transition bg-slate-50 rounded-xl border border-slate-100 shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
@@ -135,32 +210,19 @@ const App: React.FC = () => {
         {view === 'dashboard' && (
           <Dashboard 
             lists={lists} 
-            onCreate={(name, concept, initialAssocs) => {
-              const newList: AssociationList = {
-                id: crypto.randomUUID(), 
-                userId: user.uid, 
-                name, 
-                concept, 
-                associations: initialAssocs, 
-                settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 }, 
-                createdAt: Date.now()
-              };
-              handleSaveList(newList);
-              setSelectedListId(newList.id);
-              setView('game');
-            }} 
+            onCreate={handleCreateList} 
             onDelete={handleDeleteList}
             onEdit={(id) => { setSelectedListId(id); setView('editor'); }}
             onPlay={(id) => { setSelectedListId(id); setView('game'); }}
           />
         )}
         {view === 'editor' && currentList && (
-          <ListEditor list={currentList} onSave={handleSaveList} onBack={() => setView('dashboard')} />
+          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} />
         )}
         {view === 'game' && currentList && (
           <GameView 
             list={currentList} 
-            onUpdateList={handleSaveList} 
+            onUpdateList={handleLocalUpdate} 
             onBack={() => setView('dashboard')} 
             showSettings={showGameSettings}
             setShowSettings={setShowSettings}
