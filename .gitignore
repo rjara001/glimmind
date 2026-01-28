@@ -12,13 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Ignore local env and Firebase files
-.env
-.firebase/
-.firebaserc
-functions/commands.md
-functions/kill-ports.sh
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

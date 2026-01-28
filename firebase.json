@@ -4,20 +4,11 @@
     "rules": "firestore.rules"
   },
   "hosting": {
-    "public": ".",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "functions/**",
-      "app/**",
-      "lib/**",
-      "services/**",
-      "types.ts",
-      "index.tsx",
-      "package.json",
-      "package-lock.json",
-      "tsconfig.json"
+      "**/node_modules/**"
     ],
     "rewrites": [
       {
