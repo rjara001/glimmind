@@ -20,9 +20,9 @@ const STAGE_NAMES = [
 export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, showSettings, setShowSettings }) => {
   const [gameState, setGameState] = useState<GameState>({
     listId: list.id,
-    currentCycle: 1,
-    currentIndex: 0,
-    queue: [],
+    currentCycle: list.resumeState?.cycle || 1,
+    currentIndex: list.resumeState?.index || 0,
+    queue: list.resumeState?.queue || [],
     isFinished: false,
     revealed: false,
     userInput: '',
@@ -51,20 +51,40 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       return;
     }
 
-    setGameState(prev => ({
-      ...prev,
+    const newState = {
+      ...gameState,
       currentCycle: cycle,
       currentIndex: 0,
       queue,
       isFinished: queue.length === 0 && cycle === 4,
       revealed: false,
-      userInput: '',
       wasRevealed: false
-    }));
-  }, []);
+    };
 
+    setGameState(newState);
+    
+    // Guardar el inicio del nuevo ciclo
+    onUpdateList({
+      ...list,
+      associations: currentAssocs,
+      resumeState: { cycle, queue, index: 0 }
+    });
+  }, [onUpdateList, list]);
+
+  // Inicialización inteligente
   useEffect(() => {
-    startCycle(1, associations);
+    if (list.resumeState && list.resumeState.queue.length > 0) {
+      // Reanudando sesión existente
+      setGameState(prev => ({
+        ...prev,
+        currentCycle: list.resumeState!.cycle,
+        queue: list.resumeState!.queue,
+        currentIndex: list.resumeState!.index
+      }));
+    } else {
+      // Nueva sesión
+      startCycle(1, associations);
+    }
   }, []);
 
   const currentAssoc = useMemo(() => 
@@ -74,17 +94,41 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
 
   const advance = (nextStatus: AssociationStatus) => {
     if (!currentAssoc) return;
-    const updated = associations.map(a => a.id === currentAssoc.id ? { ...a, status: nextStatus } : a);
-    setAssociations(updated);
+    
+    const updatedAssocs = associations.map(a => a.id === currentAssoc.id ? { ...a, status: nextStatus } : a);
+    setAssociations(updatedAssocs);
     
     if (gameState.currentIndex < gameState.queue.length - 1) {
-      setGameState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1, revealed: false, wasRevealed: false }));
+      const nextIndex = gameState.currentIndex + 1;
+      setGameState(prev => ({ 
+        ...prev, 
+        currentIndex: nextIndex, 
+        revealed: false, 
+        wasRevealed: false 
+      }));
+
+      // PERSISTENCIA INMEDIATA: Guardar el progreso de la fila actual
+      onUpdateList({
+        ...list,
+        associations: updatedAssocs,
+        resumeState: {
+          cycle: gameState.currentCycle,
+          queue: gameState.queue,
+          index: nextIndex
+        }
+      });
     } else {
-      onUpdateList({ ...list, associations: updated });
+      // Fin del ciclo
       if (gameState.currentCycle < 4) {
-        startCycle((gameState.currentCycle + 1) as GameCycle, updated);
+        startCycle((gameState.currentCycle + 1) as GameCycle, updatedAssocs);
       } else {
         setGameState(prev => ({ ...prev, isFinished: true }));
+        // Limpiar estado de reanudación al terminar
+        onUpdateList({
+          ...list,
+          associations: updatedAssocs,
+          resumeState: undefined
+        });
       }
     }
   };
@@ -231,7 +275,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                 if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
                    const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
                    setAssociations(reset);
-                   onUpdateList({ ...list, associations: reset });
+                   onUpdateList({ ...list, associations: reset, resumeState: undefined });
                    startCycle(1, reset);
                    setShowSettings(false);
                 }
