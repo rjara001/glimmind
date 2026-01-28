@@ -1,16 +1,17 @@
-
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, collection, query, where, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 
 // Usar el prefijo 'demo-' es fundamental para que el SDK no intente contactar con los servidores reales de Google.
+const env = (import.meta as any).env ?? {};
 const firebaseConfig = {
-  apiKey: "fake-api-key", 
-  authDomain: "demo-glimmind.firebaseapp.com",
-  projectId: "demo-glimmind", 
-  storageBucket: "demo-glimmind.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  apiKey: env.VITE_FIREBASE_API_KEY || "fake-api-key",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "demo-glimmind.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "demo-glimmind",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "demo-glimmind.appspot.com",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Detectar entorno local de forma más robusta
@@ -54,10 +55,8 @@ export {
   collection,
   query,
   where,
-  onSnapshot,
   doc,
   setDoc,
   deleteDoc,
-  updateDoc,
   getDocs
 };
