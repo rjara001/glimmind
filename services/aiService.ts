@@ -4,56 +4,63 @@ import { Association } from "../types";
 
 export const aiService = {
   groupAssociations: async (associations: Association[], concept: string) => {
-    // Se inicializa el cliente dentro de la función para cumplir con las directrices 
-    // de obtener la clave más reciente y evitar errores de carga en el navegador.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Inicialización siguiendo estrictamente la directriz de usar process.env.API_KEY directamente.
+    // El entorno inyectará esta variable automáticamente.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Preparamos los datos con índices para que la IA pueda referenciarlos fácilmente
-    const dataToProcess = associations.map((a, index) => `${index}: ${a.term} || ${a.definition}`).join('\n');
-
-    // Utilizamos gemini-3-pro-preview para tareas de razonamiento complejo como categorización
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `Analiza esta lista de asociaciones de ${concept}. 
-      Tu objetivo es dividir estos elementos en grupos lógicos y manejables (máximo 12 grupos). 
-      Crea nombres de categorías creativos y útiles para el aprendizaje. 
-
-      Lista de asociaciones (formato 'índice: término || definición'):
-      ${dataToProcess}
-
-      Devuelve los datos estrictamente en el formato JSON solicitado, utilizando los índices proporcionados.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              groupName: {
-                type: Type.STRING,
-                description: "Nombre representativo del grupo (ej: Verbos Irregulares de Uso Frecuente)"
-              },
-              indices: {
-                type: Type.ARRAY,
-                items: { type: Type.INTEGER },
-                description: "Los índices de los elementos originales que pertenecen a este grupo"
-              }
-            },
-            required: ["groupName", "indices"],
-            propertyOrdering: ["groupName", "indices"]
-          }
-        }
-      }
-    });
+    // Preparamos los datos con índices para reducir el ruido y tokens innecesarios.
+    // Si la lista es gigantesca (>1000), enviamos solo una parte representativa para evitar timeouts,
+    // pero para 3,000 elementos Gemini 3 Flash maneja el contexto sin problemas.
+    const dataToProcess = associations
+      .slice(0, 1500) // Procesamos bloques de hasta 1500 para mayor estabilidad en la respuesta
+      .map((a, index) => `${index}: ${a.term} || ${a.definition}`)
+      .join('\n');
 
     try {
-      // Extraemos el texto directamente de la respuesta según las especificaciones del SDK
-      const jsonStr = response.text || "[]";
-      const result = JSON.parse(jsonStr.trim());
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Actúa como un experto en pedagogía y organización del aprendizaje.
+        Analiza esta lista de asociaciones de ${concept}.
+        OBJETIVO: Agrupar estos elementos en categorías lógicas (máximo 12 grupos).
+        REGLA: Usa los índices proporcionados para identificar los elementos.
+        
+        LISTA:
+        ${dataToProcess}
+
+        Genera una estructura de grupos útil para memorizar.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                groupName: {
+                  type: Type.STRING,
+                  description: "Nombre creativo de la categoría (ej: Verbos de Acción Diaria)"
+                },
+                indices: {
+                  type: Type.ARRAY,
+                  items: { type: Type.INTEGER },
+                  description: "Los índices de la lista original que pertenecen a este grupo"
+                }
+              },
+              required: ["groupName", "indices"]
+            }
+          }
+        }
+      });
+
+      if (!response.text) {
+        throw new Error("La IA devolvió una respuesta vacía.");
+      }
+
+      const result = JSON.parse(response.text.trim());
       return result;
-    } catch (e) {
-      console.error("Error al procesar la respuesta de la IA", e);
-      return [];
+    } catch (error: any) {
+      console.error("Detalle del error en aiService:", error);
+      // Re-lanzamos el error con un mensaje más descriptivo para el usuario
+      throw new Error(error.message || "Error desconocido al contactar con Gemini");
     }
   }
 };

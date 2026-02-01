@@ -57,9 +57,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     setIsAnalyzing(true);
     try {
       const suggestions = await aiService.groupAssociations(editList.associations, editList.concept);
-      setAiSuggestions(suggestions);
-    } catch (e) {
-      alert("Error al conectar con la IA. Inténtalo de nuevo.");
+      if (suggestions && suggestions.length > 0) {
+        setAiSuggestions(suggestions);
+      } else {
+        alert("La IA no pudo generar sugerencias útiles para esta lista.");
+      }
+    } catch (e: any) {
+      console.error("Error en handleSmartSplit:", e);
+      alert(`Error de IA: ${e.message || "No se pudo conectar con el servidor."}\n\nVerifica que tu API Key sea válida y tengas conexión a internet.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -89,7 +94,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const handleRemoveRow = (id: string) => {
     const updated = {
       ...editList,
-      // Fixed: Change undefined 'd' to 'a.id' to correctly filter associations by ID
       associations: editList.associations.filter(a => a.id !== id)
     };
     setEditList(updated);
@@ -116,7 +120,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </div>
         </div>
 
-        {/* Updated: Show button if length > 5 to match the handler logic */}
         {editList.associations.length > 5 && (
           <button 
             onClick={handleSmartSplit}
