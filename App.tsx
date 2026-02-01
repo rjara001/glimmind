@@ -4,7 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { Auth } from './components/Auth';
-import { AssociationList } from './types';
+import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 
@@ -25,7 +25,6 @@ const App: React.FC = () => {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [showGameSettings, setShowSettings] = useState(false);
 
-  // Inicialización y Auth
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
@@ -40,7 +39,6 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Carga de datos inicial
   useEffect(() => {
     if (!user) return;
     const load = async () => {
@@ -51,7 +49,6 @@ const App: React.FC = () => {
     load();
   }, [user]);
 
-  // Sincronización manual a GCP
   const handleCloudSync = useCallback(async () => {
     if (!user || isSyncing) return;
     setIsSyncing(true);
@@ -102,6 +99,42 @@ const App: React.FC = () => {
       setView('game');
     } catch (e) {
       handleLocalUpdate(newList);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleCreateMultiple = async (groups: { name: string, associations: Association[] }[]) => {
+    if (!user || !selectedListId) return;
+    const parentList = lists.find(l => l.id === selectedListId);
+    if (!parentList) return;
+
+    setIsSyncing(true);
+    try {
+      const newLists = groups.map(group => ({
+        id: crypto.randomUUID(),
+        userId: user.uid,
+        name: group.name,
+        concept: parentList.concept,
+        associations: group.associations,
+        settings: { ...parentList.settings },
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }));
+
+      // Borramos la original si ya se dividió
+      const updatedLists = lists.filter(l => l.id !== selectedListId).concat(newLists);
+      setLists(updatedLists);
+      
+      // Sincronización masiva
+      await listService.syncAllToCloud(user.uid, updatedLists);
+      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+      
+      alert(`¡Éxito! Se han creado ${groups.length} nuevas listas temáticas.`);
+      setView('dashboard');
+    } catch (e) {
+      console.error(e);
+      alert("Error al crear las nuevas listas.");
     } finally {
       setIsSyncing(false);
     }
@@ -201,7 +234,7 @@ const App: React.FC = () => {
           <Dashboard lists={lists} onCreate={handleCreateList} onDelete={handleDeleteList} onEdit={(id) => { setSelectedListId(id); setView('editor'); }} onPlay={(id) => { setSelectedListId(id); setView('game'); }} />
         )}
         {view === 'editor' && currentList && (
-          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} />
+          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} onCreateMultiple={handleCreateMultiple} />
         )}
         {view === 'game' && currentList && (
           <GameView list={currentList} onUpdateList={handleLocalUpdate} onBack={() => setView('dashboard')} showSettings={showGameSettings} setShowSettings={setShowSettings} />
