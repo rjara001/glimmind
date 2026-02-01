@@ -49,6 +49,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     setShowBulk(false);
   };
 
+  const handleOpenKeyDialog = async () => {
+    if (typeof window !== 'undefined' && (window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+    } else {
+      alert("La selección manual de API Key no está disponible en este entorno. Asegúrate de que la variable de entorno esté configurada.");
+    }
+  };
+
   const handleSmartSplit = async () => {
     if (editList.associations.length < 5) {
       alert("Necesitas al menos 5 asociaciones para agrupar.");
@@ -64,7 +72,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       }
     } catch (e: any) {
       console.error("Error en handleSmartSplit:", e);
-      alert(`Error de IA: ${e.message || "No se pudo conectar con el servidor."}\n\nVerifica que tu API Key sea válida y tengas conexión a internet.`);
+      alert(`Error de IA: ${e.message}`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -120,22 +128,33 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </div>
         </div>
 
-        {editList.associations.length > 5 && (
+        <div className="flex gap-2">
           <button 
-            onClick={handleSmartSplit}
-            disabled={isAnalyzing}
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50"
+            onClick={handleOpenKeyDialog}
+            className="p-3 text-slate-400 hover:text-indigo-600 transition bg-white border border-slate-100 rounded-2xl shadow-sm"
+            title="Configurar API Key"
           >
-            {isAnalyzing ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.456-2.454L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.454zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-              </svg>
-            )}
-            {isAnalyzing ? 'Analizando...' : 'Organización IA'}
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
           </button>
-        )}
+          {editList.associations.length > 5 && (
+            <button 
+              onClick={handleSmartSplit}
+              disabled={isAnalyzing}
+              className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {isAnalyzing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.456-2.454L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.454zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                </svg>
+              )}
+              {isAnalyzing ? 'Analizando...' : 'Organización IA'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
