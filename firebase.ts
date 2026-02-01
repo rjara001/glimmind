@@ -21,45 +21,52 @@ import {
   connectFirestoreEmulator 
 } from 'firebase/firestore';
 
-// Priorizar variables de entorno de producción (Vite usa import.meta.env o process.env según el bundler)
-const getEnv = (key: string) => {
-  // @ts-ignore
-  return (typeof process !== 'undefined' ? process.env[key] : null) || (import.meta as any).env?.[key];
+// En Vite, las variables de entorno se acceden vía import.meta.env
+// Usamos un cast a any para evitar errores de compilación si los tipos de Vite no están presentes en el entorno global
+const config = {
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID
 };
 
-const firebaseConfig = {
-  apiKey: getEnv('VITE_FIREBASE_API_KEY') || "fake-api-key",
-  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN') || "demo-glimmind.firebaseapp.com",
-  projectId: getEnv('VITE_FIREBASE_PROJECT_ID') || "demo-glimmind",
-  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET') || "demo-glimmind.appspot.com",
-  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID') || "123456789",
-  appId: getEnv('VITE_FIREBASE_APP_ID') || "1:123456789:web:abcdef"
-};
+// Si no hay apiKey real, usamos una de respaldo para evitar que la app crashee en modo demo
+const isDemo = !config.apiKey || config.apiKey === "fake-api-key";
+
+const firebaseConfig = isDemo ? {
+  apiKey: "fake-api-key",
+  authDomain: "demo-glimmind.firebaseapp.com",
+  projectId: "demo-glimmind",
+  storageBucket: "demo-glimmind.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+} : config;
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Solo conectar a emuladores si estamos en localhost Y no tenemos API KEY real
-const isLocal = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-  firebaseConfig.apiKey === 'fake-api-key';
+// Solo conectar emuladores si estamos en local y NO tenemos llaves reales
+const isLocalhost = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-if (isLocal) {
+if (isLocalhost && isDemo) {
   if (!(globalThis as any)._fb_emulators_connected) {
     try {
       connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
       connectFirestoreEmulator(db, "localhost", 8080);
       (globalThis as any)._fb_emulators_connected = true;
-      console.log("🔥 Conectado a emuladores locales");
+      console.log("🔥 Modo local: Emuladores conectados");
     } catch (e) {
       console.warn("Aviso emuladores:", e);
     }
   }
 }
 
-export const isConfigured = firebaseConfig.apiKey !== "fake-api-key";
+export const isConfigured = !isDemo;
 
 export { 
   auth, 
