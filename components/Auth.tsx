@@ -24,11 +24,14 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
       <div className="max-w-md w-full text-center">
         <div className="mb-12">
           <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-indigo-100 mb-6 group hover:rotate-6 transition-transform">
-             <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-               <path d="M9.5 14.5C9.5 14.5 6.5 14 6.5 10C6.5 6 9.5 5.5 9.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <path d="M14.5 14.5C14.5 14.5 17.5 14 17.5 10C17.5 6 14.5 5.5 14.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <path d="M12 18.5V21.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <circle cx="12" cy="10" r="3.5" fill="white" stroke="white" />
+             <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
+                <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
+                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
+                <path d="M12 3v2" />
+                <path d="M12 19v2" />
+                <path d="M3 12h2" />
+                <path d="M19 12h2" />
             </svg>
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimmind</h1>

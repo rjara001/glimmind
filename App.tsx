@@ -4,7 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { Auth } from './components/Auth';
-import { AssociationList } from './types';
+import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 
@@ -25,7 +25,6 @@ const App: React.FC = () => {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [showGameSettings, setShowSettings] = useState(false);
 
-  // Inicialización y Auth
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
@@ -40,7 +39,6 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Carga de datos inicial
   useEffect(() => {
     if (!user) return;
     const load = async () => {
@@ -51,7 +49,6 @@ const App: React.FC = () => {
     load();
   }, [user]);
 
-  // Sincronización manual a GCP
   const handleCloudSync = useCallback(async () => {
     if (!user || isSyncing) return;
     setIsSyncing(true);
@@ -107,6 +104,42 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCreateMultiple = async (groups: { name: string, associations: Association[] }[]) => {
+    if (!user || !selectedListId) return;
+    const parentList = lists.find(l => l.id === selectedListId);
+    if (!parentList) return;
+
+    setIsSyncing(true);
+    try {
+      const newLists = groups.map(group => ({
+        id: crypto.randomUUID(),
+        userId: user.uid,
+        name: group.name,
+        concept: parentList.concept,
+        associations: group.associations,
+        settings: { ...parentList.settings },
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }));
+
+      // Borramos la original si ya se dividió
+      const updatedLists = lists.filter(l => l.id !== selectedListId).concat(newLists);
+      setLists(updatedLists);
+      
+      // Sincronización masiva
+      await listService.syncAllToCloud(user.uid, updatedLists);
+      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+      
+      alert(`¡Éxito! Se han creado ${groups.length} nuevas listas temáticas.`);
+      setView('dashboard');
+    } catch (e) {
+      console.error(e);
+      alert("Error al crear las nuevas listas.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleDeleteList = async (id: string) => {
     if (!user || !confirm('¿Eliminar esta lista permanentemente?')) return;
     const updatedLists = lists.filter(l => l.id !== id);
@@ -124,7 +157,7 @@ const App: React.FC = () => {
   if (loading && user) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Sincronizando Glimmind...</p>
+      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Cargando Glimmind...</p>
     </div>
   );
 
@@ -140,11 +173,14 @@ const App: React.FC = () => {
       <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
           <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(79,70,229,0.3)] group-hover:rotate-6 transition-transform relative overflow-hidden">
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-               <path d="M9.5 14.5C9.5 14.5 6.5 14 6.5 10C6.5 6 9.5 5.5 9.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <path d="M14.5 14.5C14.5 14.5 17.5 14 17.5 10C17.5 6 14.5 5.5 14.5 5.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <path d="M12 18.5V21.5" strokeLinecap="round" strokeLinejoin="round"/>
-               <circle cx="12" cy="10" r="3.5" fill="white" stroke="white" />
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
+              <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
+              <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
+              <path d="M12 3v2" />
+              <path d="M12 19v2" />
+              <path d="M3 12h2" />
+              <path d="M19 12h2" />
             </svg>
           </div>
           <div className="hidden xs:block">
@@ -175,8 +211,8 @@ const App: React.FC = () => {
               title="Ajustes de estudio"
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                <circle cx="12" cy="12" r="3"/>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
           )}
@@ -198,7 +234,7 @@ const App: React.FC = () => {
           <Dashboard lists={lists} onCreate={handleCreateList} onDelete={handleDeleteList} onEdit={(id) => { setSelectedListId(id); setView('editor'); }} onPlay={(id) => { setSelectedListId(id); setView('game'); }} />
         )}
         {view === 'editor' && currentList && (
-          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} />
+          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} onCreateMultiple={handleCreateMultiple} />
         )}
         {view === 'game' && currentList && (
           <GameView list={currentList} onUpdateList={handleLocalUpdate} onBack={() => setView('dashboard')} showSettings={showGameSettings} setShowSettings={setShowSettings} />
