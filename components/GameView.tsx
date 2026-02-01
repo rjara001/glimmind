@@ -325,8 +325,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         </div>
       </div>
 
-      <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none z-[60]">
-        <div className="max-w-xl w-full grid grid-cols-3 gap-5 pointer-events-auto bg-white/90 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white shadow-[0_30px_100px_rgba(0,0,0,0.1)]">
+      {/* Controles del Juego - Ahora anclados debajo de la tarjeta */}
+      <div className="w-full max-w-2xl mt-8 pb-10">
+        <div className="grid grid-cols-3 gap-5 bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-[0_10px_40px_rgba(79,70,229,0.05)]">
           <button onClick={handleNext} className="bg-slate-50 border-2 border-slate-100 text-slate-600 h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-sm active:scale-90 transition-all hover:bg-white hover:border-indigo-100 hover:text-indigo-600">Pasar</button>
           
           <button 
@@ -356,7 +357,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
             <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Configuración</h3>
             
             <div className="space-y-4 mb-8">
-              {/* Selector de Modo */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Modo de Juego</p>
                 <div className="flex gap-2">
@@ -375,7 +375,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                 </div>
               </div>
 
-              {/* Invertir Caras */}
               <button 
                 onClick={() => onUpdateList({ ...list, settings: { ...list.settings, flipOrder: isReversed ? 'normal' : 'reversed' } })}
                 className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all shadow-sm ${isReversed ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
