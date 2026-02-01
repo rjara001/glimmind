@@ -167,7 +167,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
   };
 
   const handleCorrect = () => {
-    if (!currentAssoc || gameState.wasRevealed || gameState.revealed) return;
+    if (!currentAssoc) return;
+    // En modo entrenamiento permitimos marcar como correcta siempre
+    // Si estamos en ciclo 1 (Intro) y marcamos correcta, se considera aprendida directamente
     advance(gameState.currentCycle === 1 ? AssociationStatus.APRENDIDA : currentAssoc.status);
   };
 
@@ -227,27 +229,29 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     </div>
   );
 
+  const isPracticeMode = list.settings.mode === 'training';
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col min-h-[calc(100vh-80px)]">
+    <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
       {/* Cabecera Compacta */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 px-2">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm group">
              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
           </button>
           <div className="flex flex-col">
-            <h2 className="text-sm font-black text-slate-800 leading-none">{list.name}</h2>
+            <h2 className="text-xs font-black text-slate-800 leading-none">{list.name}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fila {gameState.currentIndex + 1}/{gameState.queue.length}</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Fila {gameState.currentIndex + 1}/{gameState.queue.length}</span>
               <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">{stageCounts.learned} Aprendidas</span>
+              <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">{stageCounts.learned} Aprendidas</span>
             </div>
           </div>
         </div>
 
         <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
-          <span className="px-3 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-            {list.settings.mode === 'real' ? 'Modo Real' : 'Práctica'}
+          <span className="px-3 py-1 text-[8px] font-black text-slate-500 uppercase tracking-widest">
+            {isPracticeMode ? 'Modo Práctica' : 'Modo Real'}
           </span>
         </div>
       </div>
@@ -255,13 +259,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Lado Izquierdo: Tarjeta y Controles */}
         <div className="flex-1 w-full flex flex-col items-center">
-          <div className={`w-full bg-white rounded-[3rem] shadow-[0_20px_60px_rgba(79,70,229,0.08)] border-4 border-white p-8 md:p-12 text-center relative overflow-hidden min-h-[380px] flex flex-col justify-center transition-all duration-300 ${feedback === 'correct' ? 'ring-8 ring-emerald-400' : feedback === 'incorrect' ? 'ring-8 ring-rose-400' : ''}`}>
-            <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600/10"></div>
-            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-2">{labelTerm}</span>
-            <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-8 break-words leading-tight tracking-tight">{displayTerm}</h2>
+          <div className={`w-full bg-white rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 border-white p-6 md:p-10 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-all duration-300 ${feedback === 'correct' ? 'ring-8 ring-emerald-400' : feedback === 'incorrect' ? 'ring-8 ring-rose-400' : ''}`}>
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600/10"></div>
+            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-1">{labelTerm}</span>
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-6 break-words leading-tight tracking-tight">{displayTerm}</h2>
             
-            <div className="min-h-[120px] flex flex-col items-center justify-center gap-4">
-              {list.settings.mode === 'real' && !gameState.revealed ? (
+            <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
+              {!isPracticeMode && !gameState.revealed ? (
                 <div className="w-full max-w-sm animate-in slide-in-from-bottom-2 duration-300">
                   <input
                     ref={inputRef}
@@ -271,22 +275,22 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                     onChange={(e) => setGameState(p => ({ ...p, userInput: e.target.value }))}
                     onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
                     placeholder={`¿Cuál es el/la ${labelDef.toLowerCase()}?`}
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5 text-lg font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
                   />
                 </div>
               ) : (
                 <>
                   {gameState.revealed ? (
                     <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-500 text-center">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">{labelDef}</span>
-                      <p className="text-3xl md:text-4xl font-black text-indigo-600 bg-indigo-50/50 px-8 py-4 rounded-[1.5rem] border-2 border-indigo-100/50 inline-block">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">{labelDef}</span>
+                      <p className="text-2xl md:text-3xl font-black text-indigo-600 bg-indigo-50/50 px-6 py-3 rounded-2xl border-2 border-indigo-100/50 inline-block shadow-sm">
                         {displayDef}
                       </p>
                     </div>
                   ) : (
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       {[1, 2, 3].map(i => (
-                        <div key={i} className="w-8 h-12 bg-slate-50 rounded-xl animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-xl">?</div>
+                        <div key={i} className="w-7 h-10 bg-slate-50 rounded-lg animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-lg">?</div>
                       ))}
                     </div>
                   )}
@@ -295,24 +299,28 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
             </div>
           </div>
 
-          <div className="w-full max-w-xl mt-6">
-            <div className="grid grid-cols-3 gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-slate-100 shadow-sm">
-              <button onClick={handleNext} className="bg-slate-50 border border-slate-200 text-slate-500 h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest active:scale-90 transition-all hover:bg-white hover:text-indigo-600">Pasar</button>
+          <div className="w-full max-w-xl mt-4">
+            <div className="grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm">
+              <button onClick={handleNext} className="bg-slate-50 border border-slate-200 text-slate-500 h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all hover:bg-white hover:text-indigo-600">Pasar</button>
               
               <button 
                 onClick={() => {
-                  if (list.settings.mode === 'real' && !gameState.revealed) {
+                  if (!isPracticeMode && !gameState.revealed) {
                     checkAnswer();
                   } else {
                     setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}));
                   }
                 }} 
-                className={`h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest shadow-sm active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'}`}
+                className={`h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest shadow-sm active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'}`}
               >
-                {list.settings.mode === 'real' && !gameState.revealed ? 'Validar' : gameState.revealed ? 'Ocultar' : 'Revelar'}
+                {!isPracticeMode && !gameState.revealed ? 'Validar' : gameState.revealed ? 'Ocultar' : 'Revelar'}
               </button>
 
-              <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real'} className={`h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest shadow-md active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real' ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+              <button 
+                onClick={handleCorrect} 
+                disabled={!isPracticeMode && (gameState.wasRevealed || gameState.revealed)} 
+                className={`h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest shadow-md active:scale-90 transition-all flex items-center justify-center gap-2 ${!isPracticeMode && (gameState.wasRevealed || gameState.revealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+              >
                 Correcta
               </button>
             </div>
@@ -320,18 +328,18 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         </div>
 
         {/* Lado Derecho: Progreso de Etapas (Vertical en Desktop) */}
-        <div className="w-full lg:w-48 bg-white/40 rounded-[2.5rem] p-6 border border-white flex flex-col gap-4">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 text-center lg:text-left">Ciclos</h3>
+        <div className="w-full lg:w-40 bg-white/40 rounded-[2rem] p-5 border border-white flex flex-col gap-3">
+          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-center lg:text-left">Ciclos</h3>
           
-          <div className="flex lg:flex-col justify-between lg:justify-start gap-4 lg:gap-6">
+          <div className="flex lg:flex-col justify-between lg:justify-start gap-3 lg:gap-4">
             {[1, 2, 3, 4].map((c) => {
               const count = stageCounts[c as keyof typeof stageCounts];
               const isActive = gameState.currentCycle === c;
               const isCompleted = gameState.currentCycle > c;
 
               return (
-                <div key={c} className={`flex flex-col lg:flex-row items-center gap-3 transition-all duration-300 ${isActive ? 'scale-105' : 'opacity-60'}`}>
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all shadow-sm ${
+                <div key={c} className={`flex flex-col lg:flex-row items-center gap-2 transition-all duration-300 ${isActive ? 'scale-105' : 'opacity-60'}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm ${
                     isCompleted 
                       ? 'bg-emerald-500 border-emerald-500 text-white' 
                       : isActive 
@@ -339,28 +347,27 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                         : 'bg-white border-slate-200 text-slate-400'
                   }`}>
                     {isCompleted ? (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
                     ) : (
-                      <span className="text-[11px] font-black">{count}</span>
+                      <span className="text-[10px] font-black">{count}</span>
                     )}
                   </div>
                   <div className="flex flex-col items-center lg:items-start">
-                    <span className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
                       {STAGE_NAMES[c-1]}
                     </span>
-                    {isActive && <div className="hidden lg:block w-8 h-0.5 bg-indigo-600 mt-1 rounded-full animate-pulse"></div>}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="mt-2 pt-3 border-t border-slate-100">
              <div className="flex justify-between items-center mb-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Maestría</span>
-                <span className="text-[9px] font-black text-indigo-600">{Math.round((stageCounts.learned / associations.length) * 100)}%</span>
+                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Master</span>
+                <span className="text-[8px] font-black text-indigo-600">{Math.round((stageCounts.learned / associations.length) * 100)}%</span>
              </div>
-             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(stageCounts.learned / associations.length) * 100}%` }}></div>
              </div>
           </div>
@@ -378,13 +385,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                 <div className="flex gap-2">
                   <button 
                     onClick={() => onUpdateList({ ...list, settings: { ...list.settings, mode: 'training' } })}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${list.settings.mode === 'training' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${isPracticeMode ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
                   >
                     Práctica
                   </button>
                   <button 
                     onClick={() => onUpdateList({ ...list, settings: { ...list.settings, mode: 'real' } })}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${list.settings.mode === 'real' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${!isPracticeMode ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
                   >
                     Real
                   </button>
