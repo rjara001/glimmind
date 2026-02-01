@@ -4,30 +4,39 @@ import { Association } from "../types";
 
 export const aiService = {
   groupAssociations: async (associations: Association[], concept: string) => {
-    // Inicialización siguiendo estrictamente la directriz de usar process.env.API_KEY directamente.
-    // El entorno inyectará esta variable automáticamente.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Verificamos si ya existe una key seleccionada en el entorno (específicamente para AI Studio/Entornos de Preview)
+    if (typeof window !== 'undefined' && (window as any).aistudio) {
+      try {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          await (window as any).aistudio.openSelectKey();
+        }
+      } catch (e) {
+        console.warn("No se pudo verificar la API Key a través de window.aistudio", e);
+      }
+    }
 
-    // Preparamos los datos con índices para reducir el ruido y tokens innecesarios.
-    // Si la lista es gigantesca (>1000), enviamos solo una parte representativa para evitar timeouts,
-    // pero para 3,000 elementos Gemini 3 Flash maneja el contexto sin problemas.
+    // Inicialización del cliente. Se crea una nueva instancia para capturar la key más reciente.
+    // process.env.API_KEY se inyecta automáticamente tras la selección en el diálogo.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
     const dataToProcess = associations
-      .slice(0, 1500) // Procesamos bloques de hasta 1500 para mayor estabilidad en la respuesta
+      .slice(0, 1500)
       .map((a, index) => `${index}: ${a.term} || ${a.definition}`)
       .join('\n');
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Actúa como un experto en pedagogía y organización del aprendizaje.
+        contents: `Actúa como un experto en pedagogía.
         Analiza esta lista de asociaciones de ${concept}.
         OBJETIVO: Agrupar estos elementos en categorías lógicas (máximo 12 grupos).
-        REGLA: Usa los índices proporcionados para identificar los elementos.
+        REGLA: Usa los índices proporcionados.
         
         LISTA:
         ${dataToProcess}
 
-        Genera una estructura de grupos útil para memorizar.`,
+        Genera una estructura de grupos JSON válida.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -37,12 +46,12 @@ export const aiService = {
               properties: {
                 groupName: {
                   type: Type.STRING,
-                  description: "Nombre creativo de la categoría (ej: Verbos de Acción Diaria)"
+                  description: "Nombre de la categoría creativa"
                 },
                 indices: {
                   type: Type.ARRAY,
                   items: { type: Type.INTEGER },
-                  description: "Los índices de la lista original que pertenecen a este grupo"
+                  description: "Índices de la lista original"
                 }
               },
               required: ["groupName", "indices"]
@@ -52,15 +61,26 @@ export const aiService = {
       });
 
       if (!response.text) {
-        throw new Error("La IA devolvió una respuesta vacía.");
+        throw new Error("La IA no devolvió texto.");
       }
 
-      const result = JSON.parse(response.text.trim());
-      return result;
+      return JSON.parse(response.text.trim());
     } catch (error: any) {
       console.error("Detalle del error en aiService:", error);
-      // Re-lanzamos el error con un mensaje más descriptivo para el usuario
-      throw new Error(error.message || "Error desconocido al contactar con Gemini");
+      
+      // Si el error indica que la key no es válida o la entidad no fue encontrada
+      const isKeyError = error.message?.includes("Requested entity was not found") || 
+                         error.message?.includes("API key not valid") ||
+                         error.message?.includes("API_KEY_INVALID");
+
+      if (isKeyError) {
+         if (typeof window !== 'undefined' && (window as any).aistudio) {
+            await (window as any).aistudio.openSelectKey();
+            throw new Error("La conexión falló. Por favor, selecciona una API Key válida de un proyecto con facturación activa en el diálogo.");
+         }
+      }
+      
+      throw new Error(error.message || "Error al conectar con Gemini. Verifica tu conexión a internet.");
     }
   }
 };
