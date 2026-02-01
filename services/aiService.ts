@@ -4,29 +4,38 @@ import { Association } from "../types";
 
 /**
  * Servicio de IA para Glimmind.
- * Utiliza Gemini 3 Flash para agrupar términos por afinidad temática.
+ * Gestiona la comunicación con Gemini siguiendo las directrices oficiales.
  */
 export const aiService = {
   groupAssociations: async (associations: Association[], concept: string) => {
-    // DIAGNÓSTICO DE KEY (Para depuración local)
-    const apiKey = process.env.API_KEY;
-    
-    console.log("--- DIAGNÓSTICO GEMINI ---");
-    console.log("¿Key presente?:", !!apiKey);
-    console.log("Longitud de Key:", apiKey?.length || 0);
-    if (apiKey && apiKey.length > 4) {
-      console.log("Prefijo de Key:", apiKey.substring(0, 4) + "...");
+    let apiKey: string | undefined;
+
+    // DIAGNÓSTICO PROFUNDO DE ENTORNO
+    console.log("--- 🔍 INVESTIGACIÓN DE ENTORNO ---");
+    try {
+      console.log("1. ¿Existe el objeto 'process'?:", typeof process !== 'undefined');
+      if (typeof process !== 'undefined') {
+        console.log("2. ¿Existe 'process.env'?:", !!process.env);
+        apiKey = process.env.API_KEY;
+        console.log("3. ¿Valor de API_KEY detectado?:", !!apiKey);
+        console.log("4. Longitud de la cadena:", apiKey?.length || 0);
+      }
+    } catch (e) {
+      console.error("❌ Error crítico accediendo a variables de entorno:", e);
     }
-    console.log("--------------------------");
+    console.log("----------------------------------");
 
     if (!apiKey || apiKey.length < 5) {
-      throw new Error("API_KEY no detectada o es demasiado corta. Revisa la consola para más detalles.");
+      throw new Error(
+        "No se pudo detectar la API_KEY en process.env. " +
+        "Si estás en local, verifica tu configuración de compilación (Vite/Webpack/etc) " +
+        "para asegurar que process.env.API_KEY esté disponible en el navegador."
+      );
     }
 
-    // Inicialización siguiendo las guías de @google/genai
+    // Se crea la instancia justo antes de la llamada para asegurar frescura de la Key
     const ai = new GoogleGenAI({ apiKey });
 
-    // Preparar los datos para el prompt de forma eficiente
     const dataToProcess = associations
       .map((a, index) => `${index}|${a.term}|${a.definition}`)
       .join('\n');
@@ -34,14 +43,14 @@ export const aiService = {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept}" y agrúpalas en categorías lógicas (máximo 8) para facilitar su memorización.
+        contents: `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept}" y agrúpalas en categorías lógicas para facilitar su memorización.
         
-        DATOS DE ENTRADA (ID|Término|Definición):
+        DATOS DE ENTRADA:
         ${dataToProcess}
 
-        REQUISITOS DE SALIDA:
-        - Devuelve ÚNICAMENTE un array JSON.
-        - Cada objeto debe tener: "groupName" (nombre sugerente) e "indices" (IDs numéricos de la entrada).`,
+        REQUISITOS:
+        - Devuelve un array JSON.
+        - Estructura: [{"groupName": "nombre", "indices": [0, 1, ...]}]`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -49,14 +58,10 @@ export const aiService = {
             items: {
               type: Type.OBJECT,
               properties: {
-                groupName: { 
-                  type: Type.STRING,
-                  description: "Nombre descriptivo de la categoría temática."
-                },
+                groupName: { type: Type.STRING },
                 indices: {
                   type: Type.ARRAY,
-                  items: { type: Type.INTEGER },
-                  description: "Lista de IDs que pertenecen a este grupo."
+                  items: { type: Type.INTEGER }
                 }
               },
               required: ["groupName", "indices"]
@@ -65,21 +70,17 @@ export const aiService = {
         }
       });
 
+      // Acceso mediante la propiedad .text (no método) según las guías
       const jsonStr = response.text;
       
       if (!jsonStr) {
-        throw new Error("La IA no devolvió una respuesta válida.");
+        throw new Error("Respuesta vacía de la IA.");
       }
       
       return JSON.parse(jsonStr.trim());
     } catch (error: any) {
-      console.error("Error detallado de Gemini:", error);
-      
-      if (error.message?.includes("API_KEY")) {
-        throw new Error("Problema con la API Key. Verifica que sea válida en tu entorno.");
-      }
-      
-      throw new Error("Error al organizar la lista: " + (error.message || "Error desconocido"));
+      console.error("❌ Fallo en la llamada a Gemini:", error);
+      throw new Error(error.message || "Error al procesar la lista con IA.");
     }
   }
 };
