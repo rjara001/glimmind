@@ -2,16 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Association } from "../types";
 
-// Always use the API key from process.env.API_KEY directly as per guidelines.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const aiService = {
   groupAssociations: async (associations: Association[], concept: string) => {
-    // Tomamos una muestra representativa si es demasiado grande para el prompt inicial, 
-    // aunque Gemini maneja contextos amplios, optimizamos enviando texto plano con índices.
+    // Se inicializa el cliente dentro de la función para cumplir con las directrices 
+    // de obtener la clave más reciente y evitar errores de carga en el navegador.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
+    // Preparamos los datos con índices para que la IA pueda referenciarlos fácilmente
     const dataToProcess = associations.map((a, index) => `${index}: ${a.term} || ${a.definition}`).join('\n');
 
-    // Use gemini-3-pro-preview for complex reasoning tasks like logical grouping and categorization.
+    // Utilizamos gemini-3-pro-preview para tareas de razonamiento complejo como categorización
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: `Analiza esta lista de asociaciones de ${concept}. 
@@ -47,12 +47,12 @@ export const aiService = {
     });
 
     try {
-      // Accessing the .text property of GenerateContentResponse directly.
+      // Extraemos el texto directamente de la respuesta según las especificaciones del SDK
       const jsonStr = response.text || "[]";
       const result = JSON.parse(jsonStr.trim());
       return result;
     } catch (e) {
-      console.error("Error parsing AI response", e);
+      console.error("Error al procesar la respuesta de la IA", e);
       return [];
     }
   }
