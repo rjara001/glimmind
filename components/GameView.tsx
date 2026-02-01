@@ -12,9 +12,9 @@ interface GameViewProps {
 }
 
 const STAGE_NAMES = [
-  "Introducción",
-  "Descubrimiento",
-  "Reconocimiento",
+  "Intro",
+  "Descubrir",
+  "Reconocer",
   "Maestría"
 ];
 
@@ -228,133 +228,149 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
   );
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10 flex flex-col items-center">
-      <div className="w-full mb-12">
-        <div className="relative flex justify-between items-center max-w-2xl mx-auto">
-          <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -translate-y-1/2 rounded-full"></div>
-          <div 
-            className="absolute top-1/2 left-0 h-1 bg-indigo-600 -translate-y-1/2 rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${((gameState.currentCycle - 1) / 3) * 100}%` }}
-          ></div>
-
-          {[1, 2, 3, 4].map((c) => {
-            const count = stageCounts[c as keyof typeof stageCounts];
-            const isActive = gameState.currentCycle === c;
-            const isCompleted = gameState.currentCycle > c;
-
-            return (
-              <div key={c} className="relative z-10 flex flex-col items-center">
-                <div 
-                  className={`w-10 h-10 rounded-full flex flex-col items-center justify-center border-4 transition-all duration-500 ${
-                    isCompleted 
-                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
-                      : isActive 
-                        ? 'bg-white border-indigo-600 scale-110 shadow-xl shadow-indigo-100 ring-4 ring-indigo-50' 
-                        : 'bg-white border-slate-100 text-slate-300'
-                  }`}
-                >
-                  {isCompleted ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                  ) : (
-                    <span className="text-[11px] font-black">{count}</span>
-                  )}
-                </div>
-                <div className="absolute -bottom-8 flex flex-col items-center whitespace-nowrap">
-                   <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors duration-300 ${
-                    isActive ? 'text-indigo-600' : 'text-slate-400'
-                  }`}>
-                    {STAGE_NAMES[c-1]}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+    <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col min-h-[calc(100vh-80px)]">
+      {/* Cabecera Compacta */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-2">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm group">
+             <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-black text-slate-800 leading-none">{list.name}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fila {gameState.currentIndex + 1}/{gameState.queue.length}</span>
+              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">{stageCounts.learned} Aprendidas</span>
+            </div>
+          </div>
         </div>
-        
-        <div className="mt-16 flex justify-center gap-4">
-           <span className="bg-indigo-50 px-4 py-1.5 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest border border-indigo-100 shadow-sm">
-            Fila: {gameState.currentIndex + 1} / {gameState.queue.length}
-          </span>
-          <span className="bg-emerald-50 px-4 py-1.5 rounded-full text-[10px] font-black text-emerald-600 uppercase tracking-widest border border-emerald-100 shadow-sm">
-            Aprendidas: {stageCounts.learned}
-          </span>
-          <span className="bg-slate-100 px-4 py-1.5 rounded-full text-[10px] font-black text-slate-600 uppercase tracking-widest border border-slate-200 shadow-sm">
-            Modo: {list.settings.mode === 'real' ? 'Real (Escrito)' : 'Práctica'}
+
+        <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
+          <span className="px-3 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+            {list.settings.mode === 'real' ? 'Modo Real' : 'Práctica'}
           </span>
         </div>
       </div>
 
-      <div className={`w-full bg-white rounded-[3.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.1)] border-4 border-white p-12 text-center relative overflow-hidden group min-h-[420px] flex flex-col justify-center transition-all ${feedback === 'correct' ? 'ring-8 ring-emerald-400' : feedback === 'incorrect' ? 'ring-8 ring-rose-400' : ''}`}>
-        <div className="absolute top-0 left-0 w-full h-3 bg-indigo-600/10"></div>
-        <span className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] block mb-3">{labelTerm}</span>
-        <h2 className="text-5xl md:text-7xl font-black text-slate-900 mb-12 break-words leading-tight tracking-tight">{displayTerm}</h2>
-        
-        <div className="min-h-[140px] flex flex-col items-center justify-center gap-6">
-          {list.settings.mode === 'real' && !gameState.revealed ? (
-            <div className="w-full max-w-md animate-in slide-in-from-bottom-2 duration-300">
-               <input
-                 ref={inputRef}
-                 type="text"
-                 autoFocus
-                 value={gameState.userInput}
-                 onChange={(e) => setGameState(p => ({ ...p, userInput: e.target.value }))}
-                 onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                 placeholder={`Escribe aquí el/la ${labelDef.toLowerCase()}...`}
-                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 text-xl font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
-               />
-               <p className="mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Presiona ENTER para validar</p>
-            </div>
-          ) : (
-            <>
-              {gameState.revealed ? (
-                <div className="animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 text-center">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">{labelDef}</span>
-                  <p className="text-4xl font-black text-indigo-600 bg-indigo-50/50 px-10 py-4 rounded-[2rem] border-2 border-indigo-100/50 inline-block shadow-inner">
-                    {displayDef}
-                  </p>
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Lado Izquierdo: Tarjeta y Controles */}
+        <div className="flex-1 w-full flex flex-col items-center">
+          <div className={`w-full bg-white rounded-[3rem] shadow-[0_20px_60px_rgba(79,70,229,0.08)] border-4 border-white p-8 md:p-12 text-center relative overflow-hidden min-h-[380px] flex flex-col justify-center transition-all duration-300 ${feedback === 'correct' ? 'ring-8 ring-emerald-400' : feedback === 'incorrect' ? 'ring-8 ring-rose-400' : ''}`}>
+            <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600/10"></div>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-2">{labelTerm}</span>
+            <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-8 break-words leading-tight tracking-tight">{displayTerm}</h2>
+            
+            <div className="min-h-[120px] flex flex-col items-center justify-center gap-4">
+              {list.settings.mode === 'real' && !gameState.revealed ? (
+                <div className="w-full max-w-sm animate-in slide-in-from-bottom-2 duration-300">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    autoFocus
+                    value={gameState.userInput}
+                    onChange={(e) => setGameState(p => ({ ...p, userInput: e.target.value }))}
+                    onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                    placeholder={`¿Cuál es el/la ${labelDef.toLowerCase()}?`}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5 text-lg font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
+                  />
                 </div>
               ) : (
-                <div className="flex gap-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="w-10 h-16 bg-slate-50 rounded-2xl animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-2xl shadow-sm">?</div>
-                  ))}
-                </div>
+                <>
+                  {gameState.revealed ? (
+                    <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-500 text-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">{labelDef}</span>
+                      <p className="text-3xl md:text-4xl font-black text-indigo-600 bg-indigo-50/50 px-8 py-4 rounded-[1.5rem] border-2 border-indigo-100/50 inline-block">
+                        {displayDef}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="w-8 h-12 bg-slate-50 rounded-xl animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-xl">?</div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+          </div>
+
+          <div className="w-full max-w-xl mt-6">
+            <div className="grid grid-cols-3 gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+              <button onClick={handleNext} className="bg-slate-50 border border-slate-200 text-slate-500 h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest active:scale-90 transition-all hover:bg-white hover:text-indigo-600">Pasar</button>
+              
+              <button 
+                onClick={() => {
+                  if (list.settings.mode === 'real' && !gameState.revealed) {
+                    checkAnswer();
+                  } else {
+                    setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}));
+                  }
+                }} 
+                className={`h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest shadow-sm active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'}`}
+              >
+                {list.settings.mode === 'real' && !gameState.revealed ? 'Validar' : gameState.revealed ? 'Ocultar' : 'Revelar'}
+              </button>
+
+              <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real'} className={`h-14 rounded-2xl font-black uppercase text-[9px] tracking-widest shadow-md active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real' ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                Correcta
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Controles del Juego - Ahora anclados debajo de la tarjeta */}
-      <div className="w-full max-w-2xl mt-8 pb-10">
-        <div className="grid grid-cols-3 gap-5 bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-[0_10px_40px_rgba(79,70,229,0.05)]">
-          <button onClick={handleNext} className="bg-slate-50 border-2 border-slate-100 text-slate-600 h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-sm active:scale-90 transition-all hover:bg-white hover:border-indigo-100 hover:text-indigo-600">Pasar</button>
+        {/* Lado Derecho: Progreso de Etapas (Vertical en Desktop) */}
+        <div className="w-full lg:w-48 bg-white/40 rounded-[2.5rem] p-6 border border-white flex flex-col gap-4">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 text-center lg:text-left">Ciclos</h3>
           
-          <button 
-            onClick={() => {
-              if (list.settings.mode === 'real' && !gameState.revealed) {
-                checkAnswer();
-              } else {
-                setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}));
-              }
-            }} 
-            className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-md active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border-2 border-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-50'}`}
-          >
-            <span>{list.settings.mode === 'real' && !gameState.revealed ? 'Validar' : gameState.revealed ? 'Ocultar' : 'Revelar'}</span>
-            <span className="text-[8px] opacity-40 font-bold mt-1 tracking-normal">[ENTER]</span>
-          </button>
+          <div className="flex lg:flex-col justify-between lg:justify-start gap-4 lg:gap-6">
+            {[1, 2, 3, 4].map((c) => {
+              const count = stageCounts[c as keyof typeof stageCounts];
+              const isActive = gameState.currentCycle === c;
+              const isCompleted = gameState.currentCycle > c;
 
-          <button onClick={handleCorrect} disabled={gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real'} className={`h-16 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg active:scale-90 transition-all flex items-center justify-center gap-2 ${gameState.wasRevealed || gameState.revealed || list.settings.mode === 'real' ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}`}>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7"/></svg>
-            Correcta
-          </button>
+              return (
+                <div key={c} className={`flex flex-col lg:flex-row items-center gap-3 transition-all duration-300 ${isActive ? 'scale-105' : 'opacity-60'}`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all shadow-sm ${
+                    isCompleted 
+                      ? 'bg-emerald-500 border-emerald-500 text-white' 
+                      : isActive 
+                        ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-50 shadow-indigo-100' 
+                        : 'bg-white border-slate-200 text-slate-400'
+                  }`}>
+                    {isCompleted ? (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                    ) : (
+                      <span className="text-[11px] font-black">{count}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center lg:items-start">
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+                      {STAGE_NAMES[c-1]}
+                    </span>
+                    {isActive && <div className="hidden lg:block w-8 h-0.5 bg-indigo-600 mt-1 rounded-full animate-pulse"></div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100">
+             <div className="flex justify-between items-center mb-1">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Maestría</span>
+                <span className="text-[9px] font-black text-indigo-600">{Math.round((stageCounts.learned / associations.length) * 100)}%</span>
+             </div>
+             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(stageCounts.learned / associations.length) * 100}%` }}></div>
+             </div>
+          </div>
         </div>
       </div>
 
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
-            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter">Configuración</h3>
+            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter text-center">Ajustes</h3>
             
             <div className="space-y-4 mb-8">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -408,7 +424,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
                 onClick={() => setShowSettings(false)}
                 className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-xl shadow-slate-200"
               >
-                Continuar
+                Cerrar
               </button>
             </div>
           </div>
