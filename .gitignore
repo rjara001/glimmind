@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+/functions/commands.md
+/functions/kill-ports.sh
+.firebase/
+.firebaserc
+.env
