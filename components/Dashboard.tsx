@@ -206,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
               <p className="text-gray-500 text-sm mb-6">
-                {list.associations.length} pares • {list.associations.filter(a => a.status === 'APRENDIDA').length} aprendidas
+                {list.associations.length} pares • {list.associations.filter(a => a.status === 'CONOCIDA').length} aprendidas
               </p>
               <div className="flex gap-3">
                 <button 

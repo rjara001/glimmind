@@ -39,8 +39,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
       1: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
       2: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
       3: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
-      4: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length,
-      learned: associations.filter(a => a.status === AssociationStatus.APRENDIDA).length
+      learned: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length
     };
   }, [associations]);
 
@@ -170,7 +169,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     if (!currentAssoc) return;
     // En modo entrenamiento permitimos marcar como correcta siempre
     // Si estamos en ciclo 1 (Intro) y marcamos correcta, se considera aprendida directamente
-    advance(gameState.currentCycle === 1 ? AssociationStatus.APRENDIDA : currentAssoc.status);
+    advance(gameState.currentCycle === 1 ? AssociationStatus.CONOCIDA : currentAssoc.status);
   };
 
   const handleNext = () => {
@@ -179,7 +178,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
     if (gameState.currentCycle === 1) nextStatus = AssociationStatus.DESCUBIERTA;
     else if (gameState.currentCycle === 2) nextStatus = AssociationStatus.RECONOCIDA;
     else if (gameState.currentCycle === 3) nextStatus = AssociationStatus.CONOCIDA;
-    else if (gameState.currentCycle === 4) nextStatus = AssociationStatus.APRENDIDA;
     advance(nextStatus);
   };
 

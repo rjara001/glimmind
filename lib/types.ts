@@ -3,8 +3,7 @@ export enum AssociationStatus {
   DESCONOCIDA = 'DESCONOCIDA',
   DESCUBIERTA = 'DESCUBIERTA',
   RECONOCIDA = 'RECONOCIDA',
-  CONOCIDA = 'CONOCIDA',
-  APRENDIDA = 'APRENDIDA'
+  CONOCIDA = 'CONOCIDA'
 }
 
 export interface Association {

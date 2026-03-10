@@ -1,7 +1,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { GlimmindGame } from './gameEngine';
-import { Association, AssociationList, AssociationStatus, GameState, StatusCounts, CycleResult } from '../types';
+import { Association, AssociationList, AssociationStatus, GameState, CycleResult } from '../types';
 
 // --- Test Case Generation Helpers ---
 
