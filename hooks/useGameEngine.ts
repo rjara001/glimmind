@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { AssociationList, Association, AssociationStatus, GameCycle, GameState } from '../types';
+import { AssociationList, Association, AssociationStatus, GameCycle, GameState, StageCounts } from '../types';
 import { calculateSimilarity } from '../utils/similarity';
 
 export const useGameEngine = (list: AssociationList, onUpdateList: (list: AssociationList) => void) => {
@@ -18,11 +18,11 @@ export const useGameEngine = (list: AssociationList, onUpdateList: (list: Associ
   const [associations, setAssociations] = useState<Association[]>(list.associations);
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none');
 
-  const stageCounts = useMemo(() => {
+  const stageCounts: StageCounts = useMemo(() => {
     return {
-      1: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
-      2: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
-      3: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
+      unknown: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
+      discovered: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
+      recognized: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
       learned: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length
     };
   }, [associations]);

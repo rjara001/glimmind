@@ -52,3 +52,10 @@ export interface GameState {
   userInput: string;
   wasRevealed: boolean;
 }
+
+export interface StageCounts {
+  unknown: number;
+  discovered: number;
+  recognized: number;
+  learned: number;
+}
