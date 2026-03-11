@@ -5,12 +5,12 @@ interface GameHeaderProps {
   listName: string;
   currentIndex: number;
   queueLength: number;
-  learnedCount: number;
+  knownCount: number;
   gameMode: 'training' | 'real';
   onBack: () => void;
 }
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, learnedCount, gameMode, onBack }) => {
+export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, knownCount, gameMode, onBack }) => {
   const isPracticeMode = gameMode === 'training';
 
   return (
@@ -24,7 +24,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Fila {currentIndex + 1}/{queueLength}</span>
             <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-            <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">{learnedCount} Aprendidas</span>
+            <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">{knownCount} Conocidas</span>
           </div>
         </div>
       </div>

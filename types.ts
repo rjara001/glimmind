@@ -57,5 +57,5 @@ export interface StageCounts {
   unknown: number;
   discovered: number;
   recognized: number;
-  learned: number;
+  known: number;
 }

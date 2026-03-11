@@ -23,7 +23,7 @@ export const useGameEngine = (list: AssociationList, onUpdateList: (list: Associ
       unknown: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
       discovered: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
       recognized: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
-      learned: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length
+      known: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length
     };
   }, [associations]);
 

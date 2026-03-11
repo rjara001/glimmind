@@ -80,7 +80,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, 
         listName={list.name}
         currentIndex={gameState.currentIndex}
         queueLength={gameState.queue.length}
-        learnedCount={stageCounts.learned}
+        knownCount={stageCounts.known}
         gameMode={list.settings.mode}
         onBack={onBack}
       />

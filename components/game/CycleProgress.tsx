@@ -13,7 +13,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ stageCounts, assoc
     { id: 1, label: AssociationStatus.DESCONOCIDA, count: stageCounts.unknown },
     { id: 2, label: AssociationStatus.DESCUBIERTA, count: stageCounts.discovered },
     { id: 3, label: AssociationStatus.RECONOCIDA, count: stageCounts.recognized },
-    { id: 4, label: AssociationStatus.CONOCIDA, count: stageCounts.learned },
+    { id: 4, label: AssociationStatus.CONOCIDA, count: stageCounts.known },
   ];
 
   return (
@@ -49,10 +49,10 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ stageCounts, assoc
       <div className="mt-2 pt-3 border-t border-slate-100">
           <div className="flex justify-between items-center mb-1">
             <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Master</span>
-            <span className="text-[8px] font-black text-indigo-600">{Math.round((stageCounts.learned / associationsLength) * 100)}%</span>
+            <span className="text-[8px] font-black text-indigo-600">{Math.round((stageCounts.known / associationsLength) * 100)}%</span>
           </div>
           <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(stageCounts.learned / associationsLength) * 100}%` }}></div>
+            <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(stageCounts.known / associationsLength) * 100}%` }}></div>
           </div>
       </div>
     </div>
