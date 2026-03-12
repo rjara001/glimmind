@@ -1,99 +1,162 @@
 
-import { Association, AssociationList, AssociationStatus, CycleResult, GameState, StatusCounts, GameCycle } from "../types";
+import { Association, AssociationList, GameState, GameCycle, GameSummary } from "../types";
 
-const STATUS_ORDER: AssociationStatus[] = [
-    AssociationStatus.DESCONOCIDA, AssociationStatus.DESCUBIERTA, 
-    AssociationStatus.RECONOCIDA, AssociationStatus.CONOCIDA
-];
-
-const getInitialStatusCounts = (): StatusCounts => ({
-    [AssociationStatus.DESCONOCIDA]: { p: 0, c: 0 }, [AssociationStatus.DESCUBIERTA]: { p: 0, c: 0 },
-    [AssociationStatus.RECONOCIDA]: { p: 0, c: 0 }, [AssociationStatus.CONOCIDA]: { p: 0, c: 0 },
-});
-
-const initialEngineState: GameState = {
-    listId: '', associations: [], initialAssociations: [], currentCycle: 1, currentIndex: 0, queue: [],
-    isFinished: false, revealed: false, wasRevealed: false, userInput: '',
-    statusCounts: getInitialStatusCounts(), sessionStats: { newlyLearned: 0 },
-};
-
-const calculateStatusCounts = (associations: Association[]): StatusCounts => {
-    const counts = getInitialStatusCounts();
-    for (const assoc of associations) {
-        if (counts[assoc.status]) { assoc.cycleResult === 'pending' ? counts[assoc.status].p++ : counts[assoc.status].c++; }
-    }
-    return counts;
-};
-
-const isGameFinished = (counts: StatusCounts, total: number): boolean => {
-    return counts[AssociationStatus.CONOCIDA].c === total;
+const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
+  globalCycle: 1,
+  activeQueue: [],
+  currentIndex: 0,
+  isFinished: false,
+  summary: null,
+  revealed: false,
+  userInput: "",
 };
 
 export class GlimmindGame {
-    private state: GameState;
+  private state: GameState;
 
-    constructor(initialState: GameState) { this.state = { ...initialState }; }
+  constructor(associationList: AssociationList) {
+    this.state = this._initializeGame(associationList);
+  }
 
-    get currentState(): GameState { return this.state; }
-    get currentAssoc(): Association | undefined {
-        const currentId = this.state.queue[this.state.currentIndex];
-        return this.state.associations.find(a => a.id === currentId);
+  public get currentState(): GameState {
+    return this.state;
+  }
+
+  public get currentAssociation(): Association | undefined {
+    if (this.state.isFinished || !this.state.activeQueue[this.state.currentIndex]) {
+      return undefined;
+    }
+    const currentId = this.state.activeQueue[this.state.currentIndex];
+    return this.state.associations.find(a => a.id === currentId);
+  }
+
+  public processAction(action: { type: 'CORRECT' | 'PASS' }): GlimmindGame {
+    if (this.state.isFinished) {
+      return this;
     }
 
-    processAction(action: { type: string; payload?: any }): GlimmindGame {
-        let state = { ...this.state };
-
-        if (action.type === 'START_GAME') {
-            return new GlimmindGame(this._initializeGame(action.payload.list));
-        }
-
-        if (state.isFinished) return this;
-
-        if (state.currentIndex >= state.queue.length) {
-            state = this._findNextCycle(state);
-        }
-
-        if (state.currentIndex >= state.queue.length) {
-            const finalCounts = calculateStatusCounts(state.associations);
-            return new GlimmindGame({ ...state, statusCounts: finalCounts, isFinished: isGameFinished(finalCounts, state.associations.length) });
-        }
-
-        const currentId = state.queue[state.currentIndex];
-        let newAssociations = state.associations.map(assoc => {
-            if (assoc.id !== currentId) return assoc;
-            if (action.type === 'CORRECT') return { ...assoc, cycleResult: 'correct' as CycleResult };
-            if (action.type === 'PASS') {
-                const idx = STATUS_ORDER.indexOf(assoc.status);
-                const nextStatus = STATUS_ORDER[Math.min(idx + 1, STATUS_ORDER.length - 1)];
-                return { ...assoc, status: nextStatus };
-            }
-            return assoc;
-        });
-
-        const nextState: GameState = { ...state, associations: newAssociations, currentIndex: state.currentIndex + 1 };
-        const finalCounts = calculateStatusCounts(nextState.associations);
-        const isFinished = isGameFinished(finalCounts, nextState.associations.length);
-
-        return new GlimmindGame({ ...nextState, statusCounts: finalCounts, isFinished });
+    const currentAssoc = this.currentAssociation;
+    if (!currentAssoc) {
+      // Should not happen in a normal flow, but could indicate queue is empty.
+      return this._checkForNextCycle();
     }
 
-    private _initializeGame(list: AssociationList): GameState {
-        const associations = list.associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA, cycleResult: 'pending' as CycleResult }));
-        const state: GameState = { ...initialEngineState, listId: list.id, associations, initialAssociations: JSON.parse(JSON.stringify(associations)) };
-        return this._findNextCycle(state);
+    let associations = [...this.state.associations];
+    const assocIndex = associations.findIndex(a => a.id === currentAssoc.id);
+
+    if (action.type === 'CORRECT') {
+      associations[assocIndex] = {
+        ...currentAssoc,
+        status: 'correct',
+        isLearned: this.state.globalCycle === 1 ? true : currentAssoc.isLearned,
+      };
     }
 
-    // Simplified logic: No automatic resets. Just find the next pending card.
-    private _findNextCycle(state: GameState): GameState {
-        for (let i = 0; i < STATUS_ORDER.length; i++) {
-            const statusToLookFor = STATUS_ORDER[i];
-            const queue = state.associations.filter(a => a.status === statusToLookFor && a.cycleResult === 'pending').map(a => a.id);
-            if (queue.length > 0) {
-                return { ...state, currentCycle: (i + 1) as GameCycle, currentIndex: 0, queue: queue };
-            }
-        }
-
-        // If no pending cards are found anywhere, return an empty queue. The game is paused or finished.
-        return { ...state, queue: [], currentIndex: 0 };
+    if (action.type === 'PASS') {
+      associations[assocIndex] = {
+        ...currentAssoc,
+        // Type assertion is safe due to the game logic constraints
+        currentCycle: (currentAssoc.currentCycle + 1) as typeof currentAssoc.currentCycle,
+      };
     }
+    
+    this.state = {
+      ...this.state,
+      associations,
+      currentIndex: this.state.currentIndex + 1,
+      revealed: false,
+      userInput: ''
+    };
+    
+    return this._checkForNextCycle();
+  }
+
+  private _checkForNextCycle(): GlimmindGame {
+    if (this.state.currentIndex < this.state.activeQueue.length) {
+      // The current cycle is not finished, continue.
+      return this;
+    }
+
+    // Current cycle's queue is exhausted, try to advance.
+    const nextGlobalCycle = this.state.globalCycle + 1;
+
+    if (nextGlobalCycle > 4) {
+      // Game finished after the 4th cycle.
+      return this._endGame();
+    }
+
+    this.state = {
+      ...this.state,
+      globalCycle: nextGlobalCycle as GameCycle,
+    };
+    
+    const newQueue = this._generateActiveQueue();
+
+    if (newQueue.length === 0) {
+        // Game finished because no items are left for the upcoming cycles.
+        return this._endGame();
+    }
+
+    this.state.activeQueue = newQueue;
+    this.state.currentIndex = 0;
+
+    return this;
+  }
+  
+  private _endGame(): GlimmindGame {
+      this.state.isFinished = true;
+      this.state.summary = this._calculateSummary();
+      return this;
+  }
+
+  private _calculateSummary(): GameSummary {
+    const summary: GameSummary = {
+      totalLearned: 0,
+      reviewSuccess: 0,
+      forgottenPassed: 0,
+    };
+
+    for (const assoc of this.state.associations) {
+      if (assoc.isLearned) {
+        summary.totalLearned++;
+      } else if (assoc.status === 'correct') {
+        summary.reviewSuccess++;
+      }
+      
+      if (assoc.currentCycle === 5) {
+        summary.forgottenPassed++;
+      }
+    }
+    return summary;
+  }
+  
+  private _initializeGame(list: AssociationList): GameState {
+    const initialAssociations = list.associations.map(a => ({
+      ...a,
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+    } as Association));
+
+    const state: GameState = {
+      ...INITIAL_GAME_STATE,
+      listId: list.id,
+      associations: initialAssociations,
+    };
+    
+    state.activeQueue = this._generateActiveQueue(initialAssociations, 1);
+
+    if (state.activeQueue.length === 0) {
+        state.isFinished = true;
+        state.summary = this._calculateSummary();
+    }
+
+    return state;
+  }
+  
+  private _generateActiveQueue(associations = this.state.associations, cycle = this.state.globalCycle): string[] {
+    return associations
+      .filter(a => a.currentCycle === cycle && a.status === 'pending')
+      .map(a => a.id);
+  }
 }

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { AssociationList, Association, AssociationStatus } from '../types';
+import { AssociationList, Association } from '../types';
 import { aiService } from '../services/aiService';
 import { SmartGroupModal } from './SmartGroupModal';
 
@@ -30,7 +30,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           id: crypto.randomUUID(),
           term: parts[0]?.replace(/^"|"$/g, '').trim() || '',
           definition: parts[1]?.replace(/^"|"$/g, '').trim() || '',
-          status: AssociationStatus.DESCONOCIDA
+          currentCycle: 1,
+          status: 'pending',
+          isLearned: false,
         };
       })
       .filter(a => a.term || a.definition);
@@ -61,9 +63,17 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   };
 
   const handleAddRow = () => {
+    const newAssociation: Association = {
+      id: crypto.randomUUID(),
+      term: '',
+      definition: '',
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+    };
     const updated = {
       ...editList,
-      associations: [...editList.associations, { id: crypto.randomUUID(), term: '', definition: '', status: AssociationStatus.DESCONOCIDA }]
+      associations: [...editList.associations, newAssociation]
     };
     setEditList(updated);
     onSave(updated);

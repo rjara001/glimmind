@@ -1,116 +1,76 @@
-# Glimmind Game Engine — Algoritmo
+📑 Glimmind Engine Technical Specification (v2.1)
+Objetivo: Motor de aprendizaje asociativo basado en 4 ciclos de repetición con descarte progresivo.
 
-## Estructuras de datos
+1. Modelo de Datos (Schema)
+Cada objeto Association debe contener obligatoriamente:
 
-```
-Card {
-  id: string
-  status: DESCONOCIDA | DESCUBIERTA | RECONOCIDA | CONOCIDA
-  cycleResult: pending | correct
-}
+id (string): Identificador único.
 
-GameState {
-  cards: Card[]
-  currentCycle: 1 | 2 | 3 | 4
-  queue: string[]        // ids de cartas pendientes en el ciclo actual
-  currentIndex: number
-  isFinished: boolean
-}
-```
+term / definition (string): Par de aprendizaje.
 
----
+currentCycle (int): Rango [1-5]. Inicializar en 1.
 
-## Mapa ciclo → status
+status (enum): ['pending', 'correct']. Inicializar en 'pending'.
 
-```
-Ciclo 1 → DESCONOCIDA
-Ciclo 2 → DESCUBIERTA
-Ciclo 3 → RECONOCIDA
-Ciclo 4 → CONOCIDA
-```
+isLearned (boolean): Inicializar en false.
 
----
+2. Variables de Estado del Motor
+globalCycle (int): Ciclo de ejecución actual. Inicializar en 1.
 
-## INIT
+activeQueue (Array): Lista de IDs de asociaciones que cumplen:
 
-```
-1. Crear N cartas con status=DESCONOCIDA, cycleResult=pending
-2. startCycle(1)
-```
+association.currentCycle === globalCycle AND association.status === 'pending'.
 
----
+3. Máquina de Estados (Lógica de Botones)
+Acción: CORRECTO
+Update: association.status = 'correct'.
 
-## startCycle(cycle)
+Conditional: IF globalCycle === 1 THEN association.isLearned = true.
 
-```
-1. Si cycle > 4:
-     a. Si todas las cartas tienen status=CONOCIDA y cycleResult=correct
-          → isFinished = true, FIN
-     b. Si no:
-          → resetear cycleResult=pending en todas las cartas
-          → startCycle(1)
+Flow: Eliminar de activeQueue. Cargar siguiente elemento en cola.
 
-2. queue = cartas donde status == CYCLE_STATUS[cycle] AND cycleResult == pending
+Acción: PASAR
+Update: association.currentCycle += 1.
 
-3. Si queue está vacía:
-     → startCycle(cycle + 1)
+Flow: Eliminar de activeQueue inmediatamente. Cargar siguiente elemento en cola.
 
-4. Si no:
-     → currentCycle = cycle
-     → currentIndex = 0
-     → queue = queue (orden aleatorio)
-```
+4. Gestión de Flujo y Ciclos (Workflow)
+El motor debe evaluar la activeQueue después de cada acción.
 
----
+Check Queue: ¿Está la activeQueue vacía?
 
-## PASS
+NO: Mostrar la siguiente asociación de la lista.
 
-```
-1. card = queue[currentIndex]
-2. card.status = nextStatus(card.status)
-3. card.cycleResult = pending
-4. advance()
-```
+SÍ: Intentar avanzar de ciclo.
 
----
+Avanzar Ciclo (Transition):
 
-## CORRECT
+IF globalCycle < 4:
 
-```
-1. card = queue[currentIndex]
-2. card.status = sin cambio
-3. card.cycleResult = correct   ← sale de la cola, no vuelve a aparecer en este ciclo
-4. advance()
-```
+Incrementar globalCycle += 1.
 
----
+Regenerar activeQueue con asociaciones donde currentCycle === globalCycle y status === 'pending'.
 
-## advance()
+IF activeQueue está vacía: FIN DEL JUEGO (Éxito Total).
 
-```
-1. currentIndex++
-2. Si currentIndex < queue.length:
-     → continuar con la siguiente carta
-3. Si no (fin de cola):
-     → startCycle(currentCycle + 1)
-```
+ELSE: Iniciar nuevo ciclo.
 
----
+ELSE (si globalCycle === 4):
 
-## nextStatus(status)
+FIN DEL JUEGO.
 
-```
-DESCONOCIDA → DESCUBIERTA
-DESCUBIERTA → RECONOCIDA
-RECONOCIDA  → CONOCIDA (tope)
-```
+5. Criterios de Finalización (Endgame)
+El motor debe declarar el fin de la sesión cuando:
 
----
+Escenario A: Todas las asociaciones tienen status: 'correct'.
 
-## Reglas clave
+Escenario B: El globalCycle termina su recorrido (completado el ciclo 4) y no quedan tarjetas pendientes que pertenezcan a ese ciclo.
 
-- **PASS** siempre avanza el status, la carta entra en la cola del siguiente ciclo
-- **CORRECT** no cambia el status, la carta queda marcada como `correct` y no vuelve a aparecer hasta el próximo reset
-- **Un ciclo termina** cuando se han visto todas las cartas de la cola (PASS o CORRECT)
-- **El juego termina** cuando todas las cartas están en `CONOCIDA correct`
-- **Reset** ocurre cuando se termina el Ciclo 4 pero aún hay cartas sin completar — todas vuelven a `cycleResult=pending` y se reinicia desde Ciclo 1
+6. Output Esperado (Resultados)
+Al finalizar, el motor debe retornar un resumen con:
+
+Total Learned: Conteo de asociaciones con isLearned: true.
+
+Review Success: Conteo de asociaciones con status: 'correct' pero isLearned: false.
+
+Forgotten/Passed: Conteo de asociaciones con currentCycle === 5.
