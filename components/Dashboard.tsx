@@ -36,7 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
           currentCycle: 1,
           status: 'pending',
           isLearned: false,
-          isArchived: false, // Added default value
+          isArchived: false,
         };
         return newAssociation;
       })
@@ -176,30 +176,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLists.map(list => (
-            <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-              <div className="flex justify-between items-start mb-4">
-                <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
-                  {list.concept}
-                </span>
-                <button onClick={() => onDelete(list.id)} className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
-                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
+          {filteredLists.map(list => {
+            const activeAssociations = list.associations.filter(a => !a.isArchived);
+            const cycle4Count = activeAssociations.filter(a => a.currentCycle === 4).length;
+            const canPlay = activeAssociations.length > 0;
+
+            return (
+              <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
+                    {list.concept}
+                  </span>
+                  <button onClick={() => onDelete(list.id)} className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
+                <p className="text-gray-500 text-sm mb-6">
+                  {activeAssociations.length} pares • {cycle4Count} en Ciclo 4
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
+                    Estudiar
+                  </button>
+                  <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                    Editar
+                  </button>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
-              <p className="text-gray-500 text-sm mb-6">
-                {list.associations.length} pares • {list.associations.filter(a => a.currentCycle === 4).length} en Ciclo 4
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => onPlay(list.id)} disabled={list.associations.length === 0} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
-                  Estudiar
-                </button>
-                <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
-                  Editar
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

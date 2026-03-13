@@ -29,6 +29,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       .filter(a => a.isLearned)
       .map(a => a.id);
 
+    console.log(`🗄️ Archiving ${learnedCardIds.length} learned associations...`);
+
     if (learnedCardIds.length > 0) {
       const updatedAssociations = list.associations.map(assoc => {
         if (learnedCardIds.includes(assoc.id)) {
@@ -43,7 +45,25 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         console.error("Error passing updated associations to parent:", error);
       }
     }
-    actions.restart(); // Restart the game regardless of the outcome
+    actions.restart();
+  };
+
+  const handleFullRestart = async () => {
+    console.log("🔄 Resetting all associations to their initial state...");
+    const resetAssociations = list.associations.map(assoc => ({
+      ...assoc,
+      isArchived: false,
+      isLearned: false,
+      currentCycle: 1,
+      status: 'pending',
+    }));
+
+    try {
+      await onUpdateAssociations(resetAssociations);
+      actions.restart();
+    } catch (error) {
+      console.error("Error during full restart:", error);
+    }
   };
 
   const isReversed = list.settings.flipOrder === 'reversed';
@@ -66,7 +86,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   }, [gameState.isFinished, showSettings, list.settings.mode, feedback, isRevealed, actions, currentAssociation, isTransitioning]);
 
   if (gameView === 'summary') {
-    return <FinishedScreen summary={summary} onRestart={actions.restart} onBack={onBack} onArchive={handleArchiveLearnedCards} />;
+    // If the game session ended with no active cards (e.g., all were archived),
+    // the "Restart" action should perform a full reset of all cards.
+    const restartAction = (gameState.associations.length === 0)
+      ? handleFullRestart
+      : actions.restart;
+
+    return <FinishedScreen summary={summary} onRestart={restartAction} onBack={onBack} onArchive={handleArchiveLearnedCards} />;
   }
 
   if (!currentAssociation) {

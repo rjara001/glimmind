@@ -1,4 +1,3 @@
-
 # 📑 Glimmind Engine Technical Specification (v4.0)
 
 **Objetivo:** Motor de aprendizaje asociativo basado en 4 ciclos de repetición progresiva, con un sistema de archivo para tarjetas dominadas.
@@ -19,34 +18,34 @@ Cada `Association` dentro del motor debe contener:
 
 La clasificación de una tarjeta en el resumen final sigue una jerarquía estricta.
 
-1.  **Nivel "Aprendida" (`isLearned`)**
-    - **Definición:** Estado de dominio. Se alcanza al acertar una tarjeta en `globalCycle === 1`.
-    - **Prioridad:** Máxima. Si `isLearned` es `true`, la tarjeta es "Aprendida".
-
-2.  **Nivel "Conocida"**: `currentCycle >= 4` (y no `isLearned`).
-3.  **Nivel "Reconocida"**: `currentCycle === 3` (y no `isLearned`).
-4.  **Nivel "Vista"**: `currentCycle === 2` (y no `isLearned`).
+1.  **Aprendida (`isLearned: true`):** Dominada en el ciclo 1. Es el nivel más alto.
+2.  **Conocida (`currentCycle >= 4`):** Requiere varios repasos. Sugiere familiaridad.
+3.  **Reconocida (`currentCycle === 3`):** Se reconoce tras un par de intentos.
+4.  **Vista (`currentCycle === 2`):** Se ha visto, pero no se recuerda bien.
 
 ---
 
-### 2. Variables de Estado del Motor
+### 2. Estado del Juego (GameState)
 
-- **`globalCycle`** (number): Ciclo de ejecución general de la partida. Rango `[1-4]`.
-- **`activeQueue`** (Array<string>): IDs de las asociaciones a repasar en el ciclo actual.
-
----
-
-### 3. Máquina de Estados (Lógica de Acciones)
-
-- #### Acción: `CORRECT` (Acertar)
-  - **Update:** `status` = `'correct'`. `isLearned` = `true` **solo si** `globalCycle === 1`.
-
-- #### Acción: `PASS` (Pasar)
-  - **Update:** `currentCycle` se incrementa en `1`.
+El motor mantiene el estado de la sesión actual:
+- **`listId`**: ID de la lista en juego.
+- **`associations`**: Array completo de asociaciones *activas* para la sesión.
+- **`globalCycle`**: Ciclo de repaso global. Rango `[1-4]`.
+- **`activeQueue`**: Array de IDs de las tarjetas a repasar en el ciclo actual.
+- **`currentIndex`**: Puntero a la tarjeta actual en la `activeQueue`.
+- **`isFinished`**: Flag que indica el fin de la sesión.
+- **`summary`**: Objeto con el resumen final.
 
 ---
 
-### 4. Gestión de Flujo y Ciclos (Workflow)
+### 3. Acciones del Jugador
+
+- **`CORRECT`**: Marca la tarjeta actual como `'correct'` y la saca del ciclo actual.
+- **`PASS`**: No la marca como correcta y la mueve al siguiente ciclo de repaso (`currentCycle + 1`).
+
+---
+
+### 4. Ciclo de Vida del Juego (Game Loop)
 
 1.  **Carga Inicial:** Al comenzar una sesión, el motor debe cargar **únicamente** las asociaciones donde `isArchived === false`.
 2.  **Inicio:** El juego se inicializa en `globalCycle = 1`.
@@ -67,7 +66,8 @@ La sesión termina si al intentar avanzar de ciclo, la `activeQueue` resultante 
 **Flujo de Archivo:**
 1.  Al finalizar una sesión, se identifican las tarjetas con `isLearned: true`.
 2.  Se ofrece al usuario la opción de moverlas al Archivo.
-3.  Si acepta, para estas tarjetas se establece `isArchived = true`.
+3.  Si acepta, para estas tarjetas se establece `isArchived = true` y se resetean sus propiedades de sesión (`isLearned = false`, `currentCycle = 1`).
+4.  Las asociaciones archivadas **permanecen** en el array de la lista, pero serán **ignoradas** por el motor al iniciar una nueva sesión (ver punto 4.1). Esto asegura que no se pierdan y puedan ser restauradas en el futuro.
 
 **Flujo de Restauración:**
 1.  El usuario debe tener una interfaz para ver las tarjetas archivadas.

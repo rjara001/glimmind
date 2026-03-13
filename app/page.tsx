@@ -7,6 +7,7 @@ import { ListEditor } from '@/components/ListEditor';
 import { Auth } from '@/components/Auth';
 import { AssociationList, Association, AssociationStatus } from '@/lib/types';
 import { auth, db, onAuthStateChanged, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, isConfigured } from '@/lib/firebase';
+import { listService } from '@/services/firestoreService';
 
 const MOCK_USER = {
   uid: 'guest-user-123',
@@ -20,7 +21,6 @@ export default function Home() {
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const [showGameSettings, setShowGameSettings] = useState(false);
 
   useEffect(() => {
     const guestUser = localStorage.getItem('glimmind_guest_user');
@@ -68,10 +68,17 @@ export default function Home() {
       setLists(updatedLists);
       localStorage.setItem(`glimmind_lists_${user.uid}`, JSON.stringify(updatedLists));
     } else if (isConfigured && db) {
-      await setDoc(doc(db, "lists", updatedList.id), updatedList);
+      await setDoc(doc(db, "lists", updatedList.id), updatedList, { merge: true });
     }
   };
 
+  const handleUpdateAssociations = async (updatedAssociations: Association[]) => {
+    if (!currentList) return;
+    console.log("Saving updated associations to the list...");
+    const updatedList = { ...currentList, associations: updatedAssociations };
+    await handleUpdateList(updatedList);
+  };
+  
   const handleDeleteList = async (id: string) => {
     if (!confirm('¿Seguro que quieres borrar esta lista?')) return;
     if (user.uid.startsWith('guest-')) {
@@ -105,17 +112,6 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-4">
-          {view === 'game' && (
-            <button 
-              onClick={() => setShowGameSettings(true)}
-              className="p-2 text-slate-400 hover:text-indigo-600 transition bg-slate-50 rounded-lg active:scale-90"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          )}
           <img src={user.photoURL} className="w-8 h-8 rounded-full ring-2 ring-indigo-50" alt="Profile" />
           <button onClick={() => { auth?.signOut(); localStorage.removeItem('glimmind_guest_user'); setUser(null); }} className="text-slate-400 hover:text-red-500">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
@@ -128,7 +124,6 @@ export default function Home() {
           <Dashboard 
             lists={lists} 
             onCreate={(name, concept, initialAssocs) => {
-              // Fix: Explicitly type newList as AssociationList to ensure correct inference of literal types like GameMode
               const newList: AssociationList = {
                 id: crypto.randomUUID(), 
                 userId: user.uid, 
@@ -157,10 +152,8 @@ export default function Home() {
         {view === 'game' && currentList && (
           <GameView 
             list={currentList} 
-            onUpdateList={handleUpdateList} 
+            onUpdateAssociations={handleUpdateAssociations} 
             onBack={() => setView('dashboard')} 
-            showSettings={showGameSettings}
-            setShowSettings={setShowGameSettings}
           />
         )}
       </main>

@@ -44,6 +44,10 @@ export class GlimmindGame {
     const assocIndex = associations.findIndex(a => a.id === currentAssoc.id);
 
     if (action.type === 'CORRECT') {
+      if (this.state.globalCycle === 1 && !currentAssoc.isLearned) {
+        console.log(`🧠 Association moved to learned: '${currentAssoc.term}'`);
+      }
+      
       associations[assocIndex] = {
         ...currentAssoc,
         status: 'correct',
@@ -101,7 +105,7 @@ export class GlimmindGame {
       return this;
   }
 
-  private _calculateSummary(): GameSummary {
+  private _calculateSummary(associations?: Association[]): GameSummary {
     const summary: GameSummary = {
       learned: 0,
       known: 0,
@@ -109,7 +113,10 @@ export class GlimmindGame {
       seen: 0,
     };
 
-    for (const assoc of this.state.associations) {
+    const assocsToSummarize = associations || this.state?.associations;
+    if (!assocsToSummarize) return summary;
+
+    for (const assoc of assocsToSummarize) {
       if (assoc.isLearned) {
         summary.learned++;
       } else {
@@ -131,12 +138,14 @@ export class GlimmindGame {
   }
   
   private _initializeGame(list: AssociationList): GameState {
-    const initialAssociations = list.associations.map(a => ({
-      ...a,
-      currentCycle: 1,
-      status: 'pending',
-      isLearned: false,
-    } as Association));
+    const initialAssociations = list.associations
+      .filter(a => !a.isArchived)
+      .map(a => ({
+        ...a,
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+      } as Association));
 
     const state: GameState = {
       ...INITIAL_GAME_STATE,
@@ -148,7 +157,7 @@ export class GlimmindGame {
 
     if (state.activeQueue.length === 0) {
         state.isFinished = true;
-        state.summary = this._calculateSummary();
+        state.summary = this._calculateSummary(initialAssociations);
     }
 
     return state;
