@@ -8,7 +8,7 @@ import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 
-const GUEST_ID = 'dev-user-local'; 
+const GUEST_ID = 'dev-user-local';
 const MOCK_USER = {
   uid: GUEST_ID,
   displayName: 'Invitado Local',
@@ -18,143 +18,103 @@ const MOCK_USER = {
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const [showGameSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
       if (firebaseUser) {
         setUser(firebaseUser);
       } else if (savedGuest) {
         setUser(JSON.parse(savedGuest));
       } else {
         setUser(null);
+        setLoading(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const initial = await listService.fetchInitialLists(user.uid);
-      setLists(initial);
-      setLoading(false);
+    if (!user) {
+      setLists([]);
+      return;
+    }
+    
+    const loadLists = async () => {
+      try {
+        console.log('Fetching lists for user ID:', user.uid);
+        const userLists = await listService.fetchListsByUser(user.uid);
+        console.log('Fetched lists:', userLists);
+        setLists(userLists);
+      } catch (error) {
+        console.error("Failed to load lists:", error);
+        setLists([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    load();
+
+    loadLists();
   }, [user]);
 
-  const handleCloudSync = useCallback(async () => {
-    if (!user || isSyncing) return;
-    setIsSyncing(true);
-    try {
-      await listService.syncAllToCloud(user.uid, lists);
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error("Error de sincronización:", error);
-      alert("Hubo un problema al guardar en la nube.");
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [user, lists, isSyncing]);
+  const handleUpdateAssociations = async (listId: string, updatedAssociations: Association[]) => {
+    if (!user) return;
 
-  const handleLocalUpdate = (updatedList: AssociationList) => {
-    const listWithTimestamp = { ...updatedList, updatedAt: Date.now() };
-    const updatedLists = lists.map(l => l.id === listWithTimestamp.id ? listWithTimestamp : l);
-    if (!lists.find(l => l.id === listWithTimestamp.id)) updatedLists.push(listWithTimestamp);
-    
+    const listToUpdate = lists.find(l => l.id === listId);
+    if (!listToUpdate) return;
+
+    const updatedList = { ...listToUpdate, associations: updatedAssociations };
+    const updatedLists = lists.map(l => l.id === listId ? updatedList : l);
     setLists(updatedLists);
-    setHasUnsavedChanges(true);
-    
-    if (user) {
-      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
+
+    try {
+      await listService.updateList(listId, { associations: updatedAssociations });
+    } catch (error) {
+      console.error("Failed to sync association updates:", error);
+      setLists(lists);
     }
   };
 
-  const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
+ const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
     if (!user) return;
-    const newList: AssociationList = {
-      id: crypto.randomUUID(), 
+    const newListData: Omit<AssociationList, 'id'> = {
       userId: user.uid, 
       name, 
       concept, 
       associations: initialAssocs, 
-      settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 }, 
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+      isArchived: false,
+      settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 },
     };
     
-    setIsSyncing(true);
     try {
-      await listService.saveToCloudDirect(user.uid, newList);
-      const updatedLists = [...lists, newList];
-      setLists(updatedLists);
-      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
-      setSelectedListId(newList.id);
-      setView('game');
+      const newId = await listService.createList(newListData);
+      const newList = { ...newListData, id: newId };
+      setLists(prevLists => [...prevLists, newList]);
+      setSelectedListId(newId);
+      setView('editor');
     } catch (e) {
-      handleLocalUpdate(newList);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleCreateMultiple = async (groups: { name: string, associations: Association[] }[]) => {
-    if (!user || !selectedListId) return;
-    const parentList = lists.find(l => l.id === selectedListId);
-    if (!parentList) return;
-
-    setIsSyncing(true);
-    try {
-      const newLists = groups.map(group => ({
-        id: crypto.randomUUID(),
-        userId: user.uid,
-        name: group.name,
-        concept: parentList.concept,
-        associations: group.associations,
-        settings: { ...parentList.settings },
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      }));
-
-      // Borramos la original si ya se dividió
-      const updatedLists = lists.filter(l => l.id !== selectedListId).concat(newLists);
-      setLists(updatedLists);
-      
-      // Sincronización masiva
-      await listService.syncAllToCloud(user.uid, updatedLists);
-      localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
-      
-      alert(`¡Éxito! Se han creado ${groups.length} nuevas listas temáticas.`);
-      setView('dashboard');
-    } catch (e) {
-      console.error(e);
-      alert("Error al crear las nuevas listas.");
-    } finally {
-      setIsSyncing(false);
+      console.error("Failed to create list:", e);
     }
   };
 
   const handleDeleteList = async (id: string) => {
     if (!user || !confirm('¿Eliminar esta lista permanentemente?')) return;
+    const originalLists = lists;
     const updatedLists = lists.filter(l => l.id !== id);
     setLists(updatedLists);
-    setHasUnsavedChanges(true);
-    localStorage.setItem(`glimmind_cache_${user.uid}`, JSON.stringify(updatedLists));
     
     try {
-      await listService.deleteFromCloud(id);
+      await listService.deleteList(id);
     } catch (e) {
-      console.warn("Borrado local pendiente.");
+      console.error("Failed to delete list:", e);
+      setLists(originalLists);
     }
   };
-
-  if (loading && user) return (
+  
+  if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Cargando Glimmind...</p>
@@ -170,53 +130,21 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/30">
-      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+       <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
           <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(79,70,229,0.3)] group-hover:rotate-6 transition-transform relative overflow-hidden">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
               <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
               <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
-              <path d="M12 3v2" />
-              <path d="M12 19v2" />
-              <path d="M3 12h2" />
-              <path d="M19 12h2" />
             </svg>
           </div>
-          <div className="hidden xs:block">
+          <div>
             <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
-            <div className="flex items-center gap-1.5 mt-1.5">
-               <span className={`w-1.5 h-1.5 rounded-full ${hasUnsavedChanges ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                 {isSyncing ? 'Guardando...' : hasUnsavedChanges ? 'Cambios Locales' : 'Nube'}
-               </span>
-            </div>
           </div>
         </div>
         
         <div className="flex items-center gap-2 sm:gap-4">
-          {hasUnsavedChanges && !isSyncing && (
-            <button onClick={handleCloudSync} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Sincronizar
-            </button>
-          )}
-
-          {view === 'game' && (
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="w-12 h-12 flex items-center justify-center text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-2xl border border-indigo-100/50 shadow-sm active:scale-90 transition-all"
-              title="Ajustes de estudio"
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>
-          )}
-          
           <div className="h-12 pl-1.5 pr-1.5 sm:pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2 sm:gap-3">
             <img src={user.photoURL} className="w-9 h-9 rounded-xl shadow-sm border-2 border-white" alt="Profile" />
             <span className="hidden md:block text-xs font-black text-slate-700 max-w-[120px] truncate">{user.displayName}</span>
@@ -234,10 +162,10 @@ const App: React.FC = () => {
           <Dashboard lists={lists} onCreate={handleCreateList} onDelete={handleDeleteList} onEdit={(id) => { setSelectedListId(id); setView('editor'); }} onPlay={(id) => { setSelectedListId(id); setView('game'); }} />
         )}
         {view === 'editor' && currentList && (
-          <ListEditor list={currentList} onSave={handleLocalUpdate} onBack={() => setView('dashboard')} onCreateMultiple={handleCreateMultiple} />
+          <ListEditor list={currentList} onSave={(updatedList) => handleUpdateAssociations(currentList.id, updatedList.associations)} onBack={() => setView('dashboard')} />
         )}
         {view === 'game' && currentList && (
-          <GameView list={currentList} onUpdateList={handleLocalUpdate} onBack={() => setView('dashboard')} showSettings={showGameSettings} setShowSettings={setShowSettings} />
+          <GameView list={currentList} onUpdateAssociations={(updatedAssociations) => handleUpdateAssociations(currentList.id, updatedAssociations)} onBack={() => setView('dashboard')} />
         )}
       </main>
     </div>

@@ -37,7 +37,6 @@ export class GlimmindGame {
 
     const currentAssoc = this.currentAssociation;
     if (!currentAssoc) {
-      // Should not happen in a normal flow, but could indicate queue is empty.
       return this._checkForNextCycle();
     }
 
@@ -50,13 +49,10 @@ export class GlimmindGame {
         status: 'correct',
         isLearned: this.state.globalCycle === 1 ? true : currentAssoc.isLearned,
       };
-    }
-
-    if (action.type === 'PASS') {
+    } else if (action.type === 'PASS') {
       associations[assocIndex] = {
         ...currentAssoc,
-        // Type assertion is safe due to the game logic constraints
-        currentCycle: (currentAssoc.currentCycle + 1) as typeof currentAssoc.currentCycle,
+        currentCycle: (currentAssoc.currentCycle + 1) as GameCycle,
       };
     }
     
@@ -73,15 +69,12 @@ export class GlimmindGame {
 
   private _checkForNextCycle(): GlimmindGame {
     if (this.state.currentIndex < this.state.activeQueue.length) {
-      // The current cycle is not finished, continue.
       return this;
     }
 
-    // Current cycle's queue is exhausted, try to advance.
     const nextGlobalCycle = this.state.globalCycle + 1;
 
     if (nextGlobalCycle > 4) {
-      // Game finished after the 4th cycle.
       return this._endGame();
     }
 
@@ -93,7 +86,6 @@ export class GlimmindGame {
     const newQueue = this._generateActiveQueue();
 
     if (newQueue.length === 0) {
-        // Game finished because no items are left for the upcoming cycles.
         return this._endGame();
     }
 
@@ -111,20 +103,28 @@ export class GlimmindGame {
 
   private _calculateSummary(): GameSummary {
     const summary: GameSummary = {
-      totalLearned: 0,
-      reviewSuccess: 0,
-      forgottenPassed: 0,
+      learned: 0,
+      known: 0,
+      recognized: 0,
+      seen: 0,
     };
 
     for (const assoc of this.state.associations) {
       if (assoc.isLearned) {
-        summary.totalLearned++;
-      } else if (assoc.status === 'correct') {
-        summary.reviewSuccess++;
-      }
-      
-      if (assoc.currentCycle === 5) {
-        summary.forgottenPassed++;
+        summary.learned++;
+      } else {
+        switch (assoc.currentCycle) {
+          case 4:
+          case 5: 
+            summary.known++;
+            break;
+          case 3:
+            summary.recognized++;
+            break;
+          case 2:
+            summary.seen++;
+            break;
+        }
       }
     }
     return summary;

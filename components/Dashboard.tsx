@@ -36,6 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
           currentCycle: 1,
           status: 'pending',
           isLearned: false,
+          isArchived: false, // Added default value
         };
         return newAssociation;
       })

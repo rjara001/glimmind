@@ -1,37 +1,38 @@
 
 import React, { useMemo } from 'react';
-import { GameState, AssociationCycle } from '../../types';
+import { GameState, GameCycle } from '../../types';
 
 interface CycleProgressProps {
   gameState: GameState;
 }
 
 interface CycleInfo {
-  id: AssociationCycle;
+  id: GameCycle;
   label: string;
   count: number;
 }
 
 export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
   const cycleDistribution = useMemo(() => {
-    const distribution = new Map<AssociationCycle, number>([
+    const distribution = new Map<GameCycle, number>([
       [1, 0],
       [2, 0],
       [3, 0],
       [4, 0],
-      [5, 0],
     ]);
     for (const assoc of gameState.associations) {
-      distribution.set(assoc.currentCycle, (distribution.get(assoc.currentCycle) || 0) + 1);
+      if (assoc.currentCycle >= 1 && assoc.currentCycle <= 4) {
+         distribution.set(assoc.currentCycle as GameCycle, (distribution.get(assoc.currentCycle as GameCycle) || 0) + 1);
+      }
     }
     return distribution;
   }, [gameState.associations]);
   
   const cycles: CycleInfo[] = [
-    { id: 1, label: 'Ciclo 1', count: cycleDistribution.get(1) || 0 },
-    { id: 2, label: 'Ciclo 2', count: cycleDistribution.get(2) || 0 },
-    { id: 3, label: 'Ciclo 3', count: cycleDistribution.get(3) || 0 },
-    { id: 4, label: 'Ciclo 4', count: cycleDistribution.get(4) || 0 },
+    { id: 1, label: 'Nueva', count: cycleDistribution.get(1) || 0 },
+    { id: 2, label: 'Vista', count: cycleDistribution.get(2) || 0 },
+    { id: 3, label: 'Reconocida', count: cycleDistribution.get(3) || 0 },
+    { id: 4, label: 'Conocida', count: cycleDistribution.get(4) || 0 },
   ];
 
   const totalAssociations = gameState.associations.length;

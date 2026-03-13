@@ -33,6 +33,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           currentCycle: 1,
           status: 'pending',
           isLearned: false,
+          isArchived: false, // Added default value
         };
       })
       .filter(a => a.term || a.definition);
@@ -70,6 +71,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       currentCycle: 1,
       status: 'pending',
       isLearned: false,
+      isArchived: false, // Added default value
     };
     const updated = {
       ...editList,

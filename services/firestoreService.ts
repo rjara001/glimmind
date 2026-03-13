@@ -1,88 +1,80 @@
 
-import { db, collection, query, where, doc, setDoc, deleteDoc, isConfigured, getDocs } from '../firebase';
+import { db } from '../firebase';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { AssociationList } from '../types';
 
-const COLLECTION_NAME = "lists";
+const COLLECTION_NAME = "associationLists";
 
 export const listService = {
-  /**
-   * Carga inicial con Merge Inteligente:
-   * No sobreescribe cambios locales que sean más recientes que los de la nube.
-   */
-  fetchInitialLists: async (userId: string): Promise<AssociationList[]> => {
+
+  fetchListsByUser: async (userId: string): Promise<AssociationList[]> => {
     if (!userId) return [];
-    
-    const localData = localStorage.getItem(`glimmind_cache_${userId}`);
-    const cachedLists: AssociationList[] = localData ? JSON.parse(localData) : [];
-
-    if (isConfigured && db) {
-      try {
-        const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
-        const snapshot = await getDocs(q);
-        const remoteLists = snapshot.docs.map(d => d.data() as AssociationList);
-        
-        // --- Lógica de Merge ---
-        const mergedLists = [...cachedLists];
-
-        remoteLists.forEach(remote => {
-          const localIndex = mergedLists.findIndex(l => l.id === remote.id);
-          
-          if (localIndex === -1) {
-            // Si no existe localmente, la agregamos
-            mergedLists.push(remote);
-          } else {
-            // Si existe en ambos, comparamos timestamps
-            const local = mergedLists[localIndex];
-            const remoteTime = remote.updatedAt || 0;
-            const localTime = local.updatedAt || 0;
-
-            if (remoteTime > localTime) {
-              // La nube es más nueva, actualizamos local
-              mergedLists[localIndex] = remote;
-            } else {
-              // Lo local es más nuevo o igual (cambios pendientes), mantenemos local
-              console.log(`📍 Manteniendo cambios locales pendientes para: ${local.name}`);
-            }
-          }
-        });
-
-        // Actualizar el cache local con el resultado del merge
-        localStorage.setItem(`glimmind_cache_${userId}`, JSON.stringify(mergedLists));
-        return mergedLists;
-      } catch (e) {
-        console.warn("Modo Offline: Usando datos de LocalStorage exclusivamente.");
-        return cachedLists;
-      }
+    try {
+      // REVERTING TO THE PREVIOUS, WORKING QUERY
+      const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AssociationList));
+    } catch (error) {
+      console.error("Error fetching lists by user:", error);
+      return [];
     }
-    return cachedLists;
   },
 
-  syncAllToCloud: async (userId: string, lists: AssociationList[]) => {
-    if (!isConfigured || !db || !userId) return;
-    
-    console.log(`☁️ Sincronizando ${lists.length} listas con GCP...`);
-    const batchPromises = lists.map(list => {
-      const listRef = doc(db, COLLECTION_NAME, list.id);
-      return setDoc(listRef, { ...list, userId, updatedAt: list.updatedAt || Date.now() }, { merge: true });
-    });
-
-    await Promise.all(batchPromises);
-    console.log("✅ Sincronización completada.");
-  },
-
-  saveToCloudDirect: async (userId: string, list: AssociationList) => {
-    if (!isConfigured || !db) return;
-    const listRef = doc(db, COLLECTION_NAME, list.id);
-    await setDoc(listRef, { ...list, userId, updatedAt: Date.now() }, { merge: true });
-  },
-
-  deleteFromCloud: async (listId: string) => {
-    if (isConfigured && db) {
-      try {
-        await deleteDoc(doc(db, COLLECTION_NAME, listId));
-      } catch (e) {
-        console.error("Error al borrar de la nube:", e);
-      }
+  createList: async (list: Omit<AssociationList, 'id'>): Promise<string> => {
+    try {
+      const docRef = doc(collection(db, COLLECTION_NAME));
+      await setDoc(docRef, { ...list, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating list:", error);
+      throw error;
     }
-  }
+  },
+
+  getList: async (listId: string): Promise<AssociationList | null> => {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, listId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { ...docSnap.data(), id: docSnap.id } as AssociationList;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting list:", error);
+      return null;
+    }
+  },
+
+  updateList: async (listId: string, updates: Partial<AssociationList>): Promise<void> => {
+    try {
+      const listRef = doc(db, COLLECTION_NAME, listId);
+      await updateDoc(listRef, { ...updates, updatedAt: serverTimestamp() });
+    } catch (error) {
+      console.error("Error updating list:", error);
+      throw error;
+    }
+  },
+
+  deleteList: async (listId: string): Promise<void> => {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, listId));
+    } catch (error) {
+      console.error("Error deleting list:", error);
+      throw error;
+    }
+  },
+
+  createMultipleLists: async (lists: Omit<AssociationList, 'id'>[]): Promise<void> => {
+    try {
+      const batch = writeBatch(db);
+      lists.forEach(list => {
+        const docRef = doc(collection(db, COLLECTION_NAME));
+        batch.set(docRef, { ...list, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error creating multiple lists:", error);
+      throw error;
+    }
+  },
 };
