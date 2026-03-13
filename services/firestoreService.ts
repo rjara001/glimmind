@@ -3,14 +3,13 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { AssociationList } from '../types';
 
-const COLLECTION_NAME = "associationLists";
+const COLLECTION_NAME = "lists";
 
 export const listService = {
 
   fetchListsByUser: async (userId: string): Promise<AssociationList[]> => {
     if (!userId) return [];
     try {
-      // REVERTING TO THE PREVIOUS, WORKING QUERY
       const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AssociationList));
