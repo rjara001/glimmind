@@ -18,16 +18,11 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
   
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";
 
+  // The main action button (Validate/Reveal) is now first in the DOM for correct Tab order.
+  // CSS `order` property is used to maintain the visual layout.
   return (
     <div className="w-full max-w-xl mt-4">
       <div className="grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm">
-        <button 
-          onClick={onNext} 
-          disabled={isTransitioning}
-          className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          Pasar
-        </button>
         
         <button 
           onClick={() => {
@@ -38,15 +33,23 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
             }
           }} 
           disabled={isTransitioning}
-          className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'} disabled:opacity-50 disabled:cursor-not-allowed order-2`}
         >
           {!isPracticeMode && !revealed ? 'Validar' : revealed ? 'Ocultar' : 'Revelar'}
         </button>
 
         <button 
+          onClick={onNext} 
+          disabled={isTransitioning}
+          className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1`}
+        >
+          Pasar
+        </button>
+        
+        <button 
           onClick={onCorrect} 
           disabled={isTransitioning || (!isPracticeMode && (wasRevealed || revealed))}
-          className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (!isPracticeMode && (wasRevealed || revealed)) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+          className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (!isPracticeMode && (wasRevealed || revealed)) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
         >
           Correcta
         </button>

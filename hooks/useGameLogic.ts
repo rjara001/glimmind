@@ -1,53 +1,38 @@
 
-import { useMemo } from 'react';
-import { AssociationList } from '../types';
-import { useGameEngine } from './useGameEngine';
+import { useState, useMemo, useCallback } from 'react';
+import { AssociationList, GameState } from '../types';
+import { GlimmindGame } from '../services/gameEngine';
 
-interface GameLogicProps {
-  list: AssociationList;
-}
+export const useGameLogic = ({ list }: { list: AssociationList }) => {
+  const [game, setGame] = useState(() => GlimmindGame.create(list));
 
-export type GameView = 'loading' | 'playing' | 'summary';
+  const actions = useMemo(() => ({
+    restart: () => setGame(prev => prev.restart()),
+    reveal: () => setGame(prev => prev.reveal()),
+    checkAnswer: () => setGame(prev => prev.checkAnswer()),
+    setUserInput: (input: string) => setGame(prev => prev.setUserInput(input)),
+    handlePass: () => setGame(prev => prev.processAction({ type: 'PASS' })),
+    handleCorrect: () => setGame(prev => prev.processAction({ type: 'CORRECT' })),
+  }), []);
 
-/**
- * A high-level hook to orchestrate the game flow.
- * It uses the `useGameEngine` to manage the core game logic and determines
- * which view (e.g., 'playing', 'summary') should be displayed.
- */
-export const useGameLogic = ({ list }: GameLogicProps) => {
-  const {
-    gameState,
-    currentAssociation,
-    feedback,
-    actions,
-  } = useGameEngine(list);
+  const gameState = game.state;
+  const currentAssociation = game.currentAssociation;
 
-  const gameView: GameView = useMemo(() => {
-    if (gameState.isFinished) {
-      return 'summary';
-    }
-    if (currentAssociation) {
-      return 'playing';
-    }
-    // If the game is not finished but there is no current association,
-    // it might be loading or in an intermediate state. 
-    // Or the game ended immediately after starting.
-    return gameState.isFinished ? 'summary' : 'loading';
-  }, [gameState.isFinished, currentAssociation]);
+  const gameView = useMemo(() => {
+    if (gameState.isFinished) return 'summary';
+    return 'card';
+  }, [gameState.isFinished]);
 
   return {
     gameView,
-    // Game State
     gameState,
     currentAssociation,
     summary: gameState.summary,
-    
-    // UI State
-    feedback,
+    feedback: gameState.feedback,
     userInput: gameState.userInput,
     isRevealed: gameState.revealed,
-
-    // Actions
+    similarity: gameState.similarity,
+    lastAttempt: gameState.lastAttempt,
     actions,
   };
 };

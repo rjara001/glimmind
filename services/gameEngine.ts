@@ -1,7 +1,6 @@
 
 import { Association, AssociationList, GameState, GameCycle, GameSummary, GameFeedback } from "../types";
 
-// The initial state for any new game, minus the list-specific parts.
 const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
   globalCycle: 1,
   activeQueue: [],
@@ -11,82 +10,97 @@ const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
   revealed: false,
   userInput: "",
   feedback: 'none',
+  similarity: null,
+  lastAttempt: "",
 };
 
 /**
- * An immutable game engine for Glimmind.
- * Every action processed returns a NEW instance of the game
- * with the updated state, preserving the history of states.
+ * Calculates the Levenshtein distance between two strings. A lower number means more similar.
  */
+function calculateLevenshteinDistance(a: string = '', b: string = ''): number {
+  const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+  for (let i = 0; i <= a.length; i += 1) { matrix[0][i] = i; }
+  for (let j = 0; j <= b.length; j += 1) { matrix[j][0] = j; }
+  for (let j = 1; j <= b.length; j += 1) {
+    for (let i = 1; i <= a.length; i += 1) {
+      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1, // deletion
+        matrix[j - 1][i] + 1, // insertion
+        matrix[j - 1][i - 1] + indicator, // substitution
+      );
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Calculates the similarity percentage between two strings.
+ */
+function calculateSimilarity(a: string, b: string): number {
+  const distance = calculateLevenshteinDistance(a.toLowerCase(), b.toLowerCase());
+  const longerLength = Math.max(a.length, b.length);
+  if (longerLength === 0) return 100;
+  const similarity = (1 - distance / longerLength) * 100;
+  return Math.max(0, Math.round(similarity));
+}
+
 export class GlimmindGame {
   public readonly state: GameState;
   private readonly initialList: AssociationList;
 
-  // The constructor is private to enforce creation through the static 'create' method,
-  // ensuring a clear and single entry point for game initialization.
   private constructor(list: AssociationList, state: GameState) {
     this.initialList = list;
     this.state = state;
   }
 
-  /**
-   * Creates a new game instance from a list.
-   * This is the official starting point for any game session.
-   */
   public static create(list: AssociationList): GlimmindGame {
     const initialState = GlimmindGame._initializeGame(list);
     return new GlimmindGame(list, initialState);
   }
 
   public get currentAssociation(): Association | undefined {
-    if (this.state.isFinished || !this.state.activeQueue[this.state.currentIndex]) {
-      return undefined;
-    }
+    if (this.state.isFinished || !this.state.activeQueue[this.state.currentIndex]) return undefined;
     const currentId = this.state.activeQueue[this.state.currentIndex];
     return this.state.associations.find(a => a.id === currentId);
   }
 
-  /** Restarts the game with the initial list, shuffling the cards again. */
   public restart(): GlimmindGame {
     const initialState = GlimmindGame._initializeGame(this.initialList);
     return new GlimmindGame(this.initialList, initialState);
   }
 
-  /** Reveals the definition of the current card. */
   public reveal(): GlimmindGame {
     if (this.state.revealed) return this;
     return new GlimmindGame(this.initialList, { ...this.state, revealed: true });
   }
 
-  /** Updates the user's input. */
   public setUserInput(input: string): GlimmindGame {
-    return new GlimmindGame(this.initialList, { ...this.state, userInput: input, feedback: 'none' });
+    const newState: GameState = { ...this.state, userInput: input, feedback: 'none', similarity: null };
+    return new GlimmindGame(this.initialList, newState);
   }
 
-  /** Checks the user's answer against the current card's definition. */
   public checkAnswer(): GlimmindGame {
     const current = this.currentAssociation;
     if (!current || this.state.revealed) return this;
 
-    const isCorrect = this.state.userInput.trim().toLowerCase() === current.definition.trim().toLowerCase();
-    const feedback: GameFeedback = isCorrect ? 'correct' : 'incorrect';
+    const userAnswer = this.state.userInput.trim();
+    const correctAnswer = current.definition.trim();
+    const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase();
 
     if (isCorrect) {
-      // If correct, we reveal and then process the 'CORRECT' action.
-      const revealedState = { ...this.state, revealed: true, feedback };
-      const revealedGame = new GlimmindGame(this.initialList, revealedState);
+      const correctState: GameState = { ...this.state, revealed: true, feedback: 'correct', similarity: 100, lastAttempt: userAnswer };
+      const revealedGame = new GlimmindGame(this.initialList, correctState);
       return revealedGame.processAction({ type: 'CORRECT' });
     } else {
-      // If incorrect, just show feedback and clear input.
-      const incorrectState = { ...this.state, feedback, userInput: '' };
+      const similarity = calculateSimilarity(userAnswer, correctAnswer);
+      const incorrectState: GameState = { ...this.state, feedback: 'incorrect', userInput: '', similarity, lastAttempt: userAnswer };
       return new GlimmindGame(this.initialList, incorrectState);
     }
   }
 
-  /** Processes a 'CORRECT' or 'PASS' action on the current card. */
   public processAction(action: { type: 'CORRECT' | 'PASS' }): GlimmindGame {
-    if (this.state.isFinished) return this; 
-
+    if (this.state.isFinished) return this;
     const currentAssoc = this.currentAssociation;
     if (!currentAssoc) return this._checkForNextCycle();
 
@@ -99,15 +113,13 @@ export class GlimmindGame {
       associations[assocIndex] = { ...currentAssoc, currentCycle: (currentAssoc.currentCycle + 1) as GameCycle };
     }
 
-    const nextState: GameState = { ...this.state, associations, currentIndex: this.state.currentIndex + 1, revealed: false, userInput: '', feedback: 'none' };
+    const nextState: GameState = { ...this.state, associations, currentIndex: this.state.currentIndex + 1, revealed: false, userInput: '', feedback: 'none', similarity: null, lastAttempt: '' };
     const nextGame = new GlimmindGame(this.initialList, nextState);
     return nextGame._checkForNextCycle();
   }
 
-  // Checks if the current queue is finished and tries to generate the next one.
   private _checkForNextCycle(): GlimmindGame {
-    if (this.state.currentIndex < this.state.activeQueue.length) return this; // The current queue is still active.
-
+    if (this.state.currentIndex < this.state.activeQueue.length) return this;
     const nextGlobalCycle = this.state.globalCycle + 1;
     if (nextGlobalCycle > 4) return this._endGame();
 
@@ -118,14 +130,12 @@ export class GlimmindGame {
     return new GlimmindGame(this.initialList, nextState);
   }
   
-  // Finalizes the game, calculating the summary.
   private _endGame(): GlimmindGame {
     const summary = GlimmindGame._calculateSummary(this.state.associations);
     const finalState: GameState = { ...this.state, isFinished: true, summary: summary };
     return new GlimmindGame(this.initialList, finalState);
   }
 
-  // Calculates the final score summary. Static because it's a pure function.
   private static _calculateSummary(associations: Association[]): GameSummary {
     return associations.reduce((summary, assoc) => {
       if (assoc.isLearned) summary.learned++;
@@ -140,31 +150,20 @@ export class GlimmindGame {
     }, { learned: 0, known: 0, recognized: 0, seen: 0 });
   }
   
-  // Prepares the initial state for the game. Static because it's a pure function.
   private static _initializeGame(list: AssociationList): GameState {
-    const initialAssociations = list.associations
-      .filter(a => !a.isArchived)
-      .map(a => ({ ...a, currentCycle: 1, status: 'pending', isLearned: false } as Association));
-
+    const initialAssociations = list.associations.filter(a => !a.isArchived).map(a => ({ ...a, currentCycle: 1, status: 'pending', isLearned: false } as Association));
     const shuffle = (arr: string[]) => arr.sort(() => Math.random() - 0.5);
-
     const activeQueue = GlimmindGame._generateActiveQueue(initialAssociations, 1);
     const shuffledQueue = shuffle(activeQueue);
-
     const state: GameState = { ...INITIAL_GAME_STATE, listId: list.id, associations: initialAssociations, activeQueue: shuffledQueue };
-    
     if (state.activeQueue.length === 0) {
-        state.isFinished = true;
-        state.summary = GlimmindGame._calculateSummary(initialAssociations);
+      state.isFinished = true;
+      state.summary = GlimmindGame._calculateSummary(initialAssociations);
     }
-
     return state;
   }
   
-  // Generates a new queue of card IDs for a given cycle. Static because it's a pure function.
   private static _generateActiveQueue(associations: Association[], cycle: GameCycle): string[] {
-    return associations
-      .filter(a => a.currentCycle === cycle && a.status === 'pending')
-      .map(a => a.id);
+    return associations.filter(a => a.currentCycle === cycle && a.status === 'pending').map(a => a.id);
   }
 }

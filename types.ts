@@ -25,8 +25,8 @@ export interface AssociationList {
     flipOrder: 'normal' | 'reversed';
     threshold: number;
   };
-  createdAt?: any; // Changed to any to support both number and FieldValue
-  updatedAt?: any; // Changed to any to support both number and FieldValue
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface GameSummary {
@@ -47,4 +47,6 @@ export interface GameState {
   revealed: boolean;
   userInput: string;
   feedback: GameFeedback;
+  similarity: number | null;
+  lastAttempt: string;
 }
