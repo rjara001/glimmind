@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Association, AssociationList } from '../types';
+import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { GameHeader } from './game/GameHeader';
 import { GameCard } from './game/GameCard';
@@ -14,6 +14,13 @@ interface GameViewProps {
   onBack: () => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
 }
+
+const cycleColorMap: Record<GameCycle, string> = {
+  1: 'indigo',
+  2: 'amber',
+  3: 'orange',
+  4: 'emerald',
+};
 
 export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations }) => {
   const [showSettings, setShowSettings] = useState(false);
@@ -109,19 +116,34 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
   const cycleStats = { pending: gameState.activeQueue.length - gameState.currentIndex, correct: gameState.currentIndex };
 
+  const cycleColorName = cycleColorMap[gameState.globalCycle as GameCycle] || 'slate';
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
       <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className={`flex flex-col lg:flex-row gap-6 items-start transition-colors duration-500 border-l-8 pl-4 border-${cycleColorName}-500/20`}>
         <div className="flex-1 w-full flex flex-col items-center">
           <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
-            <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className="text-sm font-bold text-indigo-600">{cycleStats.pending}</span></div>
+            <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className={`text-sm font-bold text-${cycleColorName}-600`}>{cycleStats.pending}</span></div>
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Correctas:</span><span className="text-sm font-bold text-emerald-600">{cycleStats.correct}</span></div>
           </div>
-          <GameCard key={currentAssociation.id} displayTerm={displayTerm} displayDef={displayDef} labelTerm={labelTerm} labelDef={labelDef} revealed={isRevealed} isPracticeMode={list.settings.mode === 'training'} userInput={userInput} onUserInput={actions.setUserInput} onCheckAnswer={actions.checkAnswer} feedback={feedback} />
+          <GameCard 
+            key={currentAssociation.id} 
+            displayTerm={displayTerm} 
+            displayDef={displayDef} 
+            labelTerm={labelTerm} 
+            labelDef={labelDef} 
+            revealed={isRevealed} 
+            isPracticeMode={list.settings.mode === 'training'} 
+            userInput={userInput} 
+            onUserInput={actions.setUserInput} 
+            onCheckAnswer={actions.checkAnswer} 
+            feedback={feedback} 
+            cycleColorName={cycleColorName}
+          />
           <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
         </div>
-        <CycleProgress gameState={gameState} />
+        <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
       </div>
       {showSettings && <SettingsModal list={list} onClose={() => setShowSettings(false)} onRestart={actions.restart} />}
     </div>
