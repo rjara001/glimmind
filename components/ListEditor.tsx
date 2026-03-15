@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AssociationList, Association } from '../types';
 import { aiService } from '../services/aiService';
 import { SmartGroupModal } from './SmartGroupModal';
@@ -19,6 +19,53 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[] | null>(null);
 
+  const cleanupAndSave = useCallback((listToSave: AssociationList) => {
+    // Create a set of seen IDs to ensure uniqueness
+    const seenIds = new Set<string>();
+    const cleanedAssociations = listToSave.associations
+      .map(assoc => {
+        // Trim whitespace from term and definition
+        const term = assoc.term.trim();
+        const definition = assoc.definition.trim();
+        
+        // Ensure ID is unique, generate a new one if it's a duplicate or invalid
+        let id = assoc.id;
+        if (!id || seenIds.has(id)) {
+          id = crypto.randomUUID();
+        }
+        seenIds.add(id);
+
+        return { ...assoc, id, term, definition };
+      })
+      // Filter out any associations that are completely empty
+      .filter(assoc => assoc.term !== '' || assoc.definition !== '');
+
+    const updatedList = { ...listToSave, associations: cleanedAssociations };
+    setEditList(updatedList);
+    onSave(updatedList);
+  }, [onSave]);
+
+  // Effect for initial cleanup when the component mounts
+  useEffect(() => {
+    const initialAssociations = list.associations;
+    let needsCleanup = false;
+
+    const seenIds = new Set<string>();
+    for (const assoc of initialAssociations) {
+      if (!assoc.id || seenIds.has(assoc.id) || assoc.term.trim() !== assoc.term || assoc.definition.trim() !== assoc.definition || (assoc.term.trim() === '' && assoc.definition.trim() === '')) {
+        needsCleanup = true;
+        break;
+      }
+      seenIds.add(assoc.id);
+    }
+
+    if (needsCleanup) {
+      console.log("🧼 Data sanitization: Detected duplicate IDs, whitespace, or empty rows on load. Cleaning up...");
+      cleanupAndSave(list);
+    }
+  }, [list, cleanupAndSave]);
+
+
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
     const newAssocs: Association[] = bulkText.split('\n')
@@ -28,8 +75,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         const parts = line.split(/[\t;]|,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
         return {
           id: crypto.randomUUID(),
-          term: parts[0]?.replace(/^"|"$/g, '').trim() || '',
-          definition: parts[1]?.replace(/^"|"$/g, '').trim() || '',
+          term: (parts[0]?.replace(/^"|"$/g, '').trim() || ''),
+          definition: (parts[1]?.replace(/^"|"$/g, '').trim() || ''),
           currentCycle: 1,
           status: 'pending',
           isLearned: false,
@@ -38,22 +85,21 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       })
       .filter(a => a.term || a.definition);
     
-    const updated = { ...editList, associations: [...editList.associations, ...newAssocs] };
-    setEditList(updated);
-    onSave(updated);
+    cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
     setBulkText('');
     setShowBulk(false);
   };
 
   const handleSmartSplit = async () => {
-    if (editList.associations.length < 3) {
+    const activeAssociations = editList.associations.filter(a => !a.isArchived);
+    if (activeAssociations.length < 3) {
       alert("Necesitas al menos 3 elementos para que la IA encuentre patrones lógicos.");
       return;
     }
     
     setIsAnalyzing(true);
     try {
-      const suggestions = await aiService.groupAssociations(editList.associations, editList.concept);
+      const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
       setAiSuggestions(suggestions);
     } catch (e: any) {
       console.error(e);
@@ -73,28 +119,26 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       isLearned: false,
       isArchived: false,
     };
-    const updated = { ...editList, associations: [newAssociation, ...editList.associations] };
-    setEditList(updated);
-    onSave(updated);
+    setEditList(current => ({ ...current, associations: [newAssociation, ...current.associations] }));
   };
 
-  const handleUpdateRow = (id: string, field: keyof Association, value: any) => {
-    const updated = {
-      ...editList,
-      associations: editList.associations.map(a => a.id === id ? { ...a, [field]: value } : a)
-    };
-    setEditList(updated);
-    onSave(updated);
+  const handleUpdateField = (id: string, field: keyof Association, value: any) => {
+    const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, [field]: value } : a);
+    setEditList({ ...editList, associations: updatedAssociations });
+  };
+
+  const handleBlurRow = () => {
+    cleanupAndSave(editList);
   };
 
   const handleRemoveRow = (id: string) => {
     const updated = { ...editList, associations: editList.associations.filter(a => a.id !== id) };
-    setEditList(updated);
-    onSave(updated);
+    cleanupAndSave(updated);
   };
   
   const handleRestoreRow = (id: string) => {
-    handleUpdateRow(id, 'isArchived', false);
+    const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, isArchived: false } : a);
+    cleanupAndSave({ ...editList, associations: updatedAssociations });
   };
 
   const activeAssociations = editList.associations.filter(a => !a.isArchived);
@@ -154,15 +198,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           <div className="p-6 bg-indigo-50/50 border-b border-indigo-100"><textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="Término, Definición (uno por línea)" className="w-full h-32 px-4 py-3 border border-indigo-100 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner" /><div className="flex justify-end"><button onClick={handleBulkAdd} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition">Procesar Importación</button></div></div>
         )}
 
-        {/* Active Associations Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-slate-50/30"><th className="px-8 py-4">{editList.concept.split('/')[0] || 'Término'}</th><th className="px-8 py-4">{editList.concept.split('/')[1] || 'Definición'}</th><th className="px-8 py-4 w-16"></th></tr></thead>
             <tbody className="divide-y divide-slate-50">
               {filteredActive.map((assoc) => (
                 <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors">
-                  <td className="px-8 py-4"><input type="text" value={assoc.term} onChange={(e) => handleUpdateRow(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Escribir término..." /></td>
-                  <td className="px-8 py-4"><input type="text" value={assoc.definition} onChange={(e) => handleUpdateRow(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Escribir definición..." /></td>
+                  <td className="px-8 py-4"><input type="text" value={assoc.term} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Escribir término..." /></td>
+                  <td className="px-8 py-4"><input type="text" value={assoc.definition} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Escribir definición..." /></td>
                   <td className="px-8 py-4"><button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Eliminar fila"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td>
                 </tr>
               ))}
@@ -171,7 +214,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </table>
         </div>
 
-        {/* Archived Associations Section */}
         {archivedAssociations.length > 0 && (
           <div className="pt-6">
             <div className="px-8 pb-4">

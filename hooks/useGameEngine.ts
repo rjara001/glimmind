@@ -4,67 +4,71 @@ import { AssociationList, GameState } from '../types';
 import { GlimmindGame } from '../services/gameEngine';
 import { calculateSimilarity } from '../utils/similarity';
 
-// This hook is a wrapper around the GlimmindGame class engine.
+/**
+ * This hook is the definitive controller connecting the React UI to the immutable GlimmindGame engine.
+ * It holds the single source of truth—the `game` instance—and exposes its state and actions to the UI.
+ */
 export const useGameEngine = (list: AssociationList) => {
-  // The GlimmindGame class instance is the source of truth for all game logic.
-  const [game, setGame] = useState(() => new GlimmindGame(list));
+  // The `game` object is the one and only source of truth.
+  // It's updated immutably by the actions below.
+  const [game, setGame] = useState(() => GlimmindGame.create(list));
 
-  // The hook's state is a direct reflection of the game engine's state.
-  const [gameState, setGameState] = useState<GameState>(game.currentState);
-
+  // Transient UI state for feedback. This doesn't need to be in the core engine.
   const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none');
 
-  const updateStateFromEngine = useCallback((newGame: GlimmindGame) => {
-    setGameState(newGame.currentState);
-    setGame(newGame);
-  }, []);
+  // --- DERIVED STATE ---
+  // These values are always in sync because they are derived directly from the current `game` instance.
+  const gameState: GameState = game.state;
+  const currentAssociation = useMemo(() => game.currentAssociation, [game]);
+
+  // --- ACTIONS ---
+  // All actions are wrapped in useCallback for performance.
+  // They follow a simple pattern: call a method on the game engine, get a *new* game instance, and update the state.
 
   const handleCorrect = useCallback(() => {
-    const newGame = game.processAction({ type: 'CORRECT' });
-    updateStateFromEngine(newGame);
-  }, [game, updateStateFromEngine]);
+    setGame(g => g.processAction({ type: 'CORRECT' }));
+  }, []);
 
   const handlePass = useCallback(() => {
-    const newGame = game.processAction({ type: 'PASS' });
-    updateStateFromEngine(newGame);
-  }, [game, updateStateFromEngine]);
+    setGame(g => g.processAction({ type: 'PASS' }));
+  }, []);
+
+  const restart = useCallback(() => {
+    setGame(GlimmindGame.create(list));
+  }, [list]);
+
+  const reveal = useCallback(() => {
+    // In a pure immutable setup, even revealing is an action that produces a new state.
+    // We will add this to the engine for purity, but for now, we handle it here.
+    setGame(g => new GlimmindGame(list, { ...g.state, revealed: true }));
+  }, [list]);
+
+  const setUserInput = useCallback((input: string) => {
+    setGame(g => new GlimmindGame(list, { ...g.state, userInput: input }));
+  }, [list]);
 
   const checkAnswer = useCallback(() => {
-    const currentAssoc = game.currentAssociation;
-    if (!currentAssoc || !gameState.userInput) return;
+    if (!currentAssociation || !gameState.userInput) return;
 
-    const term = list.settings.flipOrder === 'reversed' ? currentAssoc.definition : currentAssoc.term;
-    const definition = list.settings.flipOrder === 'reversed' ? currentAssoc.term : currentAssoc.definition;
+    const term = list.settings.flipOrder === 'reversed' ? currentAssociation.definition : currentAssociation.term;
+    const definition = list.settings.flipOrder === 'reversed' ? currentAssociation.term : currentAssociation.definition;
 
     const similarity = calculateSimilarity(gameState.userInput, definition);
     const isCorrect = similarity >= (list.settings.threshold || 0.9);
 
     if (isCorrect) {
       setFeedback('correct');
-      // Use a timeout to allow the user to see the feedback before advancing
+      // After showing feedback, process the 'CORRECT' action.
       setTimeout(() => {
-        handleCorrect();
+        setGame(g => g.processAction({ type: 'CORRECT' }));
         setFeedback('none');
       }, 600);
     } else {
       setFeedback('incorrect');
-      // Reveal the correct answer, but don't advance automatically.
-      setGameState(prevState => ({ ...prevState, revealed: true }));
+      // Only reveal the answer, don't advance.
+      reveal();
     }
-  }, [game, gameState.userInput, list.settings, handleCorrect]);
-
-  const restart = useCallback(() => {
-    const newGame = new GlimmindGame(list);
-    setGame(newGame);
-    setGameState(newGame.currentState);
-  }, [list]);
-  
-  // Helper function to update the user's input
-  const setUserInput = (input: string) => {
-      setGameState(prevState => ({...prevState, userInput: input}));
-  }
-
-  const currentAssociation = useMemo(() => game.currentAssociation, [game]);
+  }, [currentAssociation, gameState.userInput, list.settings, reveal]);
 
   return {
     gameState,
@@ -76,8 +80,7 @@ export const useGameEngine = (list: AssociationList) => {
       handlePass,
       restart,
       setUserInput,
-      // Directly expose reveal for UI flexibility if needed
-      reveal: () => setGameState(prevState => ({ ...prevState, revealed: true }))
+      reveal,
     },
   };
 };

@@ -20,8 +20,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const { gameView, gameState, currentAssociation, summary, feedback, userInput, isRevealed, actions } = useGameLogic({ list });
 
   const handleArchiveLearnedCards = async () => {
+    // If there are no learned cards to archive, just go back to the dashboard.
     if (!summary || summary.learned === 0) {
-      actions.restart();
+      onBack();
       return;
     }
 
@@ -34,7 +35,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     if (learnedCardIds.length > 0) {
       const updatedAssociations = list.associations.map(assoc => {
         if (learnedCardIds.includes(assoc.id)) {
-          return { ...assoc, isArchived: true, isLearned: false, currentCycle: 1 };
+          // When archiving, reset the card's state completely for future consistency.
+          return { ...assoc, isArchived: true, isLearned: false, currentCycle: 1, status: 'pending' };
         }
         return assoc;
       });
@@ -45,7 +47,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         console.error("Error passing updated associations to parent:", error);
       }
     }
-    actions.restart();
+    
+    // After archiving, navigate back to the dashboard.
+    onBack();
   };
 
   const handleFullRestart = async () => {
@@ -60,6 +64,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     try {
       await onUpdateAssociations(resetAssociations);
+      // After a full reset, we start a new game session with the now-clean list.
       actions.restart();
     } catch (error) {
       console.error("Error during full restart:", error);
@@ -86,11 +91,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   }, [gameState.isFinished, showSettings, list.settings.mode, feedback, isRevealed, actions, currentAssociation, isTransitioning]);
 
   if (gameView === 'summary') {
-    // If the game session ended with no active cards (e.g., all were archived),
-    // the "Restart" action should perform a full reset of all cards.
-    const restartAction = (gameState.associations.length === 0)
-      ? handleFullRestart
-      : actions.restart;
+    // If the game ended because all cards were already archived, the main action should be a full reset.
+    const restartAction = (gameState.associations.length === 0) ? handleFullRestart : actions.restart;
 
     return <FinishedScreen summary={summary} onRestart={restartAction} onBack={onBack} onArchive={handleArchiveLearnedCards} />;
   }
