@@ -1,6 +1,7 @@
 
 export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
+export type GameFeedback = 'none' | 'correct' | 'incorrect';
 
 export interface Association {
   id: string;
@@ -18,7 +19,7 @@ export interface AssociationList {
   name: string;
   concept: string;
   associations: Association[];
-  isArchived: boolean; // <-- THE FIX IS HERE
+  isArchived: boolean;
   settings: {
     mode: GameMode;
     flipOrder: 'normal' | 'reversed';
@@ -45,4 +46,5 @@ export interface GameState {
   summary: GameSummary | null;
   revealed: boolean;
   userInput: string;
+  feedback: GameFeedback;
 }

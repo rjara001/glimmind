@@ -84,10 +84,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showSettings || gameState.isFinished || !currentAssociation || isTransitioning) return;
-      if (list.settings.mode === 'real' && !isRevealed && feedback === 'none') {
+      // In 'real' mode, as long as the card is not revealed, we prioritize typing.
+      if (list.settings.mode === 'real' && !isRevealed) {
         if (e.key === 'Enter') { e.preventDefault(); actions.checkAnswer(); }
+        // For any other key (like Space), we return to allow default typing behavior.
         return;
       }
+      // For other modes, or when the card is revealed, Space and Enter are shortcuts.
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (!isRevealed) { actions.reveal(); } else { actions.handlePass(); }
