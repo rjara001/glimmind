@@ -41,9 +41,9 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState, cycleCo
   const totalProgress = totalAssociations > 0 ? (learnedCount / totalAssociations) * 100 : 0;
 
   const cycleColorMap: Record<GameCycle, string> = {
-    1: 'indigo',
-    2: 'amber',
-    3: 'orange',
+    1: 'sky',
+    2: 'yellow',
+    3: 'rose',
     4: 'emerald',
   };
 

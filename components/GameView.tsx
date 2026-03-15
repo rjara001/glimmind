@@ -16,9 +16,9 @@ interface GameViewProps {
 }
 
 const cycleColorMap: Record<GameCycle, string> = {
-  1: 'indigo',
-  2: 'amber',
-  3: 'orange',
+  1: 'sky',
+  2: 'yellow',
+  3: 'rose',
   4: 'emerald',
 };
 
@@ -121,7 +121,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
       <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
-      <div className={`flex flex-col lg:flex-row gap-6 items-start transition-colors duration-500 border-l-8 pl-4 border-${cycleColorName}-500/20`}>
+      <div className={`flex flex-col lg:flex-row gap-6 items-start transition-colors duration-500`}>
         <div className="flex-1 w-full flex flex-col items-center">
           <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className={`text-sm font-bold text-${cycleColorName}-600`}>{cycleStats.pending}</span></div>
