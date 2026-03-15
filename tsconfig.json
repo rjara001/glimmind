@@ -15,7 +15,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["jest", "@testing-library/jest-dom"]
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "components", "hooks", "lib", "services", "types.ts", "jest.config.ts"]
+  "include": ["src", "components", "hooks", "lib", "services", "types.ts"]
 }
