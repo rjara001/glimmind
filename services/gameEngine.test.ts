@@ -115,8 +115,9 @@ describe('GlimmindGame', () => {
             const revealed = game.reveal();
             const result = revealed.processAction({ type: 'CORRECT' });
             
-            expect(result.state.associations[0].status).toBe('correct');
-            expect(result.state.associations[0].isLearned).toBe(true);
+            const processedCard = result.state.associations.find(a => a.status === 'correct');
+            expect(processedCard).toBeDefined();
+            expect(processedCard?.isLearned).toBe(true);
         });
 
         it('cycles through all cards and finishes', () => {

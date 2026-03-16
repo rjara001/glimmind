@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
 interface GameCardProps {
   displayTerm: string | undefined;
@@ -15,6 +15,7 @@ interface GameCardProps {
   cycleColorName?: string;
   similarity: number | null;
   lastAttempt: string;
+  onNextCard?: () => void;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -31,15 +32,29 @@ export const GameCard: React.FC<GameCardProps> = ({
   cycleColorName = 'indigo',
   similarity,
   lastAttempt,
+  onNextCard,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showValidationMessage, setShowValidationMessage] = useState(false);
 
-  // Effect to focus the input when it becomes available.
+  useEffect(() => {
+    if (feedback !== 'none') {
+      setShowValidationMessage(true);
+      const timer = setTimeout(() => {
+        setShowValidationMessage(false);
+        if (feedback === 'correct' && onNextCard) {
+          onNextCard();
+        }
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback, onNextCard]);
+
   useEffect(() => {
     if (!isPracticeMode && !revealed && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [revealed, isPracticeMode, feedback]); // Refocus after incorrect feedback
+  }, [revealed, isPracticeMode, feedback]);
 
   const feedbackClasses = feedback === 'correct' 
     ? `ring-8 ring-emerald-400 border-emerald-500`
@@ -49,6 +64,18 @@ export const GameCard: React.FC<GameCardProps> = ({
 
   const showIncorrectFeedback = feedback === 'incorrect' && similarity !== null;
   const showLastAttempt = lastAttempt && feedback !== 'none' && !revealed;
+
+  const validationMessage = showValidationMessage && lastAttempt && displayDef ? (
+    <div className={`mt-3 px-4 py-2 rounded-xl text-sm font-bold animate-in fade-in slide-in-from-bottom-2 ${
+      feedback === 'correct' 
+        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+        : 'bg-rose-100 text-rose-700 border border-rose-200'
+    }`}>
+      <span className="line-through mr-2">{lastAttempt}</span>
+      <span>/</span>
+      <span className="ml-2">{displayDef}</span>
+    </div>
+  ) : null;
 
   return (
     <div className={`w-full bg-white rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-6 md:p-10 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-all duration-300 ${feedbackClasses}`}>
@@ -93,6 +120,7 @@ export const GameCard: React.FC<GameCardProps> = ({
             </p>
           </div>
         )}
+        {validationMessage}
       </div>
     </div>
   )

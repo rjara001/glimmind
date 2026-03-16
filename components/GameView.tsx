@@ -13,6 +13,7 @@ interface GameViewProps {
   list: AssociationList;
   onBack: () => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
+  onUpdateList?: (updatedList: AssociationList) => Promise<void>;
 }
 
 const cycleColorMap: Record<GameCycle, string> = {
@@ -22,7 +23,7 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations }) => {
+export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList }) => {
   const [showSettings, setShowSettings] = useState(false);
   const { 
     gameView, 
@@ -46,7 +47,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     if (learnedCardIds.length > 0) {
       const updatedAssociations = list.associations.map(assoc => {
         if (learnedCardIds.includes(assoc.id)) {
-          return { ...assoc, isArchived: true, isLearned: false, currentCycle: 1, status: 'pending' };
+          return { ...assoc, isArchived: true, isLearned: false, currentCycle: 1, status: 'pending' as const };
         }
         return assoc;
       });
@@ -60,7 +61,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   };
 
   const handleFullRestart = async () => {
-    const resetAssociations = list.associations.map(assoc => ({ ...assoc, isArchived: false, isLearned: false, currentCycle: 1, status: 'pending' }));
+    const resetAssociations = list.associations.map(assoc => ({ ...assoc, isArchived: false, isLearned: false, currentCycle: 1, status: 'pending' as const }));
     try {
       await onUpdateAssociations(resetAssociations);
       actions.restart();
@@ -113,10 +114,11 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
   const cycleStats = { pending: gameState.activeQueue.length - gameState.currentIndex, correct: gameState.currentIndex };
   const cycleColorName = cycleColorMap[gameState.globalCycle as GameCycle] || 'slate';
+  const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
-      <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} gameMode={list.settings.mode} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
+      <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
       <div className={`flex flex-col lg:flex-row gap-6 items-start transition-colors duration-500`}>
         <div className="flex-1 w-full flex flex-col items-center">
           <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
@@ -138,12 +140,26 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             cycleColorName={cycleColorName}
             similarity={similarity}
             lastAttempt={lastAttempt}
+            onNextCard={actions.handleCorrect}
           />
           <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
         </div>
         <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
       </div>
-      {showSettings && <SettingsModal list={list} onClose={() => setShowSettings(false)} onRestart={actions.restart} />}
+      {showSettings && <SettingsModal 
+        list={list} 
+        onUpdateList={async (updatedList) => {
+          console.log("Updated list:", updatedList);  
+          
+          if (onUpdateList) {
+            await onUpdateList(updatedList);
+          } else {
+            await onUpdateAssociations(updatedList.associations);
+          }
+        }} 
+        onClose={() => setShowSettings(false)} 
+        onRestart={actions.restart} 
+      />}
     </div>
   );
 };

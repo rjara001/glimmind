@@ -1,5 +1,5 @@
 
-import { Association, AssociationList, GameState, GameCycle, GameSummary, GameFeedback } from "../types";
+import { Association, AssociationList, GameState, GameCycle, GameSummary } from "../types";
 
 const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
   globalCycle: 1,
@@ -90,8 +90,7 @@ export class GlimmindGame {
 
     if (isCorrect) {
       const correctState: GameState = { ...this.state, revealed: true, feedback: 'correct', similarity: 100, lastAttempt: userAnswer };
-      const revealedGame = new GlimmindGame(this.initialList, correctState);
-      return revealedGame.processAction({ type: 'CORRECT' });
+      return new GlimmindGame(this.initialList, correctState);
     } else {
       const similarity = calculateSimilarity(userAnswer, correctAnswer);
       const incorrectState: GameState = { ...this.state, feedback: 'incorrect', userInput: '', similarity, lastAttempt: userAnswer };
