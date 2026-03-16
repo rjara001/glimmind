@@ -17,3 +17,33 @@ Este documento describe los atajos de teclado disponibles en la vista de juego d
 ## Modo Entrenamiento (`training`)
 
 - **`Enter` o `Espacio`**: Revela la respuesta o, si ya está revelada, pasa a la siguiente tarjeta.
+
+## Validación de Intentos
+
+Cuando un usuario envía un intento, la lógica de validación es la siguiente:
+
+### Intento Incorrecto
+
+Mensaje efimero: Mensaje que aparece un tiempo determinado
+
+*   Aparece un mensaje efímero que muestra:
+    *   El texto introducido por el usuario.
+    *   El porcentaje de similitud.
+    *   El umbral de porcentaje requerido (`treshold`).
+*   El campo de texto de la respuesta se limpia automáticamente.
+*   El foco vuelve al campo de texto.
+*   Debe cambiar de color del marco de la tarjeta a rojo por unos instantes, dando a entender que el valor introducido es incorrecto
+
+### Intento Correcto
+
+*   Aparece un mensaje efímero que muestra:
+    *   El texto esperado.
+    *   El texto introducido por el usuario.
+    *   El porcentaje de similitud.
+    *   El umbral de porcentaje requerido (`treshold`).
+*   Se avanza a la siguiente tarjeta.
+*   El campo de texto de la respuesta se limpia automáticamente.
+*   El foco vuelve al campo de texto.
+*   Debe cambiar de color del marco de la tarjeta a verde por unos instantes, dando a entender que el valor introducido es correcto
+
+## Camb
