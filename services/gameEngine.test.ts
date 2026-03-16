@@ -222,5 +222,45 @@ describe('GlimmindGame', () => {
             expect(game.state.activeQueue.length).toBe(2);
         });
     });
+
+    describe('checkAnswer (Validación de Intentos)', () => {
+        it('handles Intento Incorrecto correctly', () => {
+            const list = createMockList([
+                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+            ]);
+            let game = GlimmindGame.create(list);
+            
+            game = game.setUserInput('Wrong Answer');
+            game = game.checkAnswer();
+            
+            expect(game.state.feedback).toBe('incorrect'); // Indica que debe cambiar de color a rojo
+            expect(game.state.lastAttempt).toBe('Wrong Answer'); // El texto introducido por el usuario
+            expect(game.state.similarity).toBeDefined();
+            expect(game.state.similarity).toBeLessThan(100); // Porcentaje de similitud
+            expect(game.state.userInput).toBe(''); // El campo de texto de la respuesta se limpia automáticamente
+            expect(game.state.revealed).toBe(false);
+        });
+
+        it('handles Intento Correcto correctly', () => {
+            const list = createMockList([
+                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+            ]);
+            let game = GlimmindGame.create(list);
+            
+            game = game.setUserInput('Correct Answer');
+            game = game.checkAnswer();
+            
+            expect(game.state.feedback).toBe('correct'); // Indica que debe cambiar de color a verde
+            expect(game.state.lastAttempt).toBe('Correct Answer'); // El texto introducido por el usuario
+            expect(game.state.similarity).toBe(100); // Porcentaje de similitud al 100%
+            expect(game.state.revealed).toBe(true);
+            
+            // Acción para avanzar a la siguiente tarjeta (Se avanza a la siguiente tarjeta)
+            game = game.processAction({ type: 'CORRECT' });
+            
+            expect(game.state.isFinished).toBe(true); // Se avanza y termina si solo hay una
+            expect(game.state.userInput).toBe(''); // El campo de texto se limpia automáticamente
+        });
+    });
 });
 

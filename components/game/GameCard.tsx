@@ -10,7 +10,6 @@ interface GameCardProps {
   isPracticeMode: boolean;
   userInput: string;
   onUserInput: (value: string) => void;
-  onCheckAnswer: () => void;
   feedback: 'none' | 'correct' | 'incorrect';
   cycleColorName?: string;
   similarity: number | null;
@@ -27,7 +26,6 @@ export const GameCard: React.FC<GameCardProps> = ({
   isPracticeMode, 
   userInput, 
   onUserInput, 
-  onCheckAnswer,
   feedback,
   cycleColorName = 'indigo',
   similarity,
@@ -91,8 +89,8 @@ export const GameCard: React.FC<GameCardProps> = ({
               type="text"
               value={userInput}
               onChange={(e) => onUserInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onCheckAnswer()}
-              className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-${cycleColorName}-100 transition-all outline-none text-center`}
+              disabled={feedback !== 'none'}
+              className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-${cycleColorName}-100 transition-all outline-none text-center disabled:opacity-50`}
             />
             <div className="h-8 mt-2 text-sm text-slate-400 font-medium truncate">
               {showIncorrectFeedback ? (

@@ -75,19 +75,45 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showSettings || gameState.isFinished || !currentAssociation || isTransitioning) return;
+      // 1. Ignorar atajos si el modal de configuración está abierto o el juego terminó o no hay tarjeta
+      if (showSettings || gameState.isFinished || !currentAssociation) return;
+
       const target = e.target as HTMLElement;
       const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
+      // 2. Manejo cuando hay un mensaje de transición en pantalla (correcto/incorrecto)
+      if (feedback !== 'none') {
+        // En un intento correcto, Enter sirve para avanzar a la siguiente tarjeta inmediatamente
+        if (e.key === 'Enter' && feedback === 'correct') {
+          e.preventDefault();
+          actions.handleCorrect();
+        }
+        return; // Durante feedback, bloqueamos las demás teclas
+      }
+
+      // 3. Flujo normal (sin feedback en pantalla)
       if (!isTyping) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          if (!isRevealed) actions.reveal();
-          else actions.handlePass();
+          // Modos de juego
+          if (list.settings.mode === 'training') {
+             // En Training: Enter/Espacio siempre revela o pasa.
+             if (!isRevealed) actions.reveal();
+             else actions.handlePass();
+          } else {
+             // En Examen (Real mode):
+             // Si la tarjeta no está revelada y NO estamos escribiendo (foco en otro lado),
+             // no hacemos validación automática con Espacio/Enter para evitar pasar/revelar sin querer;
+             // a menos que esté revelada.
+             if (isRevealed) {
+                actions.handlePass();
+             }
+          }
         }
         return;
       }
 
+      // 4. Escribiendo (foco en el Input de GameCard en modo Real)
       if (isTyping && e.key === 'Enter') {
         e.preventDefault();
         actions.checkAnswer();
@@ -96,7 +122,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState.isFinished, showSettings, list.settings.mode, isRevealed, actions, currentAssociation, isTransitioning]);
+  }, [gameState.isFinished, showSettings, list.settings.mode, isRevealed, actions, currentAssociation, feedback]);
 
   if (gameView === 'summary') {
     const restartAction = (gameState.associations.length === 0) ? handleFullRestart : actions.restart;
@@ -135,7 +161,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             isPracticeMode={list.settings.mode === 'training'} 
             userInput={userInput} 
             onUserInput={actions.setUserInput} 
-            onCheckAnswer={actions.checkAnswer} 
             feedback={feedback} 
             cycleColorName={cycleColorName}
             similarity={similarity}
