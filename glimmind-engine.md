@@ -68,3 +68,10 @@ No hay mensajes de feedback en este modo
 *** CAMBIOS
 
 - Todo cambio debe incluir un aumento de version
+
+*** GUARDAR DATOS
+
+- El estado debe mantenrse en localstorage
+- Debe existir un boton para sincronizar los datos de la nube con el localstorage
+- Antes de salir de la aplicacion se deben guardar los datos en la nube sin preguntar al usuario
+

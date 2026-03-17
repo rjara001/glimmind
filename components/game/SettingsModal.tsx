@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AssociationList, AssociationStatus } from '../../types';
+import { AssociationList } from '../../types';
 
 interface SettingsModalProps {
   list: AssociationList;

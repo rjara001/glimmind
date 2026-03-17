@@ -4,25 +4,75 @@ import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { Auth } from './components/Auth';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider, useToast } from './components/Toast';
 import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 import { APP_VERSION } from './constants/version';
 
 const GUEST_ID = 'dev-user-local';
+const LOCAL_STORAGE_KEY = 'glimmind_lists';
+
 const MOCK_USER = {
   uid: GUEST_ID,
   displayName: 'Local Guest',
   photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff'
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { showToast } = useToast();
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedLists) {
+      try {
+        setLists(JSON.parse(savedLists));
+      } catch (e) {
+        console.error('Error loading from localStorage:', e);
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever lists change
+  useEffect(() => {
+    if (lists.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
+    }
+  }, [lists]);
+
+  // Auto-sync to cloud before unload
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (user && lists.length > 0) {
+        // Save to localStorage first
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
+        
+        // Try to sync to cloud
+        try {
+          for (const list of lists) {
+            await listService.updateList(list.id, {
+              name: list.name,
+              concept: list.concept,
+              associations: list.associations,
+              settings: list.settings,
+            });
+          }
+        } catch (e) {
+          console.error('Auto-sync failed:', e);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, lists]);
 
   useEffect(() => {
     const savedGuest = localStorage.getItem('glimmind_guest_user');
@@ -62,9 +112,24 @@ const App: React.FC = () => {
     loadLists();
   }, [user]);
 
-  const handleUpdateAssociations = async (listId: string, updatedAssociations: Association[]) => {
+  // Sync from cloud to local
+  const handleSyncFromCloud = async () => {
     if (!user) return;
+    setIsSyncing(true);
+    try {
+      const cloudLists = await listService.fetchListsByUser(user.uid);
+      setLists(cloudLists);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudLists));
+      showToast('Datos sincronizados desde la nube', 'success');
+    } catch (error) {
+      console.error('Sync failed:', error);
+      showToast('Error al sincronizar', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
+  const handleUpdateAssociations = async (listId: string, updatedAssociations: Association[]) => {
     const listToUpdate = lists.find(l => l.id === listId);
     if (!listToUpdate) return;
 
@@ -72,18 +137,36 @@ const App: React.FC = () => {
     const updatedLists = lists.map(l => l.id === listId ? updatedList : l);
     setLists(updatedLists);
 
-    try {
-      await listService.updateList(listId, { associations: updatedAssociations });
-    } catch (error) {
-      console.error("Failed to sync association updates:", error);
-      setLists(lists);
+    if (user && user.uid !== GUEST_ID) {
+      try {
+        await listService.updateList(listId, { associations: updatedAssociations });
+      } catch (error) {
+        console.error("Failed to sync association updates:", error);
+      }
     }
   };
 
- const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
-    if (!user) return;
+  const handleUpdateList = async (updatedList: AssociationList) => {
+    const updatedLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
+    setLists(updatedLists);
+
+    if (user && user.uid !== GUEST_ID) {
+      try {
+        await listService.updateList(updatedList.id, {
+          name: updatedList.name,
+          concept: updatedList.concept,
+          associations: updatedList.associations,
+          settings: updatedList.settings,
+        });
+      } catch (error) {
+        console.error("Failed to sync list updates:", error);
+      }
+    }
+  };
+
+  const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
     const newListData: Omit<AssociationList, 'id'> = {
-      userId: user.uid, 
+      userId: user?.uid || GUEST_ID, 
       name, 
       concept, 
       associations: initialAssocs, 
@@ -91,67 +174,95 @@ const App: React.FC = () => {
       settings: { mode: 'training', flipOrder: 'normal', threshold: 0.95 },
     };
     
-    try {
-      const newId = await listService.createList(newListData);
-      const newList = { ...newListData, id: newId };
-      setLists(prevLists => [...prevLists, newList]);
-      setSelectedListId(newId);
-      setView('editor');
-    } catch (e) {
-      console.error("Failed to create list:", e);
+    const tempId = `temp_${Date.now()}`;
+    const newList = { ...newListData, id: tempId };
+    
+    // Add to local state immediately
+    setLists(prevLists => [...prevLists, newList]);
+    
+    if (user && user.uid !== GUEST_ID) {
+      try {
+        const newId = await listService.createList(newListData);
+        // Update with real ID
+        const updatedList = { ...newList, id: newId };
+        setLists(prevLists => prevLists.map(l => l.id === tempId ? updatedList : l));
+        setSelectedListId(newId);
+      } catch (error) {
+        console.error("Failed to create list:", error);
+      }
+    } else {
+      setSelectedListId(tempId);
     }
+    setView('editor');
   };
 
   const handleDeleteList = async (id: string) => {
-    if (!user || !confirm('Delete this list permanently?')) return;
-    const originalLists = lists;
-    const updatedLists = lists.filter(l => l.id !== id);
-    setLists(updatedLists);
+    if (!confirm('¿Eliminar esta lista?')) return;
     
-    try {
-      await listService.deleteList(id);
-    } catch (e) {
-      console.error("Failed to delete list:", e);
-      setLists(originalLists);
+    setLists(prev => prev.filter(l => l.id !== id));
+    
+    if (user && user.uid !== GUEST_ID) {
+      try {
+        await listService.deleteList(id);
+      } catch (error) {
+        console.error("Failed to delete list:", error);
+      }
     }
   };
-  
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-      <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Loading Glimmind...</p>
-    </div>
-  );
 
-  if (!user) return <Auth onLoginDev={() => {
-    localStorage.setItem('glimmind_guest_user', JSON.stringify(MOCK_USER));
-    setUser(MOCK_USER);
-  }} />;
+  const currentList = lists.find(l => l.id === selectedListId) || null;
 
-  const currentList = lists.find(l => l.id === selectedListId);
+  if (loading) {
+    return (
+      <ToastProvider>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="text-slate-400 font-medium">Loading...</div>
+        </div>
+      </ToastProvider>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ToastProvider>
+        <Auth 
+          onLoginDev={() => {
+            setUser(MOCK_USER);
+            localStorage.setItem('glimmind_guest_user', JSON.stringify(MOCK_USER));
+          }} 
+        />
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>
-      <div className="min-h-screen flex flex-col bg-slate-50/30">
-        <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
-            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(79,70,229,0.3)] group-hover:rotate-6 transition-transform relative overflow-hidden">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
-                <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
-                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="h-12 pl-1.5 pr-1.5 sm:pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2 sm:gap-3">
-            <img src={user.photoURL} className="w-9 h-9 rounded-xl shadow-sm border-2 border-white" alt="Profile" />
-            <span className="hidden md:block text-xs font-black text-slate-700 max-w-[120px] truncate">{user.displayName}</span>
-            <button onClick={() => { auth?.signOut(); localStorage.clear(); setUser(null); setView('dashboard'); }} className="text-slate-300 hover:text-rose-500 transition-colors ml-1 sm:ml-2 p-1">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Glimmind</h1>
+          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleSyncFromCloud}
+            disabled={isSyncing || user.uid === GUEST_ID}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={user.uid === GUEST_ID ? 'Inicia sesión para sincronizar' : 'Sincronizar desde la nube'}
+          >
+            <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+          </button>
+          <div className="flex items-center gap-2">
+            {user.photoURL && (
+              <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
+            )}
+            <button 
+              onClick={() => { auth?.signOut(); localStorage.removeItem('glimmind_guest_user'); setUser(null); setView('dashboard'); }}
+              className="text-slate-300 hover:text-rose-500 transition-colors"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
@@ -161,18 +272,30 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="max-w-7xl mx-auto px-4 py-6">
         {view === 'dashboard' && (
-          <Dashboard lists={lists} onCreate={handleCreateList} onDelete={handleDeleteList} onEdit={(id) => { setSelectedListId(id); setView('editor'); }} onPlay={(id) => { setSelectedListId(id); setView('game'); }} />
+          <Dashboard 
+            lists={lists} 
+            onCreate={handleCreateList} 
+            onDelete={handleDeleteList} 
+            onEdit={(id) => { setSelectedListId(id); setView('editor'); }} 
+            onPlay={(id) => { setSelectedListId(id); setView('game'); }} 
+          />
         )}
         {view === 'editor' && currentList && (
-          <ListEditor list={currentList} onSave={(updatedList) => handleUpdateAssociations(currentList.id, updatedList.associations)} onBack={() => setView('dashboard')} />
+          <ListEditor 
+            list={currentList} 
+            onSave={(updatedList) => handleUpdateAssociations(currentList.id, updatedList.associations)} 
+            onBack={() => setView('dashboard')} 
+          />
         )}
         {view === 'game' && currentList && (
           <GameView 
             list={currentList} 
             onUpdateAssociations={(updatedAssociations) => handleUpdateAssociations(currentList.id, updatedAssociations)} 
-            onBack={() => setView('dashboard')} />
+            onUpdateList={handleUpdateList}
+            onBack={() => setView('dashboard')} 
+          />
         )}
       </main>
     </div>
@@ -180,4 +303,12 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const AppWrapper: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
+};
+
+export default AppWrapper;
