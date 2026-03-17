@@ -262,5 +262,109 @@ describe('GlimmindGame', () => {
             expect(game.state.userInput).toBe(''); // El campo de texto se limpia automáticamente
         });
     });
+
+    describe('Similarity Algorithm Tests', () => {
+        const associations: Association[] = [
+            { id: '1', term: 'Circle back', definition: 'Volver', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '2', term: 'Get down to', definition: 'Ponerse a', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '3', term: 'Look up to', definition: 'Admirar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '4', term: 'Give up', definition: 'Rendirse', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '5', term: 'Take off', definition: 'Despegar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '6', term: 'Run into', definition: 'Encontrarse con', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '7', term: 'Put off', definition: 'Posponer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '8', term: 'Call off', definition: 'Cancelar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '9', term: 'Break down', definition: 'Desglosar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '10', term: 'Figure out', definition: 'Descubrir', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+        ];
+        const list = createMockList(associations);
+
+        const testCases = [
+            // Circle back - Volver
+            { userInput: 'Circle back', expectedDef: 'Volver', desc: 'same exact case' },
+            { userInput: 'circle back', expectedDef: 'Volver', desc: 'all lowercase' },
+            { userInput: 'CIRCLE BACK', expectedDef: 'Volver', desc: 'all uppercase' },
+            { userInput: 'Volver', expectedDef: 'Volver', desc: 'correct answer in Spanish' },
+            { userInput: 'volver', expectedDef: 'Volver', desc: 'lowercase Spanish' },
+            { userInput: 'Circleback', expectedDef: 'Volver', desc: 'no space' },
+            { userInput: 'circleback', expectedDef: 'Volver', desc: 'no space lowercase' },
+            
+            // Get down to - Ponerse a
+            { userInput: 'Get down to', expectedDef: 'Ponerse a', desc: 'same exact case' },
+            { userInput: 'get down to', expectedDef: 'Ponerse a', desc: 'all lowercase' },
+            { userInput: 'Ponerse a', expectedDef: 'Ponerse a', desc: 'correct answer' },
+            { userInput: 'ponerse a', expectedDef: 'Ponerse a', desc: 'lowercase' },
+
+            // Look up to - Admirar
+            { userInput: 'Look up to', expectedDef: 'Admirar', desc: 'exact case' },
+            { userInput: 'look up to', expectedDef: 'Admirar', desc: 'lowercase' },
+            { userInput: 'Admirar', expectedDef: 'Admirar', desc: 'correct answer' },
+
+            // Give up - Rendirse
+            { userInput: 'Give up', expectedDef: 'Rendirse', desc: 'exact case' },
+            { userInput: 'give up', expectedDef: 'Rendirse', desc: 'lowercase' },
+            { userInput: 'Rendirse', expectedDef: 'Rendirse', desc: 'correct answer' },
+
+            // Take off - Despegar
+            { userInput: 'Take off', expectedDef: 'Despegar', desc: 'exact case' },
+            { userInput: 'take off', expectedDef: 'Despegar', desc: 'lowercase' },
+            { userInput: 'Despegar', expectedDef: 'Despegar', desc: 'correct answer' },
+
+            // Run into - Encontrarse con
+            { userInput: 'Run into', expectedDef: 'Encontrarse con', desc: 'exact case' },
+            { userInput: 'run into', expectedDef: 'Encontrarse con', desc: 'lowercase' },
+            { userInput: 'Encontrarse con', expectedDef: 'Encontrarse con', desc: 'correct answer' },
+
+            // Put off - Posponer
+            { userInput: 'Put off', expectedDef: 'Posponer', desc: 'exact case' },
+            { userInput: 'put off', expectedDef: 'Posponer', desc: 'lowercase' },
+            { userInput: 'Posponer', expectedDef: 'Posponer', desc: 'correct answer' },
+
+            // Call off - Cancelar
+            { userInput: 'Call off', expectedDef: 'Cancelar', desc: 'exact case' },
+            { userInput: 'call off', expectedDef: 'Cancelar', desc: 'lowercase' },
+            { userInput: 'Cancelar', expectedDef: 'Cancelar', desc: 'correct answer' },
+
+            // Break down - Desglosar
+            { userInput: 'Break down', expectedDef: 'Desglosar', desc: 'exact case' },
+            { userInput: 'break down', expectedDef: 'Desglosar', desc: 'lowercase' },
+            { userInput: 'Desglosar', expectedDef: 'Desglosar', desc: 'correct answer' },
+
+            // Figure out - Descubrir
+            { userInput: 'Figure out', expectedDef: 'Descubrir', desc: 'exact case' },
+            { userInput: 'figure out', expectedDef: 'Descubrir', desc: 'lowercase' },
+            { userInput: 'Descubrir', expectedDef: 'Descubrir', desc: 'correct answer' },
+        ];
+
+        testCases.forEach(({ userInput, expectedDef, desc }) => {
+            it(`"${userInput}" vs "${expectedDef}" (${desc})`, () => {
+                let game = GlimmindGame.create(list);
+                
+                // Find the card with this definition in the shuffled queue
+                const cardId = associations.find(a => a.definition === expectedDef)?.id;
+                if (!cardId) {
+                    throw new Error(`Card with definition "${expectedDef}" not found`);
+                }
+                
+                // Find the index in the active queue
+                const cardIndex = game.state.activeQueue.indexOf(cardId);
+                
+                // Advance to the correct card
+                for (let i = 0; i < cardIndex; i++) {
+                    game = game.processAction({ type: 'PASS' });
+                }
+                
+                game = game.setUserInput(userInput);
+                game = game.checkAnswer();
+                
+                console.log(`"${userInput}" vs "${expectedDef}": similarity = ${game.state.similarity}%, feedback = ${game.state.feedback}, threshold = ${list.settings.threshold * 100}%`);
+                
+                // Expected: 100% if exact match (case-insensitive), low % if different languages
+                if (userInput.toLowerCase() === expectedDef.toLowerCase()) {
+                    expect(game.state.similarity).toBe(100);
+                    expect(game.state.feedback).toBe('correct');
+                }
+            });
+        });
+    });
 });
 

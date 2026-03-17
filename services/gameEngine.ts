@@ -16,6 +16,15 @@ const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
 };
 
 /**
+ * Normalizes a string for comparison: lowercase and remove accents
+ */
+function normalizeString(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
  * Calculates the Levenshtein distance between two strings. A lower number means more similar.
  */
 function calculateLevenshteinDistance(a: string = '', b: string = ''): number {
@@ -39,8 +48,13 @@ function calculateLevenshteinDistance(a: string = '', b: string = ''): number {
  * Calculates the similarity percentage between two strings.
  */
 function calculateSimilarity(a: string, b: string): number {
-  const distance = calculateLevenshteinDistance(a.toLowerCase(), b.toLowerCase());
-  const longerLength = Math.max(a.length, b.length);
+  const aNormalized = normalizeString(a.trim());
+  const bNormalized = normalizeString(b.trim());
+  
+  if (aNormalized === bNormalized) return 100;
+  
+  const distance = calculateLevenshteinDistance(aNormalized, bNormalized);
+  const longerLength = Math.max(aNormalized.length, bNormalized.length);
   if (longerLength === 0) return 100;
   const similarity = (1 - distance / longerLength) * 100;
   return Math.max(0, Math.round(similarity));
@@ -86,7 +100,8 @@ export class GlimmindGame {
     if (!current || this.state.revealed) return this;
 
     const userAnswer = this.state.userInput.trim();
-    const correctAnswer = current.definition.trim();
+    const isReversed = this.initialList.settings.flipOrder === 'reversed';
+    const correctAnswer = isReversed ? current.term.trim() : current.definition.trim();
     const similarity = calculateSimilarity(userAnswer, correctAnswer);
     const threshold = this.initialList.settings.threshold * 100;
     const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase() || similarity >= threshold;
