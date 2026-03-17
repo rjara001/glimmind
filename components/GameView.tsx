@@ -43,14 +43,21 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   useEffect(() => {
     if (!currentAssociation) return;
+    const isReversed = list.settings.flipOrder === 'reversed';
+    const expectedAnswer = isReversed ? currentAssociation.term : currentAssociation.definition;
+    
     if (feedback === 'correct') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
-      showToast(`Correct! ${lastAttempt} → ${currentAssociation.definition} (100% similarity, needed ${thresholdPercent}%)`, 'success');
+      showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
+      
+      setTimeout(() => {
+        actions.handleCorrect();
+      }, 1500);
     } else if (feedback === 'incorrect') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
     }
-  }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity]);
+  }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
