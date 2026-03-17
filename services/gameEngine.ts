@@ -86,13 +86,14 @@ export class GlimmindGame {
 
     const userAnswer = this.state.userInput.trim();
     const correctAnswer = current.definition.trim();
-    const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase();
+    const similarity = calculateSimilarity(userAnswer, correctAnswer);
+    const threshold = this.initialList.settings.threshold * 100;
+    const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase() || similarity >= threshold;
 
     if (isCorrect) {
       const correctState: GameState = { ...this.state, revealed: true, feedback: 'correct', similarity: 100, lastAttempt: userAnswer };
       return new GlimmindGame(this.initialList, correctState);
     } else {
-      const similarity = calculateSimilarity(userAnswer, correctAnswer);
       const incorrectState: GameState = { ...this.state, feedback: 'incorrect', userInput: '', similarity, lastAttempt: userAnswer };
       return new GlimmindGame(this.initialList, incorrectState);
     }

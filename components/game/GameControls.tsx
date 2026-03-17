@@ -18,25 +18,24 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
   
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";
 
-  // The main action button (Validate/Reveal) is now first in the DOM for correct Tab order.
-  // CSS `order` property is used to maintain the visual layout.
+  // The main action buttons are arranged for correct Tab order.
+  // CSS `order` property maintains visual layout.
+  // Modo Examen: Validar (disabled after Revelar) | Pasar | Revelar
+  // Modo Training: Pasar | Revelar | Correcta (no Validar)
   return (
     <div className="w-full max-w-xl mt-4">
       <div className="grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm">
         
-        <button 
-          onClick={() => {
-            if (!isPracticeMode && !revealed) {
-              onCheckAnswer();
-            } else {
-              onReveal();
-            }
-          }} 
-          disabled={isTransitioning}
-          className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'} disabled:opacity-50 disabled:cursor-not-allowed order-2`}
-        >
-          {!isPracticeMode && !revealed ? 'Validar' : revealed ? 'Ocultar' : 'Revelar'}
-        </button>
+        {/* Botón Validar: solo en Modo Examen */}
+        {!isPracticeMode && (
+          <button 
+            onClick={onCheckAnswer}
+            disabled={isTransitioning || revealed}
+            className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-2`}
+          >
+            Validar
+          </button>
+        )}
 
         <button 
           onClick={onNext} 
@@ -46,13 +45,27 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           Pasar
         </button>
         
-        <button 
-          onClick={onCorrect} 
-          disabled={isTransitioning || (!isPracticeMode && (wasRevealed || revealed))}
-          className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (!isPracticeMode && (wasRevealed || revealed)) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
-        >
-          Correcta
-        </button>
+        {/* Botón Revelar: en Modo Examen (no revelado) o Modo Training (no revelado) */}
+        {(!isPracticeMode || !revealed) && (
+          <button 
+            onClick={onReveal}
+            disabled={isTransitioning || (isPracticeMode && revealed)}
+            className={`${baseButtonClass} bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3`}
+          >
+            Revelar
+          </button>
+        )}
+
+        {/* Botón Correcta: solo cuando está revelado (en Examen) o siempre (en Training) */}
+        {(isPracticeMode || revealed) && (
+          <button 
+            onClick={onCorrect} 
+            disabled={isTransitioning || (revealed && wasRevealed)}
+            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
+          >
+            Correcta
+          </button>
+        )}
       </div>
     </div>
   )

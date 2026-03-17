@@ -42,11 +42,64 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   useEffect(() => {
     if (!currentAssociation) return;
     if (feedback === 'correct') {
-      showToast('¡Correcto!', 'success');
+      const thresholdPercent = Math.round(list.settings.threshold * 100);
+      showToast(`Correct! ${lastAttempt} → ${currentAssociation.definition} (100% similarity, needed ${thresholdPercent}%)`, 'success');
     } else if (feedback === 'incorrect') {
-      showToast(`Incorrecto. La respuesta era: ${currentAssociation.definition}`, 'error');
+      const thresholdPercent = Math.round(list.settings.threshold * 100);
+      showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
     }
-  }, [feedback, currentAssociation, showToast]);
+  }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSettings || gameState.isFinished || !currentAssociation) return;
+
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isTyping = isInput;
+
+      // During feedback, only allow Enter to advance
+      if (feedback !== 'none') {
+        if (e.key === 'Enter' && feedback === 'correct') {
+          e.preventDefault();
+          actions.handleCorrect();
+        }
+        return;
+      }
+
+      // Training mode: Enter or Space reveals or passes
+      if (list.settings.mode === 'training') {
+        if (!isTyping && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          if (!isRevealed) {
+            actions.reveal();
+          } else {
+            actions.handlePass();
+          }
+        }
+        return;
+      }
+
+      // Real mode
+      if (isTyping) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          actions.checkAnswer();
+        }
+        // Tab from input - let default behavior handle focus movement
+      } else {
+        // Not typing - check for reveal/pass shortcuts
+        if (e.key === ' ' && isRevealed) {
+          e.preventDefault();
+          actions.handlePass();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions]);
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {

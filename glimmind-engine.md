@@ -10,7 +10,7 @@ Este documento describe los atajos de teclado disponibles en la vista de juego d
 
 Pasar: Buscar la siguiente tarjeta
 Validar: Comprobar la respuesta
-Revelar: Mostrar la respuesta
+Revelar: Mostrar la respuesta y deshabilitar el botón "Validar"
 
 ## Validación de Intentos
 
