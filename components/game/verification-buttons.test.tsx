@@ -82,6 +82,18 @@ describe('Buttons Display - Modo Examen (real)', () => {
     const validarButton = screen.getByRole('button', { name: /validar/i });
     expect(validarButton).toBeDisabled();
   });
+
+  it('should show exactly 3 buttons in real mode: Pasar, Validar, Revelar', () => {
+    renderControls({ revealed: true, gameMode: 'real' });
+    
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(3);
+    
+    expect(screen.getByRole('button', { name: /pasar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /validar/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /revelar/i })).toBeInTheDocument();
+  });
+  
 });
 
 describe('Buttons Display - Modo Entrenamiento (training)', () => {

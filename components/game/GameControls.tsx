@@ -57,7 +57,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
         )}
 
         {/* Botón Correcta: solo cuando está revelado (en Examen) o siempre (en Training) */}
-        {(isPracticeMode || revealed) && (
+        {isPracticeMode && (
           <button 
             onClick={onCorrect} 
             disabled={isTransitioning || (revealed && wasRevealed)}
