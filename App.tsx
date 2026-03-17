@@ -4,6 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { Auth } from './components/Auth';
+import { ToastProvider } from './components/Toast';
 import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
@@ -11,7 +12,7 @@ import { listService } from './services/firestoreService';
 const GUEST_ID = 'dev-user-local';
 const MOCK_USER = {
   uid: GUEST_ID,
-  displayName: 'Invitado Local',
+  displayName: 'Local Guest',
   photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff'
 };
 
@@ -101,7 +102,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteList = async (id: string) => {
-    if (!user || !confirm('¿Eliminar esta lista permanentemente?')) return;
+    if (!user || !confirm('Delete this list permanently?')) return;
     const originalLists = lists;
     const updatedLists = lists.filter(l => l.id !== id);
     setLists(updatedLists);
@@ -117,7 +118,7 @@ const App: React.FC = () => {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white">
       <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Cargando Glimmind...</p>
+      <p className="mt-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Loading Glimmind...</p>
     </div>
   );
 
@@ -129,23 +130,24 @@ const App: React.FC = () => {
   const currentList = lists.find(l => l.id === selectedListId);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/30">
-       <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(79,70,229,0.3)] group-hover:rotate-6 transition-transform relative overflow-hidden">
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
-              <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
-              <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
-            </svg>
+    <ToastProvider>
+      <div className="min-h-screen flex flex-col bg-slate-50/30">
+        <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('dashboard')}>
+            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_4px_15px_rgba(79,70,229,0.3)] group-hover:rotate-6 transition-transform relative overflow-hidden">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
+                <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
+                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">Glimmind</h1>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="h-12 pl-1.5 pr-1.5 sm:pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2 sm:gap-3">
+          
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-12 pl-1.5 pr-1.5 sm:pr-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-2 sm:gap-3">
             <img src={user.photoURL} className="w-9 h-9 rounded-xl shadow-sm border-2 border-white" alt="Profile" />
             <span className="hidden md:block text-xs font-black text-slate-700 max-w-[120px] truncate">{user.displayName}</span>
             <button onClick={() => { auth?.signOut(); localStorage.clear(); setUser(null); setView('dashboard'); }} className="text-slate-300 hover:text-rose-500 transition-colors ml-1 sm:ml-2 p-1">
@@ -165,10 +167,14 @@ const App: React.FC = () => {
           <ListEditor list={currentList} onSave={(updatedList) => handleUpdateAssociations(currentList.id, updatedList.associations)} onBack={() => setView('dashboard')} />
         )}
         {view === 'game' && currentList && (
-          <GameView list={currentList} onUpdateAssociations={(updatedAssociations) => handleUpdateAssociations(currentList.id, updatedAssociations)} onBack={() => setView('dashboard')} />
+          <GameView 
+            list={currentList} 
+            onUpdateAssociations={(updatedAssociations) => handleUpdateAssociations(currentList.id, updatedAssociations)} 
+            onBack={() => setView('dashboard')} />
         )}
       </main>
     </div>
+    </ToastProvider>
   );
 };
 

@@ -193,14 +193,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
                 <p className="text-gray-500 text-sm mb-6">
-                  {activeAssociations.length} pares • {cycle4Count} en Ciclo 4
+                  {activeAssociations.length} pairs • {cycle4Count} in Cycle 4
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
-                    Estudiar
+                    Study
                   </button>
                   <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
-                    Editar
+                    Edit
                   </button>
                 </div>
               </div>

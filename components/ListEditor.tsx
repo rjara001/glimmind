@@ -73,12 +73,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       .filter(line => line.length > 0)
       .map(line => {
         const parts = line.split(/[\t;]|,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        const term = (parts[0]?.replace(/^"|"$/g, '').trim() || '');
+        const definition = (parts[1]?.replace(/^"|"$/g, '').trim() || '');
         return {
           id: crypto.randomUUID(),
-          term: (parts[0]?.replace(/^"|"$/g, '').trim() || ''),
-          definition: (parts[1]?.replace(/^"|"$/g, '').trim() || ''),
+          term,
+          definition,
           currentCycle: 1,
-          status: 'pending',
+          status: 'pending' as const,
           isLearned: false,
           isArchived: false,
         };
@@ -186,30 +188,30 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            <input type="text" placeholder="Filtrar en ambas listas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition outline-none shadow-sm" />
+            <input type="text" placeholder="Filter in both lists..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition outline-none shadow-sm" />
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-             <button onClick={() => setShowBulk(!showBulk)} className="px-4 py-3 text-indigo-600 text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">Importar</button>
-             <button onClick={handleAddRow} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm">Añadir Fila</button>
+             <button onClick={() => setShowBulk(!showBulk)} className="px-4 py-3 text-indigo-600 text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">Import</button>
+             <button onClick={handleAddRow} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm">Add Row</button>
           </div>
         </div>
 
         {showBulk && (
-          <div className="p-6 bg-indigo-50/50 border-b border-indigo-100"><textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="Término, Definición (uno por línea)" className="w-full h-32 px-4 py-3 border border-indigo-100 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner" /><div className="flex justify-end"><button onClick={handleBulkAdd} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition">Procesar Importación</button></div></div>
+          <div className="p-6 bg-indigo-50/50 border-b border-indigo-100"><textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="Term, Definition (one per line)" className="w-full h-32 px-4 py-3 border border-indigo-100 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner" /><div className="flex justify-end"><button onClick={handleBulkAdd} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition">Process Import</button></div></div>
         )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-slate-50/30"><th className="px-8 py-4">{editList.concept.split('/')[0] || 'Término'}</th><th className="px-8 py-4">{editList.concept.split('/')[1] || 'Definición'}</th><th className="px-8 py-4 w-16"></th></tr></thead>
+            <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-slate-50/30"><th className="px-8 py-4">{editList.concept.split('/')[0] || 'Term'}</th><th className="px-8 py-4">{editList.concept.split('/')[1] || 'Definition'}</th><th className="px-8 py-4 w-16"></th></tr></thead>
             <tbody className="divide-y divide-slate-50">
               {filteredActive.map((assoc) => (
                 <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors">
-                  <td className="px-8 py-4"><input type="text" value={assoc.term} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Escribir término..." /></td>
-                  <td className="px-8 py-4"><input type="text" value={assoc.definition} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Escribir definición..." /></td>
-                  <td className="px-8 py-4"><button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Eliminar fila"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td>
+                  <td className="px-8 py-4"><input type="text" value={assoc.term} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Enter term..." /></td>
+                  <td className="px-8 py-4"><input type="text" value={assoc.definition} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Enter definition..." /></td>
+                  <td className="px-8 py-4"><button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Delete row"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td>
                 </tr>
               ))}
-              {filteredActive.length === 0 && <tr><td colSpan={3} className="px-8 py-12 text-center text-slate-400 text-sm italic">{searchTerm ? "No hay resultados en tarjetas activas." : "Añade una tarjeta para empezar."}</td></tr>}
+              {filteredActive.length === 0 && <tr><td colSpan={3} className="px-8 py-12 text-center text-slate-400 text-sm italic">{searchTerm ? "No results in active cards." : "Add a card to get started."}</td></tr>}
             </tbody>
           </table>
         </div>

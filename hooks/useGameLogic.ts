@@ -1,6 +1,6 @@
 
-import { useState, useMemo, useCallback } from 'react';
-import { AssociationList, GameState } from '../types';
+import { useState, useMemo } from 'react';
+import { AssociationList } from '../types';
 import { GlimmindGame } from '../services/gameEngine';
 
 export const useGameLogic = ({ list }: { list: AssociationList }) => {
