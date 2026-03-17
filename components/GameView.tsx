@@ -8,6 +8,7 @@ import { GameControls } from './game/GameControls';
 import { CycleProgress } from './game/CycleProgress';
 import { FinishedScreen } from './game/FinishedScreen';
 import { SettingsModal } from './game/SettingsModal';
+import { AttemptList } from './game/AttemptList';
 
 interface GameViewProps {
   list: AssociationList;
@@ -35,7 +36,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     userInput, 
     isRevealed, 
     similarity, 
-    lastAttempt, 
+    lastAttempt,
+    attempts,
     actions 
   } = useGameLogic({ list });
 
@@ -50,7 +52,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     }
   }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showSettings || gameState.isFinished || !currentAssociation) return;
@@ -59,7 +60,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
       const isTyping = isInput;
 
-      // During feedback, only allow Enter to advance
       if (feedback !== 'none') {
         if (e.key === 'Enter' && feedback === 'correct') {
           e.preventDefault();
@@ -68,7 +68,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         return;
       }
 
-      // Training mode: Enter or Space reveals or passes
       if (list.settings.mode === 'training') {
         if (!isTyping && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
@@ -81,15 +80,12 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         return;
       }
 
-      // Real mode
       if (isTyping) {
         if (e.key === 'Enter') {
           e.preventDefault();
           actions.checkAnswer();
         }
-        // Tab from input - let default behavior handle focus movement
       } else {
-        // Not typing - check for reveal/pass shortcuts
         if (e.key === ' ' && isRevealed) {
           e.preventDefault();
           actions.handlePass();
@@ -99,7 +95,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions]);
+  }, [showSettings, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput]);
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
@@ -175,11 +171,11 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               userInput={userInput} 
               onUserInput={actions.setUserInput} 
               feedback={feedback} 
-              cycleColorName={cycleColorName}
               similarity={similarity}
               lastAttempt={lastAttempt}
             />
             <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
+            <AttemptList attempts={attempts} />
           </div>
         </div>
         <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />

@@ -27,6 +27,12 @@ Mensaje Toast: Mensaje que aparece un tiempo determinado (debe ser mensajes toas
 *   El campo de texto de la respuesta se limpia automáticamente.
 *   El foco vuelve al campo de texto.
 *   Debe cambiar de color del marco de la tarjeta a rojo por unos instantes, dando a entender que el valor introducido es incorrecto
+*   Ademas debemos mostrar lo siguiente
+    -  Abajo del todo deben aparecer de forma ordenada y apiladacada uno de los intentos que ha realizado el usuario
+    -  Cada intento debe mostrar:
+        -  El texto introducido por el usuario.
+        -  El porcentaje de similitud.
+        -  El umbral de porcentaje requerido (`treshold`).
 
 ## Intento Correcto
 
@@ -59,3 +65,6 @@ Correcta: Marcar la tarjeta como correcta
 
 No hay mensajes de feedback en este modo
 
+*** CAMBIOS
+
+- Todo cambio debe incluir un aumento de version

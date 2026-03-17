@@ -12,6 +12,7 @@ const INITIAL_GAME_STATE: Omit<GameState, 'listId' | 'associations'> = {
   feedback: 'none',
   similarity: null,
   lastAttempt: "",
+  attempts: [],
 };
 
 /**
@@ -90,11 +91,21 @@ export class GlimmindGame {
     const threshold = this.initialList.settings.threshold * 100;
     const isCorrect = userAnswer.toLowerCase() === correctAnswer.toLowerCase() || similarity >= threshold;
 
+    const newAttempt = {
+      userInput: userAnswer,
+      similarity,
+      threshold,
+      expectedAnswer: correctAnswer,
+      timestamp: Date.now(),
+    };
+
+    const updatedAttempts = [...this.state.attempts, newAttempt];
+
     if (isCorrect) {
-      const correctState: GameState = { ...this.state, revealed: true, feedback: 'correct', similarity: 100, lastAttempt: userAnswer };
+      const correctState: GameState = { ...this.state, revealed: true, feedback: 'correct', similarity: 100, lastAttempt: userAnswer, attempts: updatedAttempts };
       return new GlimmindGame(this.initialList, correctState);
     } else {
-      const incorrectState: GameState = { ...this.state, feedback: 'incorrect', userInput: '', similarity, lastAttempt: userAnswer };
+      const incorrectState: GameState = { ...this.state, feedback: 'incorrect', userInput: '', similarity, lastAttempt: userAnswer, attempts: updatedAttempts };
       return new GlimmindGame(this.initialList, incorrectState);
     }
   }

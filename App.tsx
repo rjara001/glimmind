@@ -8,6 +8,7 @@ import { ToastProvider } from './components/Toast';
 import { AssociationList, Association } from './types';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
+import { APP_VERSION } from './constants/version';
 
 const GUEST_ID = 'dev-user-local';
 const MOCK_USER = {
@@ -155,6 +156,7 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
             </button>
+            <span className="text-xs text-slate-400 ml-2">v{APP_VERSION}</span>
           </div>
         </div>
       </header>

@@ -97,7 +97,29 @@ useEffect(() => {
   const subscription = service.loadMore().subscribe(...);
   return () => subscription.unsubscribe();
 }, [dependency]);
-6. Type Safety
+
+6. useEffect Dependencies
+
+ALL dependencies in useEffect arrays MUST be explicitly declared. This prevents stale closures that cause race conditions and React DOM errors (e.g., "Failed to execute 'removeChild'").
+
+Required Pattern
+// Always include ALL used variables in dependencies
+useEffect(() => {
+  doSomething(userInput, value);
+}, [userInput, value]);
+
+// Event handlers with state MUST include the state variable
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      submit(userInput); // userInput MUST be in deps
+    }
+  };
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [userInput, submit]); // Missing userInput causes stale closure bugs
+
+7. Type Safety
 
 Agents MUST NOT use any.
 

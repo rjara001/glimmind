@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 
 interface GameCardProps {
   displayTerm: string | undefined;
@@ -10,7 +10,6 @@ interface GameCardProps {
   userInput: string;
   onUserInput: (value: string) => void;
   feedback: 'none' | 'correct' | 'incorrect';
-  cycleColorName?: string;
   similarity: number | null;
   lastAttempt: string;
 }
@@ -25,7 +24,6 @@ export const GameCard: React.FC<GameCardProps> = ({
   userInput, 
   onUserInput, 
   feedback,
-  cycleColorName = 'indigo',
   similarity,
   lastAttempt,
 }) => {

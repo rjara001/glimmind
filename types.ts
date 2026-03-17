@@ -36,6 +36,14 @@ export interface GameSummary {
   seen: number;
 }
 
+export interface Attempt {
+  userInput: string;
+  similarity: number;
+  threshold: number;
+  expectedAnswer: string;
+  timestamp: number;
+}
+
 export interface GameState {
   listId: string;
   globalCycle: GameCycle;
@@ -49,4 +57,5 @@ export interface GameState {
   feedback: GameFeedback;
   similarity: number | null;
   lastAttempt: string;
+  attempts: Attempt[];
 }

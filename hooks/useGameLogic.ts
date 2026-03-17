@@ -33,6 +33,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     isRevealed: gameState.revealed,
     similarity: gameState.similarity,
     lastAttempt: gameState.lastAttempt,
+    attempts: gameState.attempts,
     actions,
   };
 };
