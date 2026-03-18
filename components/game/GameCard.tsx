@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface GameCardProps {
   displayTerm: string | undefined;
@@ -28,6 +28,15 @@ export const GameCard: React.FC<GameCardProps> = ({
   lastAttempt,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Only focus when user can actually type - no displayTerm in deps
+  useEffect(() => {
+    if (!isPracticeMode && !revealed && feedback === 'none') {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [isPracticeMode, revealed, feedback]);
 
   const feedbackClasses = feedback === 'correct' 
     ? 'ring-8 ring-emerald-400 border-emerald-500'

@@ -56,6 +56,15 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     }
   }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
 
+  // Auto-save associations when they change in the game
+  useEffect(() => {
+    console.log('[GAME] Auto-save triggered, associations length:', gameState.associations?.length);
+    if (gameState.associations && onUpdateAssociations) {
+      console.log('[GAME] Calling onUpdateAssociations');
+      onUpdateAssociations(gameState.associations);
+    }
+  }, [gameState.associations]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showSettings || gameState.isFinished || !currentAssociation) return;

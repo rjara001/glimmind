@@ -26,26 +26,50 @@ const AppContent: React.FC = () => {
   const [lists, setLists] = useState<AssociationList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const { showToast } = useToast();
 
-  // Load from localStorage on mount
+  // Load from cloud first, fallback to localStorage
   useEffect(() => {
-    const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedLists) {
-      try {
-        setLists(JSON.parse(savedLists));
-      } catch (e) {
-        console.error('Error loading from localStorage:', e);
+    const loadData = async () => {
+      // First, try to load from localStorage as immediate fallback
+      const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedLists) {
+        try {
+          const parsed = JSON.parse(savedLists);
+          console.log('[LOAD] Loaded from localStorage as fallback:', parsed.length);
+          setLists(parsed);
+        } catch (e) {
+          console.error('Error loading from localStorage:', e);
+        }
       }
-    }
-  }, []);
+      setIsLoaded(true);
 
-  // Save to localStorage whenever lists change
+      // Then try to load from cloud if user is logged in
+      if (user && user.uid !== GUEST_ID) {
+        try {
+          console.log('[LOAD] Fetching from Firestore for user:', user.uid);
+          const cloudLists = await listService.fetchListsByUser(user.uid);
+          console.log('[LOAD] Got from cloud:', cloudLists.length);
+          if (cloudLists.length > 0) {
+            setLists(cloudLists);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudLists));
+            console.log('[LOAD] Updated localStorage with cloud data');
+          }
+        } catch (error) {
+          console.error('[LOAD] Failed to load from cloud, using localStorage:', error);
+        }
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  // Save to localStorage whenever lists change - but only after initial load
   useEffect(() => {
-    if (lists.length > 0) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
-    }
-  }, [lists]);
+    if (!isLoaded) return;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
+  }, [lists, isLoaded]);
 
   // Auto-sync to cloud before unload
   useEffect(() => {
@@ -91,7 +115,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!user) {
-      setLists([]);
+      // Don't clear lists when user logs out - keep localStorage data
       return;
     }
     
@@ -115,9 +139,12 @@ const AppContent: React.FC = () => {
   // Sync from cloud to local
   const handleSyncFromCloud = async () => {
     if (!user) return;
+    console.log('[SYNC] handleSyncFromCloud called, user:', user.uid);
     setIsSyncing(true);
     try {
+      console.log('[SYNC] Fetching from Firestore for user:', user.uid);
       const cloudLists = await listService.fetchListsByUser(user.uid);
+      console.log('[SYNC] Got from cloud:', cloudLists.length, 'lists');
       setLists(cloudLists);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudLists));
       showToast('Datos sincronizados desde la nube', 'success');
@@ -130,6 +157,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleUpdateAssociations = async (listId: string, updatedAssociations: Association[]) => {
+    console.log('[SYNC] handleUpdateAssociations called, listId:', listId, 'user:', user?.uid);
     const listToUpdate = lists.find(l => l.id === listId);
     if (!listToUpdate) return;
 
@@ -138,11 +166,15 @@ const AppContent: React.FC = () => {
     setLists(updatedLists);
 
     if (user && user.uid !== GUEST_ID) {
+      console.log('[SYNC] Saving to Firestore, listId:', listId);
       try {
         await listService.updateList(listId, { associations: updatedAssociations });
+        console.log('[SYNC] Saved to Firestore successfully');
       } catch (error) {
         console.error("Failed to sync association updates:", error);
       }
+    } else {
+      console.log('[SYNC] NOT saving to Firestore - user is guest or null, user:', user?.uid, 'GUEST_ID:', GUEST_ID);
     }
   };
 

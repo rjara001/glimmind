@@ -521,5 +521,3 @@ All state updates affecting game flow (card progression, cycle updates, score up
 Timeouts for advancing cards belong in parent components, never children.
 
 Children may show validation feedback, but any logic triggering progression MUST call a parent callback only, not directly manipulate parent state.
-
-No to use setTimeout in any case.
