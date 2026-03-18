@@ -12,14 +12,15 @@ import {
   collection, 
   query, 
   where, 
-  onSnapshot, 
   doc, 
   setDoc, 
   deleteDoc, 
   updateDoc, 
   getDocs, 
+  getDoc,
   connectFirestoreEmulator 
 } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // En Vite, las variables de entorno se acceden vía import.meta.env
 // Usamos un cast a any para evitar errores de compilación si los tipos de Vite no están presentes en el entorno global
@@ -47,6 +48,7 @@ const firebaseConfig = isDemo ? {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app, 'us-central1');
 const googleProvider = new GoogleAuthProvider();
 
 // Solo conectar emuladores si estamos en local y NO tenemos llaves reales
@@ -58,6 +60,7 @@ if (isLocalhost && isDemo) {
     try {
       connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
       connectFirestoreEmulator(db, "localhost", 8080);
+      connectFunctionsEmulator(functions, "localhost", 5001);
       (globalThis as any)._fb_emulators_connected = true;
       console.log("🔥 Modo local: Emuladores conectados");
     } catch (e) {
@@ -71,16 +74,17 @@ export const isConfigured = !isDemo;
 export { 
   auth, 
   db, 
+  functions,
   googleProvider, 
   signInWithPopup, 
   onAuthStateChanged,
   collection,
   query,
   where,
-  onSnapshot,
   doc,
   setDoc,
   deleteDoc,
   updateDoc,
-  getDocs
+  getDocs,
+  getDoc
 };

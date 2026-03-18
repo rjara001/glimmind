@@ -177,8 +177,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLists.map(list => {
-            const activeAssociations = list.associations.filter(a => !a.isArchived);
-            const cycle4Count = activeAssociations.filter(a => a.currentCycle === 4).length;
+            const associations = list.associations || [];
+            const activeAssociations = associations.filter((a: any) => !a.isArchived);
+            const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+            const pendingCount = activeAssociations.filter((a: any) => a.status === 'pending').length;
+            const cycle4Count = activeAssociations.filter((a: any) => a.currentCycle === 4).length;
             const canPlay = activeAssociations.length > 0;
 
             return (
@@ -192,9 +195,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
                   </button>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
-                <p className="text-gray-500 text-sm mb-6">
-                  {activeAssociations.length} pairs • {cycle4Count} in Cycle 4
+                <p className="text-gray-500 text-sm mb-2">
+                  {activeAssociations.length} pairs
                 </p>
+                <div className="flex gap-2 text-xs mb-4">
+                  {learnedCount > 0 && (
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">
+                      {learnedCount} learned
+                    </span>
+                  )}
+                  {cycle4Count > 0 && (
+                    <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded font-medium">
+                      {cycle4Count} in cycle 4
+                    </span>
+                  )}
+                  {pendingCount > 0 && (
+                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded font-medium">
+                      {pendingCount} pending
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-3">
                   <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
                     Study

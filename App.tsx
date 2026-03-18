@@ -29,45 +29,79 @@ const AppContent: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const { showToast } = useToast();
 
-  // Load from cloud first, fallback to localStorage
+  // Auth state listener - only runs once on mount
   useEffect(() => {
-    const loadData = async () => {
-      // First, try to load from localStorage as immediate fallback
-      const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedLists) {
-        try {
-          const parsed = JSON.parse(savedLists);
-          console.log('[LOAD] Loaded from localStorage as fallback:', parsed.length);
-          setLists(parsed);
-        } catch (e) {
-          console.error('Error loading from localStorage:', e);
-        }
+    console.log('[AUTH] Setting up auth listener');
+    const savedGuest = localStorage.getItem('glimmind_guest_user');
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
+      console.log('[AUTH] onAuthStateChanged fired, user:', firebaseUser?.uid);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+      } else if (savedGuest) {
+        setUser(JSON.parse(savedGuest));
+      } else {
+        setUser(null);
+        setLoading(false);
       }
-      setIsLoaded(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
-      // Then try to load from cloud if user is logged in
+  // Load data when user changes (login/logout) - only run on mount or user change
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadData = async () => {
+      setLoading(true);
+      
       if (user && user.uid !== GUEST_ID) {
+        // Logged in user - load from Firestore, save to localStorage
         try {
-          console.log('[LOAD] Fetching from Firestore for user:', user.uid);
           const cloudLists = await listService.fetchListsByUser(user.uid);
-          console.log('[LOAD] Got from cloud:', cloudLists.length);
-          if (cloudLists.length > 0) {
+          if (!isCancelled) {
+            console.log('[LOAD] Cloud lists from Firestore:', JSON.stringify(cloudLists, null, 2));
             setLists(cloudLists);
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cloudLists));
-            console.log('[LOAD] Updated localStorage with cloud data');
+            console.log('[LOAD] Loaded from Firestore:', cloudLists.length);
           }
         } catch (error) {
-          console.error('[LOAD] Failed to load from cloud, using localStorage:', error);
+          console.error('[LOAD] Failed to load from Firestore:', error);
+          // Fallback to localStorage
+          const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (savedLists) {
+            setLists(JSON.parse(savedLists));
+          }
         }
+      } else {
+        // Guest or no user - load from localStorage
+        const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedLists && !isCancelled) {
+          try {
+            setLists(JSON.parse(savedLists));
+          } catch (e) {
+            console.error('Error loading from localStorage:', e);
+          }
+        }
+      }
+      
+      if (!isCancelled) {
+        setIsLoaded(true);
+        setLoading(false);
       }
     };
 
     loadData();
+
+    return () => { isCancelled = true; };
   }, [user]);
 
   // Save to localStorage whenever lists change - but only after initial load
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      console.log('[LOCALSTORAGE] Skipping - not loaded yet');
+      return;
+    }
+    console.log('[LOCALSTORAGE] Saving to localStorage, lists:', JSON.stringify(lists.map(l => ({ id: l.id, firstStatus: l.associations?.[0]?.status, firstIsLearned: l.associations?.[0]?.isLearned }))));
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
   }, [lists, isLoaded]);
 
@@ -97,44 +131,6 @@ const AppContent: React.FC = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [user, lists]);
-
-  useEffect(() => {
-    const savedGuest = localStorage.getItem('glimmind_guest_user');
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-      } else if (savedGuest) {
-        setUser(JSON.parse(savedGuest));
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      // Don't clear lists when user logs out - keep localStorage data
-      return;
-    }
-    
-    const loadLists = async () => {
-      try {
-        console.log('Fetching lists for user ID:', user.uid);
-        const userLists = await listService.fetchListsByUser(user.uid);
-        console.log('Fetched lists:', userLists);
-        setLists(userLists);
-      } catch (error) {
-        console.error("Failed to load lists:", error);
-        setLists([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLists();
-  }, [user]);
 
   // Sync from cloud to local
   const handleSyncFromCloud = async () => {
@@ -167,6 +163,7 @@ const AppContent: React.FC = () => {
 
     if (user && user.uid !== GUEST_ID) {
       console.log('[SYNC] Saving to Firestore, listId:', listId);
+      console.log('[SYNC] Data being sent:', JSON.stringify({ associations: updatedAssociations }));
       try {
         await listService.updateList(listId, { associations: updatedAssociations });
         console.log('[SYNC] Saved to Firestore successfully');
@@ -306,13 +303,16 @@ const AppContent: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {view === 'dashboard' && (
-          <Dashboard 
-            lists={lists} 
-            onCreate={handleCreateList} 
-            onDelete={handleDeleteList} 
-            onEdit={(id) => { setSelectedListId(id); setView('editor'); }} 
-            onPlay={(id) => { setSelectedListId(id); setView('game'); }} 
-          />
+          <>
+            {console.log('[DASHBOARD] Rendering with lists:', JSON.stringify(lists.map(l => ({ id: l.id, name: l.name, associationsCount: l.associations?.length, firstAssocStatus: l.associations?.[0]?.status, firstAssocIsLearned: l.associations?.[0]?.isLearned })), null, 2))}
+            <Dashboard 
+              lists={lists} 
+              onCreate={handleCreateList} 
+              onDelete={handleDeleteList} 
+              onEdit={(id) => { setSelectedListId(id); setView('editor'); }} 
+              onPlay={(id) => { setSelectedListId(id); setView('game'); }} 
+            />
+          </>
         )}
         {view === 'editor' && currentList && (
           <ListEditor 
@@ -326,7 +326,55 @@ const AppContent: React.FC = () => {
             list={currentList} 
             onUpdateAssociations={(updatedAssociations) => handleUpdateAssociations(currentList.id, updatedAssociations)} 
             onUpdateList={handleUpdateList}
-            onBack={() => setView('dashboard')} 
+            onBack={async (updatedAssociations) => {
+              // Use the updated associations if provided, otherwise use currentList
+              let associationsToSave = currentList.associations;
+              if (Array.isArray(updatedAssociations) && updatedAssociations.length > 0) {
+                associationsToSave = updatedAssociations;
+              }
+              
+              // Ensure it's an array
+              if (!Array.isArray(associationsToSave)) {
+                console.error('[BACK] Invalid associations:', associationsToSave);
+                associationsToSave = [];
+              }
+               
+              // Update local state first
+              const updatedList = { ...currentList, associations: associationsToSave };
+              console.log('[BACK] Updated list associations:', JSON.stringify(associationsToSave.slice(0, 2)));
+              setLists(prev => prev.map(l => l.id === currentList.id ? updatedList : l));
+               
+              // Force save to Firestore if logged in - use updatedList, not currentList
+              if (user && user.uid !== GUEST_ID) {
+                try {
+                  // Create clean object to avoid circular references - extract only needed fields
+                  const cleanAssociations = associationsToSave.map((a: any) => ({
+                    id: a.id,
+                    term: a.term,
+                    definition: a.definition,
+                    status: a.status,
+                    isLearned: a.isLearned,
+                    isArchived: a.isArchived,
+                    currentCycle: a.currentCycle,
+                  }));
+                  const cleanSettings = {
+                    mode: updatedList.settings?.mode,
+                    flipOrder: updatedList.settings?.flipOrder,
+                    threshold: updatedList.settings?.threshold,
+                  };
+                  await listService.updateList(updatedList.id, {
+                    name: updatedList.name,
+                    concept: updatedList.concept,
+                    associations: cleanAssociations,
+                    settings: cleanSettings,
+                  });
+                  console.log('[BACK] Force saved on back navigation');
+                } catch (e) {
+                  console.error('[BACK] Force save failed:', e);
+                }
+              }
+              setView('dashboard');
+            }} 
           />
         )}
       </main>

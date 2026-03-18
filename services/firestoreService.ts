@@ -1,43 +1,65 @@
-
-import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { AssociationList } from '../types';
 
-const COLLECTION_NAME = "lists";
+const FUNCTIONS_BASE = (import.meta as any).env?.VITE_FUNCTIONS_BASE 
+  || 'https://us-central1-fladycard-22a3e.cloudfunctions.net';
+
+async function getToken(): Promise<string | null> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return null;
+  try {
+    return await currentUser.getIdToken();
+  } catch {
+    return null;
+  }
+}
+
+async function callFunction<T>(functionName: string, data: any): Promise<T> {
+  const token = await getToken();
+  
+  const response = await fetch(`${FUNCTIONS_BASE}/${functionName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
 
 export const listService = {
 
   fetchListsByUser: async (userId: string): Promise<AssociationList[]> => {
     if (!userId) return [];
     try {
-      const q = query(collection(db, COLLECTION_NAME), where("userId", "==", userId));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AssociationList));
+      return await callFunction<AssociationList[]>('getLists', { userId });
     } catch (error) {
-      console.error("Error fetching lists by user:", error);
+      console.error("Error fetching lists:", error);
       return [];
     }
   },
 
   createList: async (list: Omit<AssociationList, 'id'>): Promise<string> => {
-    try {
-      const docRef = doc(collection(db, COLLECTION_NAME));
-      await setDoc(docRef, { ...list, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      return docRef.id;
-    } catch (error) {
-      console.error("Error creating list:", error);
-      throw error;
-    }
+    const result = await callFunction<{ id: string }>('createList', {
+      name: list.name,
+      concept: list.concept,
+      associations: list.associations,
+      settings: list.settings,
+      userId: list.userId
+    });
+    return result.id;
   },
 
   getList: async (listId: string): Promise<AssociationList | null> => {
     try {
-      const docRef = doc(db, COLLECTION_NAME, listId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return { ...docSnap.data(), id: docSnap.id } as AssociationList;
-      }
-      return null;
+      return await callFunction<AssociationList>('getList', { listId });
     } catch (error) {
       console.error("Error getting list:", error);
       return null;
@@ -45,35 +67,10 @@ export const listService = {
   },
 
   updateList: async (listId: string, updates: Partial<AssociationList>): Promise<void> => {
-    try {
-      const listRef = doc(db, COLLECTION_NAME, listId);
-      await updateDoc(listRef, { ...updates, updatedAt: serverTimestamp() });
-    } catch (error) {
-      console.error("Error updating list:", error);
-      throw error;
-    }
+    await callFunction('updateList', { listId, ...updates });
   },
 
   deleteList: async (listId: string): Promise<void> => {
-    try {
-      await deleteDoc(doc(db, COLLECTION_NAME, listId));
-    } catch (error) {
-      console.error("Error deleting list:", error);
-      throw error;
-    }
-  },
-
-  createMultipleLists: async (lists: Omit<AssociationList, 'id'>[]): Promise<void> => {
-    try {
-      const batch = writeBatch(db);
-      lists.forEach(list => {
-        const docRef = doc(collection(db, COLLECTION_NAME));
-        batch.set(docRef, { ...list, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      });
-      await batch.commit();
-    } catch (error) {
-      console.error("Error creating multiple lists:", error);
-      throw error;
-    }
-  },
+    await callFunction('deleteList', { listId });
+  }
 };

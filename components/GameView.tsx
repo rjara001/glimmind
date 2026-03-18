@@ -12,7 +12,7 @@ import { AttemptList } from './game/AttemptList';
 
 interface GameViewProps {
   list: AssociationList;
-  onBack: () => void;
+  onBack: (updatedAssociations?: Association[]) => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
   onUpdateList?: (updatedList: AssociationList) => Promise<void>;
 }
@@ -55,15 +55,19 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
     }
   }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
-
-  // Auto-save associations when they change in the game
+  
+  // Sync game state to parent when associations change
   useEffect(() => {
-    console.log('[GAME] Auto-save triggered, associations length:', gameState.associations?.length);
-    if (gameState.associations && onUpdateAssociations) {
-      console.log('[GAME] Calling onUpdateAssociations');
+    if (onUpdateAssociations && gameState.associations) {
+      const firstAssocStatus = gameState.associations[0]?.status;
+      const firstAssocLearned = gameState.associations[0]?.isLearned;
+      console.log('[GAME] Syncing associations to parent, count:', gameState.associations.length, 'first status:', firstAssocStatus, 'first learned:', firstAssocLearned);
       onUpdateAssociations(gameState.associations);
     }
-  }, [gameState.associations]);
+  }, [gameState.associations, onUpdateAssociations]);
+
+  // Auto-save is disabled - only save on back navigation to avoid stale data issues
+  // const handleAutoSave = () => { ... } - removed
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,7 +116,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
-      onBack();
+      onBack(gameState.associations);
       return;
     }
     const learnedCardIds = gameState.associations.filter(a => a.isLearned).map(a => a.id);
@@ -129,7 +133,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         console.error("Error passing updated associations to parent:", error);
       }
     }
-    onBack();
+    onBack(gameState.associations);
   };
 
   const handleFullRestart = async () => {
@@ -159,7 +163,10 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const conceptParts = list.concept.split('/');
   const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
   const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
-  const cycleStats = { pending: gameState.activeQueue.length - gameState.currentIndex, correct: gameState.currentIndex };
+  
+  // Calculate correct count from associations (status === 'correct' or isLearned === true)
+  const correctCount = gameState.associations.filter((a: any) => a.status === 'correct' || a.isLearned === true).length;
+  const cycleStats = { pending: gameState.activeQueue.length - gameState.currentIndex, correct: correctCount };
   const cycleColorName = cycleColorMap[gameState.globalCycle as GameCycle] || 'slate';
   const cycleColorClass = cycleColorName === 'sky' ? 'text-sky-600' : cycleColorName === 'yellow' ? 'text-yellow-600' : cycleColorName === 'rose' ? 'text-rose-600' : cycleColorName === 'emerald' ? 'text-emerald-600' : 'text-slate-600';
   const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
