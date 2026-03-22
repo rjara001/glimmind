@@ -18,6 +18,7 @@ const INITIAL_GAME_STATE: Omit<GameState, "listId" | "associations"> = {
   similarity: null,
   lastAttempt: "",
   attempts: [],
+  revealedAssociations: [],
 };
 
 /**
@@ -119,9 +120,15 @@ export class GlimmindGame {
 
   public reveal(): GlimmindGame {
     if (this.state.revealed) return this;
+    const currentId = this.currentAssociation?.id;
+    const revealedAssociations = currentId && !this.state.revealedAssociations.includes(currentId)
+      ? [...this.state.revealedAssociations, currentId]
+      : this.state.revealedAssociations;
+
     return new GlimmindGame(this.initialList, {
       ...this.state,
       revealed: true,
+      revealedAssociations,
     });
   }
 
@@ -156,11 +163,16 @@ export class GlimmindGame {
       threshold,
       expectedAnswer: correctAnswer,
       timestamp: Date.now(),
+      associationId: current.id,
     };
 
     const updatedAttempts = [...this.state.attempts, newAttempt];
 
     if (isCorrect) {
+      const revealedAssociations = !this.state.revealedAssociations.includes(current.id)
+        ? [...this.state.revealedAssociations, current.id]
+        : this.state.revealedAssociations;
+
       const correctState: GameState = {
         ...this.state,
         revealed: true,
@@ -168,6 +180,7 @@ export class GlimmindGame {
         similarity: 100,
         lastAttempt: userAnswer,
         attempts: updatedAttempts,
+        revealedAssociations,
       };
       return new GlimmindGame(this.initialList, correctState);
     } else {

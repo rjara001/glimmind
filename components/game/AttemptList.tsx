@@ -3,9 +3,10 @@ import { Attempt } from '../../types';
 
 interface AttemptListProps {
   attempts: Attempt[];
+  revealedAssociations: string[];
 }
 
-export const AttemptList: React.FC<AttemptListProps> = ({ attempts }) => {
+export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAssociations }) => {
   if (attempts.length === 0) {
     return null;
   }
@@ -16,7 +17,10 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts }) => {
     <div className="w-full bg-white/40 rounded-2xl p-4 border border-white mt-4">
       <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Intentos ({attempts.length})</h3>
       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-        {reversedAttempts.map((attempt) => (
+        {reversedAttempts.map((attempt) => {
+          const showExpected = revealedAssociations.includes(attempt.associationId);
+          
+          return (
           <div 
             key={attempt.timestamp} 
             className="bg-white/60 rounded-xl p-3 border border-slate-100 shadow-sm"
@@ -27,7 +31,7 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts }) => {
                   "{attempt.userInput}"
                 </p>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Esperado: <span className="text-slate-600">{attempt.expectedAnswer}</span>
+                  Esperado: <span className="text-slate-600">{showExpected ? attempt.expectedAnswer : '*********'}</span>
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
@@ -40,7 +44,8 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts }) => {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

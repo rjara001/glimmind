@@ -42,6 +42,7 @@ export interface Attempt {
   threshold: number;
   expectedAnswer: string;
   timestamp: number;
+  associationId: string;
 }
 
 export interface GameState {
@@ -58,4 +59,5 @@ export interface GameState {
   similarity: number | null;
   lastAttempt: string;
   attempts: Attempt[];
+  revealedAssociations: string[];
 }

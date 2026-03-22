@@ -59,9 +59,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   // Sync game state to parent when associations change
   useEffect(() => {
     if (onUpdateAssociations && gameState.associations) {
-      const firstAssocStatus = gameState.associations[0]?.status;
-      const firstAssocLearned = gameState.associations[0]?.isLearned;
-      console.log('[GAME] Syncing associations to parent, count:', gameState.associations.length, 'first status:', firstAssocStatus, 'first learned:', firstAssocLearned);
       onUpdateAssociations(gameState.associations);
     }
   }, [gameState.associations, onUpdateAssociations]);
@@ -195,7 +192,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               lastAttempt={lastAttempt}
             />
             <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
-            <AttemptList attempts={attempts} />
+            <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} />
           </div>
         </div>
         <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
