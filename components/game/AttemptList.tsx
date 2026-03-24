@@ -31,7 +31,7 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAsso
                   "{attempt.userInput}"
                 </p>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Esperado: <span className="text-slate-600">{showExpected ? attempt.expectedAnswer : '*********'}</span>
+                  Esperado: <span className="text-slate-600">{showExpected ? attempt.expectedAnswer : (attempt.expectedAnswer?.replace(/\S/g, '*') || '***')}</span>
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">

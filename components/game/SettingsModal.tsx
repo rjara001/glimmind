@@ -21,9 +21,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
-        <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter text-center">Settings</h3>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-sm rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200 border border-white" style={{ scrollbarWidth: 'none' }}>
+        <h3 className="text-3xl font-black text-slate-900 mb-6 sm:mb-8 tracking-tighter text-center">Settings</h3>
         
         <div className="space-y-4 mb-8">
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">

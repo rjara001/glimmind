@@ -204,6 +204,10 @@ export class GlimmindGame {
     let associations = [...this.state.associations];
     const assocIndex = associations.findIndex((a) => a.id === currentAssoc.id);
 
+    const revealedAssociations = !this.state.revealedAssociations.includes(currentAssoc.id)
+      ? [...this.state.revealedAssociations, currentAssoc.id]
+      : this.state.revealedAssociations;
+
     if (action.type === "CORRECT") {
       associations[assocIndex] = {
         ...currentAssoc,
@@ -226,6 +230,7 @@ export class GlimmindGame {
       feedback: "none",
       similarity: null,
       lastAttempt: "",
+      revealedAssociations,
     };
     const nextGame = new GlimmindGame(this.initialList, nextState);
     return nextGame._checkForNextCycle();
@@ -328,9 +333,9 @@ export class GlimmindGame {
     associations: Association[],
     _cycle: GameCycle,
   ): string[] {
-    // Include all non-archived associations that haven't completed cycle 4
+    // Include all non-archived associations that haven't completed cycle 4 and are not already correctly answered
     return associations
-      .filter((a) => !a.isArchived && a.currentCycle < 4)
+      .filter((a) => !a.isArchived && a.currentCycle < 4 && a.status !== "correct")
       .map((a) => a.id);
   }
 }

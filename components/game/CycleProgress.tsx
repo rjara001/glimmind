@@ -51,7 +51,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState, cycleCo
     <div className="w-full lg:w-48 bg-white/40 rounded-[2rem] p-5 border border-white flex flex-col gap-3">
       <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 text-center lg:text-left">PROGRESO</h3>
       
-      <div className="flex lg:flex-col justify-between lg:justify-start gap-3 lg:gap-4">
+      <div className="flex lg:flex-col justify-start gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-0 snap-x snap-mandatory flex-nowrap" style={{ scrollbarWidth: 'none' }}>
         {cycles.map((cycle) => {
           const isActive = gameState.globalCycle === cycle.id;
           const colorName = cycleColorMap[cycle.id as GameCycle] || 'slate';
@@ -61,7 +61,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState, cycleCo
               : `bg-${colorName}-500/10 border-transparent text-${colorName}-600`;
 
           return (
-            <div key={cycle.id} className={`flex items-center gap-3 transition-all duration-300`}>
+            <div key={cycle.id} className={`flex items-center gap-3 transition-all duration-300 min-w-max snap-start`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm ${ballClasses}`}>
                 <span className="text-sm font-bold">{cycle.count}</span>
               </div>

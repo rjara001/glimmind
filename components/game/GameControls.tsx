@@ -31,6 +31,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           <button 
             onClick={onCheckAnswer}
             disabled={isTransitioning || revealed}
+            tabIndex={2}
             className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-2`}
           >
             Validar
@@ -40,6 +41,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
         <button 
           onClick={onNext} 
           disabled={isTransitioning}
+          tabIndex={isPracticeMode ? 3 : 4}
           className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1`}
         >
           Pasar
@@ -50,6 +52,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           <button 
             onClick={onReveal}
             disabled={isTransitioning || (isPracticeMode && revealed)}
+            tabIndex={isPracticeMode ? 2 : 3}
             className={`${baseButtonClass} bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3`}
           >
             Revelar
@@ -61,6 +64,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           <button 
             onClick={onCorrect} 
             disabled={isTransitioning || (revealed && wasRevealed)}
+            tabIndex={1}
             className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
           >
             Correcta

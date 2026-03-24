@@ -59,6 +59,7 @@ export const GameCard: React.FC<GameCardProps> = ({
             <input
               ref={inputRef}
               type="text"
+              tabIndex={1}
               value={userInput}
               onChange={(e) => onUserInput(e.target.value)}
               className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50"
@@ -84,8 +85,8 @@ export const GameCard: React.FC<GameCardProps> = ({
                </div>
             )}
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">{labelDef}</span>
-            <p className="text-2xl md:text-3xl font-black text-indigo-600 bg-indigo-50/50 px-6 py-3 rounded-2xl border-2 border-indigo-100/50 inline-block shadow-sm">
-              {displayDef}
+            <p className={`text-2xl md:text-3xl font-black ${revealed || !isPracticeMode ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-300 bg-slate-50/50'} px-6 py-3 rounded-2xl border-2 ${revealed || !isPracticeMode ? 'border-indigo-100/50' : 'border-slate-100/50'} inline-block shadow-sm`}>
+              {revealed || !isPracticeMode ? displayDef : (displayDef?.replace(/\S/g, '*') || '***')}
             </p>
           </div>
         )}

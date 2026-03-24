@@ -136,7 +136,7 @@ describe('GlimmindGame', () => {
     });
 
     describe('game progression', () => {
-        it('passes through cycles 1 to 4', () => {
+        it('passes through cycles 1 to 3 and finishes', () => {
             const associations = createMockAssociations(1);
             const list = createMockList(associations);
             
@@ -150,16 +150,16 @@ describe('GlimmindGame', () => {
             expect(game.state.globalCycle).toBe(3);
             
             game = game.processAction({ type: 'PASS' });
-            expect(game.state.globalCycle).toBe(4);
+            // It finishes here because the card reaches cycle 4, rendering cycle 4 empty.
+            expect(game.state.isFinished).toBe(true);
         });
 
-        it('ends after cycle 4', () => {
+        it('ends properly after graduating all cards', () => {
             const associations = createMockAssociations(1);
             const list = createMockList(associations);
             
             let game = GlimmindGame.create(list);
             
-            game = game.processAction({ type: 'PASS' });
             game = game.processAction({ type: 'PASS' });
             game = game.processAction({ type: 'PASS' });
             game = game.processAction({ type: 'PASS' });
@@ -366,5 +366,75 @@ describe('GlimmindGame', () => {
             });
         });
     });
-});
+    describe('Game Completion and Cycle Progression Logic (Real Mode)', () => {
+        it('Case 1: All Correct in the First Pass', () => {
+            // Se presenta la primera carta: Pendientes 10, Correctas 0
+            const list = createMockList(createMockAssociations(10));
+            let game = GlimmindGame.create(list);
+            
+            expect(game.state.activeQueue.length).toBe(10);
+            
+            // Responder las 10 correctamente
+            for (let i = 0; i < 10; i++) {
+                const currentCardId = game.state.activeQueue[game.state.currentIndex];
+                const card = game.state.associations.find(a => a.id === currentCardId)!;
+                
+                game = game.setUserInput(card.definition);
+                game = game.checkAnswer();
+                expect(game.state.feedback).toBe('correct');
+                
+                game = game.processAction({ type: 'CORRECT' });
+            }
+            
+            // Resultado: Como Pendientes llega a 0 y no hay cartas encoladas, finalizado.
+            expect(game.state.isFinished).toBe(true);
+            const correctCount = game.state.associations.filter(a => a.status === 'correct').length;
+            expect(correctCount).toBe(10);
+        });
 
+        it('Case 2: Mixed Correct and Incorrect Answers', () => {
+            const list = createMockList(createMockAssociations(10));
+            let game = GlimmindGame.create(list);
+            
+            // 5 correctas consecutivas
+            for (let i = 0; i < 5; i++) {
+                const currentCardId = game.state.activeQueue[game.state.currentIndex];
+                const card = game.state.associations.find(a => a.id === currentCardId)!;
+                game = game.setUserInput(card.definition);
+                game = game.checkAnswer();
+                game = game.processAction({ type: 'CORRECT' });
+            }
+            
+            // 5 incorrectas consecutivas (pasamos a la siguiente con fallo)
+            for (let i = 0; i < 5; i++) {
+                const currentCardId = game.state.activeQueue[game.state.currentIndex];
+                const card = game.state.associations.find(a => a.id === currentCardId)!;
+                game = game.setUserInput('wrong answer');
+                game = game.checkAnswer();
+                game = game.processAction({ type: 'PASS' });
+            }
+            
+            // Debería arrancar el Ciclo 2 con 5 cartas pendientes (las que fallamos)
+            expect(game.state.isFinished).toBe(false);
+            expect(game.state.globalCycle).toBe(2);
+            expect(game.state.activeQueue.length).toBe(5);
+            
+            const correctCountCycle1 = game.state.associations.filter(a => a.status === 'correct').length;
+            expect(correctCountCycle1).toBe(5); // 5 correctas del ciclo 1
+            
+            // Responder las 5 del ciclo 2 correctamente
+            for (let i = 0; i < 5; i++) {
+                const currentCardId = game.state.activeQueue[game.state.currentIndex];
+                const card = game.state.associations.find(a => a.id === currentCardId)!;
+                game = game.setUserInput(card.definition);
+                game = game.checkAnswer();
+                game = game.processAction({ type: 'CORRECT' });
+            }
+            
+            // Finaliza
+            expect(game.state.isFinished).toBe(true);
+            const totalCorrect = game.state.associations.filter(a => a.status === 'correct').length;
+            expect(totalCorrect).toBe(10);
+        });
+    });
+});
