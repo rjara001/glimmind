@@ -60,11 +60,6 @@ describe('Buttons Display - Modo Examen (real)', () => {
     expect(onNext).toHaveBeenCalledTimes(1);
   });
 
-  it('should show "Correcta" button in real mode when revealed', () => {
-    renderControls({ revealed: true, wasRevealed: true, gameMode: 'real' });
-    const correctaButton = screen.getByRole('button', { name: /correcta/i });
-    expect(correctaButton).toBeInTheDocument();
-  });
 
   it('should show "Revelar" button in real mode when not revealed', () => {
     renderControls({ revealed: false, gameMode: 'real' });

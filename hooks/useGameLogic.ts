@@ -1,10 +1,14 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AssociationList } from '../types';
 import { GlimmindGame } from '../services/gameEngine';
 
 export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const [game, setGame] = useState(() => GlimmindGame.create(list));
+
+  useEffect(() => {
+    setGame(prev => prev.updateList(list));
+  }, [list]);
 
   const actions = useMemo(() => ({
     restart: () => setGame(prev => prev.restart()),

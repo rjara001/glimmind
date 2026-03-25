@@ -142,6 +142,37 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleCreateMultipleLists = async (groups: { name: string, associations: any[] }[]) => {
+    if (!user || !currentList) return;
+    const { lists } = useGameStore.getState();
+    
+    const newLists = groups.map(g => ({
+      id: `temp_${crypto.randomUUID()}`,
+      userId: user.uid || GUEST_ID,
+      name: g.name,
+      concept: currentList.concept,
+      associations: g.associations,
+      isArchived: false,
+      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95 },
+    }));
+
+    setLists([...lists, ...newLists]);
+
+    if (user.uid !== GUEST_ID) {
+      newLists.forEach(async (newList) => {
+        try {
+          const newId = await listService.createList(newList);
+          const currentLists = useGameStore.getState().lists;
+          setLists(currentLists.map(l => l.id === newList.id ? { ...newList, id: newId } : l));
+        } catch (error) {
+          console.error("Failed to sync AI grouped list:", error);
+        }
+      });
+    }
+    
+    showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
+  };
+
   if (!isLoaded) {
     return (
       <ToastProvider>
@@ -213,8 +244,9 @@ const AppContent: React.FC = () => {
         {view === 'editor' && currentList && (
           <ListEditor 
             list={currentList} 
-            onSave={(updatedList) => handleUpdateAssociations(currentList.id, updatedList.associations)} 
-            onBack={() => setView('dashboard')} 
+            onSave={handleUpdateList} 
+            onBack={() => setView('dashboard')}
+            onCreateMultiple={handleCreateMultipleLists}
           />
         )}
         {view === 'game' && currentList && (

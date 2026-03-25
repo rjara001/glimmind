@@ -190,6 +190,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               feedback={feedback} 
               similarity={similarity}
               lastAttempt={lastAttempt}
+              cycleColorName={cycleColorName}
             />
             <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} />

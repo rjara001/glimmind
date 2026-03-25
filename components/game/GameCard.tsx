@@ -12,6 +12,7 @@ interface GameCardProps {
   feedback: 'none' | 'correct' | 'incorrect';
   similarity: number | null;
   lastAttempt: string;
+  cycleColorName?: string;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -26,6 +27,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   feedback,
   similarity,
   lastAttempt,
+  cycleColorName = 'indigo',
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,19 +40,30 @@ export const GameCard: React.FC<GameCardProps> = ({
     }
   }, [isPracticeMode, revealed, feedback]);
 
+  const cycleStyles: Record<string, { bg: string, border: string, text: string, decoration: string }> = {
+    sky: { bg: 'bg-sky-50', border: 'border-sky-500/20', text: 'text-sky-500', decoration: 'bg-sky-600/10' },
+    yellow: { bg: 'bg-yellow-50', border: 'border-yellow-500/20', text: 'text-yellow-600', decoration: 'bg-yellow-600/10' },
+    rose: { bg: 'bg-rose-50', border: 'border-rose-500/20', text: 'text-rose-500', decoration: 'bg-rose-600/10' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-500/20', text: 'text-emerald-600', decoration: 'bg-emerald-600/10' },
+    slate: { bg: 'bg-slate-50', border: 'border-slate-500/20', text: 'text-slate-500', decoration: 'bg-slate-600/10' },
+    indigo: { bg: 'bg-indigo-50', border: 'border-indigo-500/20', text: 'text-indigo-400', decoration: 'bg-indigo-600/10' },
+  };
+
+  const currentStyle = cycleStyles[cycleColorName] || cycleStyles.indigo;
+
   const feedbackClasses = feedback === 'correct' 
     ? 'ring-8 ring-emerald-400 border-emerald-500'
     : feedback === 'incorrect' 
       ? 'ring-8 ring-rose-400 border-rose-500'
-      : 'border-indigo-500/20';
+      : currentStyle.border;
 
   const showIncorrectFeedback = feedback === 'incorrect' && similarity !== null;
   const showLastAttempt = Boolean(lastAttempt && feedback !== 'none' && !revealed);
 
   return (
-    <div className={`w-full bg-white rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-6 md:p-10 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-all duration-300 ${feedbackClasses}`}>
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600/10"></div>
-      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-1">{labelTerm}</span>
+    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-6 md:p-10 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-all duration-500 ${currentStyle.bg} ${feedbackClasses}`}>
+      <div className={`absolute top-0 left-0 w-full h-1.5 ${currentStyle.decoration} transition-colors duration-500`}></div>
+      <span className={`text-[9px] font-black uppercase tracking-[0.3em] block mb-1 transition-colors duration-500 ${currentStyle.text}`}>{labelTerm}</span>
       <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-6 break-words leading-tight tracking-tight">{displayTerm}</h2>
       
       <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">

@@ -1,0 +1,323 @@
+(node:40272) ExperimentalWarning: CommonJS module C:\Program Files\nodejs\node_modules\npm\node_modules\debug\src\node.js is loading ES Module C:\Program Files\nodejs\node_modules\npm\node_modules\supports-color\index.js using require().
+Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mc:/dev/PERSONAL/glimmind[39m
+
+ [32m✓[39m services/verification-engine.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Circle back" vs "Volver" (same exact case)
+[22m[39m"Circle back" vs "Volver": similarity = 9%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"circle back" vs "Volver" (all lowercase)
+[22m[39m"circle back" vs "Volver": similarity = 9%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"CIRCLE BACK" vs "Volver" (all uppercase)
+[22m[39m"CIRCLE BACK" vs "Volver": similarity = 9%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Volver" vs "Volver" (correct answer in Spanish)
+[22m[39m"Volver" vs "Volver": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"volver" vs "Volver" (lowercase Spanish)
+[22m[39m"volver" vs "Volver": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Circleback" vs "Volver" (no space)
+[22m[39m"Circleback" vs "Volver": similarity = 10%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"circleback" vs "Volver" (no space lowercase)
+[22m[39m"circleback" vs "Volver": similarity = 10%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Get down to" vs "Ponerse a" (same exact case)
+[22m[39m"Get down to" vs "Ponerse a": similarity = 9%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"get down to" vs "Ponerse a" (all lowercase)
+[22m[39m"get down to" vs "Ponerse a": similarity = 9%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Ponerse a" vs "Ponerse a" (correct answer)
+[22m[39m"Ponerse a" vs "Ponerse a": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"ponerse a" vs "Ponerse a" (lowercase)
+[22m[39m"ponerse a" vs "Ponerse a": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Look up to" vs "Admirar" (exact case)
+[22m[39m"Look up to" vs "Admirar": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"look up to" vs "Admirar" (lowercase)
+[22m[39m"look up to" vs "Admirar": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Admirar" vs "Admirar" (correct answer)
+[22m[39m"Admirar" vs "Admirar": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Give up" vs "Rendirse" (exact case)
+[22m[39m"Give up" vs "Rendirse": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"give up" vs "Rendirse" (lowercase)
+[22m[39m"give up" vs "Rendirse": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Rendirse" vs "Rendirse" (correct answer)
+[22m[39m"Rendirse" vs "Rendirse": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Take off" vs "Despegar" (exact case)
+[22m[39m"Take off" vs "Despegar": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"take off" vs "Despegar" (lowercase)
+[22m[39m"take off" vs "Despegar": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Despegar" vs "Despegar" (correct answer)
+[22m[39m"Despegar" vs "Despegar": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Run into" vs "Encontrarse con" (exact case)
+[22m[39m"Run into" vs "Encontrarse con": similarity = 20%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"run into" vs "Encontrarse con" (lowercase)
+[22m[39m"run into" vs "Encontrarse con": similarity = 20%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Encontrarse con" vs "Encontrarse con" (correct answer)
+[22m[39m"Encontrarse con" vs "Encontrarse con": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Put off" vs "Posponer" (exact case)
+[22m[39m"Put off" vs "Posponer": similarity = 25%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"put off" vs "Posponer" (lowercase)
+[22m[39m"put off" vs "Posponer": similarity = 25%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Posponer" vs "Posponer" (correct answer)
+[22m[39m"Posponer" vs "Posponer": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Call off" vs "Cancelar" (exact case)
+[22m[39m"Call off" vs "Cancelar": similarity = 25%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"call off" vs "Cancelar" (lowercase)
+[22m[39m"call off" vs "Cancelar": similarity = 25%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Cancelar" vs "Cancelar" (correct answer)
+[22m[39m"Cancelar" vs "Cancelar": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Break down" vs "Desglosar" (exact case)
+[22m[39m"Break down" vs "Desglosar": similarity = 10%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"break down" vs "Desglosar" (lowercase)
+[22m[39m"break down" vs "Desglosar": similarity = 10%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Desglosar" vs "Desglosar" (correct answer)
+[22m[39m"Desglosar" vs "Desglosar": similarity = 100%, feedback = correct, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Figure out" vs "Descubrir" (exact case)
+[22m[39m"Figure out" vs "Descubrir": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"figure out" vs "Descubrir" (lowercase)
+[22m[39m"figure out" vs "Descubrir": similarity = 0%, feedback = incorrect, threshold = 90%
+
+[90mstdout[2m | services/gameEngine.test.ts[2m > [22m[2mGlimmindGame[2m > [22m[2mSimilarity Algorithm Tests[2m > [22m[2m"Descubrir" vs "Descubrir" (correct answer)
+[22m[39m"Descubrir" vs "Descubrir": similarity = 100%, feedback = correct, threshold = 90%
+
+ [32m✓[39m services/gameEngine.test.ts [2m([22m[2m54 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [32m✓[39m components/game/GameHeader.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 635[2mms[22m[39m
+   [33m[2m✓[22m[39m GameHeader component[2m > [22mrenders the settings button and calls onSettingsClick when clicked [33m536[2mms[22m[39m
+ [31m❯[39m components/game/verification-tests.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m services/practiceMode.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+[90mstderr[2m | components/verification-toast.test.tsx[2m > [22m[2mToast Notifications[2m > [22m[2mshould show success toast
+[22m[39mAn update to ToastProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [31m❯[39m components/game/verification-buttons.test.tsx [2m([22m[2m18 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 324[2mms[22m[39m
+[31m   [31m×[31m Buttons Display - Modo Examen (real)[2m > [22mshould show "Correcta" button in real mode when revealed[90m 24[2mms[22m[31m[39m
+[31m     → Unable to find an accessible element with the role "button" and name `/correcta/i`
+
+Here are the accessible roles:
+
+  button:
+
+  Name "Validar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center shadow-sm bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed order-2"[31m
+    [33mdisabled[31m=[32m""[31m
+    [33mtabindex[31m=[32m"2"[31m
+  [36m/>[31m
+
+  Name "Pasar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1"[31m
+    [33mtabindex[31m=[32m"4"[31m
+  [36m/>[31m
+
+  Name "Revelar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3"[31m
+    [33mtabindex[31m=[32m"3"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"w-full max-w-xl mt-4"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm"[31m
+      [36m>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center shadow-sm bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed order-2"[31m
+          [33mdisabled[31m=[32m""[31m
+          [33mtabindex[31m=[32m"2"[31m
+        [36m>[31m
+          [0mValidar[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1"[31m
+          [33mtabindex[31m=[32m"4"[31m
+        [36m>[31m
+          [0mPasar[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3"[31m
+          [33mtabindex[31m=[32m"3"[31m
+        [36m>[31m
+          [0mRevelar[0m
+        [36m</button>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m❯[39m components/verification-toast.test.tsx [2m([22m[2m10 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[33m 30283[2mms[22m[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould show success toast[33m 5097[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould show error toast[33m 5019[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould show info toast[33m 5027[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould auto-remove toast after timeout[33m 5075[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould allow manual removal of toast[33m 5010[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m   [31m×[31m Toast Notifications[2m > [22mshould render multiple toasts[33m 5018[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m components/game/verification-tests.test.tsx[2m [ components/game/verification-tests.test.tsx ][22m
+[31m[1mError[22m: Failed to resolve import "../components/GameView" from "components/game/verification-tests.test.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/dev/PERSONAL/glimmind/components/game/verification-tests.test.tsx[39m:3:25
+[33m  2  |  import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+  3  |  import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+  4  |  import { GameView } from "../components/GameView";
+     |                            ^
+  5  |  import { GlimmindGame } from "../services/gameEngine";
+  6  |  const createTestList = (associations = []) => ({[39m
+[90m [2m❯[22m TransformPluginContext._formatError node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49258:41[22m[39m
+[90m [2m❯[22m TransformPluginContext.error node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49253:16[22m[39m
+[90m [2m❯[22m normalizeUrl node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64307:23[22m[39m
+[90m [2m❯[22m node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64366:7[22m[39m
+[90m [2m❯[22m PluginContainer.transform node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49099:18[22m[39m
+[90m [2m❯[22m loadAndTransform node_modules/vitest/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m51978:27[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 7 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould show success toast
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould show error toast
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould show info toast
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould auto-remove toast after timeout
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould allow manual removal of toast
+[31m[1m[7m FAIL [27m[22m[39m components/verification-toast.test.tsx[2m > [22mToast Notifications[2m > [22mshould render multiple toasts
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m components/game/verification-buttons.test.tsx[2m > [22mButtons Display - Modo Examen (real)[2m > [22mshould show "Correcta" button in real mode when revealed
+[31m[1mTestingLibraryElementError[22m: Unable to find an accessible element with the role "button" and name `/correcta/i`
+
+Here are the accessible roles:
+
+  button:
+
+  Name "Validar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center shadow-sm bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed order-2"[31m
+    [33mdisabled[31m=[32m""[31m
+    [33mtabindex[31m=[32m"2"[31m
+  [36m/>[31m
+
+  Name "Pasar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1"[31m
+    [33mtabindex[31m=[32m"4"[31m
+  [36m/>[31m
+
+  Name "Revelar":
+  [36m<button[31m
+    [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3"[31m
+    [33mtabindex[31m=[32m"3"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"w-full max-w-xl mt-4"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm"[31m
+      [36m>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center shadow-sm bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed order-2"[31m
+          [33mdisabled[31m=[32m""[31m
+          [33mtabindex[31m=[32m"2"[31m
+        [36m>[31m
+          [0mValidar[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1"[31m
+          [33mtabindex[31m=[32m"4"[31m
+        [36m>[31m
+          [0mPasar[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3"[31m
+          [33mtabindex[31m=[32m"3"[31m
+        [36m>[31m
+          [0mRevelar[0m
+        [36m</button>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m components/game/verification-buttons.test.tsx:[2m65:35[22m[39m
+    [90m 63| [39m  [34mit[39m([32m'should show "Correcta" button in real mode when revealed'[39m[33m,[39m () [33m=>[39m…
+    [90m 64| [39m    [34mrenderControls[39m({ revealed[33m:[39m [35mtrue[39m[33m,[39m wasRevealed[33m:[39m [35mtrue[39m[33m,[39m gameMode[33m:[39m [32m'rea[39m…
+    [90m 65| [39m    [35mconst[39m correctaButton [33m=[39m screen[33m.[39m[34mgetByRole[39m([32m'button'[39m[33m,[39m { name[33m:[39m [36m/correct[39m…
+    [90m   | [39m                                  [31m^[39m
+    [90m 66| [39m    [34mexpect[39m(correctaButton)[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m 67| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m104 passed[39m[22m[90m (111)[39m
+[2m   Start at [22m 00:40:52
+[2m   Duration [22m 68.41s[2m (transform 2.89s, setup 11.59s, collect 22.22s, tests 31.29s, environment 42.28s, prepare 4.52s)[22m
+

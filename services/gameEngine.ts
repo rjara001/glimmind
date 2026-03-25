@@ -97,6 +97,10 @@ export class GlimmindGame {
     return this.state.associations.find((a) => a.id === currentId);
   }
 
+  public updateList(newList: AssociationList): GlimmindGame {
+    return new GlimmindGame(newList, this.state);
+  }
+
   public restart(): GlimmindGame {
     // Reset all associations to initial state for full restart
     const resetAssociations = this.initialList.associations

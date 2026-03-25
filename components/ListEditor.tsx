@@ -125,8 +125,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   };
 
   const handleUpdateField = (id: string, field: keyof Association, value: any) => {
-    const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, [field]: value } : a);
-    setEditList({ ...editList, associations: updatedAssociations });
+    setEditList(current => {
+      const updatedAssociations = current.associations.map(a => a.id === id ? { ...a, [field]: value } : a);
+      return { ...current, associations: updatedAssociations };
+    });
   };
 
   const handleBlurRow = () => {
@@ -160,7 +162,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
+          <button onClick={() => { cleanupAndSave(editList); onBack(); }} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
           <div>
