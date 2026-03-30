@@ -208,7 +208,7 @@ describe('GlimmindGame', () => {
     });
 
     describe('archived associations', () => {
-        it('filters out archived associations', () => {
+        it('filters out archived associations from active queue but preserves them in state', () => {
             const associations: Association[] = [
                 { id: '1', term: 'Term 1', definition: 'Def 1', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
                 { id: '2', term: 'Term 2', definition: 'Def 2', status: 'pending', currentCycle: 1, isLearned: false, isArchived: true },
@@ -218,8 +218,8 @@ describe('GlimmindGame', () => {
             
             const game = GlimmindGame.create(list);
             
-            expect(game.state.associations.length).toBe(2);
-            expect(game.state.activeQueue.length).toBe(2);
+            expect(game.state.associations.length).toBe(3); // Preserved to prevent data loss
+            expect(game.state.activeQueue.length).toBe(2); // Filtered out of gameplay
         });
     });
 

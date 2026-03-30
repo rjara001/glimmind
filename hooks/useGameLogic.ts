@@ -11,7 +11,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
   }, [list]);
 
   const actions = useMemo(() => ({
-    restart: () => setGame(prev => prev.restart()),
+    restart: (overrideList?: AssociationList) => setGame(prev => prev.restart(overrideList)),
     reveal: () => setGame(prev => prev.reveal()),
     checkAnswer: () => setGame(prev => prev.checkAnswer()),
     setUserInput: (input: string) => setGame(prev => prev.setUserInput(input)),

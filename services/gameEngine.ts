@@ -101,21 +101,20 @@ export class GlimmindGame {
     return new GlimmindGame(newList, this.state);
   }
 
-  public restart(): GlimmindGame {
-    // Reset all associations to initial state for full restart
-    const resetAssociations = this.initialList.associations
-      .filter((a) => !a.isArchived)
-      .map(
-        (a) =>
-          ({
-            ...a,
-            currentCycle: 1,
-            status: "pending",
-            isLearned: false,
-          } as Association),
-      );
+  public restart(overrideList?: AssociationList): GlimmindGame {
+    // Reset all associations to initial state for full restart, except archived ones
+    const listToUse = overrideList || this.initialList;
+    const resetAssociations = listToUse.associations.map((a) => {
+      if (a.isArchived) return a;
+      return {
+        ...a,
+        currentCycle: 1,
+        status: "pending",
+        isLearned: false,
+      } as Association;
+    });
     const resetList: AssociationList = {
-      ...this.initialList,
+      ...listToUse,
       associations: resetAssociations,
     };
     const initialState = GlimmindGame._initializeGame(resetList);
@@ -271,40 +270,39 @@ export class GlimmindGame {
   }
 
   private static _calculateSummary(associations: Association[]): GameSummary {
-    return associations.reduce(
-      (summary, assoc) => {
-        if (assoc.isLearned) summary.learned++;
-        else {
-          switch (assoc.currentCycle) {
-            case 4:
-            case 5:
-              summary.known++;
-              break;
-            case 3:
-              summary.recognized++;
-              break;
-            case 2:
-              summary.seen++;
-              break;
+    return associations
+      .filter(a => !a.isArchived)
+      .reduce(
+        (summary, assoc) => {
+          if (assoc.isLearned) summary.learned++;
+          else {
+            switch (assoc.currentCycle) {
+              case 4:
+              case 5:
+                summary.known++;
+                break;
+              case 3:
+                summary.recognized++;
+                break;
+              case 2:
+                summary.seen++;
+                break;
+            }
           }
-        }
-        return summary;
-      },
-      { learned: 0, known: 0, recognized: 0, seen: 0 },
-    );
+          return summary;
+        },
+        { learned: 0, known: 0, recognized: 0, seen: 0 },
+      );
   }
 
   private static _initializeGame(list: AssociationList): GameState {
-    // Use existing associations from the list instead of resetting to defaults
-    // This preserves progress when resuming a game
-    const initialAssociations = list.associations
-      .filter((a) => !a.isArchived)
-      .map((a) => a);
+    const initialAssociations = [...list.associations];
     
-    // Calculate current global cycle based on highest cycle among associations
+    // Calculate current global cycle based on highest cycle among unarchived associations
+    const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived);
     const currentCycle: GameCycle = Math.max(
       1,
-      initialAssociations.reduce(
+      unarchivedAssocs.reduce(
         (max, a) => Math.max(max, a.currentCycle || 1),
         1
       )
@@ -343,3 +341,4 @@ export class GlimmindGame {
       .map((a) => a.id);
   }
 }
+

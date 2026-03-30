@@ -113,7 +113,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
-      onBack(gameState.associations);
+      actions.restart();
       return;
     }
     const learnedCardIds = gameState.associations.filter(a => a.isLearned).map(a => a.id);
@@ -124,20 +124,29 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         }
         return assoc;
       });
+      const updatedList = { ...list, associations: updatedAssociations };
       try {
         await onUpdateAssociations(updatedAssociations);
+        const remainingToPlay = updatedAssociations.filter(a => !a.isArchived).length;
+        if (remainingToPlay === 0) {
+          onBack(updatedAssociations);
+        } else {
+          actions.restart(updatedList);
+        }
       } catch (error) {
         console.error("Error passing updated associations to parent:", error);
       }
+    } else {
+      actions.restart();
     }
-    onBack(gameState.associations);
   };
 
   const handleFullRestart = async () => {
     const resetAssociations = list.associations.map(assoc => ({ ...assoc, isArchived: false, isLearned: false, currentCycle: 1, status: 'pending' as const }));
+    const updatedList = { ...list, associations: resetAssociations };
     try {
       await onUpdateAssociations(resetAssociations);
-      actions.restart();
+      actions.restart(updatedList);
     } catch (error) {
       console.error("Error during full restart:", error);
     }
