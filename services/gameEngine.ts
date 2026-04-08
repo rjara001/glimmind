@@ -73,12 +73,21 @@ function calculateSimilarity(a: string, b: string): number {
   return Math.max(0, Math.round(similarity));
 }
 
+const DEFAULT_SETTINGS = {
+  mode: 'training' as const,
+  flipOrder: 'normal' as const,
+  threshold: 0.95,
+};
+
 export class GlimmindGame {
   public readonly state: GameState;
   private readonly initialList: AssociationList;
 
   private constructor(list: AssociationList, state: GameState) {
-    this.initialList = list;
+    this.initialList = {
+      ...list,
+      settings: list.settings || DEFAULT_SETTINGS
+    };
     this.state = state;
   }
 
