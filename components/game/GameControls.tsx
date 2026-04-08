@@ -63,9 +63,9 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
         {isPracticeMode && (
           <button 
             onClick={onCorrect} 
-            disabled={isTransitioning || (revealed && wasRevealed)}
+            disabled={isTransitioning}
             tabIndex={1}
-            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
+            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3`}
           >
             Correcta
           </button>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useToast } from './Toast';
@@ -24,7 +25,18 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList }) => {
+const DEFAULT_SETTINGS = {
+  mode: 'training' as const,
+  flipOrder: 'normal' as const,
+  threshold: 0.95,
+};
+
+export const GameView: React.FC<GameViewProps> = ({ list: originalList, onBack, onUpdateAssociations, onUpdateList }) => {
+  const list = useMemo(() => ({
+    ...originalList,
+    settings: originalList.settings || DEFAULT_SETTINGS
+  }), [originalList]);
+
   const [showSettings, setShowSettings] = useState(false);
   const { showToast } = useToast();
   const { 
@@ -49,10 +61,17 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     if (feedback === 'correct') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
+
+      // Haptic feedback for success
+      Haptics.notification({ type: NotificationType.Success }).catch(() => {});
+
       actions.handleCorrect();
     } else if (feedback === 'incorrect') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
+
+      // Haptic feedback for error
+      Haptics.notification({ type: NotificationType.Error }).catch(() => {});
     }
   }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
   
