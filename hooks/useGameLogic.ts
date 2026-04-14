@@ -1,14 +1,26 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { AssociationList } from '../types';
 import { GlimmindGame } from '../services/gameEngine';
 
-export const useGameLogic = ({ list }: { list: AssociationList }) => {
+export const useGameLogic = ({ list, autoStart = false }: { list: AssociationList; autoStart?: boolean }) => {
   const [game, setGame] = useState(() => GlimmindGame.create(list));
+  const prevViewRef = useRef<'card' | 'summary'>('card');
+  const autoStartAttempted = useRef(false);
 
   useEffect(() => {
     setGame(prev => prev.updateList(list));
   }, [list]);
+
+  useEffect(() => {
+    if (autoStart && !autoStartAttempted.current) {
+      const currentView = game.state.isFinished ? 'summary' : 'card';
+      if (currentView === 'summary') {
+        autoStartAttempted.current = true;
+        setGame(g => g.restart());
+      }
+    }
+  }, [autoStart, game.state.isFinished]);
 
   const actions = useMemo(() => ({
     restart: (overrideList?: AssociationList) => setGame(prev => prev.restart(overrideList)),
@@ -26,6 +38,10 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     if (gameState.isFinished) return 'summary';
     return 'card';
   }, [gameState.isFinished]);
+
+  useEffect(() => {
+    prevViewRef.current = gameView;
+  }, [gameView]);
 
   return {
     gameView,

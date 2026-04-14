@@ -15,6 +15,7 @@ interface GameViewProps {
   onBack: (updatedAssociations?: Association[]) => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
   onUpdateList?: (updatedList: AssociationList) => Promise<void>;
+  autoStart?: boolean;
 }
 
 const cycleColorMap: Record<GameCycle, string> = {
@@ -24,7 +25,7 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList }) => {
+export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false }) => {
   const [showSettings, setShowSettings] = useState(false);
   const { showToast } = useToast();
   const { 
@@ -39,7 +40,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     lastAttempt,
     attempts,
     actions 
-  } = useGameLogic({ list });
+  } = useGameLogic({ list, autoStart });
 
   useEffect(() => {
     if (!currentAssociation) return;

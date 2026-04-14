@@ -1,22 +1,47 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AssociationList, Association } from '../types';
 
 interface DashboardProps {
   lists: AssociationList[];
+  lastPlayedId?: string;
   onCreate: (name: string, concept: string, initialAssociations: Association[]) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete, onEdit, onPlay }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onDelete, onEdit, onPlay }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newConcept, setNewConcept] = useState('');
   const [bulkData, setBulkData] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const stats = useMemo(() => {
+    let totalWords = 0;
+    let totalLearned = 0;
+    lists.forEach(list => {
+      const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
+      totalWords += activeAssociations.length;
+      totalLearned += activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+    });
+    return {
+      totalWords,
+      totalLearned,
+      percentage: totalWords > 0 ? Math.round((totalLearned / totalWords) * 100) : 0
+    };
+  }, [lists]);
+
+  const recentLists = useMemo(() => {
+    return [...lists].sort((a, b) => {
+      if (!a.updatedAt || !b.updatedAt) return 0;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }).slice(0, 3);
+  }, [lists]);
+
+  const currentList = lastPlayedId ? lists.find(l => l.id === lastPlayedId) : null;
 
   const parseBulkData = (text: string): Association[] => {
     if (!text.trim()) return [];
@@ -61,9 +86,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
     list.concept.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [continuePlay, setContinuePlay] = useState(false);
+
+  useMemo(() => {
+    if (lastPlayedId) setContinuePlay(true);
+  }, [lastPlayedId]);
+
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 shadow-lg">
+        <h2 className="text-2xl font-bold text-white mb-4">Tu Progreso</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Total Palabras</p>
+            <p className="text-3xl font-bold text-white">{stats.totalWords}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Aprendidas</p>
+            <p className="text-3xl font-bold text-white">{stats.totalLearned}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Por Aprender</p>
+            <p className="text-3xl font-bold text-white">{stats.totalWords - stats.totalLearned}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Completado</p>
+            <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
+          </div>
+        </div>
+        <div className="mt-4 h-3 bg-white/20 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-white rounded-full transition-all duration-500"
+            style={{ width: `${stats.percentage}%` }}
+          />
+        </div>
+      </div>
+
+      {lastPlayedId && continuePlay && currentList && (
+        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-amber-700 font-medium">Continuar última sesión</p>
+            <p className="text-lg font-bold text-gray-900">{currentList.name}</p>
+          </div>
+          <button 
+            onClick={() => onPlay(lastPlayedId)}
+            className="bg-amber-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-amber-600 transition"
+          >
+            Continuar
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Tus Listas de Estudio</h2>
           <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
@@ -78,6 +152,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
           Nueva Lista
         </button>
       </div>
+
+      {recentLists.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas Recientes</h3>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {recentLists.map(list => {
+              const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
+              const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+              return (
+                <button
+                  key={list.id}
+                  onClick={() => onPlay(list.id)}
+                  className="flex-shrink-0 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition text-left min-w-[200px]"
+                >
+                  <p className="font-bold text-gray-900 truncate">{list.name}</p>
+                  <p className="text-sm text-gray-500">{learnedCount}/{activeAssociations.length} aprendidas</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

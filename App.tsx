@@ -10,6 +10,7 @@ import { listService } from './services/firestoreService';
 import { APP_VERSION } from './constants/version';
 
 const GUEST_ID = 'dev-user-local';
+const LAST_PLAYED_KEY = 'glimmind_last_played';
 
 const MOCK_USER = {
   uid: GUEST_ID,
@@ -21,6 +22,9 @@ const AppContent: React.FC = () => {
   const { showToast } = useToast();
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
+    return localStorage.getItem(LAST_PLAYED_KEY) || undefined;
+  });
   
   const { 
     user, setUser, 
@@ -56,6 +60,22 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     useGameStore.getState().loadInitialData();
   }, [user]);
+
+  // Auto-redirect to last played list on page load
+  const [autoStartGame, setAutoStartGame] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoaded || !user || !lastPlayedId) return;
+    
+    const lists = useGameStore.getState().lists;
+    const lastList = lists.find(l => l.id === lastPlayedId);
+    
+    if (lastList) {
+      setCurrentList(lastPlayedId);
+      setView('game');
+      setAutoStartGame(true);
+    }
+  }, [isLoaded, user, lastPlayedId]);
 
   const handleSyncFromCloud = async () => {
     if (!user) return;
@@ -234,11 +254,20 @@ const AppContent: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {view === 'dashboard' && (
           <Dashboard 
-            lists={lists} 
+            lists={lists}
+            lastPlayedId={lastPlayedId}
             onCreate={handleCreateList} 
             onDelete={handleDeleteList} 
             onEdit={(id) => { setCurrentList(id); setView('editor'); }} 
-            onPlay={(id) => { console.log('[DEBUG] Play clicked, id:', id); setCurrentList(id); console.log('[DEBUG] currentListId set to:', useGameStore.getState().currentListId); console.log('[DEBUG] lists:', useGameStore.getState().lists.length); setView('game'); }} 
+            onPlay={(id) => { 
+              console.log('[DEBUG] Play clicked, id:', id); 
+              setCurrentList(id); 
+              localStorage.setItem(LAST_PLAYED_KEY, id);
+              setLastPlayedId(id);
+              console.log('[DEBUG] currentListId set to:', useGameStore.getState().currentListId); 
+              console.log('[DEBUG] lists:', useGameStore.getState().lists.length); 
+              setView('game'); 
+            }} 
           />
         )}
         {view === 'editor' && currentList && (
@@ -255,6 +284,7 @@ const AppContent: React.FC = () => {
             onUpdateAssociations={handleUpdateAssociationsWrapper} 
             onUpdateList={handleUpdateList}
             onBack={() => setView('dashboard')} 
+            autoStart={autoStartGame}
           />
         )}
       </main>
