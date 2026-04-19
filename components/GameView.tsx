@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useToast } from './Toast';
@@ -48,8 +49,17 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList }) => {
-  console.log('[DEBUG GameView] render start', { listId: list?.id, listName: list?.name });
+const DEFAULT_SETTINGS = {
+  mode: 'training' as const,
+  flipOrder: 'normal' as const,
+  threshold: 0.95,
+};
+
+export const GameView: React.FC<GameViewProps> = ({ list: originalList, onBack, onUpdateAssociations, onUpdateList }) => {
+  const list = useMemo(() => ({
+    ...originalList,
+    settings: originalList.settings || DEFAULT_SETTINGS
+  }), [originalList]);
   const [showSettings, setShowSettings] = useState(false);
   const { showToast } = useToast();
   console.log('[DEBUG GameView] before useGameLogic');
