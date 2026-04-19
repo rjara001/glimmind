@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+          includeAssets: ['favicon.png', 'apple-touch-icon.png', 'mask-icon.svg'],
           manifest: {
             name: 'Glimmind',
             short_name: 'Glimmind',

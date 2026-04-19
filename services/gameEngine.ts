@@ -83,7 +83,9 @@ export class GlimmindGame {
   }
 
   public static create(list: AssociationList): GlimmindGame {
+    console.log('[DEBUG GlimmindGame.create] called', { listId: list?.id, assocCount: list?.associations?.length });
     const initialState = GlimmindGame._initializeGame(list);
+    console.log('[DEBUG GlimmindGame.create] state created', { isFinished: initialState.isFinished, activeQueue: initialState.activeQueue?.length });
     return new GlimmindGame(list, initialState);
   }
 
@@ -296,10 +298,12 @@ export class GlimmindGame {
   }
 
   private static _initializeGame(list: AssociationList): GameState {
+    console.log('[DEBUG _initializeGame] start', { listId: list?.id, assocCount: list?.associations?.length });
     const initialAssociations = [...list.associations];
     
     // Calculate current global cycle based on highest cycle among unarchived associations
     const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived);
+    console.log('[DEBUG _initializeGame] unarchivedAssocs', { count: unarchivedAssocs.length });
     const currentCycle: GameCycle = Math.max(
       1,
       unarchivedAssocs.reduce(
@@ -316,6 +320,7 @@ export class GlimmindGame {
       initialAssociations,
       currentCycle,
     );
+    console.log('[DEBUG _initializeGame] activeQueue generated', { activeQueueLength: activeQueue?.length });
     const shuffledQueue = shuffle(activeQueue);
     const state: GameState = {
       ...INITIAL_GAME_STATE,
@@ -328,6 +333,7 @@ export class GlimmindGame {
     if (state.activeQueue.length === 0) {
       state.isFinished = true;
     }
+    console.log('[DEBUG _initializeGame] done', { isFinished: state.isFinished, currentIndex: state.currentIndex });
     return state;
   }
 

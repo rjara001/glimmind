@@ -4,7 +4,11 @@ import { AssociationList } from '../types';
 import { GlimmindGame } from '../services/gameEngine';
 
 export const useGameLogic = ({ list }: { list: AssociationList }) => {
-  const [game, setGame] = useState(() => GlimmindGame.create(list));
+  console.log('[DEBUG useGameLogic] called', { listId: list?.id, hasAssociations: !!list?.associations?.length });
+  const [game, setGame] = useState(() => {
+    console.log('[DEBUG useGameLogic] creating GlimmindGame', { listId: list?.id });
+    return GlimmindGame.create(list);
+  });
 
   useEffect(() => {
     setGame(prev => prev.updateList(list));

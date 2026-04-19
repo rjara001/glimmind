@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useToast } from './Toast';
@@ -10,6 +9,30 @@ import { CycleProgress } from './game/CycleProgress';
 import { FinishedScreen } from './game/FinishedScreen';
 import { SettingsModal } from './game/SettingsModal';
 import { AttemptList } from './game/AttemptList';
+
+const HapticsModule = () => {
+  if (typeof window === 'undefined') return null;
+  const hasCapacitor = !!(window as any).Capacitor || !!(window as any).Cordova;
+  if (!hasCapacitor) return null;
+  try {
+    const m = require('@capacitor/haptics');
+    return m?.Haptics ? m : null;
+  } catch {
+    return null;
+  }
+};
+
+const triggerHaptic = (type: 'success' | 'error') => {
+  const m = HapticsModule();
+  if (!m) return;
+  try {
+    if (type === 'success') {
+      m.Haptics.notification({ type: m.NotificationType.Success }).catch(() => {});
+    } else {
+      m.Haptics.notification({ type: m.NotificationType.Error }).catch(() => {});
+    }
+  } catch {}
+};
 
 interface GameViewProps {
   list: AssociationList;
@@ -26,8 +49,17 @@ const cycleColorMap: Record<GameCycle, string> = {
 };
 
 export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList }) => {
+  console.log('[DEBUG GameView] render start', { listId: list?.id, listName: list?.name });
   const [showSettings, setShowSettings] = useState(false);
   const { showToast } = useToast();
+  console.log('[DEBUG GameView] before useGameLogic');
+  let gameLogicResult;
+  try {
+    gameLogicResult = useGameLogic({ list });
+  } catch (err) {
+    console.error('[DEBUG GameView] useGameLogic ERROR:', err);
+    throw err;
+  }
   const { 
     gameView, 
     gameState, 
@@ -40,7 +72,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     lastAttempt,
     attempts,
     actions 
-  } = useGameLogic({ list });
+  } = gameLogicResult;
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -51,16 +83,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
 
-      // Haptic feedback for success
-      Haptics.notification({ type: NotificationType.Success }).catch(() => {});
-
+      triggerHaptic('success');
       actions.handleCorrect();
     } else if (feedback === 'incorrect') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
 
-      // Haptic feedback for error
-      Haptics.notification({ type: NotificationType.Error }).catch(() => {});
+      triggerHaptic('error');
     }
   }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
   
@@ -209,7 +238,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               lastAttempt={lastAttempt}
               cycleColorName={cycleColorName}
             />
-            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
+            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} />
           </div>
         </div>

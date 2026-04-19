@@ -2,6 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Association } from "../types";
 
+interface ImportMetaEnv {
+  readonly VITE_API_KEY?: string;
+}
+
+declare global {
+  interface Window {
+    __env__?: ImportMetaEnv;
+  }
+}
+
 /**
  * Servicio de IA para Glimmind.
  * Gestiona la comunicación con Gemini siguiendo las directrices oficiales.
@@ -10,11 +20,10 @@ export const aiService = {
   groupAssociations: async (associations: Association[], concept: string) => {
     let apiKey: string | undefined;
 
-// Usar import.meta.env para Vite en lugar de process.env
     console.log("--- 🔍 INVESTIGACIÓN DE ENTORNO ---");
     try {
-      console.log("1. ¿Existe 'import.meta.env'?:", !!import.meta.env);
-      apiKey = (import.meta as any).env.API_KEY;
+      console.log("1. ¿Existe 'import.meta.env'?:", !!(import.meta as any).env);
+      apiKey = (import.meta as any).env?.VITE_API_KEY || window.__env__?.VITE_API_KEY;
       console.log("2. ¿Valor de API_KEY detectado?:", !!apiKey);
       console.log("3. Longitud de la cadena:", apiKey?.length || 0);
     } catch (e) {

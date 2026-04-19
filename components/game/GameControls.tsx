@@ -8,12 +8,11 @@ interface GameControlsProps {
   onReveal: () => void;
   onCorrect: () => void;
   revealed: boolean;
-  wasRevealed: boolean;
   gameMode: GameMode;
   isTransitioning: boolean;
 }
 
-export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, wasRevealed, gameMode, isTransitioning }) => {
+export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, gameMode, isTransitioning }) => {
   const isPracticeMode = gameMode === 'training';
   
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";

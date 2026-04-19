@@ -1,6 +1,5 @@
 
-import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameHeader } from './GameHeader';
 

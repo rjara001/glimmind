@@ -6,7 +6,6 @@ import { GameMode } from '../../types';
 describe('Buttons Display - Modo Examen (real)', () => {
   const renderControls = (props: {
     revealed?: boolean;
-    wasRevealed?: boolean;
     gameMode?: GameMode;
     isTransitioning?: boolean;
     onNext?: () => void;
@@ -26,7 +25,6 @@ describe('Buttons Display - Modo Examen (real)', () => {
       component: render(
         <GameControls
           revealed={props.revealed ?? false}
-          wasRevealed={props.wasRevealed ?? false}
           gameMode={props.gameMode ?? 'real'}
           isTransitioning={props.isTransitioning ?? false}
           onNext={mock.onNext}
@@ -94,7 +92,6 @@ describe('Buttons Display - Modo Examen (real)', () => {
 describe('Buttons Display - Modo Entrenamiento (training)', () => {
   const renderControls = (props: {
     revealed?: boolean;
-    wasRevealed?: boolean;
     gameMode?: GameMode;
     isTransitioning?: boolean;
     onNext?: () => void;
@@ -114,7 +111,6 @@ describe('Buttons Display - Modo Entrenamiento (training)', () => {
       component: render(
         <GameControls
           revealed={props.revealed ?? false}
-          wasRevealed={props.wasRevealed ?? false}
           gameMode={props.gameMode ?? 'training'}
           isTransitioning={props.isTransitioning ?? false}
           onNext={mock.onNext}
@@ -178,7 +174,6 @@ describe('Keyboard Shortcuts', () => {
       component: render(
         <GameControls
           revealed={props.revealed ?? false}
-          wasRevealed={false}
           gameMode={props.gameMode ?? 'real'}
           isTransitioning={false}
           onNext={mock.onNext}
@@ -229,7 +224,6 @@ describe('Feedback - Training Mode (No Messages)', () => {
     render(
       <GameControls
         revealed={false}
-        wasRevealed={false}
         gameMode="training"
         isTransitioning={false}
         onNext={vi.fn()}

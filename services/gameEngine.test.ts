@@ -408,10 +408,10 @@ describe('GlimmindGame', () => {
             // 5 incorrectas consecutivas (pasamos a la siguiente con fallo)
             for (let i = 0; i < 5; i++) {
                 const currentCardId = game.state.activeQueue[game.state.currentIndex];
-                const card = game.state.associations.find(a => a.id === currentCardId)!;
                 game = game.setUserInput('wrong answer');
                 game = game.checkAnswer();
                 game = game.processAction({ type: 'PASS' });
+                expect(currentCardId).toBeDefined();
             }
             
             // Debería arrancar el Ciclo 2 con 5 cartas pendientes (las que fallamos)
