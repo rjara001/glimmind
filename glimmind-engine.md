@@ -1,167 +1,167 @@
-Este documento describe los atajos de teclado disponibles en la vista de juego de Glimmind para agilizar el estudio.
+# Glimmind Game Engine — Technical Specification
 
-### Modo Examen (`real`)
+This document describes the keyboard shortcuts and gameplay logic available in the Glimmind game view to streamline studying.
 
-## Despliegue de botones
+## Exam Mode (`real`)
 
- - Boton "Pasar" o "Siguiente"
- - Boton "Validar"
- - Boton "Revelar"
+### Button Layout
 
-Pasar: Buscar la siguiente tarjeta
-Validar: Comprobar la respuesta
-Revelar: Mostrar la respuesta y deshabilitar el botón "Validar"
+- **Pass** / **Next** button
+- **Validate** button
+- **Reveal** button
 
-## Validación de Intentos
+- **Pass**: Advances to the next card.
+- **Validate**: Checks the submitted answer.
+- **Reveal**: Displays the correct answer and disables the **Validate** button.
 
-Cuando un usuario envía un intento, la lógica de validación es la siguiente:
+### Attempt Validation
 
-## Intento Incorrecto
+When a user submits an attempt, the validation logic works as follows:
 
-Mensaje Toast: Mensaje que aparece un tiempo determinado (debe ser mensajes toast)
+### Incorrect Attempt
 
-*   Aparece un mensaje toast que muestra:
-    *   El texto introducido por el usuario.
-    *   El porcentaje de similitud.
-    *   El umbral de porcentaje requerido (`treshold`).
-*   El campo de texto de la respuesta se limpia automáticamente.
-*   El foco vuelve al campo de texto.
-*   Debe cambiar de color del marco de la tarjeta a rojo por unos instantes, dando a entender que el valor introducido es incorrecto
-*   Ademas debemos mostrar lo siguiente
-    -  Abajo del todo deben aparecer de forma ordenada y apiladacada uno de los intentos que ha realizado el usuario
-    -  Cada intento debe mostrar:
-        -  El texto introducido por el usuario.
-        -  El porcentaje de similitud.
-        -  El umbral de porcentaje requerido (`treshold`).
+A toast message appears for a fixed duration.
 
-## Intento Correcto
+- The toast displays:
+  - The text entered by the user.
+  - The similarity percentage.
+  - The required similarity threshold (`threshold`).
+- The answer input field is cleared automatically.
+- Focus returns to the input field.
+- The card border briefly turns red, signaling the answer was incorrect.
+- Additionally:
+  - All previous attempts are displayed below, stacked in order.
+  - Each attempt shows:
+    - The text entered by the user.
+    - The similarity percentage.
+    - The required similarity threshold (`threshold`).
 
-*   Aparece un mensaje efímero que muestra:
-    *   El texto esperado.
-    *   El texto introducido por el usuario.
-    *   El porcentaje de similitud.
-    *   El umbral de porcentaje requerido (`treshold`).
-*   Se avanza a la siguiente tarjeta.
-*   El campo de texto de la respuesta se limpia automáticamente.
-*   El foco vuelve al campo de texto.
-*   Debe cambiar de color del marco de la tarjeta a verde por unos instantes, dando a entender que el valor introducido es correcto
+### Correct Attempt
 
-## Escribiendo la respuesta (tarjeta no revelada)
+- A brief message appears showing:
+  - The expected answer.
+  - The text entered by the user.
+  - The similarity percentage.
+  - The required similarity threshold (`threshold`).
+- The game advances to the next card.
+- The answer input field is cleared automatically.
+- Focus returns to the input field.
+- The card border briefly turns green, signaling the answer was correct.
 
-- **`Enter`**: Comprueba la respuesta que has escrito.
-- **`Tab`**: Mueve el foco del campo de texto al botón de **Validar**.
+### Typing the Answer (card not revealed)
 
-### Modo Entrenamiento (`training`)
+- **`Enter`**: Validates the typed answer.
+- **`Tab`**: Moves focus from the input field to the **Validate** button.
 
-## Despliegue de botones
+## Training Mode (`training`)
 
- - Boton "Pasar" o "Siguiente"
- - Boton "Revelar"
- - Boton "Correcta"
+### Button Layout
 
-Pasar: Buscar la siguiente tarjeta
-Revelar: Mostrar la respuesta
-Correcta: Marcar la tarjeta como correcta
+- **Pass** / **Next** button
+- **Reveal** button
+- **Correct** button
 
-## Comportamiento
+- **Pass**: Advances to the next card.
+- **Reveal**: Displays the answer.
+- **Correct**: Marks the card as correctly answered.
 
-  - Al iniciar cada nueva tarjeta debe presentar la asociación
-  - El valor a mostrar es el Adverso (si no ha hecho flip)
-  - El reverso debe estar oculto por defecto (mostrando asteriscos `*`)
-  - Al presionar el botón Revelar se debe mostrar el reverso
-  - Al presionar el botón Correcta se debe marcar la tarjeta como correcta
-  - Al presionar el botón Pasar se debe pasar a la siguiente tarjeta y el reverso debe volver a estar oculto (reseteado)
-  - Al iniciar la sesión, la primera tarjeta también debe tener el reverso oculto.
-  
-No hay mensajes de feedback en este modo
+### Behavior
 
-## Tab Sequence
-  - Modo Entrenamiento
-    - Luego de tab debe posicionar el foco en el boton Correcta
-    - Luego de tab debe posicionar el foco en el boton Revelar
-    - Luego de tab debe posicionar el foco en el boton Pasar
-    
-*** CAMBIOS
+- When a new card is presented, it shows the association.
+- The displayed value is the **front** of the card (unless flipped).
+- The **back** of the card is hidden by default (shown as asterisks `*`).
+- Pressing **Reveal** shows the back of the card.
+- Pressing **Correct** marks the card as correctly answered.
+- Pressing **Pass** advances to the next card; the back returns to hidden state (reset).
+- When the session starts, the first card also has its back hidden.
+- No feedback messages are shown in this mode.
 
-- Todo cambio debe incluir un aumento de version
+### Tab Sequence (Training Mode)
 
-*** GUARDAR DATOS
+- After tab, focus moves to the **Correct** button.
+- After tab, focus moves to the **Reveal** button.
+- After tab, focus moves to the **Pass** button.
 
-- El estado debe mantenrse en localstorage
-- Debe existir un boton para sincronizar los datos de la nube con el localstorage
-- Antes de salir de la aplicacion se deben guardar los datos en la nube sin preguntar al usuario
+---
 
-*** Syncronizar datos
+## Change Management
 
-## Tab Sequence
-  - Modo Real
-    - Luego de que se presenta la asociacion debe posicionar el foco en el campo de texto de la respuesta
-    - Luego de tab debe posicionar el foco en el boton de validar
-    - Luego de tab debe posicionar el foco en el boton de revelar
-    - Luego de tab debe posicionar el foco en el boton de pasar
-    - Luego de que se presenta la asociacion debe posicionar el foco en el campo de texto de la respuesta
+- Every change must include a version bump.
 
+## Data Persistence
 
-------
+- Game state must be persisted in localStorage.
+- A sync button must exist to pull cloud data into localStorage.
+- Before leaving the application, data must be saved to the cloud without asking the user.
 
-*** LÓGICA DE FINALIZACIÓN Y PROGRESIÓN DE CICLOS (MODO REAL)
+## Data Synchronization
 
-Esta sección detalla cómo funciona la lógica del motor para determinar cuándo finaliza la sesión y cómo progresan las tarjetas a través de los ciclos.
+### Tab Sequence (Exam Mode)
 
-Tomemos como ejemplo una lista de 10 tarjetas.
+- When an association is presented, focus starts in the answer input field.
+- After tab, focus moves to the **Validate** button.
+- After tab, focus moves to the **Reveal** button.
+- After tab, focus moves to the **Pass** button.
+- After tab, focus returns to the answer input field.
 
-### Caso 1: Todas las respuestas son correctas en la primera pasada
+---
 
-*   **Se presenta la primera carta:**
-    *   Pendientes: 10, Correctas: 0
-    *   Ciclo 1 (Nueva): 10
-*   El usuario escribe, valida y la respuesta es correcta.
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 9, Correctas: 1
-    *   Ciclo 1 (Nueva): 10
-*   El usuario escribe, valida y la respuesta es correcta.
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 8, Correctas: 2
-    *   Ciclo 1 (Nueva): 10
-*   ... esto continúa sucesivamente hasta comprobar todas.
-*   **Se presenta la siguiente carta (última):**
-    *   Pendientes: 0, Correctas: 10
-    *   Ciclo 1 (Nueva): 10
-*   **Resultado:** Como "Pendientes" llega a 0 y no hay cartas encoladas para el siguiente ciclo, **el proceso se da por finalizado**.
+## Session Termination and Cycle Progression Logic (Exam Mode)
 
-### Caso 2: Mezcla de respuestas correctas e incorrectas
+This section details how the engine determines when a session ends and how cards progress through cycles.
 
-*   **Se presenta la primera carta:**
-    *   Pendientes: 10, Correctas: 0
-    *   Ciclo 1 (Nueva): 10
-*   El usuario escribe, valida y la respuesta es correcta.
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 9, Correctas: 1
-    *   Ciclo 1 (Nueva): 10
-*   El usuario escribe, valida y la respuesta es correcta.
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 8, Correctas: 2
-    *   Ciclo 1 (Nueva): 10
-*   ... esto continúa sucesivamente (ej. 5 correctas consecutivas):
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 5, Correctas: 5
-    *   Ciclo 1 (Nueva): 10
-*   ... esto continúa sucesivamente (ej. fallando las siguientes 5):
-*   **Se presenta la siguiente carta:**
-    *   Pendientes: 0, Correctas: 5
-    *   Ciclo 1 (Nueva): 5 (Las 5 que se respondieron bien)
-    *   Ciclo 2 (Vista): 5 (Las 5 que se respondieron mal)
-*   **Resultado:** Aunque "Pendientes" es 0, hay 5 cartas que pasaron a formar parte del siguiente ciclo (Ciclo 2 - Vista). Por lo tanto, el juego avanza al ciclo 2.
+Consider a list of 10 cards as an example.
 
-*   **Arranca el Ciclo 2. Se presenta la primera carta del nuevo ciclo:**
-    *   Pendientes: 5, Correctas: 0
-    *   Ciclo 1 (Nueva): 5 (Las correctas del ciclo 1)
-    *   Ciclo 2 (Vista): 5 (Las incorrectas del ciclo previo que ahora toca repasar)
-*   ... esto continúa sucesivamente (ej. respondiendo las 5 de forma correcta de corrido).
-*   **Se presenta la siguiente carta (última del ciclo 2):**
-    *   Pendientes: 0, Correctas: 5
-    *   Ciclo 1 (Nueva): 5 (Las 5 que se respondieron bien al inicio)
-    *   Ciclo 2 (Vista): 5 (Las 5 que se respondieron bien ahora en este ciclo)
-*   **Resultado:** "Pendientes" es 0 y **no hay más cartas** que deban pasar a un ciclo posterior. **El proceso se da por finalizado**.
+### Case 1: All Answers Correct on the First Pass
 
-Y así sucesivamente dependiendo de cuántos errores tenga el usuario, generando ciclos progresivos hasta vaciar los pendientes y no generar cola futura.
+- **First card is presented:**
+  - Remaining: 10, Correct: 0
+  - Cycle 1 (New): 10
+- The user types an answer, validates it, and it is correct.
+- **Next card is presented:**
+  - Remaining: 9, Correct: 1
+  - Cycle 1 (New): 10
+- The user types an answer, validates it, and it is correct.
+- **Next card is presented:**
+  - Remaining: 8, Correct: 2
+  - Cycle 1 (New): 10
+- ... this continues until all cards have been checked.
+- **Last card is presented:**
+  - Remaining: 0, Correct: 10
+  - Cycle 1 (New): 10
+- **Result:** Since "Remaining" reaches 0 and there are no cards queued for the next cycle, **the session ends**.
+
+### Case 2: Mixed Correct and Incorrect Answers
+
+- **First card is presented:**
+  - Remaining: 10, Correct: 0
+  - Cycle 1 (New): 10
+- The user types an answer, validates it, and it is correct.
+- **Next card is presented:**
+  - Remaining: 9, Correct: 1
+  - Cycle 1 (New): 10
+- The user types an answer, validates it, and it is correct.
+- **Next card is presented:**
+  - Remaining: 8, Correct: 2
+  - Cycle 1 (New): 10
+- ... this continues (e.g., 5 consecutive correct answers):
+  - Remaining: 5, Correct: 5
+  - Cycle 1 (New): 10
+- ... this continues (e.g., failing the next 5):
+  - Remaining: 0, Correct: 5
+  - Cycle 1 (New): 5 (The 5 that were answered correctly)
+  - Cycle 2 (Seen): 5 (The 5 that were answered incorrectly)
+- **Result:** Although "Remaining" is 0, there are 5 cards that advanced to the next cycle (Cycle 2 — Seen). Therefore, the game advances to Cycle 2.
+
+- **Cycle 2 starts. The first card from the new cycle is presented:**
+  - Remaining: 5, Correct: 0
+  - Cycle 1 (New): 5 (The correct answers from Cycle 1)
+  - Cycle 2 (Seen): 5 (The incorrect answers from the previous cycle, now up for review)
+- ... this continues (e.g., all 5 answered correctly in a row).
+- **Last card of Cycle 2 is presented:**
+  - Remaining: 0, Correct: 5
+  - Cycle 1 (New): 5 (The 5 answered correctly in Cycle 1)
+  - Cycle 2 (Seen): 5 (The 5 answered correctly in Cycle 2)
+- **Result:** "Remaining" is 0 and **no cards are left** to advance to a subsequent cycle. **The session ends**.
+
+This pattern repeats depending on how many errors the user makes, generating progressive cycles until all cards are cleared and no future queue remains.
