@@ -104,3 +104,42 @@ exports.getList = onRequest({ cors: true }, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+exports.getProgress = onRequest({ cors: true }, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { userId } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  try {
+    const doc = await db.collection('users').doc(userId).collection('progress').doc('main').get();
+    if (!doc.exists) {
+      return res.json(null);
+    }
+    res.json(doc.data());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.updateProgress = onRequest({ cors: true }, async (req, res) => {
+  const { userId, progress } = req.body;
+  if (!userId || !progress) {
+    return res.status(400).json({ error: 'userId and progress are required' });
+  }
+
+  try {
+    await db.collection('users').doc(userId).collection('progress').doc('main').set({
+      ...progress,
+      updatedAt: FieldValue.serverTimestamp()
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});

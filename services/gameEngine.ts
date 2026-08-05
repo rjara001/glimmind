@@ -22,13 +22,33 @@ const INITIAL_GAME_STATE: Omit<GameState, "listId" | "associations"> = {
 };
 
 /**
- * Normalizes a string for comparison: lowercase and remove accents
+ * Function words (articles/prepositions) that can be ignored during
+ * comparison when the list setting ignoreArticles is enabled.
  */
-function normalizeString(s: string): string {
-  return s
+const IGNORED_WORDS = new Set([
+  "the", "a", "an", "to", "at", "in", "on", "of", "for", "with", "by",
+  "from", "as", "and", "or",
+  "el", "la", "los", "las", "un", "una", "unos", "unas",
+  "de", "a", "en", "para", "con", "por",
+]);
+
+/**
+ * Normalizes a string for comparison: lowercase, remove accents and, when
+ * ignoreArticles is enabled, drop function words comparing token by token.
+ */
+function normalizeString(s: string, ignoreArticles: boolean): string {
+  const normalized = s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/gi, "");
+
+  if (!ignoreArticles) return normalized;
+
+  return normalized
+    .split(/\s+/)
+    .filter((token) => token.length > 0 && !IGNORED_WORDS.has(token))
+    .join(" ");
 }
 
 /**
@@ -60,9 +80,9 @@ function calculateLevenshteinDistance(a: string = "", b: string = ""): number {
 /**
  * Calculates the similarity percentage between two strings.
  */
-function calculateSimilarity(a: string, b: string): number {
-  const aNormalized = normalizeString(a.trim());
-  const bNormalized = normalizeString(b.trim());
+function calculateSimilarity(a: string, b: string, ignoreArticles: boolean): number {
+  const aNormalized = normalizeString(a.trim(), ignoreArticles);
+  const bNormalized = normalizeString(b.trim(), ignoreArticles);
 
   if (aNormalized === bNormalized) return 100;
 
@@ -154,7 +174,8 @@ export class GlimmindGame {
     const correctAnswer = isReversed
       ? current.term.trim()
       : current.definition.trim();
-    const similarity = calculateSimilarity(userAnswer, correctAnswer);
+    const ignoreArticles = this.initialList.settings.ignoreArticles === true;
+    const similarity = calculateSimilarity(userAnswer, correctAnswer, ignoreArticles);
     const threshold = this.initialList.settings.threshold * 100;
     const isCorrect =
       userAnswer.toLowerCase() === correctAnswer.toLowerCase() ||

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AssociationList, Association } from '../types';
 import { aiService } from '../services/aiService';
+import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
 
 interface ListEditorProps {
@@ -22,7 +23,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const cleanupAndSave = useCallback((listToSave: AssociationList) => {
     // Create a set of seen IDs to ensure uniqueness
     const seenIds = new Set<string>();
-    const cleanedAssociations = listToSave.associations
+    const flattenedAssociations = flattenAssociations(listToSave.associations);
+    const cleanedAssociations = flattenedAssociations
       .map(assoc => {
         // Trim whitespace from term and definition
         const term = assoc.term.trim();

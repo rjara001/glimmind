@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameStore } from '../store/gameStore';
 import { useToast } from './Toast';
 import { GameHeader } from './game/GameHeader';
 import { GameCard } from './game/GameCard';
@@ -39,8 +40,12 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     similarity, 
     lastAttempt,
     attempts,
+    sessionRepasos,
     actions 
   } = useGameLogic({ list, autoStart });
+
+  const goalProgress = useGameStore(state => state.progress?.goalProgress ?? 0);
+  const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -180,7 +185,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
-      <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
+      <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="flex-1 w-full flex flex-col items-center">
           <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">

@@ -126,6 +126,80 @@ describe('GlimmindGame Engine - Threshold Validation', () => {
   });
 });
 
+describe('GlimmindGame Engine - Ignore Articles', () => {
+  const enableIgnoreArticles = (list: AssociationList) => {
+    list.settings.ignoreArticles = true;
+    return list;
+  };
+
+  it('accepts a missing article when ignoreArticles is enabled', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'house', definition: 'the house' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('house').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+    expect(result.state.similarity).toBe(100);
+  });
+
+  it('accepts an extra article when ignoreArticles is enabled', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'house', definition: 'house' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('the house').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+    expect(result.state.similarity).toBe(100);
+  });
+
+  it('ignores different articles between answer and expectation', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'big house', definition: 'a big house' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('the big house').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+  });
+
+  it('ignores Spanish articles', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'house', definition: 'la casa' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('casa').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+  });
+
+  it('ignores prepositions in both languages', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'run', definition: 'to run' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('run').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+  });
+
+  it('rejects the same answer when ignoreArticles is off', () => {
+    const list = createTestList([{ term: 'house', definition: 'the house' }]);
+
+    const result = GlimmindGame.create(list).setUserInput('house').checkAnswer();
+
+    expect(result.state.feedback).toBe('incorrect');
+  });
+
+  it('does not strip article-like substrings inside words', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'mother', definition: 'mother' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('the mother').checkAnswer();
+
+    expect(result.state.feedback).toBe('correct');
+    expect(result.state.similarity).toBe(100);
+  });
+
+  it('still rejects real differences when articles are ignored', () => {
+    const list = enableIgnoreArticles(createTestList([{ term: 'mouse', definition: 'the mouse' }]));
+
+    const result = GlimmindGame.create(list).setUserInput('the house').checkAnswer();
+
+    expect(result.state.feedback).toBe('incorrect');
+  });
+});
+
 describe('GlimmindGame Engine - Similarity Calculation', () => {
   it('should return 100% for identical strings', () => {
     const list = createTestList([{ term: 'test', definition: 'test' }]);

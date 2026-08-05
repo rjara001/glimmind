@@ -2,7 +2,7 @@
 import React from 'react';
 import { GameHeaderProps } from '../../types/game-header-props';
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, onBack, onSettingsClick }) => {
+export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick }) => {
   const isPracticeMode = gameMode === 'training';
 
   return (
@@ -22,6 +22,15 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
       </div>
 
       <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3 bg-white/60 rounded-xl border border-slate-100 shadow-sm px-4 py-2">
+            {goalTarget > 0 && (
+              <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                Meta {Math.min(goalProgress, goalTarget)}/{goalTarget}
+              </span>
+            )}
+            <span className="w-px h-4 bg-slate-200"></span>
+            <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Sesión {sessionRepasos}</span>
+          </div>
           <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
             <span className="px-3 py-1 text-xs font-bold text-slate-500">
               {isPracticeMode ? 'Practice Mode' : 'Real Mode'}

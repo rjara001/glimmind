@@ -2,6 +2,10 @@
 import React from 'react';
 import { AssociationList } from '../../types';
 
+const THRESHOLD_MIN = 50;
+const THRESHOLD_MAX = 100;
+const THRESHOLD_STEP = 5;
+
 interface SettingsModalProps {
   list: AssociationList;
   onUpdateList: (list: AssociationList) => void;
@@ -12,6 +16,8 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList, onClose, onRestart }) => {
   const isReversed = list.settings.flipOrder === 'reversed';
   const isPracticeMode = list.settings.mode === 'training';
+  const isIgnoringArticles = list.settings.ignoreArticles === true;
+  const thresholdPercent = Math.round(list.settings.threshold * 100);
 
   const handleRestart = () => {
     if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
@@ -56,6 +62,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isReversed ? 'left-5' : 'left-1'}`}></div>
             </div>
           </button>
+        </div>
+
+        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Answer Validation</p>
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <div>
+              <p className="text-xs font-bold text-slate-700">Ignore articles</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">the, at, to, el, la... not required</p>
+            </div>
+            <button
+              onClick={() => onUpdateList({ ...list, settings: { ...list.settings, ignoreArticles: !isIgnoringArticles } })}
+              className={`w-10 h-6 rounded-full relative transition-colors flex-shrink-0 ${isIgnoringArticles ? 'bg-indigo-400' : 'bg-slate-200'}`}
+              aria-label="Toggle ignore articles"
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isIgnoringArticles ? 'left-5' : 'left-1'}`}></div>
+            </button>
+          </div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-bold text-slate-700">Similarity threshold</p>
+            <span className="text-xs font-black text-indigo-600">{thresholdPercent}%</span>
+          </div>
+          <input
+            type="range"
+            min={THRESHOLD_MIN}
+            max={THRESHOLD_MAX}
+            step={THRESHOLD_STEP}
+            value={thresholdPercent}
+            onChange={(e) => onUpdateList({ ...list, settings: { ...list.settings, threshold: Number(e.target.value) / 100 } })}
+            className="w-full accent-indigo-600"
+            aria-label="Similarity threshold"
+          />
+          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+            <span>{THRESHOLD_MIN}%</span>
+            <span>{THRESHOLD_MAX}%</span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">

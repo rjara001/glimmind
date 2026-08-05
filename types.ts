@@ -24,6 +24,7 @@ export interface AssociationList {
     mode: GameMode;
     flipOrder: 'normal' | 'reversed';
     threshold: number;
+    ignoreArticles?: boolean;
   };
   createdAt?: any;
   updatedAt?: any;

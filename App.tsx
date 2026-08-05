@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
+import { QuickAddModal } from './components/QuickAddModal';
 import { Auth } from './components/Auth';
 import { ToastProvider, useToast } from './components/Toast';
+import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { useGameStore } from './store/gameStore';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
@@ -22,6 +24,7 @@ const AppContent: React.FC = () => {
   const { showToast } = useToast();
   const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
     return localStorage.getItem(LAST_PLAYED_KEY) || undefined;
   });
@@ -34,6 +37,9 @@ const AppContent: React.FC = () => {
     syncFromCloud,
     isLoaded 
   } = useGameStore();
+
+  const celebration = useGameStore(state => state.celebration);
+  const clearCelebration = useGameStore(state => state.clearCelebration);
 
   const currentListId = useGameStore(state => state.currentListId);
   const lists = useGameStore(state => state.lists);
@@ -59,6 +65,7 @@ const AppContent: React.FC = () => {
   // Load data when user changes
   useEffect(() => {
     useGameStore.getState().loadInitialData();
+    useGameStore.getState().loadProgress();
   }, [user]);
 
   // Auto-redirect to last played list on page load
@@ -96,6 +103,24 @@ const AppContent: React.FC = () => {
     }
   }, [currentListId, updateAssociations]);
 
+  const handleQuickAdd = useCallback((listId: string, term: string, definition: string) => {
+    const { lists } = useGameStore.getState();
+    const targetList = lists.find(l => l.id === listId);
+    if (!targetList) return;
+
+    const newAssociation = {
+      id: crypto.randomUUID(),
+      term,
+      definition,
+      currentCycle: 1,
+      status: 'pending' as const,
+      isLearned: false,
+      isArchived: false,
+    };
+    useGameStore.getState().updateAssociations(listId, [...targetList.associations, newAssociation]);
+    showToast(`Agregado a "${targetList.name}"`, 'success');
+  }, [showToast]);
+
   const handleUpdateList = useCallback(async (updatedList: any) => {
     const { lists } = useGameStore.getState();
     const updatedLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
@@ -123,7 +148,7 @@ const AppContent: React.FC = () => {
       concept, 
       associations: initialAssocs, 
       isArchived: false,
-      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95 },
+      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true },
     };
     
     const tempId = `temp_${Date.now()}`;
@@ -173,7 +198,7 @@ const AppContent: React.FC = () => {
       concept: currentList.concept,
       associations: g.associations,
       isArchived: false,
-      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95 },
+      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true },
     }));
 
     setLists([...lists, ...newLists]);
@@ -224,6 +249,16 @@ const AppContent: React.FC = () => {
           <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowQuickAdd(true)}
+            aria-label="Agregar valor"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Agregar
+          </button>
           <button 
             onClick={handleSyncFromCloud}
             disabled={isSyncing || user.uid === GUEST_ID}
@@ -252,8 +287,7 @@ const AppContent: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {view === 'dashboard' && (
-          <Dashboard 
+        {view === 'dashboard' && (          <Dashboard 
             lists={lists}
             lastPlayedId={lastPlayedId}
             onCreate={handleCreateList} 
@@ -288,6 +322,16 @@ const AppContent: React.FC = () => {
           />
         )}
       </main>
+      {showQuickAdd && (
+        <QuickAddModal
+          lists={lists}
+          onAdd={handleQuickAdd}
+          onClose={() => setShowQuickAdd(false)}
+        />
+      )}
+      {celebration && (
+        <CelebrationOverlay celebration={celebration} onClose={clearCelebration} />
+      )}
     </div>
     </ToastProvider>
   );

@@ -1,6 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssociationList, Association } from '../types';
+import { flattenAssociations } from '../utils/flattenAssociations';
+import { computeStateBreakdown } from '../utils/progress';
+import { useGameStore } from '../store/gameStore';
+import { GoalWidget } from './GoalWidget';
+import { BigListCard } from './BigListCard';
+
+const BIG_LIST_THRESHOLD = 200;
 
 interface DashboardProps {
   lists: AssociationList[];
@@ -18,6 +25,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
   const [bulkData, setBulkData] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const progress = useGameStore(state => state.progress);
+  const setGoalTarget = useGameStore(state => state.setGoalTarget);
 
   const stats = useMemo(() => {
     let totalWords = 0;
@@ -43,10 +53,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
 
   const currentList = lastPlayedId ? lists.find(l => l.id === lastPlayedId) : null;
 
+  const bigLists = useMemo(() => {
+    return lists.filter(list =>
+      (list.associations || []).filter((a: any) => !a.isArchived).length > BIG_LIST_THRESHOLD
+    );
+  }, [lists]);
+
   const parseBulkData = (text: string): Association[] => {
     if (!text.trim()) return [];
     
-    return text.split('\n')
+    const parsed = text.split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
       .map(line => {
@@ -66,6 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
         return newAssociation;
       })
       .filter(a => a.term || a.definition);
+    return flattenAssociations(parsed);
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -122,6 +139,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
         </div>
       </div>
 
+      {progress && (
+        <div className="mb-8">
+          <GoalWidget progress={progress} onSetTarget={setGoalTarget} />
+        </div>
+      )}
+
       {lastPlayedId && continuePlay && currentList && (
         <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
           <div>
@@ -169,6 +192,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
                   <p className="font-bold text-gray-900 truncate">{list.name}</p>
                   <p className="text-sm text-gray-500">{learnedCount}/{activeAssociations.length} aprendidas</p>
                 </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {bigLists.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas en digestión</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {bigLists.map(list => {
+              const active = (list.associations || []).filter((a: any) => !a.isArchived);
+              const breakdown = computeStateBreakdown(active);
+              return (
+                <BigListCard
+                  key={list.id}
+                  list={list}
+                  breakdown={breakdown}
+                  milestones={progress?.milestones[list.id] || []}
+                  onPlay={onPlay}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
               );
             })}
           </div>
