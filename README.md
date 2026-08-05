@@ -66,7 +66,7 @@ The validation pipeline works in three stages:
 src/
 ├── services/
 │   ├── gameEngine.ts          # Immutable game engine (344 lines)
-│   ├── aiService.ts           # Gemini AI integration
+│   ├── aiService.ts           # Gemini AI proxy (Cloud Functions call)
 │   ├── firestoreService.ts    # Firebase Functions HTTP client
 │   └── gameEngine.test.ts     # Engine tests (440+ lines)
 ├── components/
@@ -101,19 +101,64 @@ src/
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:** Node.js, a Firebase project with the functions deployed (see [Deployment](#deployment)).
 
 1. Install dependencies:
    ```
    npm install
    ```
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key:
+2. Set your Firebase web app config in `.env.local` (used by `firebase.ts`):
    ```
-   GEMINI_API_KEY=your_key_here
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=...
+   VITE_FIREBASE_APP_ID=...
+   VITE_FUNCTIONS_BASE=https://us-central1-<project>.cloudfunctions.net
    ```
+   > The Gemini API key is **never** stored in the client. It lives as a server-side secret and is only used by the Cloud Functions proxy (see below).
 3. Start the dev server:
    ```
    npm run dev
+   ```
+
+## Quotas
+
+Glimmind enforces server-side quotas to keep the Firebase free tier viable for ~1,000 users.
+
+| Quota | Free | Premium |
+|-------|------|---------|
+| Cards (active + archived) | 1,000 | 5,000 |
+| AI groupings per day | 3 | 10 |
+
+Additional limits:
+- **Global AI cap**: 200 AI calls per day across the whole project.
+- **Max cards per list**: 3,000 (request payload limit).
+- **Warnings**: the UI shows an amber banner at 90% usage and blocks new additions with a message at 100%.
+
+Quotas are enforced in `functions/index.js` via a `users/{uid}/meta/main` document (tier, card count, quota, AI usage) and a `usage/global` document for the project-wide AI cap. Premium is assigned with the protected `setUserQuota` function.
+
+## Deployment
+
+1. Set the Gemini API key secret (server-side, never exposed to the client):
+   ```
+   firebase functions:secrets:set GEMINI_API_KEY --project <project>
+   ```
+2. Set the admin UID secret (comma-separated list of UIDs allowed to call `setUserQuota`):
+   ```
+   firebase functions:secrets:set ADMIN_UIDS --project <project>
+   ```
+3. Build the app and deploy functions + hosting:
+   ```
+   firebase deploy --only functions,hosting --project <project>
+   ```
+4. To promote a user to premium:
+   ```
+   curl -X POST https://us-central1-<project>.cloudfunctions.net/setUserQuota \
+     -H "Authorization: Bearer <idToken>" \
+     -H "Content-Type: application/json" \
+     -d '{"uid":"<target-user-uid>","tier":"premium"}'
    ```
 
 ## Scripts

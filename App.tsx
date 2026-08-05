@@ -10,6 +10,7 @@ import { useGameStore } from './store/gameStore';
 import { auth, onAuthStateChanged } from './firebase';
 import { listService } from './services/firestoreService';
 import { APP_VERSION } from './constants/version';
+import { computeQuotaStatus, countCards } from './utils/quota';
 
 const GUEST_ID = 'dev-user-local';
 const LAST_PLAYED_KEY = 'glimmind_last_played';
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     useGameStore.getState().loadInitialData();
     useGameStore.getState().loadProgress();
+    useGameStore.getState().loadQuota();
   }, [user]);
 
   // Auto-redirect to last played list on page load
@@ -104,9 +106,14 @@ const AppContent: React.FC = () => {
   }, [currentListId, updateAssociations]);
 
   const handleQuickAdd = useCallback((listId: string, term: string, definition: string) => {
-    const { lists } = useGameStore.getState();
+    const { lists, quota } = useGameStore.getState();
     const targetList = lists.find(l => l.id === listId);
     if (!targetList) return;
+
+    if (quota && computeQuotaStatus(countCards(lists) + 1, quota.cardQuota).state === 'blocked') {
+      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+      return;
+    }
 
     const newAssociation = {
       id: crypto.randomUUID(),
@@ -134,14 +141,22 @@ const AppContent: React.FC = () => {
           associations: updatedList.associations,
           settings: updatedList.settings,
         });
-      } catch (error) {
+        useGameStore.getState().loadQuota();
+      } catch (error: any) {
         console.error("Failed to sync list updates:", error);
+        showToast(error.message || 'Error al guardar la lista', 'error');
       }
     }
-  }, [setLists, user]);
+  }, [setLists, user, showToast]);
 
   const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
-    const { lists } = useGameStore.getState();
+    const { lists, quota } = useGameStore.getState();
+
+    if (quota && computeQuotaStatus(countCards(lists) + initialAssocs.length, quota.cardQuota).state === 'blocked') {
+      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+      return;
+    }
+
     const newListData = {
       userId: user?.uid || GUEST_ID, 
       name, 
@@ -163,8 +178,11 @@ const AppContent: React.FC = () => {
         const { lists } = useGameStore.getState();
         setLists(lists.map(l => l.id === tempId ? updatedList : l));
         setCurrentList(newId);
-      } catch (error) {
+        useGameStore.getState().loadQuota();
+      } catch (error: any) {
         console.error("Failed to create list:", error);
+        showToast(error.message || 'Error al crear la lista', 'error');
+        useGameStore.getState().loadQuota();
       }
     } else {
       setCurrentList(tempId);
@@ -181,6 +199,7 @@ const AppContent: React.FC = () => {
     if (user && user.uid !== GUEST_ID) {
       try {
         await listService.deleteList(id);
+        useGameStore.getState().loadQuota();
       } catch (error) {
         console.error("Failed to delete list:", error);
       }
@@ -189,7 +208,13 @@ const AppContent: React.FC = () => {
 
   const handleCreateMultipleLists = async (groups: { name: string, associations: any[] }[]) => {
     if (!user || !currentList) return;
-    const { lists } = useGameStore.getState();
+    const { lists, quota } = useGameStore.getState();
+
+    const totalNewCards = groups.reduce((sum, g) => sum + (g.associations?.length || 0), 0);
+    if (quota && computeQuotaStatus(countCards(lists) + totalNewCards, quota.cardQuota).state === 'blocked') {
+      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+      return;
+    }
     
     const newLists = groups.map(g => ({
       id: `temp_${crypto.randomUUID()}`,

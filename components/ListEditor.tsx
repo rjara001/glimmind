@@ -1,9 +1,12 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AssociationList, Association } from '../types';
-import { aiService } from '../services/aiService';
+import { aiService, AIGroupSuggestion } from '../services/aiService';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
+import { useGameStore } from '../store/gameStore';
+import { computeQuotaStatus } from '../utils/quota';
+import { MAX_CARDS_PER_LIST } from '../constants/limits';
 
 interface ListEditorProps {
   list: AssociationList;
@@ -18,9 +21,26 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [editList, setEditList] = useState<AssociationList>(list);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<any[] | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
 
-  const cleanupAndSave = useCallback((listToSave: AssociationList) => {
+  const quota = useGameStore(state => state.quota);
+  const lists = useGameStore(state => state.lists);
+
+  const projectedTotal = useMemo(() => {
+    const otherTotal = lists
+      .filter(l => l.id !== editList.id)
+      .reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    return otherTotal + editList.associations.length;
+  }, [lists, editList]);
+
+  const quotaStatus = useMemo(() => {
+    if (!quota) return null;
+    return computeQuotaStatus(projectedTotal, quota.cardQuota);
+  }, [quota, projectedTotal]);
+
+  const aiLimitReached = quota ? quota.aiUsedToday >= quota.aiQuotaDaily : false;
+
+  const cleanupAndSave = useCallback((listToSave: AssociationList): boolean => {
     // Create a set of seen IDs to ensure uniqueness
     const seenIds = new Set<string>();
     const flattenedAssociations = flattenAssociations(listToSave.associations);
@@ -42,9 +62,27 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       // Filter out any associations that are completely empty
       .filter(assoc => assoc.term !== '' || assoc.definition !== '');
 
+    const { quota, lists } = useGameStore.getState();
+    if (quota) {
+      const storedList = lists.find(l => l.id === listToSave.id);
+      const storedCount = storedList?.associations?.length ?? listToSave.associations.length;
+      const growing = cleanedAssociations.length > storedCount;
+      if (growing) {
+        const otherTotal = lists
+          .filter(l => l.id !== listToSave.id)
+          .reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+        const projected = otherTotal + cleanedAssociations.length;
+        if (computeQuotaStatus(projected, quota.cardQuota).state === 'blocked') {
+          alert(`Llegaste a tu límite de ${quota.cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+          return false;
+        }
+      }
+    }
+
     const updatedList = { ...listToSave, associations: cleanedAssociations };
     setEditList(updatedList);
     onSave(updatedList);
+    return true;
   }, [onSave]);
 
   // Effect for initial cleanup when the component mounts
@@ -70,6 +108,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
+    if (quotaStatus?.state === 'blocked') {
+      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+      return;
+    }
     const newAssocs: Association[] = bulkText.split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
@@ -89,9 +131,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       })
       .filter(a => a.term || a.definition);
     
-    cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
-    setBulkText('');
-    setShowBulk(false);
+    const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
+    if (saved) {
+      setBulkText('');
+      setShowBulk(false);
+    }
   };
 
   const handleSmartSplit = async () => {
@@ -100,20 +144,32 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       alert("Necesitas al menos 3 elementos para que la IA encuentre patrones lógicos.");
       return;
     }
+    if (activeAssociations.length > MAX_CARDS_PER_LIST) {
+      alert(`La lista tiene ${activeAssociations.length} tarjetas. La IA reorganiza máximo ${MAX_CARDS_PER_LIST}.`);
+      return;
+    }
+    if (quota && quota.aiUsedToday >= quota.aiQuotaDaily) {
+      alert(`Llegaste a tu límite diario de IA (${quota.aiQuotaDaily} usos). Vuelve mañana.`);
+      return;
+    }
     
     setIsAnalyzing(true);
     try {
       const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
       setAiSuggestions(suggestions);
-    } catch (e: any) {
-      console.error(e);
-      alert(e.message || "Ocurrió un error inesperado al contactar con la IA.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al contactar con la IA.';
+      alert(message);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const handleAddRow = () => {
+    if (quotaStatus?.state === 'blocked') {
+      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+      return;
+    }
     const newAssociation: Association = {
       id: crypto.randomUUID(),
       term: '',
@@ -176,8 +232,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         <div className="flex gap-2">
           <button 
             onClick={handleSmartSplit}
-            disabled={isAnalyzing || activeAssociations.length < 3}
-            title={activeAssociations.length < 3 ? "Añade al menos 3 tarjetas para usar esta función" : "Organizar con IA"}
+            disabled={isAnalyzing || activeAssociations.length < 3 || aiLimitReached}
+            title={aiLimitReached
+              ? `Llegaste a tu límite diario de IA (${quota?.aiQuotaDaily} usos)`
+              : activeAssociations.length < 3 ? "Añade al menos 3 tarjetas para usar esta función" : "Organizar con IA"}
             className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
           >
             {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>}
@@ -185,6 +243,47 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </button>
         </div>
       </div>
+
+      {quota && quotaStatus && (
+        <div className={`mb-6 rounded-xl border px-4 py-3 ${quotaStatus.state === 'blocked'
+          ? 'bg-rose-50 border-rose-200'
+          : quotaStatus.state === 'warning'
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-slate-50 border-slate-200'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={`text-xs font-black uppercase tracking-wider ${quotaStatus.state === 'blocked'
+              ? 'text-rose-700'
+              : quotaStatus.state === 'warning'
+                ? 'text-amber-700'
+                : 'text-slate-600'}`}>
+              Tarjetas: {quotaStatus.used} / {quotaStatus.quota}
+            </p>
+            <p className="text-xs font-medium text-slate-500">
+              IA: {quota.aiUsedToday} / {quota.aiQuotaDaily} usos hoy
+            </p>
+          </div>
+          {quotaStatus.state === 'blocked' && (
+            <p className="mt-1 text-xs font-medium text-rose-700">
+              Llegaste a tu límite de {quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.
+            </p>
+          )}
+          {quotaStatus.state === 'warning' && (
+            <p className="mt-1 text-xs font-medium text-amber-700">
+              Te quedan {quotaStatus.remaining} tarjetas de tu límite de {quotaStatus.quota}.
+            </p>
+          )}
+          <div className="mt-2 h-1.5 bg-white rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${quotaStatus.state === 'blocked'
+                ? 'bg-rose-500'
+                : quotaStatus.state === 'warning'
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(100, quotaStatus.percentage)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 border-b bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -196,7 +295,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
              <button onClick={() => setShowBulk(!showBulk)} className="px-4 py-3 text-indigo-600 text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">Import</button>
-             <button onClick={handleAddRow} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm">Add Row</button>
+             <button onClick={handleAddRow} disabled={quotaStatus?.state === 'blocked'} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Add Row</button>
           </div>
         </div>
 

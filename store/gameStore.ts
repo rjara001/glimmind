@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AssociationList, Association } from '../types';
 import { listService } from '../services/firestoreService';
 import { progressService } from '../services/progressService';
+import { quotaService } from '../services/quotaService';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import {
   applyRepaso,
@@ -9,10 +10,55 @@ import {
   todayKey,
 } from '../utils/progress';
 import { UserProgress, CelebrationEvent, RepasoContext } from '../types/progress';
+import { UserQuota } from '../types/quota';
+import {
+  PROGRESS_SAVE_DEBOUNCE_MS,
+  LIST_CACHE_TTL_MS,
+  LAST_CLOUD_FETCH_KEY,
+} from '../constants/limits';
 
 const LOCAL_STORAGE_KEY = 'glimmind_lists';
 const LOCAL_PROGRESS_KEY = 'glimmind_progress';
 const GUEST_UID = 'dev-user-local';
+
+let progressSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingProgress: UserProgress | null = null;
+let pendingUserUid: string | null = null;
+
+function flushProgressCloudSave() {
+  if (progressSaveTimer) {
+    clearTimeout(progressSaveTimer);
+    progressSaveTimer = null;
+  }
+  if (pendingUserUid && pendingProgress) {
+    const uid = pendingUserUid;
+    const progress = pendingProgress;
+    pendingUserUid = null;
+    pendingProgress = null;
+    progressService.saveProgress(uid, progress).catch((error) => {
+      console.error('Error saving progress:', error);
+    });
+  }
+}
+
+if (typeof window !== 'undefined') {
+  const handleFlush = () => flushProgressCloudSave();
+  window.addEventListener('beforeunload', handleFlush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushProgressCloudSave();
+    }
+  });
+}
+
+function shouldFetchCloudLists(): boolean {
+  const last = Number(localStorage.getItem(LAST_CLOUD_FETCH_KEY) || 0);
+  return Date.now() - last > LIST_CACHE_TTL_MS;
+}
+
+function markCloudFetch() {
+  localStorage.setItem(LAST_CLOUD_FETCH_KEY, String(Date.now()));
+}
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
   if (!list.associations || list.associations.length === 0) {
     return { list, changed: false };
@@ -46,6 +92,7 @@ interface GameStore {
   isLoading: boolean;
   progress: UserProgress | null;
   celebration: CelebrationEvent | null;
+  quota: UserQuota | null;
   
   // Computed (via getters)
   getCurrentList: () => AssociationList | null;
@@ -63,6 +110,7 @@ interface GameStore {
   
   // Actions - Progress
   loadProgress: () => Promise<void>;
+  loadQuota: () => Promise<void>;
   recordRepaso: (association: Association, listContext?: RepasoContext) => void;
   setGoalTarget: (target: number) => void;
   clearCelebration: () => void;
@@ -86,6 +134,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isLoading: false,
   progress: null,
   celebration: null,
+  quota: null,
   
   // Computed
   getCurrentList: () => {
@@ -163,6 +212,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  loadQuota: async () => {
+    const { user } = get();
+    if (!user || user.uid === GUEST_UID) return;
+    const quota = await quotaService.fetchQuota(user.uid);
+    set({ quota });
+  },
+
   recordRepaso: (association, listContext) => {
     const progress = get().progress || createDefaultProgress();
     const result = applyRepaso(progress, association, listContext, todayKey());
@@ -200,9 +256,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { user } = get();
     localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
     if (user && user.uid !== GUEST_UID) {
-      progressService.saveProgress(user.uid, progress).catch((error) => {
-        console.error('Error saving progress:', error);
-      });
+      if (progressSaveTimer) {
+        clearTimeout(progressSaveTimer);
+      }
+      pendingUserUid = user.uid;
+      pendingProgress = progress;
+      progressSaveTimer = setTimeout(flushProgressCloudSave, PROGRESS_SAVE_DEBOUNCE_MS);
     }
   },
   
@@ -230,18 +289,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const isGuest = !user || user.uid === GUEST_UID;
     if (!isGuest) {
       console.log('[STORE] Loading from cloud for user:', user.uid);
-      try {
-        const cloudLists = await listService.fetchListsByUser(user.uid);
-        if (cloudLists.length > 0) {
-          const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
-          set({ lists: flattenedCloud });
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flattenedCloud));
-          if (changedIds.length > 0) {
-            changedIds.forEach((listId) => get().syncToCloud(listId));
+      if (savedLists && !shouldFetchCloudLists()) {
+        console.log('[STORE] Using cached lists (within TTL)');
+      } else {
+        try {
+          const cloudLists = await listService.fetchListsByUser(user.uid);
+          markCloudFetch();
+          if (cloudLists.length > 0) {
+            const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
+            set({ lists: flattenedCloud });
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flattenedCloud));
+            if (changedIds.length > 0) {
+              changedIds.forEach((listId) => get().syncToCloud(listId));
+            }
           }
+        } catch (error) {
+          console.error('Error loading from cloud:', error);
         }
-      } catch (error) {
-        console.error('Error loading from cloud:', error);
       }
     } else {
       console.log('[STORE] Guest mode - using localStorage only');
@@ -258,6 +322,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const cloudLists = await listService.fetchListsByUser(user.uid);
+      markCloudFetch();
       const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
       set({ lists: flattenedCloud });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flattenedCloud));
