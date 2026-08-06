@@ -7,9 +7,10 @@ interface SmartGroupModalProps {
   onConfirm: (groups: { name: string, associations: Association[] }[]) => void;
   onCancel: () => void;
   suggestions: { groupName: string, indices: number[] }[];
+  analyzedCount?: number;
 }
 
-export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, onConfirm, onCancel, suggestions }) => {
+export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, onConfirm, onCancel, suggestions, analyzedCount }) => {
   const [selectedGroups, setSelectedGroups] = useState<number[]>(suggestions.map((_, i) => i));
 
   const toggleGroup = (index: number) => {
@@ -39,7 +40,12 @@ export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, 
             </div>
             <h2 className="text-2xl font-black">División Inteligente</h2>
           </div>
-          <p className="text-indigo-100 font-medium">Hemos analizado {originalList.associations.length} elementos. Selecciona los grupos que deseas crear:</p>
+          <p className="text-indigo-100 font-medium">
+            {analyzedCount && analyzedCount < originalList.associations.length
+              ? `Hemos analizado las primeras ${analyzedCount} de ${originalList.associations.length} elementos. `
+              : `Hemos analizado ${originalList.associations.length} elementos. `}
+            Selecciona los grupos que deseas crear:
+          </p>
         </div>
 
         <div className="p-8 max-h-[50vh] overflow-y-auto bg-slate-50">

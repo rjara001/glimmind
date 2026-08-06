@@ -13,7 +13,7 @@ const DEFAULT_AI_DAILY_QUOTA = 3;
 const PREMIUM_AI_DAILY_QUOTA = 10;
 const GLOBAL_AI_DAILY_CAP = 200;
 const MAX_CARDS_PER_LIST = 3000;
-const MAX_CARDS_PER_AI_REQUEST = 10000;
+const MAX_CARDS_PER_AI_REQUEST = 2000;
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
 
 class QuotaExceededError extends Error {
@@ -415,22 +415,19 @@ exports.setUserQuota = onRequest({ cors: true, secrets: ["ADMIN_UIDS"] }, async 
   }
 });
 
-exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 540, memory: '512MiB' }, async (req, res) => {
+exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 900, memory: '512MiB' }, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized', authHeaderPresent: !!authHeader, authPrefix: authHeader ? authHeader.split(' ')[0] : null });
   }
 
   const { concept, associations } = req.body;
-  const count = Array.isArray(associations) ? associations.length : 0;
-  if (count < 3) {
+  const receivedCount = Array.isArray(associations) ? associations.length : 0;
+  if (receivedCount < 3) {
     return res.status(400).json({ error: 'Se necesitan al menos 3 elementos para usar la IA.' });
   }
-  if (count > MAX_CARDS_PER_AI_REQUEST) {
-    return res.status(400).json({
-      error: `La lista tiene ${count} tarjetas. La IA reorganiza máximo ${MAX_CARDS_PER_AI_REQUEST}.`,
-    });
-  }
+  const dataToProcess = (Array.isArray(associations) ? associations : []).slice(0, MAX_CARDS_PER_AI_REQUEST);
+  const processedCount = dataToProcess.length;
 
   let uid;
   try {
@@ -469,14 +466,11 @@ exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSe
       return res.status(429).json({ error: 'El servicio de IA alcanzó su límite diario. Intenta mañana.' });
     }
 
-    const CHUNK_SIZE = MAX_CARDS_PER_LIST;
-    const chunks = [];
-    for (let start = 0; start < count; start += CHUNK_SIZE) {
-      chunks.push(associations.slice(start, start + CHUNK_SIZE));
-    }
+    const lines = dataToProcess
+      .map((a, index) => `${index}|${a.term}|${a.definition}`)
+      .join('\n');
 
-    const callGemini = async (lines) => {
-      const prompt = `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept || ''}" y agrúpalas en categorías lógicas para facilitar su memorización.
+    const prompt = `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept || ''}" y agrúpalas en categorías lógicas para facilitar su memorización.
 
 DATOS DE ENTRADA:
 ${lines}
@@ -485,11 +479,20 @@ REQUISITOS:
 - Devuelve un array JSON.
 - Estructura: [{"groupName": "nombre", "indices": [0, 1, ...]}]`;
 
-      const MAX_GEMINI_RETRIES = 3;
-      const RETRY_DELAY_MS = 3000;
-      let lastError = null;
+    const MAX_GEMINI_RETRIES = 5;
+    const RETRY_BASE_DELAY_MS = 2000;
+    const PER_CALL_TIMEOUT_MS = 300000;
+    const sleepWithJitter = (attempt) => {
+      const baseDelay = RETRY_BASE_DELAY_MS * (2 ** attempt);
+      const jitter = Math.floor(Math.random() * 1000);
+      return new Promise((resolve) => setTimeout(resolve, baseDelay + jitter));
+    };
 
+    let result;
+    try {
+      let lastError = null;
       for (let attempt = 0; attempt < MAX_GEMINI_RETRIES; attempt++) {
+        const attemptStartedAt = Date.now();
         try {
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
@@ -503,42 +506,42 @@ REQUISITOS:
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: 'application/json' },
               }),
-              signal: AbortSignal.timeout(120000),
+              signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
             }
           );
 
           if (!response.ok) {
-            const error = new Error(`Gemini HTTP ${response.status}`);
-            error.code = response.status === 429 ? 'RATE_LIMITED' : 'GEMINI_ERROR';
-            lastError = error;
-            if (response.status === 429 || response.status >= 500) {
-              if (attempt < MAX_GEMINI_RETRIES - 1) {
-                await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
-                continue;
-              }
+            const bodyText = await response.text().catch(() => '');
+            lastError = new Error(`Gemini HTTP ${response.status}`);
+            lastError.code = response.status === 429 ? 'RATE_LIMITED' : 'GEMINI_ERROR';
+            console.error(`[AI] Gemini attempt ${attempt + 1}/${MAX_GEMINI_RETRIES} failed: status=${response.status} latency=${Date.now() - attemptStartedAt}ms body=${bodyText.slice(0, 300)}`);
+            if ((response.status === 429 || response.status >= 500) && attempt < MAX_GEMINI_RETRIES - 1) {
+              await sleepWithJitter(attempt);
+              continue;
             }
-            throw error;
+            throw lastError;
           }
 
           const data = await response.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (!text) {
-            const error = new Error('Respuesta vacía de la IA.');
-            error.code = 'GEMINI_ERROR';
-            lastError = error;
-            if (attempt < MAX_GEMINI_RETRIES - 1) {
-              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
-              continue;
-            }
-            throw error;
-          }
-          return JSON.parse(text.trim());
-        } catch (error) {
-          if (error.name === 'TimeoutError') {
-            lastError = new Error('La IA tardó demasiado en responder.');
+            lastError = new Error('Respuesta vacía de la IA.');
             lastError.code = 'GEMINI_ERROR';
             if (attempt < MAX_GEMINI_RETRIES - 1) {
-              await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
+              await sleepWithJitter(attempt);
+              continue;
+            }
+            throw lastError;
+          }
+          result = JSON.parse(text.trim());
+          break;
+        } catch (error) {
+          if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+            lastError = new Error(`La IA tardó demasiado en responder (más de ${PER_CALL_TIMEOUT_MS / 1000} segundos).`);
+            lastError.code = 'GEMINI_ERROR';
+            console.error(`[AI] Gemini attempt ${attempt + 1}/${MAX_GEMINI_RETRIES} timed out after ${PER_CALL_TIMEOUT_MS / 1000}s`);
+            if (attempt < MAX_GEMINI_RETRIES - 1) {
+              await sleepWithJitter(attempt);
               continue;
             }
             throw lastError;
@@ -547,25 +550,16 @@ REQUISITOS:
         }
       }
 
-      throw lastError || new Error('Error desconocido de la IA.');
-    };
-
-    let rawResults = [];
-    try {
-      const chunkResults = await Promise.all(
-        chunks.map((chunk, chunkIndex) => {
-          const baseIndex = chunkIndex * CHUNK_SIZE;
-          const lines = chunk
-            .map((a, idx) => `${baseIndex + idx}|${a.term}|${a.definition}`)
-            .join('\n');
-          return callGemini(lines);
-        })
-      );
-      chunkResults.forEach((chunkGroups) => {
-        if (Array.isArray(chunkGroups)) {
-          rawResults = rawResults.concat(chunkGroups);
-        }
-      });
+      result = result || [];
+      result = result
+        .filter((group) => group && typeof group.groupName === 'string')
+        .map((group) => ({
+          groupName: group.groupName,
+          indices: Array.isArray(group.indices)
+            ? group.indices.filter((i) => Number.isInteger(i) && i >= 0 && i < processedCount)
+            : [],
+        }))
+        .filter((group) => group.indices.length > 0);
     } catch (error) {
       console.error('[AI] Gemini call failed:', error.message);
       if (error.code === 'RATE_LIMITED') {
@@ -575,16 +569,6 @@ REQUISITOS:
       }
       return res.status(502).json({ error: 'Error al procesar la lista con IA.' });
     }
-
-    const result = rawResults
-      .filter((group) => group && typeof group.groupName === 'string')
-      .map((group) => ({
-        groupName: group.groupName,
-        indices: Array.isArray(group.indices)
-          ? group.indices.filter((i) => Number.isInteger(i) && i >= 0 && i < count)
-          : [],
-      }))
-      .filter((group) => group.indices.length > 0);
 
     await metaRef.update({
       aiUsedToday: aiUsedToday + 1,

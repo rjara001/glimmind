@@ -22,6 +22,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
+  const [aiAnalyzedCount, setAiAnalyzedCount] = useState(0);
 
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
@@ -144,19 +145,23 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       alert("Necesitas al menos 3 elementos para que la IA encuentre patrones lógicos.");
       return;
     }
-    if (activeAssociations.length > MAX_CARDS_PER_AI_REQUEST) {
-      alert(`La lista tiene ${activeAssociations.length} tarjetas. La IA reorganiza máximo ${MAX_CARDS_PER_AI_REQUEST}.`);
-      return;
-    }
     if (quota && quota.aiUsedToday >= quota.aiQuotaDaily) {
       alert(`Llegaste a tu límite diario de IA (${quota.aiQuotaDaily} usos). Vuelve mañana.`);
       return;
     }
-    
+    const analyzedCount = Math.min(activeAssociations.length, MAX_CARDS_PER_AI_REQUEST);
+    if (activeAssociations.length > MAX_CARDS_PER_AI_REQUEST) {
+      const confirmed = window.confirm(
+        `La lista tiene ${activeAssociations.length} tarjetas. Por performance, la IA procesará las primeras ${analyzedCount} tarjetas; el resto quedará en esta lista sin agrupar. ¿Continuar?`
+      );
+      if (!confirmed) return;
+    }
+
     setIsAnalyzing(true);
     try {
       const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
       setAiSuggestions(suggestions);
+      setAiAnalyzedCount(analyzedCount);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al contactar con la IA.';
       alert(message);
@@ -243,6 +248,12 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </button>
         </div>
       </div>
+
+      {activeAssociations.length > MAX_CARDS_PER_AI_REQUEST && (
+        <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs font-medium text-indigo-700">
+          Esta lista tiene {activeAssociations.length} tarjetas. Por performance, la IA procesará las primeras {MAX_CARDS_PER_AI_REQUEST} tarjetas; el resto quedará en esta lista.
+        </div>
+      )}
 
       {quota && quotaStatus && (
         <div className={`mb-6 rounded-xl border px-4 py-3 ${quotaStatus.state === 'blocked'
@@ -345,7 +356,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
       </div>
 
-      {aiSuggestions && <SmartGroupModal originalList={editList} suggestions={aiSuggestions} onCancel={() => setAiSuggestions(null)} onConfirm={(groups) => { if (onCreateMultiple) onCreateMultiple(groups); setAiSuggestions(null); onBack(); }} />}
+      {aiSuggestions && <SmartGroupModal originalList={editList} suggestions={aiSuggestions} analyzedCount={aiAnalyzedCount} onCancel={() => setAiSuggestions(null)} onConfirm={(groups) => { if (onCreateMultiple) onCreateMultiple(groups); setAiSuggestions(null); onBack(); }} />}
     </div>
   );
 };
