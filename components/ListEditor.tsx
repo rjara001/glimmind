@@ -6,7 +6,6 @@ import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { computeQuotaStatus } from '../utils/quota';
-import { MAX_CARDS_PER_AI_REQUEST } from '../constants/limits';
 
 interface ListEditorProps {
   list: AssociationList;
@@ -22,7 +21,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
-  const [aiAnalyzedCount, setAiAnalyzedCount] = useState(0);
 
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
@@ -38,8 +36,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     if (!quota) return null;
     return computeQuotaStatus(projectedTotal, quota.cardQuota);
   }, [quota, projectedTotal]);
-
-  const aiLimitReached = quota ? quota.aiUsedToday >= quota.aiQuotaDaily : false;
 
   const cleanupAndSave = useCallback((listToSave: AssociationList): boolean => {
     // Create a set of seen IDs to ensure uniqueness
@@ -142,28 +138,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const handleSmartSplit = async () => {
     const activeAssociations = editList.associations.filter(a => !a.isArchived);
     if (activeAssociations.length < 3) {
-      alert("Necesitas al menos 3 elementos para que la IA encuentre patrones lógicos.");
+      alert("Necesitas al menos 3 elementos para encontrar patrones lógicos.");
       return;
-    }
-    if (quota && quota.aiUsedToday >= quota.aiQuotaDaily) {
-      alert(`Llegaste a tu límite diario de IA (${quota.aiQuotaDaily} usos). Vuelve mañana.`);
-      return;
-    }
-    const analyzedCount = Math.min(activeAssociations.length, MAX_CARDS_PER_AI_REQUEST);
-    if (activeAssociations.length > MAX_CARDS_PER_AI_REQUEST) {
-      const confirmed = window.confirm(
-        `La lista tiene ${activeAssociations.length} tarjetas. Por performance, la IA procesará las primeras ${analyzedCount} tarjetas; el resto quedará en esta lista sin agrupar. ¿Continuar?`
-      );
-      if (!confirmed) return;
     }
 
     setIsAnalyzing(true);
     try {
       const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
       setAiSuggestions(suggestions);
-      setAiAnalyzedCount(analyzedCount);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al contactar con la IA.';
+      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al organizar la lista.';
       alert(message);
     } finally {
       setIsAnalyzing(false);
@@ -237,23 +221,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         <div className="flex gap-2">
           <button 
             onClick={handleSmartSplit}
-            disabled={isAnalyzing || activeAssociations.length < 3 || aiLimitReached}
-            title={aiLimitReached
-              ? `Llegaste a tu límite diario de IA (${quota?.aiQuotaDaily} usos)`
-              : activeAssociations.length < 3 ? "Añade al menos 3 tarjetas para usar esta función" : "Organizar con IA"}
+            disabled={isAnalyzing || activeAssociations.length < 3}
+            title={activeAssociations.length < 3 ? "Añade al menos 3 tarjetas para usar esta función" : "Organizar tarjetas en grupos lógicos"}
             className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
           >
             {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>}
-            {isAnalyzing ? 'Procesando...' : 'Organización IA'}
+            {isAnalyzing ? 'Procesando...' : 'Organizar'}
           </button>
         </div>
       </div>
-
-      {activeAssociations.length > MAX_CARDS_PER_AI_REQUEST && (
-        <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs font-medium text-indigo-700">
-          Esta lista tiene {activeAssociations.length} tarjetas. Por performance, la IA procesará las primeras {MAX_CARDS_PER_AI_REQUEST} tarjetas; el resto quedará en esta lista.
-        </div>
-      )}
 
       {quota && quotaStatus && (
         <div className={`mb-6 rounded-xl border px-4 py-3 ${quotaStatus.state === 'blocked'
@@ -268,9 +244,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
                 ? 'text-amber-700'
                 : 'text-slate-600'}`}>
               Tarjetas: {quotaStatus.used} / {quotaStatus.quota}
-            </p>
-            <p className="text-xs font-medium text-slate-500">
-              IA: {quota.aiUsedToday} / {quota.aiQuotaDaily} usos hoy
             </p>
           </div>
           {quotaStatus.state === 'blocked' && (
@@ -356,7 +329,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
       </div>
 
-      {aiSuggestions && <SmartGroupModal originalList={editList} suggestions={aiSuggestions} analyzedCount={aiAnalyzedCount} onCancel={() => setAiSuggestions(null)} onConfirm={(groups) => { if (onCreateMultiple) onCreateMultiple(groups); setAiSuggestions(null); onBack(); }} />}
+      {aiSuggestions && <SmartGroupModal originalList={editList} suggestions={aiSuggestions} onCancel={() => setAiSuggestions(null)} onConfirm={(groups) => { if (onCreateMultiple) onCreateMultiple(groups); setAiSuggestions(null); onBack(); }} />}
     </div>
   );
 };

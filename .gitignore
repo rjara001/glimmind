@@ -29,4 +29,8 @@ dist-ssr
 .firebaserc
 .env
 
+# Generated ML assets (copied from node_modules by scripts/copy-ml-assets.mjs)
+/public/onnx/
+/public/transformers.web.min.js
+
 .opencode/

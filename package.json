@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/copy-ml-assets.mjs",
     "build": "vite build",
     "deploy": "npm run build && firebase deploy --only hosting,functions",
     "preview": "vite preview",
@@ -20,6 +21,7 @@
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "@capacitor/ios": "^8.0.2",
+    "@huggingface/transformers": "^4.2.0",
     "firebase": "^12.8.0",
     "next": "^16.1.6",
     "react": "^19.2.4",
