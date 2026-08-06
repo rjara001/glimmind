@@ -145,9 +145,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // User actions
   setUser: (user) => {
     set({ user });
-    // Save to localStorage
-    if (user) {
+    // Persist only genuine local guests; real users are restored by Firebase Auth.
+    if (user && user.uid === GUEST_UID) {
       localStorage.setItem('glimmind_guest_user', JSON.stringify(user));
+    } else if (!user) {
+      localStorage.removeItem('glimmind_guest_user');
     }
   },
   

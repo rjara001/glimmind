@@ -8,6 +8,7 @@ import { ToastProvider, useToast } from './components/Toast';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { useGameStore } from './store/gameStore';
 import { auth, onAuthStateChanged } from './firebase';
+import type { User } from 'firebase/auth';
 import { listService } from './services/firestoreService';
 import { APP_VERSION } from './constants/version';
 import { computeQuotaStatus, countCards } from './utils/quota';
@@ -50,15 +51,28 @@ const AppContent: React.FC = () => {
 
   // Auth state listener
   useEffect(() => {
-    const savedGuest = localStorage.getItem('glimmind_guest_user');
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: any) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
       if (firebaseUser) {
+        localStorage.removeItem('glimmind_guest_user');
         setUser(firebaseUser);
-      } else if (savedGuest) {
-        setUser(JSON.parse(savedGuest));
-      } else {
-        setUser(null);
+        return;
       }
+
+      const savedGuest = localStorage.getItem('glimmind_guest_user');
+      if (savedGuest) {
+        try {
+          const guest = JSON.parse(savedGuest);
+          if (guest && guest.uid === GUEST_ID) {
+            setUser(guest);
+            return;
+          }
+        } catch {
+          // Ignore corrupted guest data
+        }
+      }
+
+      localStorage.removeItem('glimmind_guest_user');
+      setUser(null);
     });
     return () => unsubscribe();
   }, [setUser]);

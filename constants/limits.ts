@@ -3,6 +3,7 @@ export const PREMIUM_CARD_QUOTA = 5000;
 export const DEFAULT_AI_DAILY_QUOTA = 3;
 export const PREMIUM_AI_DAILY_QUOTA = 10;
 export const MAX_CARDS_PER_LIST = 3000;
+export const MAX_CARDS_PER_AI_REQUEST = 10000;
 export const QUOTA_WARNING_THRESHOLD = 0.9;
 export const PROGRESS_SAVE_DEBOUNCE_MS = 15000;
 export const LIST_CACHE_TTL_MS = 5 * 60 * 1000;

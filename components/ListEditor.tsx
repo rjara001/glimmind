@@ -6,7 +6,7 @@ import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { computeQuotaStatus } from '../utils/quota';
-import { MAX_CARDS_PER_LIST } from '../constants/limits';
+import { MAX_CARDS_PER_AI_REQUEST } from '../constants/limits';
 
 interface ListEditorProps {
   list: AssociationList;
@@ -144,8 +144,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       alert("Necesitas al menos 3 elementos para que la IA encuentre patrones lógicos.");
       return;
     }
-    if (activeAssociations.length > MAX_CARDS_PER_LIST) {
-      alert(`La lista tiene ${activeAssociations.length} tarjetas. La IA reorganiza máximo ${MAX_CARDS_PER_LIST}.`);
+    if (activeAssociations.length > MAX_CARDS_PER_AI_REQUEST) {
+      alert(`La lista tiene ${activeAssociations.length} tarjetas. La IA reorganiza máximo ${MAX_CARDS_PER_AI_REQUEST}.`);
       return;
     }
     if (quota && quota.aiUsedToday >= quota.aiQuotaDaily) {
