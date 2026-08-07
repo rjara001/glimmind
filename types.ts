@@ -2,6 +2,7 @@
 export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
 export type GameFeedback = 'none' | 'correct' | 'incorrect';
+export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
 
 export interface Association {
   id: string;
@@ -11,6 +12,12 @@ export interface Association {
   status: 'pending' | 'correct';
   isLearned: boolean;
   isArchived: boolean;
+  hits?: number;
+  misses?: number;
+  timesPlayed?: number;
+  lastPlayedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface AssociationList {
@@ -25,6 +32,8 @@ export interface AssociationList {
     flipOrder: 'normal' | 'reversed';
     threshold: number;
     ignoreArticles?: boolean;
+    showHints?: boolean;
+    hintMode?: HintMode | false;
   };
   createdAt?: any;
   updatedAt?: any;

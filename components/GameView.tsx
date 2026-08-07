@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useGameStore } from '../store/gameStore';
@@ -10,6 +10,7 @@ import { CycleProgress } from './game/CycleProgress';
 import { FinishedScreen } from './game/FinishedScreen';
 import { SettingsModal } from './game/SettingsModal';
 import { AttemptList } from './game/AttemptList';
+import { useImmersiveHeader } from '../hooks/useImmersiveHeader';
 
 interface GameViewProps {
   list: AssociationList;
@@ -28,6 +29,7 @@ const cycleColorMap: Record<GameCycle, string> = {
 
 export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [isEditingCard, setIsEditingCard] = useState(false);
   const { showToast } = useToast();
   const { 
     gameView, 
@@ -46,6 +48,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const goalProgress = useGameStore(state => state.progress?.goalProgress ?? 0);
   const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
+
+  const immersive = useImmersiveHeader();
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -69,8 +73,28 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     }
   }, [gameState.associations, onUpdateAssociations]);
 
-  // Auto-save is disabled - only save on back navigation to avoid stale data issues
+   // Auto-save is disabled - only save on back navigation to avoid stale data issues
   // const handleAutoSave = () => { ... } - removed
+
+  const handleStartEdit = useCallback(() => {
+    setIsEditingCard(true);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingCard(false);
+  }, []);
+
+  const handleEditCard = useCallback(async (term: string, definition: string) => {
+    const updatedAssociations = gameState.associations.map(a => {
+      if (a.id === currentAssociation?.id) {
+        return { ...a, term: term.trim(), definition: definition.trim(), updatedAt: Date.now() };
+      }
+      return a;
+    });
+
+    await onUpdateAssociations(updatedAssociations);
+    setIsEditingCard(false);
+  }, [currentAssociation?.id, gameState.associations, onUpdateAssociations]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -158,6 +182,12 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     }
   };
 
+  const handleHeaderRestart = () => {
+    if (confirm('¿Reiniciar todo el progreso de esta lista?')) {
+      handleFullRestart();
+    }
+  };
+
   const isReversed = list.settings.flipOrder === 'reversed';
   const isTransitioning = feedback === 'correct';
 
@@ -185,8 +215,41 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
-      <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} />
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div
+        className="sm:hidden"
+        onTouchStart={immersive.handleTouchStart}
+        onTouchMove={immersive.handleTouchMove}
+        onTouchEnd={immersive.handleTouchEnd}
+      >
+        <div
+          className="transition-all duration-300 ease-out overflow-hidden"
+          style={{
+            maxHeight: immersive.isVisible ? '200px' : '0px',
+            opacity: immersive.isVisible ? 1 : 0,
+            marginBottom: immersive.isVisible ? '12px' : '0px',
+          }}
+        >
+          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} />
+        </div>
+        {!immersive.isVisible && (
+          <div className="flex justify-center mb-2">
+            <div className="w-12 h-1 bg-slate-300 rounded-full" />
+          </div>
+        )}
+      </div>
+      <div className="hidden sm:block">
+        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} />
+      </div>
+      {!immersive.isVisible && (
+        <div className="sm:hidden flex justify-between items-center mb-2 px-1">
+          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span className="text-xs font-bold text-slate-500 truncate mx-2">{list.name}</span>
+          <div className="w-9"></div>
+        </div>
+      )}
+      <div className={`flex flex-col lg:flex-row gap-6 items-start ${immersive.isVisible ? 'mt-2' : ''}`}>
         <div className="flex-1 w-full flex flex-col items-center">
           <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className={`text-sm font-bold ${cycleColorClass}`}>{cycleStats.pending}</span></div>
@@ -206,9 +269,16 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               similarity={similarity}
               lastAttempt={lastAttempt}
               cycleColorName={cycleColorName}
+              showHints={list.settings.showHints !== false}
+              currentCycle={currentAssociation?.currentCycle ?? 1}
+              associationId={currentAssociation?.id}
+              onEditCard={handleEditCard}
+              isEditing={isEditingCard}
+              onStartEdit={handleStartEdit}
+              onCancelEdit={handleCancelEdit}
             />
             <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
-            <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} />
+            <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
           </div>
         </div>
         <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
@@ -225,7 +295,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
           }
         }} 
         onClose={() => setShowSettings(false)} 
-        onRestart={actions.restart} 
       />}
     </div>
   );

@@ -17,7 +17,6 @@ const createMockList = (overrides: Partial<AssociationList> = {}): AssociationLi
 describe('SettingsModal - Answer Validation', () => {
   const mockOnUpdateList = vi.fn();
   const mockOnClose = vi.fn();
-  const mockOnRestart = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,7 +28,6 @@ describe('SettingsModal - Answer Validation', () => {
         list={createMockList({ settings: { mode: 'real', flipOrder: 'normal', threshold: 0.9 } })}
         onUpdateList={mockOnUpdateList}
         onClose={mockOnClose}
-        onRestart={mockOnRestart}
       />
     );
 
@@ -38,37 +36,75 @@ describe('SettingsModal - Answer Validation', () => {
     expect(screen.getByLabelText('Similarity threshold')).toHaveValue('90');
   });
 
-  it('toggles ignore articles through onUpdateList', () => {
+  it('applies pending changes only when accepting', () => {
     render(
       <SettingsModal
         list={createMockList()}
         onUpdateList={mockOnUpdateList}
         onClose={mockOnClose}
-        onRestart={mockOnRestart}
       />
     );
 
     fireEvent.click(screen.getByLabelText('Toggle ignore articles'));
+    fireEvent.change(screen.getByLabelText('Similarity threshold'), { target: { value: '80' } });
 
+    expect(mockOnUpdateList).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Accept & Close'));
+
+    expect(mockOnUpdateList).toHaveBeenCalledTimes(1);
     expect(mockOnUpdateList).toHaveBeenCalledWith(
-      expect.objectContaining({ settings: expect.objectContaining({ ignoreArticles: true }) })
+      expect.objectContaining({ settings: expect.objectContaining({ ignoreArticles: true, threshold: 0.8 }) })
     );
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('updates the threshold through onUpdateList', () => {
+  it('closes without applying changes when cancelling', () => {
     render(
       <SettingsModal
         list={createMockList()}
         onUpdateList={mockOnUpdateList}
         onClose={mockOnClose}
-        onRestart={mockOnRestart}
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Similarity threshold'), { target: { value: '80' } });
+    fireEvent.click(screen.getByLabelText('Toggle ignore articles'));
+    fireEvent.click(screen.getByText('Cancel'));
+
+    expect(mockOnUpdateList).not.toHaveBeenCalled();
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles hints off and applies the change when accepting', () => {
+    render(
+      <SettingsModal
+        list={createMockList()}
+        onUpdateList={mockOnUpdateList}
+        onClose={mockOnClose}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText('Toggle hints'));
+
+    expect(mockOnUpdateList).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Accept & Close'));
 
     expect(mockOnUpdateList).toHaveBeenCalledWith(
-      expect.objectContaining({ settings: expect.objectContaining({ threshold: 0.8 }) })
+      expect.objectContaining({ settings: expect.objectContaining({ showHints: false }) })
     );
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the restart option', () => {
+    render(
+      <SettingsModal
+        list={createMockList()}
+        onUpdateList={mockOnUpdateList}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.queryByText('Restart List')).not.toBeInTheDocument();
   });
 });

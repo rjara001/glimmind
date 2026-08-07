@@ -437,4 +437,78 @@ describe('GlimmindGame', () => {
             expect(totalCorrect).toBe(10);
         });
     });
+
+    describe('activity counters', () => {
+        it('increments misses on an incorrect checkAnswer', () => {
+            const list = createMockList([
+                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+            ]);
+            let game = GlimmindGame.create(list);
+            game = game.setUserInput('Wrong Answer');
+            game = game.checkAnswer();
+
+            expect(game.state.associations[0].misses).toBe(1);
+            expect(game.state.associations[0].hits).toBeUndefined();
+            expect(game.state.associations[0].lastPlayedAt).toBeGreaterThan(0);
+        });
+
+        it('increments hits and timesPlayed on a CORRECT action', () => {
+            const list = createMockList(createMockAssociations(1));
+            let game = GlimmindGame.create(list);
+            game = game.processAction({ type: 'CORRECT' });
+
+            expect(game.state.associations[0].hits).toBe(1);
+            expect(game.state.associations[0].timesPlayed).toBe(1);
+            expect(game.state.associations[0].misses).toBeUndefined();
+        });
+
+        it('increments only timesPlayed on a PASS action', () => {
+            const list = createMockList(createMockAssociations(1));
+            let game = GlimmindGame.create(list);
+            game = game.processAction({ type: 'PASS' });
+
+            expect(game.state.associations[0].timesPlayed).toBe(1);
+            expect(game.state.associations[0].hits).toBeUndefined();
+            expect(game.state.associations[0].misses).toBeUndefined();
+        });
+
+        it('counts a correct real-mode answer exactly once', () => {
+            const list = createMockList([
+                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+            ]);
+            let game = GlimmindGame.create(list);
+            game = game.setUserInput('Correct Answer');
+            game = game.checkAnswer();
+            expect(game.state.feedback).toBe('correct');
+            expect(game.state.associations[0].hits).toBeUndefined();
+
+            game = game.processAction({ type: 'CORRECT' });
+            expect(game.state.associations[0].hits).toBe(1);
+            expect(game.state.associations[0].timesPlayed).toBe(1);
+        });
+
+        it('keeps counters across a restart', () => {
+            const list = createMockList(createMockAssociations(1));
+            let game = GlimmindGame.create(list);
+            game = game.processAction({ type: 'CORRECT' });
+            const restarted = game.restart();
+
+            expect(restarted.state.associations[0].hits).toBe(1);
+            expect(restarted.state.associations[0].timesPlayed).toBe(1);
+        });
+
+        it('does not track counters when tracking is disabled', () => {
+            const list = createMockList(createMockAssociations(1));
+            let game = GlimmindGame.create(list, { trackingEnabled: false });
+
+            game = game.setUserInput('Wrong Answer');
+            game = game.checkAnswer();
+            expect(game.state.associations[0].misses).toBeUndefined();
+
+            game = game.processAction({ type: 'CORRECT' });
+            expect(game.state.associations[0].hits).toBeUndefined();
+            expect(game.state.associations[0].timesPlayed).toBeUndefined();
+            expect(game.state.associations[0].status).toBe('correct');
+        });
+    });
 });

@@ -9,4 +9,5 @@ export interface GameHeaderProps {
   sessionRepasos?: number;
   onBack: () => void;
   onSettingsClick: () => void;
+  onRestart?: () => void;
 }

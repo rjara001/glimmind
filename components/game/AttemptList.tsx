@@ -1,12 +1,14 @@
 import React from 'react';
-import { Attempt } from '../../types';
+import { Attempt, Association } from '../../types';
+import { maskHint, getAutoHintMode } from '../../utils/maskHint';
 
 interface AttemptListProps {
   attempts: Attempt[];
   revealedAssociations: string[];
+  associations: Association[];
 }
 
-export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAssociations }) => {
+export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAssociations, associations }) => {
   if (attempts.length === 0) {
     return null;
   }
@@ -19,6 +21,8 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAsso
       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
         {reversedAttempts.map((attempt) => {
           const showExpected = revealedAssociations.includes(attempt.associationId);
+          const association = associations.find(a => a.id === attempt.associationId);
+          const hintMode = association ? getAutoHintMode(association.currentCycle) : 'masked';
           
           return (
           <div 
@@ -30,9 +34,9 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAsso
                 <p className="text-xs font-medium text-slate-700 truncate">
                   "{attempt.userInput}"
                 </p>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Esperado: <span className="text-slate-600">{showExpected ? attempt.expectedAnswer : (attempt.expectedAnswer?.replace(/\S/g, '*') || '***')}</span>
-                </p>
+                 <p className="text-[10px] text-slate-400 mt-1">
+                    Esperado: <span className="text-slate-600">{showExpected ? attempt.expectedAnswer : maskHint(attempt.expectedAnswer, hintMode)}</span>
+                  </p>
               </div>
               <div className="flex flex-col items-end gap-1">
                 <span className={`text-sm font-bold ${attempt.similarity >= attempt.threshold ? 'text-emerald-600' : 'text-rose-500'}`}>

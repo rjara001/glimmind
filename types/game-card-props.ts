@@ -12,4 +12,10 @@ export interface GameCardProps {
   similarity: number | null;
   lastAttempt: string;
   onNextCard?: () => void;
+  showHints?: boolean;
+  associationId?: string;
+  onEditCard?: (term: string, definition: string) => void;
+  isEditing?: boolean;
+  onStartEdit?: () => void;
+  onCancelEdit?: () => void;
 }

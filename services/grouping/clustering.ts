@@ -30,6 +30,58 @@ const addVectors = (target: number[], source: number[]): void => {
   }
 };
 
+const recomputeCentroid = (cluster: Cluster, dimensions: number): void => {
+  const newCentroid = new Array(dimensions).fill(0);
+  for (const member of cluster.members) {
+    addVectors(newCentroid, member);
+  }
+  for (let d = 0; d < dimensions; d++) {
+    newCentroid[d] /= cluster.members.length;
+  }
+  cluster.centroid = newCentroid;
+};
+
+const mergeSmallClusters = (clusters: Cluster[], minSize: number, dimensions: number): Cluster[] => {
+  const merged = clusters.map((cluster) => ({
+    centroid: cluster.centroid.slice(),
+    members: cluster.members,
+    indices: [...cluster.indices],
+  }));
+
+  while (merged.length > 1) {
+    let smallestIndex = 0;
+    for (let i = 1; i < merged.length; i++) {
+      if (merged[i].indices.length < merged[smallestIndex].indices.length) {
+        smallestIndex = i;
+      }
+    }
+    if (merged[smallestIndex].indices.length >= minSize) {
+      break;
+    }
+
+    let bestIndex = -1;
+    let bestSimilarity = -Infinity;
+    for (let i = 0; i < merged.length; i++) {
+      if (i === smallestIndex) continue;
+      const similarity = cosineSimilarity(merged[smallestIndex].centroid, merged[i].centroid);
+      if (similarity > bestSimilarity) {
+        bestSimilarity = similarity;
+        bestIndex = i;
+      }
+    }
+    if (bestIndex < 0) break;
+
+    const target = merged[bestIndex];
+    const source = merged[smallestIndex];
+    target.members.push(...source.members);
+    target.indices.push(...source.indices);
+    recomputeCentroid(target, dimensions);
+    merged.splice(smallestIndex, 1);
+  }
+
+  return merged;
+};
+
 export function clusterBySimilarity(
   vectors: number[][],
   items: string[],
@@ -71,8 +123,15 @@ export function clusterBySimilarity(
     }
   }
 
-  return clusters
-    .filter((cluster) => cluster.indices.length >= minGroupSize)
+  const totalItems = vectors.length;
+  const effectiveMin = minGroupSize > totalItems
+    ? MIN_GROUP_SIZE
+    : Math.max(minGroupSize, MIN_GROUP_SIZE);
+
+  const merged = mergeSmallClusters(clusters, effectiveMin, dimensions);
+
+  return merged
+    .filter((cluster) => cluster.indices.length >= effectiveMin)
     .map((cluster) => ({
       groupName: nearestItemName(cluster, vectors, items),
       indices: cluster.indices,

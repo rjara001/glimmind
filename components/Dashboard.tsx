@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AssociationList, Association } from '../types';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { computeStateBreakdown } from '../utils/progress';
@@ -7,6 +7,8 @@ import { useGameStore } from '../store/gameStore';
 import { GoalWidget } from './GoalWidget';
 import { BigListCard } from './BigListCard';
 import { computeQuotaStatus, countCards } from '../utils/quota';
+import { parseCsvPairs, isHeaderPair } from '../utils/csv';
+import { useToast } from './Toast';
 
 const BIG_LIST_THRESHOLD = 200;
 
@@ -20,11 +22,17 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onDelete, onEdit, onPlay }) => {
+  const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newConcept, setNewConcept] = useState('');
   const [bulkData, setBulkData] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const [importTab, setImportTab] = useState<'paste' | 'upload'>('paste');
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const progress = useGameStore(state => state.progress);
@@ -67,39 +75,74 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
   }, [lists]);
 
   const parseBulkData = (text: string): Association[] => {
-    if (!text.trim()) return [];
-    
-    const parsed = text.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const parts = line.split(/[\t;]|,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        const term = parts[0]?.replace(/^"|"$/g, '').trim() || '';
-        const definition = parts[1]?.replace(/^"|"$/g, '').trim() || '';
-        
-        const newAssociation: Association = {
-          id: crypto.randomUUID(),
-          term,
-          definition,
-          currentCycle: 1,
-          status: 'pending',
-          isLearned: false,
-          isArchived: false,
-        };
-        return newAssociation;
-      })
-      .filter(a => a.term || a.definition);
-    return flattenAssociations(parsed);
+    const pairs = parseCsvPairs(text);
+    const associations: Association[] = pairs.map(pair => ({
+      id: crypto.randomUUID(),
+      term: pair.term,
+      definition: pair.definition,
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+      isArchived: false,
+    }));
+    return flattenAssociations(associations);
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFileName(file.name);
+    setIsReadingFile(true);
+    try {
+      const content = await file.text();
+      const pairs = parseCsvPairs(content);
+      const conceptParts = newConcept.split('/');
+      const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], conceptParts[0] || '', conceptParts[1] || '');
+      const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
+
+      if (dataPairs.length === 0) {
+        alert('El archivo no contiene tarjetas válidas.');
+        return;
+      }
+
+      const associations: Association[] = flattenAssociations(dataPairs.map(pair => ({
+        id: crypto.randomUUID(),
+        term: pair.term,
+        definition: pair.definition,
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      })));
+
+      setFileAssociations(associations);
+      showToast(`Se importaron ${associations.length} tarjetas de "${file.name}"`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
+      alert(`No se pudo importar el archivo: ${message}`);
+    } finally {
+      setIsReadingFile(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const resetBulkInputs = () => {
+    setBulkData('');
+    setFileAssociations([]);
+    setSelectedFileName(null);
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newName && newConcept) {
-      const initialAssocs = parseBulkData(bulkData);
+      const initialAssocs = [...parseBulkData(bulkData), ...fileAssociations];
       onCreate(newName, newConcept, initialAssocs);
       setNewName('');
       setNewConcept('');
-      setBulkData('');
+      resetBulkInputs();
       setIsCreating(false);
       setShowBulk(false);
     }
@@ -322,13 +365,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
               
               {showBulk && (
                 <div className="animate-in fade-in zoom-in-95 duration-200">
-                  <p className="text-xs text-gray-400 mb-2">Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".</p>
-                  <textarea 
-                    value={bulkData}
-                    onChange={(e) => setBulkData(e.target.value)}
-                    placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
-                    className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
-                  />
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setImportTab('paste')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'paste' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
+                    >
+                      Pegar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImportTab('upload')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'upload' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
+                    >
+                      Subir archivo
+                    </button>
+                  </div>
+                  {importTab === 'paste' && (
+                    <>
+                      <p className="text-xs text-gray-400 mb-2">Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".</p>
+                      <textarea 
+                        value={bulkData}
+                        onChange={(e) => setBulkData(e.target.value)}
+                        placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
+                        className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
+                      />
+                    </>
+                  )}
+                  {importTab === 'upload' && (
+                    <div className="flex flex-col items-center gap-2 py-3">
+                      <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isReadingFile}
+                        className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-wait"
+                      >
+                        {isReadingFile ? 'Leyendo archivo...' : 'Elegir archivo CSV'}
+                      </button>
+                      {selectedFileName && <p className="text-xs font-semibold text-gray-600">Archivo: {selectedFileName}</p>}
+                      {fileAssociations.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          <p className="text-xs font-semibold text-emerald-600">{fileAssociations.length} tarjetas listas para crear</p>
+                          <button type="button" onClick={() => { setFileAssociations([]); setSelectedFileName(null); }} className="text-xs text-gray-500 hover:text-red-500 underline transition">Quitar</button>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400">Formato .csv con "Término, Definición" por línea. El encabezado se detecta y se ignora automáticamente.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -336,7 +420,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button 
                 type="button"
-                onClick={() => { setIsCreating(false); setBulkData(''); setShowBulk(false); }}
+                onClick={() => { setIsCreating(false); resetBulkInputs(); setShowBulk(false); }}
                 className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition"
               >
                 Cancelar

@@ -1,4 +1,5 @@
 import { clusterBySimilarity, GroupSuggestion } from './clustering';
+import { MIN_GROUP_SIZE } from '../../constants/limits';
 
 const STOPWORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'into',
@@ -32,7 +33,7 @@ const buildTermFrequency = (tokens: string[], documentFrequency: Map<string, num
 };
 
 export function tfidfGrouping(items: string[], minGroupSize?: number): GroupSuggestion[] {
-  if (items.length < 3) {
+  if (items.length < MIN_GROUP_SIZE) {
     return [];
   }
 

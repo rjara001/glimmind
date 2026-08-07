@@ -51,21 +51,35 @@ const db = getFirestore(app);
 const functions = getFunctions(app, 'us-central1');
 const googleProvider = new GoogleAuthProvider();
 
-// Solo conectar emuladores si estamos en local y NO tenemos llaves reales
+// Connect emulators only in local dev (demo mode without keys, or explicit VITE_USE_EMULATORS=true)
+const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
+const useEmulatorsFlag = env.VITE_USE_EMULATORS === 'true';
 const isLocalhost = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-if (isLocalhost && isDemo) {
-  if (!(globalThis as any)._fb_emulators_connected) {
-    try {
-      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-      connectFirestoreEmulator(db, "localhost", 8080);
-      connectFunctionsEmulator(functions, "localhost", 5001);
-      (globalThis as any)._fb_emulators_connected = true;
-      console.log("🔥 Modo local: Emuladores conectados");
-    } catch (e) {
-      console.warn("Aviso emuladores:", e);
-    }
+export const isUsingEmulators = isLocalhost && (isDemo || useEmulatorsFlag);
+
+interface EmulatorConnectionFlag {
+  _fb_emulators_connected?: boolean;
+}
+
+function hasEmulatorsConnected(): boolean {
+  return (globalThis as unknown as EmulatorConnectionFlag)._fb_emulators_connected === true;
+}
+
+function markEmulatorsConnected(): void {
+  (globalThis as unknown as EmulatorConnectionFlag)._fb_emulators_connected = true;
+}
+
+if (isUsingEmulators && !hasEmulatorsConnected()) {
+  try {
+    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "localhost", 8080);
+    connectFunctionsEmulator(functions, "localhost", 5001);
+    markEmulatorsConnected();
+    console.log("🔥 Modo local: Emuladores conectados");
+  } catch (e) {
+    console.warn("Aviso emuladores:", e);
   }
 }
 

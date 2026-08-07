@@ -1,7 +1,12 @@
-import { auth } from '../firebase';
+import { auth, isUsingEmulators } from '../firebase';
 
-const FUNCTIONS_BASE = (import.meta as any).env?.VITE_FUNCTIONS_BASE
-  || 'https://us-central1-fladycard-22a3e.cloudfunctions.net';
+const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
+const PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID || 'fladycard-22a3e';
+const PROD_FUNCTIONS_BASE = `https://us-central1-${PROJECT_ID}.cloudfunctions.net`;
+const EMULATOR_FUNCTIONS_BASE = `http://localhost:5001/${PROJECT_ID}/us-central1`;
+
+const FUNCTIONS_BASE = env.VITE_FUNCTIONS_BASE
+  || (isUsingEmulators ? EMULATOR_FUNCTIONS_BASE : PROD_FUNCTIONS_BASE);
 
 async function getToken(): Promise<string | null> {
   const currentUser = auth.currentUser;

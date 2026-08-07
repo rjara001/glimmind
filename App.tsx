@@ -3,6 +3,9 @@ import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 import { ListEditor } from './components/ListEditor';
 import { QuickAddModal } from './components/QuickAddModal';
+import { SettingsView } from './components/SettingsView';
+import { HistoryView } from './components/HistoryView';
+import { ReportsView } from './components/ReportsView';
 import { Auth } from './components/Auth';
 import { ToastProvider, useToast } from './components/Toast';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
@@ -12,6 +15,7 @@ import type { User } from 'firebase/auth';
 import { listService } from './services/firestoreService';
 import { APP_VERSION } from './constants/version';
 import { computeQuotaStatus, countCards } from './utils/quota';
+import { createActivityEvent, buildListDiffEvents } from './utils/activity';
 
 const GUEST_ID = 'dev-user-local';
 const LAST_PLAYED_KEY = 'glimmind_last_played';
@@ -24,7 +28,7 @@ const MOCK_USER = {
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
-  const [view, setView] = useState<'dashboard' | 'game' | 'editor'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'game' | 'editor' | 'activity' | 'reports' | 'settings'>('dashboard');
   const [isSyncing, setIsSyncing] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
@@ -82,6 +86,7 @@ const AppContent: React.FC = () => {
     useGameStore.getState().loadInitialData();
     useGameStore.getState().loadProgress();
     useGameStore.getState().loadQuota();
+    useGameStore.getState().loadSettings();
   }, [user]);
 
   // Auto-redirect to last played list on page load
@@ -144,6 +149,18 @@ const AppContent: React.FC = () => {
 
   const handleUpdateList = useCallback(async (updatedList: any) => {
     const { lists } = useGameStore.getState();
+    const prevList = lists.find(l => l.id === updatedList.id);
+    if (prevList && user) {
+      const events = buildListDiffEvents({
+        userId: user.uid,
+        listId: updatedList.id,
+        before: prevList.associations,
+        after: updatedList.associations,
+      });
+      if (events.length > 0) {
+        useGameStore.getState().recordActivity(events);
+      }
+    }
     const updatedLists = lists.map(l => l.id === updatedList.id ? updatedList : l);
     setLists(updatedLists);
     
@@ -177,7 +194,7 @@ const AppContent: React.FC = () => {
       concept, 
       associations: initialAssocs, 
       isArchived: false,
-      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true },
+      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true, showHints: true },
     };
     
     const tempId = `temp_${Date.now()}`;
@@ -193,6 +210,14 @@ const AppContent: React.FC = () => {
         setLists(lists.map(l => l.id === tempId ? updatedList : l));
         setCurrentList(newId);
         useGameStore.getState().loadQuota();
+        const createdEvents = initialAssocs.map((association: any) => createActivityEvent({
+          userId: user.uid,
+          listId: newId,
+          cardId: association.id,
+          cardTerm: association.term,
+          type: 'card_created',
+        }));
+        useGameStore.getState().recordActivity(createdEvents);
       } catch (error: any) {
         console.error("Failed to create list:", error);
         showToast(error.message || 'Error al crear la lista', 'error');
@@ -200,6 +225,14 @@ const AppContent: React.FC = () => {
       }
     } else {
       setCurrentList(tempId);
+      const createdEvents = initialAssocs.map((association: any) => createActivityEvent({
+        userId: GUEST_ID,
+        listId: tempId,
+        cardId: association.id,
+        cardTerm: association.term,
+        type: 'card_created',
+      }));
+      useGameStore.getState().recordActivity(createdEvents);
     }
     setView('editor');
   };
@@ -225,11 +258,17 @@ const AppContent: React.FC = () => {
     const { lists, quota } = useGameStore.getState();
 
     const totalNewCards = groups.reduce((sum, g) => sum + (g.associations?.length || 0), 0);
-    if (quota && computeQuotaStatus(countCards(lists) + totalNewCards, quota.cardQuota).state === 'blocked') {
+    const originalCardCount = currentList.associations?.length || 0;
+    const isGuest = user.uid === GUEST_ID;
+
+    // A reorganization only redistributes existing cards, so it never grows the total.
+    if (totalNewCards > originalCardCount && quota && computeQuotaStatus(countCards(lists) - originalCardCount + totalNewCards, quota.cardQuota).state === 'blocked') {
       showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
       return;
     }
-    
+
+    const originalListId = currentList.id;
+
     const newLists = groups.map(g => ({
       id: `temp_${crypto.randomUUID()}`,
       userId: user.uid || GUEST_ID,
@@ -237,24 +276,46 @@ const AppContent: React.FC = () => {
       concept: currentList.concept,
       associations: g.associations,
       isArchived: false,
-      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true },
+      settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true, showHints: true },
     }));
 
-    setLists([...lists, ...newLists]);
+    const emitMovedEvents = (targets: { id: string; associations: any[] }[]) => {
+      const events = targets.flatMap(({ id, associations }) =>
+        associations.map((association: any) => createActivityEvent({
+          userId: user.uid || GUEST_ID,
+          listId: id,
+          cardId: association.id,
+          cardTerm: association.term,
+          type: 'card_moved',
+          fromListId: originalListId,
+          toListId: id,
+        })),
+      );
+      if (events.length > 0) {
+        useGameStore.getState().recordActivity(events);
+      }
+    };
 
-    if (user.uid !== GUEST_ID) {
-      newLists.forEach(async (newList) => {
-        try {
-          const newId = await listService.createList(newList);
-          const currentLists = useGameStore.getState().lists;
-          setLists(currentLists.map(l => l.id === newList.id ? { ...newList, id: newId } : l));
-        } catch (error) {
-          console.error("Failed to sync AI grouped list:", error);
-        }
-      });
+    if (isGuest) {
+      const currentLists = useGameStore.getState().lists;
+      setLists([...currentLists.filter(l => l.id !== originalListId), ...newLists]);
+      emitMovedEvents(newLists);
+      showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
+      return;
     }
-    
-    showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
+
+    try {
+      const newIds = await listService.splitList(originalListId, groups);
+      const currentStoreLists = useGameStore.getState().lists;
+      const newListsWithIds = newLists.map((newList, index) => ({ ...newList, id: newIds[index] }));
+      setLists([...currentStoreLists.filter(l => l.id !== originalListId), ...newListsWithIds]);
+      emitMovedEvents(newListsWithIds);
+      useGameStore.getState().loadQuota();
+      showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
+    } catch (error) {
+      console.error("Failed to split list:", error);
+      showToast(error instanceof Error ? error.message : 'No se pudo dividir la lista.', 'error');
+    }
   };
 
   if (!isLoaded) {
@@ -282,46 +343,71 @@ const AppContent: React.FC = () => {
   return (
     <ToastProvider>
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Glimmind</h1>
-          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
+      <header className={`bg-white border-b border-slate-200 px-4 py-3 ${view === 'game' ? 'hidden sm:block' : ''}`}>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-black text-slate-900 tracking-tight">Glimmind</h1>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowQuickAdd(true)}
+              aria-label="Agregar valor"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Agregar</span>
+            </button>
+            {user.photoURL && (
+              <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
           <button
-            onClick={() => setShowQuickAdd(true)}
-            aria-label="Agregar valor"
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Agregar
-          </button>
-          <button 
             onClick={handleSyncFromCloud}
             disabled={isSyncing || user.uid === GUEST_ID}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
           >
             <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+            {isSyncing ? 'Sync...' : 'Sync'}
           </button>
-          <div className="flex items-center gap-2">
-            {user.photoURL && (
-              <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full" />
-            )}
-            <button 
-              onClick={() => { auth?.signOut(); setUser(null); setView('dashboard'); }}
-              className="text-slate-300 hover:text-rose-500 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
-              </svg>
-            </button>
-            <span className="text-xs text-slate-400 ml-2">v{APP_VERSION}</span>
-          </div>
+          <button
+            onClick={() => setView('activity')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'activity' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
+          >
+            Activity
+          </button>
+          <button
+            onClick={() => setView('reports')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'reports' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
+          >
+            Reports
+          </button>
+          <button
+            onClick={() => setView('settings')}
+            aria-label="Configuración"
+            className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 whitespace-nowrap"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          <button 
+            onClick={() => { auth?.signOut(); setUser(null); setView('dashboard'); }}
+            className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 whitespace-nowrap"
+            aria-label="Cerrar sesión"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+            </svg>
+          </button>
+          <span className="text-[10px] text-slate-400 ml-1 whitespace-nowrap">v{APP_VERSION}</span>
         </div>
       </header>
 
@@ -359,6 +445,15 @@ const AppContent: React.FC = () => {
             onBack={() => setView('dashboard')} 
             autoStart={autoStartGame}
           />
+        )}
+        {view === 'settings' && (
+          <SettingsView onBack={() => setView('dashboard')} />
+        )}
+        {view === 'activity' && (
+          <HistoryView onBack={() => setView('dashboard')} onGoToSettings={() => setView('settings')} />
+        )}
+        {view === 'reports' && (
+          <ReportsView onBack={() => setView('dashboard')} onGoToSettings={() => setView('settings')} />
         )}
       </main>
       {showQuickAdd && (

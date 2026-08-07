@@ -1,4 +1,4 @@
-import { AssociationList } from '../types';
+import { Association, AssociationList } from '../types';
 import { callFunction } from './callFunction';
 
 export const listService = {
@@ -39,5 +39,10 @@ export const listService = {
 
   deleteList: async (listId: string): Promise<void> => {
     await callFunction('deleteList', { listId });
+  },
+
+  splitList: async (listId: string, groups: { name: string, associations: Association[] }[]): Promise<string[]> => {
+    const result = await callFunction<{ ids: string[] }>('splitList', { listId, groups });
+    return result.ids;
   }
 };

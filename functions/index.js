@@ -294,6 +294,86 @@ exports.deleteList = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
+exports.splitList = onRequest({ cors: true }, async (req, res) => {
+  const { listId, groups } = req.body;
+  if (!listId || !Array.isArray(groups) || groups.length === 0) {
+    return res.status(400).json({ error: 'listId and groups are required' });
+  }
+
+  const uid = await requireAuth(req, res);
+  if (!uid) return;
+
+  try {
+    const originalRef = db.collection(COLLECTION_NAME).doc(listId);
+    const originalSnap = await originalRef.get();
+    if (!originalSnap.exists) {
+      return res.status(404).json({ error: 'List not found' });
+    }
+    const original = originalSnap.data();
+    if (original.userId && original.userId !== uid) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const originalCount = Array.isArray(original.associations) ? original.associations.length : 0;
+    const totalNewCount = groups.reduce(
+      (sum, group) => sum + (Array.isArray(group && group.associations) ? group.associations.length : 0),
+      0
+    );
+    // A reorganization never grows the total, so it must not be quota-blocked.
+    const delta = totalNewCount - originalCount;
+
+    const createdIds = await db.runTransaction(async (tx) => {
+      const metaRef = metaRefFor(uid);
+      const metaSnap = await tx.get(metaRef);
+      const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+      const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
+      const cardCount = meta.cardCount || 0;
+
+      if (delta > 0 && cardCount + delta > cardQuota) {
+        throw new QuotaExceededError(
+          `Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`
+        );
+      }
+
+      const newRefs = [];
+      for (const group of groups) {
+        const ref = db.collection(COLLECTION_NAME).doc();
+        tx.set(ref, {
+          userId: uid,
+          name: group.name,
+          concept: original.concept,
+          associations: Array.isArray(group.associations) ? group.associations : [],
+          settings: original.settings,
+          isArchived: false,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        newRefs.push(ref.id);
+      }
+
+      tx.delete(originalRef);
+      if (delta !== 0) {
+        if (metaSnap.exists) {
+          tx.update(metaRef, {
+            cardCount: FieldValue.increment(delta),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          tx.set(metaRef, { ...metaDefaults(), cardCount: Math.max(0, delta) });
+        }
+      }
+      return newRefs;
+    });
+
+    res.json({ ids: createdIds });
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 exports.getList = onRequest({ cors: true }, async (req, res) => {
   const { listId } = req.body;
 
@@ -349,6 +429,163 @@ exports.updateProgress = onRequest({ cors: true }, async (req, res) => {
       updatedAt: FieldValue.serverTimestamp()
     });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.getSettings = onRequest({ cors: true }, async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    const doc = await db.collection('users').doc(userId).collection('settings').doc('main').get();
+    if (!doc.exists) {
+      return res.json(null);
+    }
+    res.json(doc.data());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.updateSettings = onRequest({ cors: true }, async (req, res) => {
+  const { userId, settings } = req.body;
+  if (!userId || !settings || typeof settings.activityHistoryEnabled !== 'boolean') {
+    return res.status(400).json({ error: 'userId and settings are required' });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    await db.collection('users').doc(userId).collection('settings').doc('main').set({
+      activityHistoryEnabled: settings.activityHistoryEnabled,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const MAX_EVENTS_PER_BATCH = 400;
+const MAX_ACTIVITY_PAGE = 200;
+const MAX_SESSIONS_PAGE = 200;
+
+function toMillis(value) {
+  return value && typeof value.toMillis === 'function' ? value.toMillis() : value;
+}
+
+exports.appendActivity = onRequest({ cors: true }, async (req, res) => {
+  const { userId, events } = req.body;
+  if (!userId || !Array.isArray(events) || events.length === 0) {
+    return res.status(400).json({ error: 'userId and events are required' });
+  }
+  if (events.length > MAX_EVENTS_PER_BATCH) {
+    return res.status(400).json({ error: `Máximo ${MAX_EVENTS_PER_BATCH} eventos por lote.` });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    const activityCollection = db.collection('users').doc(userId).collection('activity');
+    const batch = db.batch();
+    for (const event of events) {
+      const ref = event.id
+        ? activityCollection.doc(event.id)
+        : activityCollection.doc();
+      batch.set(ref, {
+        ...event,
+        at: Number.isFinite(event.at) ? new Date(event.at) : FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.getActivity = onRequest({ cors: true }, async (req, res) => {
+  const { userId, cursor, limit = 50, type, listId } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    let query = db.collection('users').doc(userId).collection('activity');
+    if (type) query = query.where('type', '==', type);
+    if (listId) query = query.where('listId', '==', listId);
+    query = query.orderBy('at', 'desc').limit(Math.min(limit, MAX_ACTIVITY_PAGE));
+    if (cursor) query = query.startAfter(new Date(cursor));
+
+    const snapshot = await query.get();
+    const events = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return { id: doc.id, ...data, at: toMillis(data.at) };
+    });
+    const nextCursor = events.length > 0 ? events[events.length - 1].at : undefined;
+    res.json({ events, nextCursor });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.saveSession = onRequest({ cors: true }, async (req, res) => {
+  const { userId, session } = req.body;
+  if (!userId || !session || !session.id) {
+    return res.status(400).json({ error: 'userId and session are required' });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    await db.collection('users').doc(userId).collection('sessions').doc(session.id).set({
+      ...session,
+      startedAt: new Date(session.startedAt),
+      endedAt: new Date(session.endedAt),
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+exports.getSessions = onRequest({ cors: true }, async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    const snapshot = await db.collection('users').doc(userId).collection('sessions')
+      .orderBy('endedAt', 'desc')
+      .limit(MAX_SESSIONS_PAGE)
+      .get();
+    const sessions = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        startedAt: toMillis(data.startedAt),
+        endedAt: toMillis(data.endedAt),
+      };
+    });
+    res.json(sessions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,11 +1,62 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { ReactElement } from 'react';
 import { AssociationList, Association } from '../types';
 import { aiService, AIGroupSuggestion } from '../services/aiService';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { computeQuotaStatus } from '../utils/quota';
+import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
+import { useToast } from './Toast';
+import { MIN_GROUP_SIZE } from '../constants/limits';
+
+type SortField = 'term' | 'definition';
+
+interface TableSort {
+  field: SortField;
+  direction: 'asc' | 'desc';
+}
+
+function nextSort(current: TableSort | null, field: SortField): TableSort {
+  if (current && current.field === field) {
+    return { field, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+  }
+  return { field, direction: 'asc' };
+}
+
+function sortAssociations(associations: Association[], tableSort: TableSort | null): Association[] {
+  if (!tableSort) return associations;
+  const { field, direction } = tableSort;
+  return [...associations].sort((a, b) => {
+    const aValue = a[field].toLowerCase();
+    const bValue = b[field].toLowerCase();
+    const comparison = aValue.localeCompare(bValue);
+    return direction === 'asc' ? comparison : -comparison;
+  });
+}
+
+interface SortIndicatorProps {
+  sort: TableSort | null;
+  field: SortField;
+}
+
+function SortIndicator({ sort, field }: SortIndicatorProps): ReactElement {
+  const isActive = sort?.field === field;
+  const isDescending = sort?.direction === 'desc';
+  return (
+    <svg
+      className={`w-3 h-3 transition ${isActive ? 'text-indigo-600' : 'text-slate-200 group-hover:text-slate-400'} ${isActive && isDescending ? 'rotate-180' : ''}`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={3}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+    </svg>
+  );
+}
 
 interface ListEditorProps {
   list: AssociationList;
@@ -15,12 +66,24 @@ interface ListEditorProps {
 }
 
 export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, onCreateMultiple }) => {
+  const { showToast } = useToast();
   const [bulkText, setBulkText] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const [importTab, setImportTab] = useState<'paste' | 'upload'>('paste');
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editList, setEditList] = useState<AssociationList>(list);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
+  const [activeSort, setActiveSort] = useState<TableSort | null>(null);
+  const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
+
+  const conceptParts = editList.concept.split('/');
+  const termHeader = conceptParts[0] || 'Term';
+  const definitionHeader = conceptParts[1] || 'Definition';
+  const csvHeader: [string, string] = [termHeader, definitionHeader];
 
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
@@ -109,24 +172,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
       return;
     }
-    const newAssocs: Association[] = bulkText.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const parts = line.split(/[\t;]|,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        const term = (parts[0]?.replace(/^"|"$/g, '').trim() || '');
-        const definition = (parts[1]?.replace(/^"|"$/g, '').trim() || '');
-        return {
-          id: crypto.randomUUID(),
-          term,
-          definition,
-          currentCycle: 1,
-          status: 'pending' as const,
-          isLearned: false,
-          isArchived: false,
-        };
-      })
-      .filter(a => a.term || a.definition);
+    const pairs = parseCsvPairs(bulkText);
+    const newAssocs: Association[] = pairs.map(pair => ({
+      id: crypto.randomUUID(),
+      term: pair.term,
+      definition: pair.definition,
+      currentCycle: 1,
+      status: 'pending' as const,
+      isLearned: false,
+      isArchived: false,
+    }));
     
     const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
     if (saved) {
@@ -135,10 +190,57 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (quotaStatus?.state === 'blocked') {
+      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+      return;
+    }
+
+    setSelectedFileName(file.name);
+    setIsReadingFile(true);
+    try {
+      const content = await file.text();
+      const pairs = parseCsvPairs(content);
+      const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], termHeader, definitionHeader);
+      const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
+
+      if (dataPairs.length === 0) {
+        alert('El archivo no contiene tarjetas válidas.');
+        return;
+      }
+
+      const newAssocs: Association[] = dataPairs.map(pair => ({
+        id: crypto.randomUUID(),
+        term: pair.term,
+        definition: pair.definition,
+        currentCycle: 1,
+        status: 'pending' as const,
+        isLearned: false,
+        isArchived: false,
+      }));
+
+      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
+      if (saved) {
+        showToast(`Se importaron ${newAssocs.length} tarjetas de "${file.name}"`, 'success');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
+      alert(`No se pudo importar el archivo: ${message}`);
+    } finally {
+      setIsReadingFile(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
   const handleSmartSplit = async () => {
     const activeAssociations = editList.associations.filter(a => !a.isArchived);
-    if (activeAssociations.length < 3) {
-      alert("Necesitas al menos 3 elementos para encontrar patrones lógicos.");
+    if (activeAssociations.length < MIN_GROUP_SIZE) {
+      alert(`Necesitas al menos ${MIN_GROUP_SIZE} elementos para encontrar patrones lógicos.`);
       return;
     }
 
@@ -205,6 +307,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     assoc.definition.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedActive = useMemo(
+    () => sortAssociations(filteredActive, activeSort),
+    [filteredActive, activeSort]
+  );
+
+  const sortedArchived = useMemo(
+    () => sortAssociations(filteredArchived, archivedSort),
+    [filteredArchived, archivedSort]
+  );
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -221,8 +333,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         <div className="flex gap-2">
           <button 
             onClick={handleSmartSplit}
-            disabled={isAnalyzing || activeAssociations.length < 3}
-            title={activeAssociations.length < 3 ? "Añade al menos 3 tarjetas para usar esta función" : "Organizar tarjetas en grupos lógicos"}
+            disabled={isAnalyzing || activeAssociations.length < MIN_GROUP_SIZE}
+            title={activeAssociations.length < MIN_GROUP_SIZE ? `Añade al menos ${MIN_GROUP_SIZE} tarjetas para usar esta función` : "Organizar tarjetas en grupos lógicos"}
             className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
           >
             {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>}
@@ -278,20 +390,40 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
             <input type="text" placeholder="Filter in both lists..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition outline-none shadow-sm" />
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+             <button onClick={() => downloadAssociationsCsv(editList.associations, `${editList.name}.csv`, csvHeader)} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm" title="Descargar tarjetas en CSV" aria-label="Descargar tarjetas en CSV">Export</button>
              <button onClick={() => setShowBulk(!showBulk)} className="px-4 py-3 text-indigo-600 text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">Import</button>
              <button onClick={handleAddRow} disabled={quotaStatus?.state === 'blocked'} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Add Row</button>
           </div>
         </div>
 
         {showBulk && (
-          <div className="p-6 bg-indigo-50/50 border-b border-indigo-100"><textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="Term, Definition (one per line)" className="w-full h-32 px-4 py-3 border border-indigo-100 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner" /><div className="flex justify-end"><button onClick={handleBulkAdd} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition">Process Import</button></div></div>
+          <div className="p-6 bg-indigo-50/50 border-b border-indigo-100">
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setImportTab('paste')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${importTab === 'paste' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}>Pegar texto</button>
+              <button onClick={() => setImportTab('upload')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition ${importTab === 'upload' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}>Subir archivo</button>
+            </div>
+            {importTab === 'paste' && (
+              <>
+                <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} placeholder="Term, Definition (one per line)" className="w-full h-32 px-4 py-3 border border-indigo-100 rounded-xl text-sm mb-4 outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner" />
+                <div className="flex justify-end"><button onClick={handleBulkAdd} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition">Process Import</button></div>
+              </>
+            )}
+            {importTab === 'upload' && (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
+                <button onClick={() => fileInputRef.current?.click()} disabled={isReadingFile} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-wait">{isReadingFile ? 'Leyendo archivo...' : 'Elegir archivo CSV'}</button>
+                {selectedFileName && <p className="text-xs font-semibold text-slate-600">Archivo: {selectedFileName}</p>}
+                <p className="text-[10px] text-slate-500">Formato .csv con "Término, Definición" por línea. El encabezado se detecta y se ignora automáticamente.</p>
+              </div>
+            )}
+          </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-slate-50/30"><th className="px-8 py-4">{editList.concept.split('/')[0] || 'Term'}</th><th className="px-8 py-4">{editList.concept.split('/')[1] || 'Definition'}</th><th className="px-8 py-4 w-16"></th></tr></thead>
+        <div className="max-h-[55vh] overflow-x-auto">
+          <table className="w-full text-left min-w-[640px]">
+            <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10"><th className="px-8 py-4"><button onClick={() => setActiveSort(nextSort(activeSort, 'term'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${termHeader}`}>{termHeader}<SortIndicator sort={activeSort} field="term" /></button></th><th className="px-8 py-4"><button onClick={() => setActiveSort(nextSort(activeSort, 'definition'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${definitionHeader}`}>{definitionHeader}<SortIndicator sort={activeSort} field="definition" /></button></th><th className="px-8 py-4 w-16"></th></tr></thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredActive.map((assoc) => (
+              {sortedActive.map((assoc) => (
                 <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors">
                   <td className="px-8 py-4"><input type="text" value={assoc.term} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Enter term..." /></td>
                   <td className="px-8 py-4"><input type="text" value={assoc.definition} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Enter definition..." /></td>
@@ -309,11 +441,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               <h3 className="text-lg font-bold text-slate-800">Tarjetas Archivadas</h3>
               <p className="text-sm text-slate-500">Estas tarjetas ya no aparecen en tus partidas. Puedes restaurarlas en cualquier momento.</p>
             </div>
-            <div className="overflow-x-auto border-t">
-              <table className="w-full text-left">
-                <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-slate-50/30"><th className="px-8 py-4">{editList.concept.split('/')[0] || 'Término'}</th><th className="px-8 py-4">{editList.concept.split('/')[1] || 'Definición'}</th><th className="px-8 py-4 w-24 text-right">Acción</th></tr></thead>
+            <div className="max-h-[45vh] overflow-auto border-t">
+              <table className="w-full text-left min-w-[640px]">
+                <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10"><th className="px-8 py-4"><button onClick={() => setArchivedSort(nextSort(archivedSort, 'term'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${termHeader}`}>{termHeader}<SortIndicator sort={archivedSort} field="term" /></button></th><th className="px-8 py-4"><button onClick={() => setArchivedSort(nextSort(archivedSort, 'definition'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${definitionHeader}`}>{definitionHeader}<SortIndicator sort={archivedSort} field="definition" /></button></th><th className="px-8 py-4 w-24 text-right">Acción</th></tr></thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredArchived.map((assoc) => (
+                  {sortedArchived.map((assoc) => (
                     <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors bg-slate-50/50">
                       <td className="px-8 py-4 font-semibold text-slate-500 italic">{assoc.term}</td>
                       <td className="px-8 py-4 text-slate-500 italic">{assoc.definition}</td>

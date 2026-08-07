@@ -21,6 +21,15 @@ const INITIAL_GAME_STATE: Omit<GameState, "listId" | "associations"> = {
   revealedAssociations: [],
 };
 
+export interface GameOptions {
+  /**
+   * When false, the engine skips updating the lifetime tracking counters
+   * (hits/misses/timesPlayed/lastPlayedAt). Used to honor the global
+   * "activity history" setting, which is disabled by default.
+   */
+  trackingEnabled?: boolean;
+}
+
 /**
  * Function words (articles/prepositions) that can be ignored during
  * comparison when the list setting ignoreArticles is enabled.
@@ -96,15 +105,18 @@ function calculateSimilarity(a: string, b: string, ignoreArticles: boolean): num
 export class GlimmindGame {
   public readonly state: GameState;
   private readonly initialList: AssociationList;
+  private readonly trackingEnabled: boolean;
 
-  private constructor(list: AssociationList, state: GameState) {
+  private constructor(list: AssociationList, state: GameState, trackingEnabled: boolean) {
     this.initialList = list;
     this.state = state;
+    this.trackingEnabled = trackingEnabled;
   }
 
-  public static create(list: AssociationList): GlimmindGame {
+  public static create(list: AssociationList, options: GameOptions = {}): GlimmindGame {
+    const trackingEnabled = options.trackingEnabled !== false;
     const initialState = GlimmindGame._initializeGame(list);
-    return new GlimmindGame(list, initialState);
+    return new GlimmindGame(list, initialState, trackingEnabled);
   }
 
   public get currentAssociation(): Association | undefined {
@@ -118,19 +130,29 @@ export class GlimmindGame {
   }
 
   public updateList(newList: AssociationList): GlimmindGame {
-    return new GlimmindGame(newList, this.state);
+    return new GlimmindGame(newList, this.state, this.trackingEnabled);
   }
 
   public restart(overrideList?: AssociationList): GlimmindGame {
-    // Reset all associations to initial state for full restart, except archived ones
+    // Reset all associations to initial state for full restart, except archived ones.
+    // Lifetime counters (hits/misses/timesPlayed) are carried over from the
+    // current game state so they survive learning resets.
     const listToUse = overrideList || this.initialList;
+    const currentAssociations = this.state.associations;
     const resetAssociations = listToUse.associations.map((a) => {
       if (a.isArchived) return a;
+      const played = currentAssociations.find((c) => c.id === a.id);
       return {
         ...a,
         currentCycle: 1,
         status: "pending",
         isLearned: false,
+        hits: played?.hits ?? a.hits ?? 0,
+        misses: played?.misses ?? a.misses ?? 0,
+        timesPlayed: played?.timesPlayed ?? a.timesPlayed ?? 0,
+        lastPlayedAt: played?.lastPlayedAt ?? a.lastPlayedAt,
+        createdAt: played?.createdAt ?? a.createdAt,
+        updatedAt: played?.updatedAt ?? a.updatedAt,
       } as Association;
     });
     const resetList: AssociationList = {
@@ -138,7 +160,7 @@ export class GlimmindGame {
       associations: resetAssociations,
     };
     const initialState = GlimmindGame._initializeGame(resetList);
-    return new GlimmindGame(resetList, initialState);
+    return new GlimmindGame(resetList, initialState, this.trackingEnabled);
   }
 
   public reveal(): GlimmindGame {
@@ -152,7 +174,7 @@ export class GlimmindGame {
       ...this.state,
       revealed: true,
       revealedAssociations,
-    });
+    }, this.trackingEnabled);
   }
 
   public setUserInput(input: string): GlimmindGame {
@@ -162,7 +184,23 @@ export class GlimmindGame {
       feedback: "none",
       similarity: null,
     };
-    return new GlimmindGame(this.initialList, newState);
+    return new GlimmindGame(this.initialList, newState, this.trackingEnabled);
+  }
+
+  public updateCurrentAssociation(term: string, definition: string): GlimmindGame {
+    const current = this.currentAssociation;
+    if (!current) return this;
+
+    const trimmedTerm = term.trim();
+    const trimmedDef = definition.trim();
+    const updatedAssoc = { ...current, term: trimmedTerm, definition: trimmedDef, updatedAt: Date.now() };
+
+    const associations = this.state.associations.map(a => a.id === current.id ? updatedAssoc : a);
+
+    return new GlimmindGame(this.initialList, {
+      ...this.state,
+      associations,
+    }, this.trackingEnabled);
   }
 
   public checkAnswer(): GlimmindGame {
@@ -206,17 +244,29 @@ export class GlimmindGame {
         attempts: updatedAttempts,
         revealedAssociations,
       };
-      return new GlimmindGame(this.initialList, correctState);
+      return new GlimmindGame(this.initialList, correctState, this.trackingEnabled);
     } else {
+      const associations = [...this.state.associations];
+      if (this.trackingEnabled) {
+        const assocIndex = associations.findIndex((a) => a.id === current.id);
+        if (assocIndex >= 0) {
+          associations[assocIndex] = {
+            ...associations[assocIndex],
+            misses: (associations[assocIndex].misses ?? 0) + 1,
+            lastPlayedAt: Date.now(),
+          };
+        }
+      }
       const incorrectState: GameState = {
         ...this.state,
+        associations,
         feedback: "incorrect",
         userInput: "",
         similarity,
         lastAttempt: userAnswer,
         attempts: updatedAttempts,
       };
-      return new GlimmindGame(this.initialList, incorrectState);
+      return new GlimmindGame(this.initialList, incorrectState, this.trackingEnabled);
     }
   }
 
@@ -237,11 +287,16 @@ export class GlimmindGame {
         ...currentAssoc,
         status: "correct",
         isLearned: this.state.globalCycle === 1 ? true : currentAssoc.isLearned,
+        hits: this.trackingEnabled ? (currentAssoc.hits ?? 0) + 1 : currentAssoc.hits,
+        timesPlayed: this.trackingEnabled ? (currentAssoc.timesPlayed ?? 0) + 1 : currentAssoc.timesPlayed,
+        lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
       };
     } else if (action.type === "PASS") {
       associations[assocIndex] = {
         ...currentAssoc,
         currentCycle: (currentAssoc.currentCycle + 1) as GameCycle,
+        timesPlayed: this.trackingEnabled ? (currentAssoc.timesPlayed ?? 0) + 1 : currentAssoc.timesPlayed,
+        lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
       };
     }
 
@@ -256,7 +311,7 @@ export class GlimmindGame {
       lastAttempt: "",
       revealedAssociations,
     };
-    const nextGame = new GlimmindGame(this.initialList, nextState);
+    const nextGame = new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
     return nextGame._checkForNextCycle();
   }
 
@@ -277,7 +332,7 @@ export class GlimmindGame {
       activeQueue: newQueue,
       currentIndex: 0,
     };
-    return new GlimmindGame(this.initialList, nextState);
+    return new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
   }
 
   private _endGame(): GlimmindGame {
@@ -287,7 +342,7 @@ export class GlimmindGame {
       isFinished: true,
       summary: summary,
     };
-    return new GlimmindGame(this.initialList, finalState);
+    return new GlimmindGame(this.initialList, finalState, this.trackingEnabled);
   }
 
   private static _calculateSummary(associations: Association[]): GameSummary {

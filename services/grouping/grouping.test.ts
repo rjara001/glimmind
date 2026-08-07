@@ -35,7 +35,7 @@ describe('clustering', () => {
     );
   });
 
-  it('drops clusters smaller than the minimum group size', () => {
+  it('merges clusters smaller than the minimum group size into the nearest qualifying cluster', () => {
     const vectors = [
       [1, 0, 0, 0],
       [0.9, 0.1, 0, 0],
@@ -43,7 +43,7 @@ describe('clustering', () => {
     ];
     const suggestions = clusterBySimilarity(vectors, ['A', 'B', 'C'], 0.5);
     expect(suggestions).toHaveLength(1);
-    expect(suggestions[0].indices).toEqual(expect.arrayContaining([0, 1]));
+    expect(suggestions[0].indices.sort()).toEqual([0, 1, 2]);
   });
 });
 
@@ -58,9 +58,8 @@ describe('tfidfGrouping', () => {
       'Look up Admirar',
     ];
     const suggestions = tfidfGrouping(items, 2);
-    const offGroup = suggestions.find((g) => g.indices.length === 3);
+    const offGroup = suggestions.find((g) => g.indices.includes(0) && g.indices.includes(1) && g.indices.includes(2));
     expect(offGroup).toBeDefined();
-    expect(offGroup?.indices).toEqual(expect.arrayContaining([0, 1, 2]));
   });
 
   it('groups items that share keywords', () => {
@@ -70,8 +69,10 @@ describe('tfidfGrouping', () => {
     expect(suggestions[0].indices).toEqual(expect.arrayContaining([0, 1]));
   });
 
-  it('returns empty for fewer than three items', () => {
-    expect(tfidfGrouping(['A', 'B'])).toEqual([]);
+  it('returns a single group for two items', () => {
+    const suggestions = tfidfGrouping(['A', 'B']);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].indices.sort()).toEqual([0, 1]);
   });
 });
 
@@ -95,8 +96,21 @@ describe('aiService.groupAssociations', () => {
     expect(suggestions[0].indices).toEqual(expect.arrayContaining([0, 1, 2]));
   });
 
-  it('returns empty for fewer than three associations', async () => {
+  it('returns a single group when there are exactly two associations', async () => {
     const suggestions = await aiService.groupAssociations(associations.slice(0, 2), 'Phrasal verbs');
-    expect(suggestions).toEqual([]);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].indices.sort()).toEqual([0, 1]);
+  });
+
+  it('merges small clusters to reach the configured minimum group size', () => {
+    const vectors = [
+      [1, 0, 0],
+      [0.9, 0.1, 0],
+      [0, 1, 0],
+      [0, 0.9, 0.1],
+    ];
+    const suggestions = clusterBySimilarity(vectors, ['A', 'B', 'C', 'D'], 0.5, 4);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0].indices.sort()).toEqual([0, 1, 2, 3]);
   });
 });

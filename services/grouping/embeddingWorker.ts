@@ -69,7 +69,8 @@ const getPipeline = (): Promise<FeatureExtractor> => {
   if (loadingPromise) return loadingPromise;
 
   loadingPromise = (async () => {
-    const module = (await import(/* @vite-ignore */ LIBRARY_URL)) as unknown as TransformersModule;
+    const moduleUrl = new URL(LIBRARY_URL, self.location.origin).href;
+    const module = (await import(/* @vite-ignore */ moduleUrl)) as unknown as TransformersModule;
     module.env.allowLocalModels = false;
     module.env.useBrowserCache = true;
     module.env.backends.onnx.wasm.wasmPaths = WASM_PATHS;
