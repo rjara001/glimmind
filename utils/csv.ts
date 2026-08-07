@@ -60,20 +60,35 @@ function parseCsvLine(line: string): string[] {
 
 export function parseCsvPairs(content: string): CsvPair[] {
   const withoutBom = content.startsWith(BOM) ? content.slice(BOM.length) : content;
-  const lines = withoutBom
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
+  const normalized = withoutBom.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalized.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-  return lines
-    .map(line => {
+  const hasDelimiter = (line: string) => line.includes(',') || line.includes(';') || line.includes('\t');
+
+  const result: CsvPair[] = [];
+  let pendingTerm: string | null = null;
+
+  for (const line of lines) {
+    if (hasDelimiter(line)) {
       const cells = parseCsvLine(line);
-      return {
+      result.push({
         term: (cells[0] ?? '').trim(),
         definition: (cells[1] ?? '').trim(),
-      };
-    })
-    .filter(pair => pair.term || pair.definition);
+      });
+      pendingTerm = null;
+    } else if (pendingTerm === null) {
+      pendingTerm = line;
+    } else if (pendingTerm !== null) {
+      result.push({ term: pendingTerm, definition: line });
+      pendingTerm = null;
+    }
+  }
+
+  if (pendingTerm !== null) {
+    result.push({ term: pendingTerm, definition: '' });
+  }
+
+  return result.filter(pair => pair.term || pair.definition);
 }
 
 export function isHeaderPair(pair: CsvPair, termHeader: string, definitionHeader: string): boolean {
