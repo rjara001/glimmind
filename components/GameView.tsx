@@ -289,31 +289,31 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               onCancelEdit={handleCancelEdit}
                attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
             />
-            {showRevealWarning && (
-              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
-                <p className="text-xs font-bold text-amber-800">Sin intentos. ¿Quieres intentar antes de revelar?</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setShowRevealWarning(false);
-                      inputRef.current?.focus();
-                    }}
-                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
-                  >
-                    Intentar
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowRevealWarning(false);
-                      actions.reveal();
-                    }}
-                    className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-50 transition"
-                  >
-                    Revelar
-                  </button>
-                </div>
-              </div>
-            )}
+             {showRevealWarning && (
+               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+                 <p className="text-xs font-bold text-amber-800">Veo que no has hecho intentos.</p>
+                 <div className="flex gap-2">
+                   <button
+                     onClick={() => {
+                       setShowRevealWarning(false);
+                       inputRef.current?.focus();
+                     }}
+                     className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
+                   >
+                     Intentar
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowRevealWarning(false);
+                       actions.reveal();
+                     }}
+                     className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-50 transition"
+                   >
+                     Revelar
+                   </button>
+                 </div>
+               </div>
+             )}
             <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
           </div>
