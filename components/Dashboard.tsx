@@ -254,7 +254,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
         </div>
         <button 
-          onClick={() => setIsCreating(true)}
+          onClick={() => {
+            const emptyName = 'Sin nombre';
+            const emptyConcept = 'Valor 1 / Valor 2';
+            onCreate(emptyName, emptyConcept, []);
+          }}
           disabled={quotaStatus?.state === 'blocked'}
           title={quotaStatus?.state === 'blocked' ? `Llegaste a tu límite de ${quotaStatus.quota} tarjetas` : undefined}
           className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
