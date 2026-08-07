@@ -183,8 +183,18 @@ const AppContent: React.FC = () => {
   const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
     const { lists, quota } = useGameStore.getState();
 
-    if (quota && computeQuotaStatus(countCards(lists) + initialAssocs.length, quota.cardQuota).state === 'blocked') {
-      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+    if (!quota) {
+      await useGameStore.getState().loadQuota();
+    }
+
+    const currentQuota = useGameStore.getState().quota;
+    if (currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked') {
+      showToast(`Llegaste a tu límite de ${currentQuota.cardQuota} tarjetas.`, 'error');
+      return;
+    }
+
+    if (!currentQuota) {
+      showToast('No se pudo cargar la cuota. Reintentá en un momento.', 'error');
       return;
     }
 
