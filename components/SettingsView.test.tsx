@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SettingsView } from './SettingsView';
 import { useGameStore } from '../store/gameStore';
 import { DEFAULT_SETTINGS } from '../types/settings';
+import { ToastProvider } from './Toast';
 
 describe('SettingsView', () => {
   const onBack = vi.fn();
@@ -13,15 +14,19 @@ describe('SettingsView', () => {
     useGameStore.setState({ settings: { ...DEFAULT_SETTINGS } });
   });
 
+  const renderWithToast = (ui: React.ReactElement) => {
+    return render(<ToastProvider>{ui}</ToastProvider>);
+  };
+
   it('renders the history toggle off by default', () => {
-    render(<SettingsView onBack={onBack} />);
+    renderWithToast(<SettingsView onBack={onBack} />);
     const toggle = screen.getByRole('switch', { name: 'Registro de historial' });
     expect(toggle).toBeInTheDocument();
     expect(toggle.getAttribute('aria-checked')).toBe('false');
   });
 
   it('toggles the history setting and persists it in the store', () => {
-    render(<SettingsView onBack={onBack} />);
+    renderWithToast(<SettingsView onBack={onBack} />);
     const toggle = screen.getByRole('switch', { name: 'Registro de historial' });
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-checked')).toBe('true');
@@ -30,7 +35,7 @@ describe('SettingsView', () => {
 
   it('allows turning the history setting off again', () => {
     useGameStore.setState({ settings: { ...DEFAULT_SETTINGS, activityHistoryEnabled: true } });
-    render(<SettingsView onBack={onBack} />);
+    renderWithToast(<SettingsView onBack={onBack} />);
     const toggle = screen.getByRole('switch', { name: 'Registro de historial' });
     fireEvent.click(toggle);
     expect(useGameStore.getState().settings.activityHistoryEnabled).toBe(false);

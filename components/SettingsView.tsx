@@ -41,9 +41,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
     try {
       const result = await userService.setPremium(user.uid);
       if (result.success) {
-        setIsPremium(result.tier === 'premium');
         await loadQuota();
-        showToast(result.tier === 'premium' ? '¡Ahora eres premium!' : 'Estado actualizado.', 'success');
+        const updatedQuota = useGameStore.getState().quota;
+        const isPremiumNow = updatedQuota?.tier === 'premium';
+        setIsPremium(isPremiumNow);
+        showToast(isPremiumNow ? '¡Ahora eres premium!' : 'Estado actualizado.', 'success');
       } else {
         showToast('No se pudo actualizar el estado premium.', 'error');
       }

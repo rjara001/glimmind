@@ -662,8 +662,9 @@ exports.setUserPremium = onRequest({ cors: true }, async (req, res) => {
     const token = await getAuth().verifyIdToken(authHeader.slice(7));
     const uid = token.uid;
     const email = token.email;
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
-    if (email !== 'rjara001@gmail.com') {
+    if (!isEmulator && email !== 'rjara001@gmail.com') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
