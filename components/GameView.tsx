@@ -288,20 +288,23 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               onStartEdit={handleStartEdit}
               onCancelEdit={handleCancelEdit}
                attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
+               inputRef={inputRef}
             />
              {showRevealWarning && (
                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
                  <p className="text-xs font-bold text-amber-800">Veo que no has hecho intentos.</p>
                  <div className="flex gap-2">
-                   <button
-                     onClick={() => {
-                       setShowRevealWarning(false);
-                       inputRef.current?.focus();
-                     }}
-                     className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
-                   >
-                     Intentar
-                   </button>
+                    <button
+                      onClick={() => {
+                        setShowRevealWarning(false);
+                        requestAnimationFrame(() => {
+                          inputRef.current?.focus();
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
+                    >
+                      Intentar
+                    </button>
                    <button
                      onClick={() => {
                        setShowRevealWarning(false);
