@@ -7,8 +7,15 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
+        port: 3001,
         host: '0.0.0.0',
+        proxy: {
+          '/functions/': {
+            target: 'http://localhost:5001/fladycard-22a3e/us-central1',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/functions\//, '/')
+          }
+        }
       },
       plugins: [react()],
       resolve: {
@@ -22,4 +29,4 @@ export default defineConfig(({ mode }) => {
         setupFiles: ['./vitest.setup.ts'],
       }
     };
-});
+  });

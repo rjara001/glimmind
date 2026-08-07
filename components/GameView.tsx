@@ -287,7 +287,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               isEditing={isEditingCard}
               onStartEdit={handleStartEdit}
               onCancelEdit={handleCancelEdit}
-              attemptCount={isRealMode ? attemptCount : undefined}
+               attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
             />
             {showRevealWarning && (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
