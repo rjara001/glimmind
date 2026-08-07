@@ -22,7 +22,7 @@ interface GameCardProps {
   onStartEdit?: () => void;
   onCancelEdit?: () => void;
   attemptCount?: number;
-  onReveal?: () => void;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -46,12 +46,14 @@ export const GameCard: React.FC<GameCardProps> = ({
   onStartEdit,
   onCancelEdit,
   attemptCount,
+  inputRef,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
   const editTermRef = useRef<HTMLInputElement>(null);
-  const editDefRef = useRef<HTMLInputElement>(null);
+  const editDefRef = useRef<HTMLTextAreaElement>(null);
   const [editTerm, setEditTerm] = useState(displayTerm || '');
   const [editDef, setEditDef] = useState(displayDef || '');
+  const inputRefInternal = useRef<HTMLInputElement>(null);
+  const resolvedInputRef = inputRef || inputRefInternal;
 
   useEffect(() => {
     setEditTerm(displayTerm || '');
@@ -61,7 +63,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   useEffect(() => {
     if (!isPracticeMode && !revealed && feedback === 'none') {
       requestAnimationFrame(() => {
-        inputRef.current?.focus();
+        resolvedInputRef.current?.focus();
       });
     }
   }, [isPracticeMode, revealed, feedback]);
@@ -186,7 +188,7 @@ export const GameCard: React.FC<GameCardProps> = ({
             {!isPracticeMode && !revealed ? (
               <div className="w-full max-w-sm">
                 <input
-                  ref={inputRef}
+                  ref={resolvedInputRef}
                   type="text"
                   tabIndex={1}
                   value={userInput}
