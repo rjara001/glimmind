@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Association, AssociationList, GameCycle } from '../types';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useGameStore } from '../store/gameStore';
