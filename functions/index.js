@@ -652,6 +652,35 @@ exports.setUserQuota = onRequest({ cors: true, secrets: ["ADMIN_UIDS"] }, async 
   }
 });
 
+exports.setUserPremium = onRequest({ cors: true }, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const token = await getAuth().verifyIdToken(authHeader.slice(7));
+    const uid = token.uid;
+    const email = token.email;
+
+    if (email !== 'rjara001@gmail.com') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { ref } = await getOrCreateMeta(uid);
+    await ref.update({
+      tier: 'premium',
+      cardQuota: PREMIUM_CARD_QUOTA,
+      aiQuotaDaily: PREMIUM_AI_DAILY_QUOTA,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    res.json({ success: true, tier: 'premium', cardQuota: PREMIUM_CARD_QUOTA, aiQuotaDaily: PREMIUM_AI_DAILY_QUOTA });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 900, memory: '512MiB' }, async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

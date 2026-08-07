@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useToast } from './Toast';
+import { userService } from '../services/userService';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -8,9 +10,48 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
   const settings = useGameStore((state) => state.settings);
   const setSettings = useGameStore((state) => state.setSettings);
+  const user = useGameStore((state) => state.user);
+  const quota = useGameStore((state) => state.quota);
+  const loadQuota = useGameStore((state) => state.loadQuota);
+  const { showToast } = useToast();
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.uid && user.uid !== 'dev-user-local') {
+      loadQuota();
+    }
+  }, [user?.uid, loadQuota]);
+
+  useEffect(() => {
+    setIsPremium(quota?.tier === 'premium');
+  }, [quota?.tier]);
 
   const handleToggleHistory = () => {
     setSettings({ ...settings, activityHistoryEnabled: !settings.activityHistoryEnabled });
+  };
+
+  const handleTogglePremium = async () => {
+    if (!user?.uid || user.uid === 'dev-user-local') {
+      showToast('Inicia sesión para cambiar el estado premium.', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await userService.setPremium(user.uid);
+      if (result.success) {
+        setIsPremium(result.tier === 'premium');
+        await loadQuota();
+        showToast(result.tier === 'premium' ? '¡Ahora eres premium!' : 'Estado actualizado.', 'success');
+      } else {
+        showToast('No se pudo actualizar el estado premium.', 'error');
+      }
+    } catch (error) {
+      showToast('Error al actualizar premium.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,6 +105,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             <span
               className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                 settings.activityHistoryEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
+        <div className="p-6 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-gray-900">Premium</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {isPremium
+                ? 'Disfrutás de límites ampliados: 5000 tarjetas y 10 usos diarios de IA.'
+                : 'Activá premium para desbloquear 5000 tarjetas y 10 usos diarios de IA.'}
+            </p>
+            {quota && (
+              <p className="text-xs text-gray-400 mt-2">
+                Estado actual: <span className={`font-bold ${isPremium ? 'text-emerald-600' : 'text-slate-500'}`}>{isPremium ? 'Premium' : 'Free'}</span>
+                {' '}· Tarjetas: {quota.cardCount}/{quota.cardQuota} · IA: {quota.aiUsedToday}/{quota.aiQuotaDaily}
+              </p>
+            )}
+          </div>
+          <button
+            role="switch"
+            aria-checked={isPremium}
+            aria-label="Modo premium"
+            onClick={handleTogglePremium}
+            disabled={isLoading}
+            className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              isPremium ? 'bg-indigo-600' : 'bg-slate-200'
+            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                isPremium ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>
