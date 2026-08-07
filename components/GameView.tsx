@@ -30,6 +30,7 @@ const cycleColorMap: Record<GameCycle, string> = {
 export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [isEditingCard, setIsEditingCard] = useState(false);
+  const [showRevealWarning, setShowRevealWarning] = useState(false);
   const { showToast } = useToast();
   const { 
     gameView, 
@@ -212,6 +213,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const cycleColorName = cycleColorMap[gameState.globalCycle as GameCycle] || 'slate';
   const cycleColorClass = cycleColorName === 'sky' ? 'text-sky-600' : cycleColorName === 'yellow' ? 'text-yellow-600' : cycleColorName === 'rose' ? 'text-rose-600' : cycleColorName === 'emerald' ? 'text-emerald-600' : 'text-slate-600';
   const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
+  const attemptCount = attempts.filter(a => a.associationId === currentAssociation?.id).length;
+  const isRealMode = list.settings.mode !== 'training';
+  const showRevealWarningState = isRealMode && !isRevealed && attemptCount === 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
@@ -276,8 +280,28 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               isEditing={isEditingCard}
               onStartEdit={handleStartEdit}
               onCancelEdit={handleCancelEdit}
+              attemptCount={isRealMode ? attemptCount : undefined}
             />
-            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} />
+            {showRevealWarning && showRevealWarningState && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-amber-800">Sin intentos. ¿Quieres intentar antes de revelar?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowRevealWarning(false)}
+                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
+                  >
+                    Intentar
+                  </button>
+                  <button
+                    onClick={() => { setShowRevealWarning(false); actions.reveal(); }}
+                    className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-50 transition"
+                  >
+                    Revelar
+                  </button>
+                </div>
+              </div>
+            )}
+            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(false)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
           </div>
         </div>

@@ -21,6 +21,8 @@ interface GameCardProps {
   isEditing?: boolean;
   onStartEdit?: () => void;
   onCancelEdit?: () => void;
+  attemptCount?: number;
+  onReveal?: () => void;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -43,6 +45,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   isEditing = false,
   onStartEdit,
   onCancelEdit,
+  attemptCount,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const editTermRef = useRef<HTMLInputElement>(null);
@@ -94,6 +97,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   const isDefinitionHidden = isPracticeMode && !revealed && !showHints;
   const effectiveHintMode = showHints ? getAutoHintMode(currentCycle) : false;
   const showEditButton = associationId && onEditCard && !isEditing && revealed;
+  const showAttemptCounter = typeof attemptCount === 'number' && !isPracticeMode;
 
   const handleSaveEdit = () => {
     if (!onEditCard) return;
@@ -117,8 +121,8 @@ export const GameCard: React.FC<GameCardProps> = ({
   };
 
   return (
-    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative overflow-hidden min-h-[100px] flex flex-col justify-center transition-all duration-500 ${currentStyle.bg} ${feedbackClasses}`}>
-      <div className={`absolute top-0 left-0 w-full h-1.5 ${currentStyle.decoration} transition-colors duration-500`}></div>
+    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative overflow-hidden min-h-[100px] flex flex-col justify-center transition-all duration-500 bg-rose-50 border-rose-500/20 ${feedback === 'correct' ? 'ring-8 ring-emerald-400 border-emerald-500' : feedback === 'incorrect' ? 'ring-8 ring-rose-400 border-rose-500' : ''}`}>
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-600/10 transition-colors duration-500"></div>
       {showEditButton && (
         <button
           onClick={onStartEdit}
@@ -126,12 +130,12 @@ export const GameCard: React.FC<GameCardProps> = ({
           aria-label="Edit card"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L18 9.375M19.5 7.125L16.5 4.125M19.5 7.125H16.5" />
           </svg>
         </button>
       )}
-      <span className={`text-[9px] font-black uppercase tracking-[0.3em] block mb-1 transition-colors duration-500 ${currentStyle.text}`}>{labelTerm}</span>
+      <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{labelTerm}</span>
       
       {isEditing ? (
         <div className="w-full max-w-full sm:max-w-2xl mx-auto space-y-4">
@@ -195,6 +199,9 @@ export const GameCard: React.FC<GameCardProps> = ({
                     <p className="text-base font-medium text-slate-300 bg-slate-50/50 px-3 py-1 rounded-xl border border-slate-100/50 inline-block break-words">
                       {maskHint(displayDef, effectiveHintMode)}
                     </p>
+                    {showAttemptCounter && typeof attemptCount === 'number' && (
+                      <span className="block text-[10px] text-slate-400 font-medium mt-1">intentos: {attemptCount}</span>
+                    )}
                   </div>
                 )}
               </div>
