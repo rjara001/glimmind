@@ -190,10 +190,13 @@ const AppContent: React.FC = () => {
     const currentQuota = useGameStore.getState().quota;
     const isBlocked = currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
 
+    console.log('[DEBUG][createList] quota=', currentQuota, 'isBlocked=', isBlocked, 'countCards=', countCards(lists), 'initialAssocs=', initialAssocs.length);
+
     if (isBlocked) {
       await useGameStore.getState().loadQuota();
       const refreshedQuota = useGameStore.getState().quota;
       if (refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
+        console.log('[DEBUG][createList] BLOCKED by quota', refreshedQuota);
         showToast(`Llegaste a tu límite de ${refreshedQuota.cardQuota} tarjetas.`, 'error');
         return;
       }
