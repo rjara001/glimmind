@@ -144,7 +144,7 @@ describe('Toast Notifications', () => {
       </ToastProvider>
     );
 
-    const toastContainer = document.body.querySelector('.fixed.bottom-6');
+    const toastContainer = document.body.querySelector('.fixed.top-6');
     expect(toastContainer).toBeInTheDocument();
   });
 
