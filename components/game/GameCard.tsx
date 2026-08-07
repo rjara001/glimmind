@@ -54,11 +54,20 @@ export const GameCard: React.FC<GameCardProps> = ({
   const [editDef, setEditDef] = useState(displayDef || '');
   const inputRefInternal = useRef<HTMLInputElement>(null);
   const resolvedInputRef = inputRef || inputRefInternal;
+  const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
     setEditTerm(displayTerm || '');
     setEditDef(displayDef || '');
   }, [displayTerm, displayDef]);
+
+  useEffect(() => {
+    if (feedback === 'incorrect') {
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
 
   useEffect(() => {
     if (!isPracticeMode && !revealed && feedback === 'none') {
@@ -122,9 +131,21 @@ export const GameCard: React.FC<GameCardProps> = ({
     }
   };
 
+  const shakeClass = isShaking ? 'animate-shake' : '';
+
   return (
     <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative overflow-hidden min-h-[100px] flex flex-col justify-center transition-all duration-500 bg-rose-50 border-rose-500/20 ${feedback === 'correct' ? 'ring-8 ring-emerald-400 border-emerald-500' : feedback === 'incorrect' ? 'ring-8 ring-rose-400 border-rose-500' : ''}`}>
       <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-600/10 transition-colors duration-500"></div>
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
       {showEditButton && (
         <button
           onClick={onStartEdit}
@@ -193,7 +214,7 @@ export const GameCard: React.FC<GameCardProps> = ({
                   tabIndex={1}
                   value={userInput}
                   onChange={(e) => onUserInput(e.target.value)}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-2 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50"
+                  className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-2 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50 ${shakeClass}`}
                 />
                 {showHints && !revealed && (
                   <div className="mt-1 text-center">
