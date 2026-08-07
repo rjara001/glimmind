@@ -259,7 +259,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className={`text-sm font-bold ${cycleColorClass}`}>{cycleStats.pending}</span></div>
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Correctas:</span><span className="text-sm font-bold text-emerald-600">{cycleStats.correct}</span></div>
           </div>
-          <div>
+          <div className="w-full">
             <GameCard 
               displayTerm={displayTerm} 
               displayDef={displayDef} 
