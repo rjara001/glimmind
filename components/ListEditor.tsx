@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ReactElement } from 'react';
 import { AssociationList, Association } from '../types';
@@ -84,6 +83,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
+  const [columnPriority, setColumnPriority] = useState<'term' | 'definition'>('term');
 
   const conceptParts = editList.concept.split('/');
   const termHeader = conceptParts[0] || 'Term';
@@ -107,25 +107,19 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   }, [quota, projectedTotal]);
 
   const cleanupAndSave = useCallback((listToSave: AssociationList): boolean => {
-    // Create a set of seen IDs to ensure uniqueness
     const seenIds = new Set<string>();
     const flattenedAssociations = flattenAssociations(listToSave.associations);
     const cleanedAssociations = flattenedAssociations
       .map(assoc => {
-        // Trim whitespace from term and definition
         const term = assoc.term.trim();
         const definition = assoc.definition.trim();
-        
-        // Ensure ID is unique, generate a new one if it's a duplicate or invalid
         let id = assoc.id;
         if (!id || seenIds.has(id)) {
           id = crypto.randomUUID();
         }
         seenIds.add(id);
-
         return { ...assoc, id, term, definition };
       })
-      // Filter out any associations that are completely empty
       .filter(assoc => assoc.term !== '' || assoc.definition !== '');
 
     const { quota, lists } = useGameStore.getState();
@@ -152,11 +146,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     return true;
   }, [onSave]);
 
-  // Effect for initial cleanup when the component mounts
   useEffect(() => {
     const initialAssociations = list.associations;
     let needsCleanup = false;
-
     const seenIds = new Set<string>();
     for (const assoc of initialAssociations) {
       if (!assoc.id || seenIds.has(assoc.id) || assoc.term.trim() !== assoc.term || assoc.definition.trim() !== assoc.definition || (assoc.term.trim() === '' && assoc.definition.trim() === '')) {
@@ -165,13 +157,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       }
       seenIds.add(assoc.id);
     }
-
     if (needsCleanup) {
-      console.log("🧼 Data sanitization: Detected duplicate IDs, whitespace, or empty rows on load. Cleaning up...");
       cleanupAndSave(list);
     }
   }, [list, cleanupAndSave]);
-
 
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
@@ -189,10 +178,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       isLearned: false,
       isArchived: false,
     }));
-
     const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
     const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-
     const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
     if (saved) {
       setBulkText('');
@@ -207,12 +194,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     if (!isPremium && quotaStatus?.state === 'blocked') {
       alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
       return;
     }
-
     setSelectedFileName(file.name);
     setIsReadingFile(true);
     try {
@@ -220,12 +205,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       const pairs = parseCsvPairs(content);
       const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], termHeader, definitionHeader);
       const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
-
       if (dataPairs.length === 0) {
         alert('El archivo no contiene tarjetas válidas.');
         return;
       }
-
       const newAssocs: Association[] = dataPairs.map(pair => ({
         id: crypto.randomUUID(),
         term: pair.term,
@@ -235,10 +218,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         isLearned: false,
         isArchived: false,
       }));
-
       const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
       const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-
       const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
       if (saved) {
         const message = skippedCount > 0
@@ -263,7 +244,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       alert(`Necesitas al menos ${MIN_GROUP_SIZE} elementos para encontrar patrones lógicos.`);
       return;
     }
-
     setIsAnalyzing(true);
     try {
       const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
@@ -308,7 +288,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     const updated = { ...editList, associations: editList.associations.filter(a => a.id !== id) };
     cleanupAndSave(updated);
   };
-  
+
   const handleRestoreRow = (id: string) => {
     const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, isArchived: false } : a);
     cleanupAndSave({ ...editList, associations: updatedAssociations });
@@ -317,12 +297,12 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const activeAssociations = editList.associations.filter(a => !a.isArchived);
   const archivedAssociations = editList.associations.filter(a => a.isArchived);
 
-  const filteredActive = activeAssociations.filter(assoc => 
+  const filteredActive = activeAssociations.filter(assoc =>
     assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assoc.definition.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredArchived = archivedAssociations.filter(assoc => 
+  const filteredArchived = archivedAssociations.filter(assoc =>
     assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assoc.definition.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -336,6 +316,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     () => sortAssociations(filteredArchived, archivedSort),
     [filteredArchived, archivedSort]
   );
+
+  const termPriority = columnPriority === 'term';
+  const definitionPriority = columnPriority === 'definition';
 
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
@@ -351,7 +334,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         </div>
 
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={handleSmartSplit}
             disabled={isAnalyzing || activeAssociations.length < MIN_GROUP_SIZE}
             title={activeAssociations.length < MIN_GROUP_SIZE ? `Añade al menos ${MIN_GROUP_SIZE} tarjetas para usar esta función` : "Organizar tarjetas en grupos lógicos"}
@@ -450,13 +433,67 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
         <div className="max-h-[55vh] overflow-x-auto">
           <table className="w-full text-left min-w-[640px]">
-            <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10"><th className="px-4 sm:px-8 py-3 sm:py-4"><button onClick={() => setActiveSort(nextSort(activeSort, 'term'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${termHeader}`}>{termHeader}<SortIndicator sort={activeSort} field="term" /></button></th><th className="px-4 sm:px-8 py-3 sm:py-4"><button onClick={() => setActiveSort(nextSort(activeSort, 'definition'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${definitionHeader}`}>{definitionHeader}<SortIndicator sort={activeSort} field="definition" /></button></th><th className="px-4 sm:px-8 py-3 sm:py-4 w-16"></th></tr></thead>
+            <thead>
+              <tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10">
+                <th className="px-4 sm:px-8 py-3 sm:py-4">
+                  <button
+                    onClick={() => setColumnPriority(columnPriority === 'term' ? 'definition' : 'term')}
+                    className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
+                    aria-label={`Prioridad: ${termHeader}`}
+                  >
+                    {termHeader}
+                    <span className="text-[8px] normal-case tracking-normal opacity-60 group-hover:opacity-100 transition-opacity">
+                      {columnPriority === 'term' ? '●' : '○'}
+                    </span>
+                    <SortIndicator sort={activeSort} field="term" />
+                  </button>
+                </th>
+                <th className="px-4 sm:px-8 py-3 sm:py-4 hidden sm:table-cell">
+                  <button
+                    onClick={() => setColumnPriority(columnPriority === 'definition' ? 'term' : 'definition')}
+                    className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
+                    aria-label={`Prioridad: ${definitionHeader}`}
+                  >
+                    {definitionHeader}
+                    <span className="text-[8px] normal-case tracking-normal opacity-60 group-hover:opacity-100 transition-opacity">
+                      {columnPriority === 'definition' ? '●' : '○'}
+                    </span>
+                    <SortIndicator sort={activeSort} field="definition" />
+                  </button>
+                </th>
+                <th className="px-4 sm:px-8 py-3 sm:py-4 w-16 sm:w-24"></th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-50">
               {sortedActive.map((assoc) => (
                 <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 sm:px-8 py-2 sm:py-4"><input type="text" value={assoc.term} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300" placeholder="Enter term..." /></td>
-                  <td className="px-4 sm:px-8 py-2 sm:py-4"><input type="text" value={assoc.definition} onBlur={handleBlurRow} onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300" placeholder="Enter definition..." /></td>
-                  <td className="px-4 sm:px-8 py-2 sm:py-4"><button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Delete row"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button></td>
+                  <td className="px-4 sm:px-8 py-2 sm:py-4">
+                    <input
+                      type="text"
+                      value={assoc.term}
+                      onBlur={handleBlurRow}
+                      onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)}
+                      className={`w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300 ${!termPriority ? 'sm:truncate' : ''}`}
+                      placeholder="Enter term..."
+                    />
+                  </td>
+                  <td className="px-4 sm:px-8 py-2 sm:py-4 hidden sm:table-cell">
+                    <input
+                      type="text"
+                      value={assoc.definition}
+                      onBlur={handleBlurRow}
+                      onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)}
+                      className={`w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300 ${!definitionPriority ? 'sm:truncate' : ''}`}
+                      placeholder="Enter definition..."
+                    />
+                  </td>
+                  <td className="px-4 sm:px-8 py-2 sm:py-4">
+                    <button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Delete row">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filteredActive.length === 0 && <tr><td colSpan={3} className="px-4 sm:px-8 py-8 sm:py-12 text-center text-slate-400 text-sm italic">{searchTerm ? "No results in active cards." : "Add a card to get started."}</td></tr>}
@@ -472,12 +509,42 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
             </div>
             <div className="max-h-[45vh] overflow-auto border-t">
               <table className="w-full text-left min-w-[640px]">
-                <thead><tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10"><th className="px-4 sm:px-8 py-3 sm:py-4"><button onClick={() => setArchivedSort(nextSort(archivedSort, 'term'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${termHeader}`}>{termHeader}<SortIndicator sort={archivedSort} field="term" /></button></th><th className="px-4 sm:px-8 py-3 sm:py-4"><button onClick={() => setArchivedSort(nextSort(archivedSort, 'definition'))} className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition" aria-label={`Ordenar por ${definitionHeader}`}>{definitionHeader}<SortIndicator sort={archivedSort} field="definition" /></button></th><th className="px-4 sm:px-8 py-3 sm:py-4 w-24 text-right">Acción</th></tr></thead>
+                <thead>
+                  <tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10">
+                    <th className="px-4 sm:px-8 py-3 sm:py-4">
+                      <button
+                        onClick={() => setColumnPriority(columnPriority === 'term' ? 'definition' : 'term')}
+                        className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
+                        aria-label={`Prioridad: ${termHeader}`}
+                      >
+                        {termHeader}
+                        <span className="text-[8px] normal-case tracking-normal opacity-60 group-hover:opacity-100 transition-opacity">
+                          {columnPriority === 'term' ? '●' : '○'}
+                        </span>
+                        <SortIndicator sort={archivedSort} field="term" />
+                      </button>
+                    </th>
+                    <th className="px-4 sm:px-8 py-3 sm:py-4 hidden sm:table-cell">
+                      <button
+                        onClick={() => setColumnPriority(columnPriority === 'definition' ? 'term' : 'definition')}
+                        className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
+                        aria-label={`Prioridad: ${definitionHeader}`}
+                      >
+                        {definitionHeader}
+                        <span className="text-[8px] normal-case tracking-normal opacity-60 group-hover:opacity-100 transition-opacity">
+                          {columnPriority === 'definition' ? '●' : '○'}
+                        </span>
+                        <SortIndicator sort={archivedSort} field="definition" />
+                      </button>
+                    </th>
+                    <th className="px-4 sm:px-8 py-3 sm:py-4 w-24 text-right">Acción</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-slate-50">
                   {sortedArchived.map((assoc) => (
                     <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors bg-slate-50/50">
                       <td className="px-4 sm:px-8 py-2 sm:py-4 font-semibold text-slate-500 italic">{assoc.term}</td>
-                      <td className="px-4 sm:px-8 py-2 sm:py-4 text-slate-500 italic">{assoc.definition}</td>
+                      <td className="px-4 sm:px-8 py-2 sm:py-4 text-slate-500 italic hidden sm:table-cell">{assoc.definition}</td>
                       <td className="px-4 sm:px-8 py-2 sm:py-4 text-right"><button onClick={() => handleRestoreRow(assoc.id)} className="text-indigo-500 hover:text-indigo-700 font-bold text-[10px] sm:text-xs uppercase tracking-wider transition-all">Restaurar</button></td>
                     </tr>
                   ))}
