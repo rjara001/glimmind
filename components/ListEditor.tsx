@@ -36,6 +36,11 @@ function sortAssociations(associations: Association[], tableSort: TableSort | nu
   });
 }
 
+function deduplicateAssociations(existing: Association[], incoming: Association[]): Association[] {
+  const existingKeys = new Set(existing.map(a => `${a.term}|||${a.definition}`));
+  return incoming.filter(a => !existingKeys.has(`${a.term}|||${a.definition}`));
+}
+
 interface SortIndicatorProps {
   sort: TableSort | null;
   field: SortField;
@@ -184,11 +189,18 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       isLearned: false,
       isArchived: false,
     }));
-    
-    const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
+
+    const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
+    const skippedCount = newAssocs.length - uniqueNewAssocs.length;
+
+    const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
     if (saved) {
       setBulkText('');
       setShowBulk(false);
+      const message = skippedCount > 0
+        ? `Se importaron ${uniqueNewAssocs.length} tarjetas (${skippedCount} duplicadas omitidas).`
+        : `Se importaron ${uniqueNewAssocs.length} tarjetas.`;
+      showToast(message, 'success');
     }
   };
 
@@ -224,9 +236,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         isArchived: false,
       }));
 
-      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...newAssocs] });
+      const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
+      const skippedCount = newAssocs.length - uniqueNewAssocs.length;
+
+      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
       if (saved) {
-        showToast(`Se importaron ${newAssocs.length} tarjetas de "${file.name}"`, 'success');
+        const message = skippedCount > 0
+          ? `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}" (${skippedCount} duplicadas omitidas).`
+          : `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}"`;
+        showToast(message, 'success');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
