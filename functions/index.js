@@ -121,8 +121,13 @@ exports.createList = onRequest({ cors: true }, async (req, res) => {
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
 
+  await getOrCreateMeta(userId);
+  const metaSnap = await db.collection('users').doc(userId).get();
+  const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+  const isPremium = meta.tier === 'premium';
+
   const count = Array.isArray(associations) ? associations.length : 0;
-  if (count > MAX_CARDS_PER_LIST) {
+  if (!isPremium && count > MAX_CARDS_PER_LIST) {
     return res.status(400).json({ error: `Una lista no puede superar ${MAX_CARDS_PER_LIST} tarjetas.` });
   }
 
@@ -188,10 +193,15 @@ exports.updateList = onRequest({ cors: true }, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const currentUserId = oldData.userId || uid;
+    const metaSnap = await db.collection('users').doc(currentUserId).get();
+    const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+    const isPremium = meta.tier === 'premium';
+
     const oldCount = Array.isArray(oldData.associations) ? oldData.associations.length : 0;
     const newCount = Array.isArray(updates.associations) ? updates.associations.length : oldCount;
 
-    if (newCount > MAX_CARDS_PER_LIST && newCount > oldCount) {
+    if (!isPremium && newCount > MAX_CARDS_PER_LIST && newCount > oldCount) {
       return res.status(400).json({ error: `Una lista no puede superar ${MAX_CARDS_PER_LIST} tarjetas.` });
     }
 
