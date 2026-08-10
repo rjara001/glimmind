@@ -134,8 +134,9 @@ exports.createList = onRequest({ cors: true }, async (req, res) => {
       const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
       const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
       const cardCount = meta.cardCount || 0;
-      console.log('[DEBUG][createList] userId=', userId, 'cardQuota=', cardQuota, 'cardCount=', cardCount, 'count=', count);
-      if (count > 0 && cardCount + count > cardQuota) {
+      const isPremium = meta.tier === 'premium';
+      console.log('[DEBUG][createList] userId=', userId, 'cardQuota=', cardQuota, 'cardCount=', cardCount, 'count=', count, 'isPremium=', isPremium);
+      if (!isPremium && count > 0 && cardCount + count > cardQuota) {
         throw new QuotaExceededError(
           `Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`
         );
@@ -213,8 +214,9 @@ exports.updateList = onRequest({ cors: true }, async (req, res) => {
       const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
       const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
       const cardCount = meta.cardCount || 0;
+      const isPremium = meta.tier === 'premium';
 
-      if (delta > 0 && cardCount + delta > cardQuota) {
+      if (!isPremium && delta > 0 && cardCount + delta > cardQuota) {
         throw new QuotaExceededError(
           `Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`
         );
@@ -329,8 +331,9 @@ exports.splitList = onRequest({ cors: true }, async (req, res) => {
       const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
       const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
       const cardCount = meta.cardCount || 0;
+      const isPremium = meta.tier === 'premium';
 
-      if (delta > 0 && cardCount + delta > cardQuota) {
+      if (!isPremium && delta > 0 && cardCount + delta > cardQuota) {
         throw new QuotaExceededError(
           `Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`
         );

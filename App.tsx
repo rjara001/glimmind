@@ -50,6 +50,8 @@ const AppContent: React.FC = () => {
   const currentListId = useGameStore(state => state.currentListId);
   const lists = useGameStore(state => state.lists);
   const currentList = lists.find(l => l.id === currentListId) || null;
+  const quota = useGameStore(state => state.quota);
+  const isPremium = quota?.tier === 'premium';
   
   console.log('[DEBUG] render - view:', view, 'currentListId:', currentListId, 'lists.length:', lists.length, 'currentList:', currentList?.name);
 
@@ -129,7 +131,7 @@ const AppContent: React.FC = () => {
     const targetList = lists.find(l => l.id === listId);
     if (!targetList) return;
 
-    if (quota && computeQuotaStatus(countCards(lists) + 1, quota.cardQuota).state === 'blocked') {
+    if (!isPremium && quota && computeQuotaStatus(countCards(lists) + 1, quota.cardQuota).state === 'blocked') {
       showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
       return;
     }
@@ -188,9 +190,9 @@ const AppContent: React.FC = () => {
     }
 
     const currentQuota = useGameStore.getState().quota;
-    const isBlocked = currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
+    const isBlocked = !isPremium && currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
 
-    console.log('[DEBUG][createList] quota=', currentQuota, 'isBlocked=', isBlocked, 'countCards=', countCards(lists), 'initialAssocs=', initialAssocs.length);
+    console.log('[DEBUG][createList] quota=', currentQuota, 'isBlocked=', isBlocked, 'countCards=', countCards(lists), 'initialAssocs=', initialAssocs.length, 'isPremium=', isPremium);
 
     if (isBlocked) {
       await useGameStore.getState().loadQuota();
@@ -280,8 +282,7 @@ const AppContent: React.FC = () => {
     const originalCardCount = currentList.associations?.length || 0;
     const isGuest = user.uid === GUEST_ID;
 
-    // A reorganization only redistributes existing cards, so it never grows the total.
-    if (totalNewCards > originalCardCount && quota && computeQuotaStatus(countCards(lists) - originalCardCount + totalNewCards, quota.cardQuota).state === 'blocked') {
+    if (!isPremium && totalNewCards > originalCardCount && quota && computeQuotaStatus(countCards(lists) - originalCardCount + totalNewCards, quota.cardQuota).state === 'blocked') {
       showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
       return;
     }

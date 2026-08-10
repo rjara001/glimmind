@@ -87,6 +87,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
+  const isPremium = quota?.tier === 'premium';
 
   const projectedTotal = useMemo(() => {
     const otherTotal = lists
@@ -123,7 +124,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       .filter(assoc => assoc.term !== '' || assoc.definition !== '');
 
     const { quota, lists } = useGameStore.getState();
-    if (quota) {
+    const isPremium = quota?.tier === 'premium';
+    if (!isPremium && quota) {
       const storedList = lists.find(l => l.id === listToSave.id);
       const storedCount = storedList?.associations?.length ?? listToSave.associations.length;
       const growing = cleanedAssociations.length > storedCount;
@@ -168,7 +170,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
-    if (quotaStatus?.state === 'blocked') {
+    if (!isPremium && quotaStatus?.state === 'blocked') {
       alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
       return;
     }
@@ -194,7 +196,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (quotaStatus?.state === 'blocked') {
+    if (!isPremium && quotaStatus?.state === 'blocked') {
       alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
       return;
     }
@@ -257,7 +259,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   };
 
   const handleAddRow = () => {
-    if (quotaStatus?.state === 'blocked') {
+    if (!isPremium && quotaStatus?.state === 'blocked') {
       alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
       return;
     }
@@ -343,7 +345,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         </div>
       </div>
 
-      {quota && quotaStatus && (
+      {quota && quotaStatus && !isPremium && (
         <div className={`mb-6 rounded-xl border px-4 py-3 ${quotaStatus.state === 'blocked'
           ? 'bg-rose-50 border-rose-200'
           : quotaStatus.state === 'warning'
@@ -392,7 +394,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           <div className="flex gap-2 w-full sm:w-auto">
              <button onClick={() => downloadAssociationsCsv(editList.associations, `${editList.name}.csv`, csvHeader)} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm" title="Descargar tarjetas en CSV" aria-label="Descargar tarjetas en CSV">Export</button>
              <button onClick={() => setShowBulk(!showBulk)} className="px-4 py-3 text-indigo-600 text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">Import</button>
-             <button onClick={handleAddRow} disabled={quotaStatus?.state === 'blocked'} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Add Row</button>
+             <button onClick={handleAddRow} disabled={!isPremium && quotaStatus?.state === 'blocked'} className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Add Row</button>
           </div>
         </div>
 
