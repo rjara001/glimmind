@@ -33,7 +33,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
           </div>
           <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
             <span className="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-bold text-slate-500">
-              {isPracticeMode ? 'Practice' : 'Real'}
+              {isPracticeMode ? 'Modo Práctica' : 'Modo Real'}
             </span>
           </div>
           {onVoiceToggle && (
@@ -53,7 +53,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 )}
               </svg>
-              <span className="hidden sm:inline">{voiceEnabled ? 'Voz ON' : 'Voz'}</span>
+              <span className="hidden sm:inline">{voiceEnabled ? 'Voz ON' : 'Voz OFF'}</span>
             </button>
           )}
           {onRestart && (
