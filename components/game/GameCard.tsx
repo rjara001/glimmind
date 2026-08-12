@@ -72,6 +72,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   onSpeakAnswer,
   detectedVoiceCommand,
 }) => {
+  console.log('[GameCard] render voice flags', { voiceEnabled, voiceTermLang, voiceDefLang });
   const editTermRef = useRef<HTMLInputElement>(null);
   const editDefRef = useRef<HTMLTextAreaElement>(null);
   const [editTerm, setEditTerm] = useState(displayTerm || '');

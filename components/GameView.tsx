@@ -251,7 +251,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
   const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
 
-  // DEBUG: log voice settings
+  console.log('[GameView] voice swap', {
+    flipOrder: list.settings.flipOrder,
+    originalTermLang: list.settings.voiceTermLang,
+    originalDefLang: list.settings.voiceDefLang,
+    swappedTermLang: voiceTermLang,
+    swappedDefLang: voiceDefLang,
+  });
   console.log('[GameView] voice settings', {
     voiceEnabled: list.settings.voiceEnabled,
     voiceTermLang: list.settings.voiceTermLang,

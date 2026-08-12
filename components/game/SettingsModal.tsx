@@ -25,6 +25,8 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList, onClose }) => {
   const [draft, setDraft] = useState(list.settings);
 
+  console.log('[SettingsModal] OPEN settings=', JSON.stringify(list.settings));
+
   console.log('[SettingsModal] opened with settings', list.settings);
   const isReversed = draft.flipOrder === 'reversed';
   const isPracticeMode = draft.mode === 'training';
@@ -37,7 +39,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const defLabel = conceptParts[1] || 'Definición';
 
   const handleAccept = () => {
-    onUpdateList({ ...list, settings: draft });
+    const updated = { ...list, settings: draft };
+    console.log('[SettingsModal] SAVE settings=', JSON.stringify(updated.settings));
+    onUpdateList(updated);
     onClose();
   };
 
