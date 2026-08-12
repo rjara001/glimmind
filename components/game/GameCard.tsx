@@ -35,6 +35,7 @@ interface GameCardProps {
   voiceTermLang?: string;
   voiceDefLang?: string;
   onSpeakAnswer?: (text: string, lang: string) => void;
+  detectedVoiceCommand?: string;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -69,6 +70,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   voiceTermLang,
   voiceDefLang,
   onSpeakAnswer,
+  detectedVoiceCommand,
 }) => {
   const editTermRef = useRef<HTMLInputElement>(null);
   const editDefRef = useRef<HTMLTextAreaElement>(null);
@@ -77,6 +79,8 @@ export const GameCard: React.FC<GameCardProps> = ({
   const inputRefInternal = useRef<HTMLInputElement>(null);
   const resolvedInputRef = inputRef || inputRefInternal;
   const [isShaking, setIsShaking] = useState(false);
+  const [showCommandToast, setShowCommandToast] = useState(false);
+  const [commandToastText, setCommandToastText] = useState('');
 
   useEffect(() => {
     setEditTerm(displayTerm || '');
@@ -90,6 +94,15 @@ export const GameCard: React.FC<GameCardProps> = ({
       return () => clearTimeout(timer);
     }
   }, [feedback]);
+
+  useEffect(() => {
+    if (detectedVoiceCommand) {
+      setCommandToastText(`Comando detectado: ${detectedVoiceCommand}`);
+      setShowCommandToast(true);
+      const timer = setTimeout(() => setShowCommandToast(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [detectedVoiceCommand]);
 
   useEffect(() => {
     if (!isPracticeMode && !revealed && feedback === 'none') {
@@ -203,6 +216,12 @@ export const GameCard: React.FC<GameCardProps> = ({
         </button>
       )}
       <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
+
+      {showCommandToast && (
+        <div className="absolute bottom-3 right-3 bg-slate-900/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg animate-pulse">
+          {commandToastText}
+        </div>
+      )}
       
       {isEditing ? (
         <div className="w-full max-w-full sm:max-w-2xl mx-auto space-y-4">

@@ -38,6 +38,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
+  const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<string | undefined>();
   const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis();
   const { 
     gameView, 
@@ -67,6 +68,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const voiceRef = useRef<ReturnType<typeof useGameVoice>>(null);
 
   const handleVoiceCommand = useCallback((command: VoiceCommandId) => {
+    setDetectedVoiceCommand(command);
     if (command === 'reveal') {
       actions.reveal();
       void voiceRef.current?.speakAnswer();
@@ -75,7 +77,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     } else if (command === 'stop') {
       setIsVoiceActive(false);
     }
-  }, [actions]);
+  }, [actions, setDetectedVoiceCommand]);
 
   const voice = useGameVoice({
     list,
