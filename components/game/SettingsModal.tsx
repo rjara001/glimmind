@@ -39,6 +39,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const defLabel = conceptParts[1] || 'Definición';
 
   const handleAccept = () => {
+    console.log('[SettingsModal] draft before save=', JSON.stringify(draft));
     const updated = { ...list, settings: draft };
     console.log('[SettingsModal] SAVE settings=', JSON.stringify(updated.settings));
     onUpdateList(updated);
