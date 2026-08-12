@@ -28,7 +28,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
   const [newDefinition, setNewDefinition] = useState('');
   const [existingMatch, setExistingMatch] = useState<ExistingMatch | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
 
   const searchResults: SearchMatch[] = useMemo(() => {
     const normalizedQuery = normalizeText(query);
@@ -59,14 +58,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
     }
   }, [recommendations, selectedListId]);
 
-  useEffect(() => {
-    if (searchResults.length === 0) {
-      setSelectedResultId(null);
-      return;
-    }
-    setSelectedResultId(searchResults[0].association.id);
-  }, [searchResults]);
-
   const handleSelectResult = (match: SearchMatch) => {
     setQuery('');
     setExistingMatch({
@@ -83,13 +74,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
   const handleStartCreating = () => {
     setExistingMatch(null);
     setIsCreating(true);
-  };
-
-  const handleConfirmSelected = () => {
-    if (!selectedResultId) return;
-    const match = searchResults.find((r) => r.association.id === selectedResultId);
-    if (!match) return;
-    handleSelectResult(match);
   };
 
   const handleSubmit = () => {
@@ -124,40 +108,27 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleConfirmSelected();
-                }}
                 placeholder="Escribe un valor o su definición..."
                 autoFocus
                 className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-3 text-base font-medium text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 outline-none transition"
               />
 
               {searchResults.length > 0 && (
-                <ul role="listbox" className="mt-4 bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-                  {searchResults.map(({ association, list }) => {
-                    const isSelected = association.id === selectedResultId;
-                    return (
-                      <li key={association.id}>
-                        <button
-                          onClick={() => handleSelectResult({ association, list })}
-                          role="option"
-                          aria-selected={isSelected}
-                          className={`w-full text-left px-5 py-3 transition flex items-center justify-between gap-4 ${isSelected ? 'bg-indigo-50' : 'hover:bg-indigo-50/50'}`}
-                        >
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-800 truncate">{association.term}</p>
-                            <p className="text-sm text-slate-500 truncate">{association.definition}</p>
-                          </div>
-                          <span className="shrink-0 flex items-center gap-2">
-                            {isSelected && (
-                              <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            )}
-                            <span className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg">{list.name}</span>
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
+                <ul className="mt-4 bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                  {searchResults.map(({ association, list }) => (
+                    <li key={association.id}>
+                      <button
+                        onClick={() => handleSelectResult({ association, list })}
+                        className="w-full text-left px-5 py-3 hover:bg-indigo-50/50 transition flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate">{association.term}</p>
+                          <p className="text-sm text-slate-500 truncate">{association.definition}</p>
+                        </div>
+                        <span className="shrink-0 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg">{list.name}</span>
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               )}
 

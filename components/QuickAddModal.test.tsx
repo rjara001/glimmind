@@ -57,21 +57,6 @@ describe('QuickAddModal', () => {
     expect(screen.getByText(/Ya existe en la lista/)).toBeInTheDocument();
   });
 
-  it('sets the first search result as the default selection and confirms it with Enter', () => {
-    render(<QuickAddModal lists={lists} onAdd={onAdd} onClose={onClose} />);
-
-    const searchInput = screen.getByLabelText('Buscar valor');
-    fireEvent.change(searchInput, { target: { value: 'e' } });
-
-    const selected = screen.getByRole('option', { selected: true });
-    expect(selected).toHaveTextContent('eat');
-
-    fireEvent.keyDown(searchInput, { key: 'Enter' });
-
-    expect(screen.getByText(/Ya existe en la lista/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Valor')).toHaveValue('eat');
-  });
-
   it('creates a new value and calls onAdd with the selected list', () => {
     render(<QuickAddModal lists={lists} onAdd={onAdd} onClose={onClose} />);
 
