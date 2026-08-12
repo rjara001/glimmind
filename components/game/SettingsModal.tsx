@@ -24,6 +24,8 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList, onClose }) => {
   const [draft, setDraft] = useState(list.settings);
+
+  console.log('[SettingsModal] opened with settings', list.settings);
   const isReversed = draft.flipOrder === 'reversed';
   const isPracticeMode = draft.mode === 'training';
   const isIgnoringArticles = draft.ignoreArticles === true;

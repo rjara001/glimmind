@@ -241,6 +241,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
   const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
   const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
+
+  // DEBUG: log voice settings
+  console.log('[GameView] voice settings', {
+    voiceEnabled: list.settings.voiceEnabled,
+    voiceTermLang: list.settings.voiceTermLang,
+    voiceDefLang: list.settings.voiceDefLang,
+    isReversed,
+  });
   
   // Calculate correct count from associations (status === 'correct' or isLearned === true)
   const correctCount = gameState.associations.filter((a: any) => a.status === 'correct' || a.isLearned === true).length;
