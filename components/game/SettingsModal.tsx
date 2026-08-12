@@ -8,12 +8,12 @@ const THRESHOLD_MAX = 100;
 const THRESHOLD_STEP = 5;
 
 const VOICE_LANGUAGE_OPTIONS: { value: VoiceLanguage; label: string }[] = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'Inglés' },
-  { value: 'fr', label: 'Francés' },
-  { value: 'de', label: 'Alemán' },
-  { value: 'it', label: 'Italiano' },
-  { value: 'pt', label: 'Portugués' },
+  { value: 'es', label: '🇪🇸 Español' },
+  { value: 'en', label: '🇬🇧 Inglés' },
+  { value: 'fr', label: '🇫🇷 Francés' },
+  { value: 'de', label: '🇩🇪 Alemán' },
+  { value: 'it', label: '🇮🇹 Italiano' },
+  { value: 'pt', label: '🇧🇷 Portugués' },
 ];
 
 interface SettingsModalProps {
