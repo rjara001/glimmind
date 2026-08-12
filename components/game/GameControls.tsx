@@ -14,12 +14,9 @@ interface GameControlsProps {
   showRevealWarning?: boolean;
   onTryAttempt?: () => void;
   onConfirmReveal?: () => void;
-  voiceMode?: boolean;
-  isVoiceListening?: boolean;
-  onRepeat?: () => void;
 }
 
-export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, wasRevealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal, voiceMode, isVoiceListening, onRepeat }) => {
+export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, wasRevealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal }) => {
   const isPracticeMode = gameMode === 'training';
 
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";
@@ -81,16 +78,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           </button>
         )}
 
-        {voiceMode && onRepeat && (
-          <button
-            onClick={onRepeat}
-            disabled={isTransitioning}
-            tabIndex={1}
-            className={`${baseButtonClass} order-3 text-[9px] sm:text-[8px] ${isVoiceListening ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-white text-rose-600 border border-rose-100 hover:bg-rose-50'} disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {isVoiceListening ? 'Escuchando…' : 'Repetir'}
-          </button>
-        )}
+
       </div>
     </div>
   )

@@ -368,7 +368,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                  </div>
                </div>
              )}
-            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} voiceMode={isVoiceActive} isVoiceListening={voice.isListening} onRepeat={voice.repeat} />
+            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
           </div>
         </div>
