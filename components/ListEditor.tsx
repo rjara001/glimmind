@@ -4,10 +4,13 @@ import { AssociationList, Association } from '../types';
 import { aiService, AIGroupSuggestion } from '../services/aiService';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from './SmartGroupModal';
+import { QuickAddModal } from './QuickAddModal';
 import { useGameStore } from '../store/gameStore';
 import { computeQuotaStatus } from '../utils/quota';
 import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
 import { useToast } from './Toast';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useFitWidth } from '../hooks/useFitWidth';
 import { MIN_GROUP_SIZE } from '../constants/limits';
 
 type SortField = 'term' | 'definition';
@@ -84,6 +87,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
   const [columnPriority, setColumnPriority] = useState<'term' | 'definition'>('term');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const conceptParts = editList.concept.split('/');
   const termHeader = conceptParts[0] || 'Term';
@@ -180,14 +184,27 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     }));
     const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
     const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-    const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
-    if (saved) {
-      setBulkText('');
-      setShowBulk(false);
-      const message = skippedCount > 0
-        ? `Se importaron ${uniqueNewAssocs.length} tarjetas (${skippedCount} duplicadas omitidas).`
-        : `Se importaron ${uniqueNewAssocs.length} tarjetas.`;
-      showToast(message, 'success');
+    console.log('[ListEditor][bulk] listId=', editList.id, 'incoming=', newAssocs.length, 'uniqueNew=', uniqueNewAssocs.length, 'skipped=', skippedCount, 'totalAfter=', editList.associations.length + uniqueNewAssocs.length);
+    useGameStore.getState().setActivityRecordingEnabled(false);
+    try {
+      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
+      if (saved) {
+        setBulkText('');
+        setShowBulk(false);
+        const message = skippedCount > 0
+          ? `Se importaron ${uniqueNewAssocs.length} tarjetas (${skippedCount} duplicadas omitidas).`
+          : `Se importaron ${uniqueNewAssocs.length} tarjetas.`;
+        showToast(message, 'success');
+        const user = useGameStore.getState().user;
+        if (user && user.uid !== 'dev-user-local') {
+          console.log('[ListEditor][bulk] syncToCloud after import for', editList.id, 'associations:', uniqueNewAssocs.length);
+          useGameStore.getState().syncToCloud(editList.id).catch((error) => {
+            console.error('[ListEditor][bulk] syncToCloud failed:', error);
+          });
+        }
+      }
+    } finally {
+      useGameStore.getState().setActivityRecordingEnabled(true);
     }
   };
 
@@ -220,12 +237,25 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       }));
       const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
       const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
-      if (saved) {
-        const message = skippedCount > 0
-          ? `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}" (${skippedCount} duplicadas omitidas).`
-          : `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}"`;
-        showToast(message, 'success');
+      console.log('[ListEditor][file] listId=', editList.id, 'incoming=', newAssocs.length, 'uniqueNew=', uniqueNewAssocs.length, 'skipped=', skippedCount, 'totalAfter=', editList.associations.length + uniqueNewAssocs.length);
+      useGameStore.getState().setActivityRecordingEnabled(false);
+      try {
+        const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
+        if (saved) {
+          const message = skippedCount > 0
+            ? `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}" (${skippedCount} duplicadas omitidas).`
+            : `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}"`;
+          showToast(message, 'success');
+          const user = useGameStore.getState().user;
+          if (user && user.uid !== 'dev-user-local') {
+            console.log('[ListEditor][file] syncToCloud after import for', editList.id, 'associations:', uniqueNewAssocs.length);
+            useGameStore.getState().syncToCloud(editList.id).catch((error) => {
+              console.error('[ListEditor][file] syncToCloud failed:', error);
+            });
+          }
+        }
+      } finally {
+        useGameStore.getState().setActivityRecordingEnabled(true);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
@@ -256,21 +286,32 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     }
   };
 
-  const handleAddRow = () => {
-    if (!isPremium && quotaStatus?.state === 'blocked') {
-      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
-      return;
-    }
+  const handleModalAdd = useCallback((listId: string, term: string, definition: string) => {
+    if (listId !== editList.id) return;
     const newAssociation: Association = {
       id: crypto.randomUUID(),
-      term: '',
-      definition: '',
+      term,
+      definition,
       currentCycle: 1,
       status: 'pending',
       isLearned: false,
       isArchived: false,
     };
-    setEditList(current => ({ ...current, associations: [newAssociation, ...current.associations] }));
+    cleanupAndSave({ ...editList, associations: [...editList.associations, newAssociation] });
+    showToast(`Añadida "${term}" a ${editList.name}`, 'success');
+  }, [editList, cleanupAndSave, showToast]);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditList(current => ({ ...current, name: e.target.value }));
+  };
+
+  const handleNameBlur = () => {
+    const trimmed = editList.name.trim();
+    if (!trimmed) {
+      setEditList(current => ({ ...current, name: list.name }));
+      return;
+    }
+    cleanupAndSave({ ...editList, name: trimmed });
   };
 
   const handleUpdateField = (id: string, field: keyof Association, value: any) => {
@@ -293,6 +334,50 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, isArchived: false } : a);
     cleanupAndSave({ ...editList, associations: updatedAssociations });
   };
+
+  const toolbarActionsRef = useRef<HTMLDivElement>(null);
+  const toolbarMeasureRef = useRef<HTMLDivElement>(null);
+  const showActionLabels = useFitWidth(toolbarActionsRef, toolbarMeasureRef);
+
+  const actionButtonBase = 'inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 h-11 rounded-xl shadow-sm hover:border-indigo-600 hover:text-indigo-600 transition disabled:opacity-50 disabled:cursor-not-allowed';
+
+  const toolbarActions: Array<{
+    key: string;
+    label: string;
+    title: string;
+    onClick: () => void;
+    disabled?: boolean;
+    icon: ReactElement;
+  }> = [
+    {
+      key: 'export',
+      label: 'Export',
+      title: 'Descargar tarjetas en CSV',
+      onClick: () => downloadAssociationsCsv(editList.associations, `${editList.name}.csv`, csvHeader),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+      ),
+    },
+    {
+      key: 'import',
+      label: 'Import',
+      title: 'Importar tarjetas',
+      onClick: () => setShowBulk(!showBulk),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+      ),
+    },
+    {
+      key: 'add',
+      label: 'Add Row',
+      title: 'Añadir tarjeta',
+      onClick: () => setShowAddModal(true),
+      disabled: !isPremium && quotaStatus?.state === 'blocked',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+      ),
+    },
+  ];
 
   const activeAssociations = editList.associations.filter(a => !a.isArchived);
   const archivedAssociations = editList.associations.filter(a => a.isArchived);
@@ -320,28 +405,42 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const termPriority = columnPriority === 'term';
   const definitionPriority = columnPriority === 'definition';
 
+  const isMobile = useMediaQuery('(max-width: 639px)');
+  const termWidth = isMobile ? (termPriority ? 'w-[70%]' : 'w-[20%]') : '';
+  const definitionWidth = isMobile ? (definitionPriority ? 'w-[70%]' : 'w-[20%]') : '';
+
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-8">
         <div className="flex items-center gap-4">
-          <button onClick={() => { cleanupAndSave(editList); onBack(); }} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          <button onClick={() => { cleanupAndSave(editList); onBack(); }} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm group" aria-label="Volver">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editList.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              <input
+                type="text"
+                value={editList.name}
+                onChange={handleNameChange}
+                onBlur={handleNameBlur}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                aria-label="Nombre de la lista"
+                className="w-full bg-transparent border-b-2 border-transparent focus:border-indigo-400 focus:outline-none transition"
+              />
+            </h2>
             <p className="text-sm text-gray-500">{activeAssociations.length} tarjetas activas • {archivedAssociations.length} archivadas</p>
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex justify-end md:justify-start">
           <button
             onClick={handleSmartSplit}
             disabled={isAnalyzing || activeAssociations.length < MIN_GROUP_SIZE}
             title={activeAssociations.length < MIN_GROUP_SIZE ? `Añade al menos ${MIN_GROUP_SIZE} tarjetas para usar esta función` : "Organizar tarjetas en grupos lógicos"}
-            className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white h-11 px-3 sm:px-6 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-wait"
           >
             {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>}
-            <span className="hidden sm:inline">{isAnalyzing ? 'Procesando...' : 'Organizar'}</span>
+            <span>{isAnalyzing ? 'Procesando...' : 'Organizar'}</span>
           </button>
         </div>
       </div>
@@ -392,19 +491,31 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               </div>
               <input type="text" placeholder="Filter..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition outline-none shadow-sm" />
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-               <button onClick={() => downloadAssociationsCsv(editList.associations, `${editList.name}.csv`, csvHeader)} className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm" title="Descargar tarjetas en CSV" aria-label="Descargar tarjetas en CSV">
-                <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                <span className="hidden sm:inline">Export</span>
-              </button>
-              <button onClick={() => setShowBulk(!showBulk)} className="px-3 sm:px-4 py-2 sm:py-3 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition">
-                <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                <span className="hidden sm:inline">Import</span>
-              </button>
-              <button onClick={handleAddRow} disabled={!isPremium && quotaStatus?.state === 'blocked'} className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                <span className="hidden sm:inline">Add Row</span>
-              </button>
+            <div ref={toolbarActionsRef} className="relative flex items-center justify-end gap-2 w-full sm:w-auto">
+              {toolbarActions.map(action => (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  title={action.title}
+                  aria-label={action.label}
+                  className={`${actionButtonBase} ${showActionLabels ? 'px-3' : 'w-11 justify-center'}`}
+                >
+                  {action.icon}
+                  {showActionLabels && (
+                    <span className="whitespace-nowrap text-[10px] sm:text-xs font-black uppercase tracking-widest">{action.label}</span>
+                  )}
+                </button>
+              ))}
+              <div ref={toolbarMeasureRef} aria-hidden="true" className="invisible absolute left-0 top-0 flex items-center gap-2 pointer-events-none">
+                {toolbarActions.map(action => (
+                  <span key={action.key} className={`${actionButtonBase} px-3`}>
+                    {action.icon}
+                    <span className="whitespace-nowrap text-[10px] sm:text-xs font-black uppercase tracking-widest">{action.label}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -432,10 +543,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         )}
 
         <div className="max-h-[55vh] overflow-x-auto">
-          <table className="w-full text-left min-w-[640px]">
+          <table className={`w-full text-left ${isMobile ? 'table-fixed' : 'min-w-[640px]'}`}>
             <thead>
               <tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10">
-                <th className="px-4 sm:px-8 py-3 sm:py-4">
+                <th className={`px-4 sm:px-8 py-3 sm:py-4 ${termWidth}`}>
                   <button
                     onClick={() => setColumnPriority(columnPriority === 'term' ? 'definition' : 'term')}
                     className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
@@ -448,7 +559,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
                     <SortIndicator sort={activeSort} field="term" />
                   </button>
                 </th>
-                <th className="px-4 sm:px-8 py-3 sm:py-4 hidden sm:table-cell">
+                <th className={`px-4 sm:px-8 py-3 sm:py-4 ${definitionWidth}`}>
                   <button
                     onClick={() => setColumnPriority(columnPriority === 'definition' ? 'term' : 'definition')}
                     className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
@@ -461,34 +572,36 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
                     <SortIndicator sort={activeSort} field="definition" />
                   </button>
                 </th>
-                <th className="px-4 sm:px-8 py-3 sm:py-4 w-16 sm:w-24"></th>
+                <th className="px-4 sm:px-8 py-3 sm:py-4 w-10 sm:w-24"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {sortedActive.map((assoc) => (
                 <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 sm:px-8 py-2 sm:py-4">
+                  <td className={`px-4 sm:px-8 py-2 sm:py-4 ${termWidth}`}>
                     <input
                       type="text"
                       value={assoc.term}
                       onBlur={handleBlurRow}
                       onChange={(e) => handleUpdateField(assoc.id, 'term', e.target.value)}
-                      className={`w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300 ${!termPriority ? 'sm:truncate' : ''}`}
+                      readOnly={isMobile && !termPriority}
+                      className={`w-full bg-transparent border-none focus:ring-0 font-bold text-slate-900 placeholder-slate-300 ${isMobile && !termPriority ? 'truncate' : ''} ${!termPriority ? 'sm:truncate' : ''}`}
                       placeholder="Enter term..."
                     />
                   </td>
-                  <td className="px-4 sm:px-8 py-2 sm:py-4 hidden sm:table-cell">
+                  <td className={`px-4 sm:px-8 py-2 sm:py-4 ${definitionWidth}`}>
                     <input
                       type="text"
                       value={assoc.definition}
                       onBlur={handleBlurRow}
                       onChange={(e) => handleUpdateField(assoc.id, 'definition', e.target.value)}
-                      className={`w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300 ${!definitionPriority ? 'sm:truncate' : ''}`}
+                      readOnly={isMobile && !definitionPriority}
+                      className={`w-full bg-transparent border-none focus:ring-0 text-slate-500 placeholder-slate-300 ${isMobile && !definitionPriority ? 'truncate' : ''} ${!definitionPriority ? 'sm:truncate' : ''}`}
                       placeholder="Enter definition..."
                     />
                   </td>
-                  <td className="px-4 sm:px-8 py-2 sm:py-4">
-                    <button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-1" aria-label="Delete row">
+                  <td className="px-1 sm:px-8 py-2 sm:py-4 w-10 sm:w-24">
+                    <button onClick={() => handleRemoveRow(assoc.id)} className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition" aria-label="Delete row">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -508,10 +621,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               <p className="text-xs sm:text-sm text-slate-500">Estas tarjetas ya no aparecen en tus partidas. Puedes restaurarlas en cualquier momento.</p>
             </div>
             <div className="max-h-[45vh] overflow-auto border-t">
-              <table className="w-full text-left min-w-[640px]">
+              <table className={`w-full text-left ${isMobile ? 'table-fixed' : 'min-w-[640px]'}`}>
                 <thead>
                   <tr className="text-[10px] uppercase text-slate-400 font-black border-b bg-white sticky top-0 z-10">
-                    <th className="px-4 sm:px-8 py-3 sm:py-4">
+                    <th className={`px-4 sm:px-8 py-3 sm:py-4 ${termWidth}`}>
                       <button
                         onClick={() => setColumnPriority(columnPriority === 'term' ? 'definition' : 'term')}
                         className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
@@ -524,7 +637,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
                         <SortIndicator sort={archivedSort} field="term" />
                       </button>
                     </th>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 hidden sm:table-cell">
+                    <th className={`px-4 sm:px-8 py-3 sm:py-4 ${definitionWidth}`}>
                       <button
                         onClick={() => setColumnPriority(columnPriority === 'definition' ? 'term' : 'definition')}
                         className="flex items-center gap-1.5 uppercase group hover:text-slate-600 transition"
@@ -537,15 +650,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
                         <SortIndicator sort={archivedSort} field="definition" />
                       </button>
                     </th>
-                    <th className="px-4 sm:px-8 py-3 sm:py-4 w-24 text-right">Acción</th>
+                    <th className="px-4 sm:px-8 py-3 sm:py-4 w-10 sm:w-24 text-right">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {sortedArchived.map((assoc) => (
                     <tr key={assoc.id} className="group hover:bg-slate-50/80 transition-colors bg-slate-50/50">
-                      <td className="px-4 sm:px-8 py-2 sm:py-4 font-semibold text-slate-500 italic">{assoc.term}</td>
-                      <td className="px-4 sm:px-8 py-2 sm:py-4 text-slate-500 italic hidden sm:table-cell">{assoc.definition}</td>
-                      <td className="px-4 sm:px-8 py-2 sm:py-4 text-right"><button onClick={() => handleRestoreRow(assoc.id)} className="text-indigo-500 hover:text-indigo-700 font-bold text-[10px] sm:text-xs uppercase tracking-wider transition-all">Restaurar</button></td>
+                      <td className={`px-4 sm:px-8 py-2 sm:py-4 font-semibold text-slate-500 italic ${termWidth} ${isMobile && !termPriority ? 'truncate' : ''}`}>{assoc.term}</td>
+                      <td className={`px-4 sm:px-8 py-2 sm:py-4 text-slate-500 italic ${definitionWidth} ${isMobile && !definitionPriority ? 'truncate' : ''}`}>{assoc.definition}</td>
+                      <td className="px-1 sm:px-8 py-2 sm:py-4 text-right w-10 sm:w-24"><button onClick={() => handleRestoreRow(assoc.id)} className="inline-flex items-center justify-center gap-1 bg-white border border-indigo-200 text-indigo-600 h-8 w-8 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-indigo-50 transition" aria-label="Restaurar"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg><span className="hidden sm:inline">Restaurar</span></button></td>
                     </tr>
                   ))}
                   {filteredArchived.length === 0 && <tr><td colSpan={3} className="px-4 sm:px-8 py-8 sm:py-12 text-center text-slate-400 text-sm italic">No hay resultados en tarjetas archivadas.</td></tr>}
@@ -558,6 +671,13 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       </div>
 
       {aiSuggestions && <SmartGroupModal originalList={editList} suggestions={aiSuggestions} onCancel={() => setAiSuggestions(null)} onConfirm={(groups) => { if (onCreateMultiple) onCreateMultiple(groups); setAiSuggestions(null); onBack(); }} />}
+      {showAddModal && (
+        <QuickAddModal
+          lists={[editList]}
+          onAdd={handleModalAdd}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
     </div>
   );
 };

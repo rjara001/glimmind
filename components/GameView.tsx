@@ -11,6 +11,8 @@ import { FinishedScreen } from './game/FinishedScreen';
 import { SettingsModal } from './game/SettingsModal';
 import { AttemptList } from './game/AttemptList';
 import { useImmersiveHeader } from '../hooks/useImmersiveHeader';
+import { useGameVoice } from '../hooks/useGameVoice';
+import { VoiceCommandId } from '../types';
 
 interface GameViewProps {
   list: AssociationList;
@@ -18,6 +20,7 @@ interface GameViewProps {
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
   onUpdateList?: (updatedList: AssociationList) => Promise<void>;
   autoStart?: boolean;
+  voiceMode?: boolean;
 }
 
 const cycleColorMap: Record<GameCycle, string> = {
@@ -27,12 +30,13 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false }) => {
+export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false, voiceMode = false }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [showRevealWarning, setShowRevealWarning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
   const { 
     gameView, 
     gameState, 
@@ -52,6 +56,34 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
 
   const immersive = useImmersiveHeader();
+
+  const voiceRef = useRef<ReturnType<typeof useGameVoice>>(null);
+
+  const handleVoiceCommand = useCallback((command: VoiceCommandId) => {
+    if (command === 'reveal') {
+      actions.reveal();
+      void voiceRef.current?.speakAnswer();
+    } else if (command === 'pass') {
+      actions.handlePass();
+    } else if (command === 'stop') {
+      setIsVoiceActive(false);
+    }
+  }, [actions]);
+
+  const voice = useGameVoice({
+    list,
+    enabled: isVoiceActive,
+    currentAssociation,
+    feedback,
+    evaluationCount: attempts.length,
+    onSubmitVoice: actions.submitVoice,
+    onAdvance: actions.handleCorrect,
+    commands: list.settings.voiceCommands,
+    onCommand: handleVoiceCommand,
+    revealed: isRevealed,
+  });
+
+  voiceRef.current = voice;
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -207,6 +239,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const conceptParts = list.concept.split('/');
   const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
   const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
+  const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
+  const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
   
   // Calculate correct count from associations (status === 'correct' or isLearned === true)
   const correctCount = gameState.associations.filter((a: any) => a.status === 'correct' || a.isLearned === true).length;
@@ -289,6 +323,15 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               onCancelEdit={handleCancelEdit}
                attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
                inputRef={inputRef}
+               voiceMode={isVoiceActive}
+               voicePhase={voice.phase}
+               voiceTranscript={voice.transcript}
+               voiceInterim={voice.interim}
+               isVoiceListening={voice.isListening}
+               voiceError={voice.error}
+               voiceEnabled={list.settings.voiceEnabled === true}
+               voiceTermLang={voiceTermLang}
+               voiceDefLang={voiceDefLang}
             />
              {showRevealWarning && (
                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
@@ -317,7 +360,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                  </div>
                </div>
              )}
-            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
+            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} voiceMode={isVoiceActive} isVoiceListening={voice.isListening} onRepeat={voice.repeat} />
             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
           </div>
         </div>

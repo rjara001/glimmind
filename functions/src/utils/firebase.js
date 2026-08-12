@@ -1,6 +1,6 @@
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
-const { getAuth } = require("firebase-admin/auth");
+const { getAuth: adminGetAuth } = require("firebase-admin/auth");
 
 let db;
 
@@ -16,10 +16,17 @@ function getDb() {
   return db;
 }
 
+function getAuth() {
+  if (!db) {
+    init();
+  }
+  return adminGetAuth();
+}
+
 module.exports = {
   init,
   getDb,
+  getAuth,
   getFirestore,
   FieldValue,
-  getAuth,
 };

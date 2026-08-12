@@ -22,19 +22,25 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   const token = await getToken();
 
   const base = FUNCTIONS_BASE.replace(/\/$/, '');
+  const payload = JSON.stringify(data);
+  console.log('[callFunction] POST', `${base}/${functionName}`, 'payloadLength=', payload.length, 'hasToken=', !!token);
+  
   const response = await fetch(`${base}/${functionName}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },
-    body: JSON.stringify(data)
+    body: payload
   });
+
+  const text = await response.text();
+  console.log('[callFunction]', functionName, 'status=', response.status, 'response=', text.slice(0, 200));
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `HTTP ${response.status}`);
   }
 
-  return response.json();
+  return JSON.parse(text);
 }

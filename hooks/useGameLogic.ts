@@ -150,6 +150,13 @@ export const useGameLogic = ({ list, autoStart = false }: { list: AssociationLis
       emitAnswerEvents(before, after, true);
       setGame(after);
     },
+    submitVoice: (text: string) => {
+      const before = gameRef.current;
+      const withInput = before.setUserInput(text);
+      const after = withInput.checkAnswer();
+      emitAnswerEvents(withInput, after, after.state.feedback === 'correct');
+      setGame(after);
+    },
     updateCurrentAssociation: (term: string, definition: string) => {
       const after = gameRef.current.updateCurrentAssociation(term, definition);
       setGame(after);
@@ -200,5 +207,6 @@ export const useGameLogic = ({ list, autoStart = false }: { list: AssociationLis
     attempts: gameState.attempts,
     sessionRepasos,
     actions,
+    submitVoice: actions.submitVoice,
   };
 };

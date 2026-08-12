@@ -126,6 +126,11 @@ const AppContent: React.FC = () => {
     }
   }, [currentListId, updateAssociations]);
 
+  const handleStartGame = useCallback((id: string) => {
+    setCurrentList(id);
+    setView('game');
+  }, [setCurrentList]);
+
   const handleQuickAdd = useCallback((listId: string, term: string, definition: string) => {
     const { lists, quota } = useGameStore.getState();
     const targetList = lists.find(l => l.id === listId);
@@ -150,6 +155,7 @@ const AppContent: React.FC = () => {
   }, [showToast]);
 
   const handleUpdateList = useCallback(async (updatedList: any) => {
+    console.log('[App][handleUpdateList] listId=', updatedList.id, 'assocCount=', updatedList.associations?.length || 0);
     const { lists } = useGameStore.getState();
     const prevList = lists.find(l => l.id === updatedList.id);
     if (prevList && user) {
@@ -168,15 +174,11 @@ const AppContent: React.FC = () => {
     
     if (user && user.uid !== GUEST_ID) {
       try {
-        await listService.updateList(updatedList.id, {
-          name: updatedList.name,
-          concept: updatedList.concept,
-          associations: updatedList.associations,
-          settings: updatedList.settings,
-        });
+        console.log('[App][handleUpdateList] calling syncToCloud for', updatedList.id);
+        await useGameStore.getState().syncToCloud(updatedList.id);
         useGameStore.getState().loadQuota();
       } catch (error: any) {
-        console.error("Failed to sync list updates:", error);
+        console.error('[App][handleUpdateList] failed:', error);
         showToast(error.message || 'Error al guardar la lista', 'error');
       }
     }
@@ -184,28 +186,33 @@ const AppContent: React.FC = () => {
 
   const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
     const { lists, quota } = useGameStore.getState();
+    useGameStore.getState().setActivityRecordingEnabled(false);
 
     if (!quota) {
       await useGameStore.getState().loadQuota();
     }
 
     const currentQuota = useGameStore.getState().quota;
-    const isBlocked = !isPremium && currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
+    const isPremiumNow = currentQuota?.tier === 'premium';
+    const isBlocked = !isPremiumNow && currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
 
-    console.log('[DEBUG][createList] quota=', currentQuota, 'isBlocked=', isBlocked, 'countCards=', countCards(lists), 'initialAssocs=', initialAssocs.length, 'isPremium=', isPremium);
+    console.log('[App][handleCreateList] name=', name, 'initialAssocs=', initialAssocs.length, 'quota=', JSON.stringify(currentQuota), 'isPremiumNow=', isPremiumNow, 'isBlocked=', isBlocked);
 
     if (isBlocked) {
       await useGameStore.getState().loadQuota();
       const refreshedQuota = useGameStore.getState().quota;
-      if (refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
-        console.log('[DEBUG][createList] BLOCKED by quota', refreshedQuota);
+      const refreshedPremium = refreshedQuota?.tier === 'premium';
+      if (!refreshedPremium && refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
+        console.log('[App][handleCreateList] BLOCKED by quota', JSON.stringify(refreshedQuota));
         showToast(`Llegaste a tu límite de ${refreshedQuota.cardQuota} tarjetas.`, 'error');
+        useGameStore.getState().setActivityRecordingEnabled(true);
         return;
       }
     }
 
     if (!currentQuota) {
       showToast('No se pudo cargar la cuota. Reintentá en un momento.', 'error');
+      useGameStore.getState().setActivityRecordingEnabled(true);
       return;
     }
 
@@ -225,6 +232,7 @@ const AppContent: React.FC = () => {
     
     if (user && user.uid !== GUEST_ID) {
       try {
+        console.log('[App][handleCreateList] creating list on cloud for user', user.uid, 'assocs=', initialAssocs.length);
         const newId = await listService.createList(newListData);
         const updatedList = { ...newList, id: newId };
         const { lists } = useGameStore.getState();
@@ -239,8 +247,9 @@ const AppContent: React.FC = () => {
           type: 'card_created',
         }));
         useGameStore.getState().recordActivity(createdEvents);
+        console.log('[App][handleCreateList] created list', newId, 'assocs=', initialAssocs.length);
       } catch (error: any) {
-        console.error("Failed to create list:", error);
+        console.error('[App][handleCreateList] failed:', error);
         showToast(error.message || 'Error al crear la lista', 'error');
         useGameStore.getState().loadQuota();
       }
@@ -256,6 +265,7 @@ const AppContent: React.FC = () => {
       useGameStore.getState().recordActivity(createdEvents);
     }
     setView('editor');
+    useGameStore.getState().setActivityRecordingEnabled(true);
   };
 
   const handleDeleteList = async (id: string) => {
@@ -276,6 +286,7 @@ const AppContent: React.FC = () => {
 
   const handleCreateMultipleLists = async (groups: { name: string, associations: any[] }[]) => {
     if (!user || !currentList) return;
+    useGameStore.getState().setActivityRecordingEnabled(false);
     const { lists, quota } = useGameStore.getState();
 
     const totalNewCards = groups.reduce((sum, g) => sum + (g.associations?.length || 0), 0);
@@ -284,6 +295,7 @@ const AppContent: React.FC = () => {
 
     if (!isPremium && totalNewCards > originalCardCount && quota && computeQuotaStatus(countCards(lists) - originalCardCount + totalNewCards, quota.cardQuota).state === 'blocked') {
       showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+      useGameStore.getState().setActivityRecordingEnabled(true);
       return;
     }
 
@@ -321,6 +333,7 @@ const AppContent: React.FC = () => {
       setLists([...currentLists.filter(l => l.id !== originalListId), ...newLists]);
       emitMovedEvents(newLists);
       showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
+      useGameStore.getState().setActivityRecordingEnabled(true);
       return;
     }
 
@@ -336,6 +349,7 @@ const AppContent: React.FC = () => {
       console.error("Failed to split list:", error);
       showToast(error instanceof Error ? error.message : 'No se pudo dividir la lista.', 'error');
     }
+    useGameStore.getState().setActivityRecordingEnabled(true);
   };
 
   if (!isLoaded) {
@@ -445,8 +459,8 @@ const AppContent: React.FC = () => {
               setLastPlayedId(id);
               console.log('[DEBUG] currentListId set to:', useGameStore.getState().currentListId); 
               console.log('[DEBUG] lists:', useGameStore.getState().lists.length); 
-              setView('game'); 
-            }} 
+              handleStartGame(id);
+            }}
           />
         )}
         {view === 'editor' && currentList && (
@@ -462,7 +476,7 @@ const AppContent: React.FC = () => {
             list={currentList} 
             onUpdateAssociations={handleUpdateAssociationsWrapper} 
             onUpdateList={handleUpdateList}
-            onBack={() => setView('dashboard')} 
+            onBack={() => setView('dashboard')}
             autoStart={autoStartGame}
           />
         )}

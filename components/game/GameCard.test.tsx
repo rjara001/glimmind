@@ -174,3 +174,47 @@ describe('GameCard - editing', () => {
     expect(screen.queryByLabelText('Edit card')).not.toBeInTheDocument();
   });
 });
+
+describe('GameCard - voice flags', () => {
+  it('renders flags inline with labels when voice is enabled', () => {
+    render(
+      <GameCard
+        {...defaultProps}
+        voiceEnabled={true}
+        voiceTermLang="en"
+        voiceDefLang="es"
+      />
+    );
+
+    expect(screen.getByText(/🇬🇧/)).toBeInTheDocument();
+    expect(screen.getByText(/🇪🇸/)).toBeInTheDocument();
+  });
+
+  it('does not render flags when voice is disabled', () => {
+    render(
+      <GameCard
+        {...defaultProps}
+        voiceEnabled={false}
+        voiceTermLang="en"
+        voiceDefLang="es"
+      />
+    );
+
+    expect(screen.queryByText(/🇬🇧/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/🇪🇸/)).not.toBeInTheDocument();
+  });
+
+  it('renders globe for unknown languages', () => {
+    render(
+      <GameCard
+        {...defaultProps}
+        voiceEnabled={true}
+        voiceTermLang="xx"
+        voiceDefLang={undefined}
+      />
+    );
+
+    const globes = screen.getAllByText(/🌐/);
+    expect(globes.length).toBeGreaterThanOrEqual(1);
+  });
+});

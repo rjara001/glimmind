@@ -1,10 +1,20 @@
 
 import React, { useState } from 'react';
-import { AssociationList } from '../../types';
+import { AssociationList, VoiceCommandId, VoiceLanguage } from '../../types';
+import { DEFAULT_VOICE_COMMANDS, resolveVoiceCommands } from '../../services/voice/commands';
 
 const THRESHOLD_MIN = 50;
 const THRESHOLD_MAX = 100;
 const THRESHOLD_STEP = 5;
+
+const VOICE_LANGUAGE_OPTIONS: { value: VoiceLanguage; label: string }[] = [
+  { value: 'es', label: 'Español' },
+  { value: 'en', label: 'Inglés' },
+  { value: 'fr', label: 'Francés' },
+  { value: 'de', label: 'Alemán' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'pt', label: 'Portugués' },
+];
 
 interface SettingsModalProps {
   list: AssociationList;
@@ -18,11 +28,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const isPracticeMode = draft.mode === 'training';
   const isIgnoringArticles = draft.ignoreArticles === true;
   const isShowingHints = draft.showHints !== false;
+  const isVoiceEnabled = draft.voiceEnabled === true;
   const thresholdPercent = Math.round(draft.threshold * 100);
+  const conceptParts = list.concept.split('/');
+  const termLabel = conceptParts[0] || 'Término';
+  const defLabel = conceptParts[1] || 'Definición';
 
   const handleAccept = () => {
     onUpdateList({ ...list, settings: draft });
     onClose();
+  };
+
+  const getCommandValue = (id: VoiceCommandId): string => {
+    const raw = draft.voiceCommands?.[id];
+    if (raw === undefined) return DEFAULT_VOICE_COMMANDS[id].join(', ');
+    return raw.join(', ');
+  };
+
+  const setCommandValue = (id: VoiceCommandId, value: string) => {
+    const keywords = value.split(',').map((keyword) => keyword.trim()).filter(Boolean);
+    setDraft({
+      ...draft,
+      voiceCommands: { ...resolveVoiceCommands(draft.voiceCommands), [id]: keywords },
+    });
   };
 
   return (
@@ -75,6 +103,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isShowingHints ? 'left-5' : 'left-1'}`}></div>
             </div>
           </button>
+        </div>
+
+        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Voice</p>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <p className="text-xs font-bold text-slate-700">Enable voice</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Pronounce the word and listen to your answer</p>
+            </div>
+            <button
+              onClick={() => setDraft({ ...draft, voiceEnabled: !isVoiceEnabled })}
+              className={`w-10 h-6 rounded-full relative transition-colors flex-shrink-0 ${isVoiceEnabled ? 'bg-indigo-400' : 'bg-slate-200'}`}
+              aria-label="Toggle voice"
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isVoiceEnabled ? 'left-5' : 'left-1'}`}></div>
+            </button>
+          </div>
+          {isVoiceEnabled && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Idioma de {termLabel}</label>
+                <select
+                  value={draft.voiceTermLang || 'es'}
+                  onChange={(e) => setDraft({ ...draft, voiceTermLang: e.target.value as VoiceLanguage })}
+                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                  aria-label={`Idioma de ${termLabel}`}
+                >
+                  {VOICE_LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Idioma de {defLabel}</label>
+                <select
+                  value={draft.voiceDefLang || 'es'}
+                  onChange={(e) => setDraft({ ...draft, voiceDefLang: e.target.value as VoiceLanguage })}
+                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                  aria-label={`Idioma de ${defLabel}`}
+                >
+                  {VOICE_LANGUAGE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="pt-3 border-t border-slate-200">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voice commands</p>
+                <p className="text-[10px] text-slate-400 mb-3">Comma-separated keywords, recognized in the answer language.</p>
+                {(Object.keys(DEFAULT_VOICE_COMMANDS) as VoiceCommandId[]).map((id) => (
+                  <div key={id} className="mb-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                      {id}
+                    </label>
+                    <input
+                      type="text"
+                      value={getCommandValue(id)}
+                      onChange={(e) => setCommandValue(id, e.target.value)}
+                      className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                      aria-label={`Voice command ${id}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8">

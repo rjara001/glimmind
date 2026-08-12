@@ -5,6 +5,7 @@ const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
 const LOCAL_SESSIONS_KEY = 'glimmind_sessions';
 const LOCAL_MAX_EVENTS = 2000;
 const LOCAL_MAX_SESSIONS = 200;
+const MAX_EVENTS_PER_BATCH = 400;
 
 export interface ActivityPage {
   events: CardActivityEvent[];
@@ -58,7 +59,13 @@ export const activityService = {
       saveLocalActivity(merged);
       return;
     }
-    await callFunction('appendActivity', { userId, events });
+    const chunks: CardActivityEvent[][] = [];
+    for (let i = 0; i < events.length; i += MAX_EVENTS_PER_BATCH) {
+      chunks.push(events.slice(i, i + MAX_EVENTS_PER_BATCH));
+    }
+    await Promise.all(
+      chunks.map((chunk) => callFunction('appendActivity', { userId, events: chunk }))
+    );
   },
 
   fetchActivity: async (userId: string, query: ActivityQuery = {}): Promise<ActivityPage> => {

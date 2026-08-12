@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { maskHint, getAutoHintMode } from '../../utils/maskHint';
+import { GameVoicePhase } from '../../hooks/useGameVoice';
+import { getLanguageFlag } from '../../services/voice/languageFlags';
 
 interface GameCardProps {
   displayTerm: string | undefined;
@@ -23,6 +25,15 @@ interface GameCardProps {
   onCancelEdit?: () => void;
   attemptCount?: number;
   inputRef?: React.Ref<HTMLInputElement>;
+  voiceMode?: boolean;
+  voicePhase?: GameVoicePhase;
+  voiceTranscript?: string;
+  voiceInterim?: string;
+  isVoiceListening?: boolean;
+  voiceError?: string | null;
+  voiceEnabled?: boolean;
+  voiceTermLang?: string;
+  voiceDefLang?: string;
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -47,6 +58,15 @@ export const GameCard: React.FC<GameCardProps> = ({
   onCancelEdit,
   attemptCount,
   inputRef,
+  voiceMode,
+  voicePhase,
+  voiceTranscript,
+  voiceInterim,
+  isVoiceListening,
+  voiceError,
+  voiceEnabled,
+  voiceTermLang,
+  voiceDefLang,
 }) => {
   const editTermRef = useRef<HTMLInputElement>(null);
   const editDefRef = useRef<HTMLTextAreaElement>(null);
@@ -110,6 +130,17 @@ export const GameCard: React.FC<GameCardProps> = ({
   const showEditButton = associationId && onEditCard && !isEditing && revealed;
   const showAttemptCounter = typeof attemptCount === 'number' && !isPracticeMode;
 
+  const renderLabel = (label: string, lang: string | undefined) => {
+    if (!voiceEnabled) return label;
+    const flag = getLanguageFlag(lang);
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-sm leading-none">{flag}</span>
+        <span>{label}</span>
+      </span>
+    );
+  };
+
   const handleSaveEdit = () => {
     if (!onEditCard) return;
     onEditCard(editTerm, editDef);
@@ -158,12 +189,12 @@ export const GameCard: React.FC<GameCardProps> = ({
           </svg>
         </button>
       )}
-      <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{labelTerm}</span>
+      <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
       
       {isEditing ? (
         <div className="w-full max-w-full sm:max-w-2xl mx-auto space-y-4">
           <div>
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{labelTerm}</label>
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelTerm, voiceTermLang)}</label>
             <input
               ref={editTermRef}
               type="text"
@@ -175,7 +206,7 @@ export const GameCard: React.FC<GameCardProps> = ({
             />
           </div>
           <div>
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{labelDef}</label>
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelDef, voiceDefLang)}</label>
             <textarea
               ref={editDefRef as any}
               value={editDef}
@@ -216,18 +247,18 @@ export const GameCard: React.FC<GameCardProps> = ({
                   onChange={(e) => onUserInput(e.target.value)}
                   className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-2 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50 ${shakeClass}`}
                 />
-                {showHints && !revealed && (
-                  <div className="mt-1 text-center">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{labelDef}</span>
-                    <p className="text-base font-medium text-slate-300 bg-slate-50/50 px-3 py-1 rounded-xl border border-slate-100/50 inline-block break-words">
-                      {maskHint(displayDef, effectiveHintMode)}
-                    </p>
-                    {showAttemptCounter && typeof attemptCount === 'number' && (
-                      <span className="block text-[10px] text-slate-400 font-medium mt-1">intentos: {attemptCount}</span>
-                    )}
-                  </div>
-                )}
-              </div>
+                 {showHints && !revealed && (
+                    <div className="mt-1 text-center">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{renderLabel(labelDef, voiceDefLang)}</span>
+                     <p className="text-base font-medium text-slate-300 bg-slate-50/50 px-3 py-1 rounded-xl border border-slate-100/50 inline-block break-words">
+                       {maskHint(displayDef, effectiveHintMode)}
+                     </p>
+                     {showAttemptCounter && typeof attemptCount === 'number' && (
+                       <span className="block text-[10px] text-slate-400 font-medium mt-1">intentos: {attemptCount}</span>
+                     )}
+                   </div>
+                 )}
+               </div>
             ) : (
               <div className="text-center">
                 {showLastAttempt && (
@@ -240,7 +271,7 @@ export const GameCard: React.FC<GameCardProps> = ({
                 )}
                 {!isDefinitionHidden && (
                   <>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{labelDef}</span>
+                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelDef, voiceDefLang)}</span>
                     <p className={`text-xl sm:text-2xl md:text-3xl font-black break-words ${revealed || !isPracticeMode ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-300 bg-slate-50/50'} px-4 py-2 rounded-2xl border-2 ${revealed || !isPracticeMode ? 'border-indigo-100/50' : 'border-slate-100/50'} inline-block shadow-sm`}>
                       {revealed || !isPracticeMode ? displayDef : maskHint(displayDef, effectiveHintMode)}
                     </p>
@@ -249,6 +280,47 @@ export const GameCard: React.FC<GameCardProps> = ({
               </div>
             )}
           </div>
+          {voiceMode && (
+            <div className="w-full max-w-md mx-auto mt-3 space-y-2">
+              {voicePhase === 'speaking' && (
+                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest animate-pulse">Hablando…</p>
+              )}
+              {voicePhase === 'listening' && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className={`text-[10px] font-black uppercase tracking-widest animate-pulse ${isVoiceListening ? 'text-rose-500' : 'text-indigo-500'}`}>
+                    {isVoiceListening ? 'Escuchando…' : 'Procesando…'}
+                  </p>
+                  {(voiceInterim || voiceTranscript) && (
+                    <p className="text-sm font-bold text-slate-600">“{voiceInterim || voiceTranscript}”</p>
+                  )}
+                </div>
+              )}
+              {voicePhase === 'evaluating' && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Evaluando…</p>
+                  {voiceTranscript && (
+                    <p className="text-sm font-bold text-slate-600">“{voiceTranscript}”</p>
+                  )}
+                </div>
+              )}
+              {voicePhase === 'feedback' && feedback !== 'none' && (
+                <div className={`rounded-2xl border px-4 py-3 ${feedback === 'correct' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${feedback === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {feedback === 'correct' ? '✓ Correcto' : '✗ Incorrecto'}
+                  </p>
+                  {voiceTranscript && (
+                    <p className="text-sm font-bold text-slate-700 mt-1">Dijiste: “{voiceTranscript}”</p>
+                  )}
+                  {similarity !== null && (
+                    <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Similitud: {similarity}%</p>
+                  )}
+                </div>
+              )}
+              {voiceError && (
+                <p className="text-[10px] font-bold text-rose-600">{voiceError}</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

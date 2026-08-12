@@ -3,6 +3,9 @@ export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
 export type GameFeedback = 'none' | 'correct' | 'incorrect';
 export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
+export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
+export type VoiceCommandId = 'reveal' | 'pass' | 'continue' | 'stop';
+export type VoiceCommandsConfig = Record<VoiceCommandId, string[]>;
 
 export interface Association {
   id: string;
@@ -34,6 +37,10 @@ export interface AssociationList {
     ignoreArticles?: boolean;
     showHints?: boolean;
     hintMode?: HintMode | false;
+    voiceEnabled?: boolean;
+    voiceTermLang?: VoiceLanguage;
+    voiceDefLang?: VoiceLanguage;
+    voiceCommands?: VoiceCommandsConfig;
   };
   createdAt?: any;
   updatedAt?: any;

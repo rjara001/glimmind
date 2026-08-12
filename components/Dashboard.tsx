@@ -140,6 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
     e.preventDefault();
     if (newName && newConcept) {
       const initialAssocs = [...parseBulkData(bulkData), ...fileAssociations];
+      console.log('[Dashboard][handleCreate] name=', newName, 'concept=', newConcept, 'initialAssocs=', initialAssocs.length);
       onCreate(newName, newConcept, initialAssocs);
       setNewName('');
       setNewConcept('');

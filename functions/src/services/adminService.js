@@ -1,4 +1,4 @@
-const { getAuth } = require("firebase-admin/auth");
+const { getAuth } = require("../utils/firebase");
 
 async function verifyAdmin(token, adminUids) {
   const decoded = await getAuth().verifyIdToken(token);
