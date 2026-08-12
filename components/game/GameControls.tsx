@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GameMode } from '../../types';
 
@@ -15,24 +14,25 @@ interface GameControlsProps {
   showRevealWarning?: boolean;
   onTryAttempt?: () => void;
   onConfirmReveal?: () => void;
+  voiceMode?: boolean;
+  isVoiceListening?: boolean;
+  onRepeat?: () => void;
 }
 
-export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, wasRevealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal }) => {
+export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswer, onReveal, onCorrect, revealed, wasRevealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal, voiceMode, isVoiceListening, onRepeat }) => {
   const isPracticeMode = gameMode === 'training';
-  
+
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";
 
-  // The main action buttons are arranged for correct Tab order.
-  // CSS `order` property maintains visual layout.
   // Modo Examen: Validar (disabled after Revelar) | Pasar | Revelar
   // Modo Training: Pasar | Revelar | Correcta (no Validar)
+  // Voice: | Responder por voz |
   return (
     <div className="w-full max-w-xl mt-4 px-2 sm:px-0">
       <div className="grid grid-cols-3 gap-2 sm:gap-3 bg-white/50 backdrop-blur-sm p-2 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm">
-        
-        {/* Botón Validar: solo en Modo Examen */}
+
         {!isPracticeMode && (
-          <button 
+          <button
             onClick={onCheckAnswer}
             disabled={isTransitioning || revealed}
             tabIndex={2}
@@ -42,18 +42,17 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           </button>
         )}
 
-        <button 
-          onClick={onNext} 
+        <button
+          onClick={onNext}
           disabled={isTransitioning}
           tabIndex={isPracticeMode ? 3 : 4}
           className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1 text-[9px] sm:text-[8px]`}
         >
           Pasar
         </button>
-        
-  {/* Botón Revelar: en Modo Examen (no revelado) o Modo Training (no revelado) */}
+
         {(!isPracticeMode || !revealed) && (
-          <button 
+          <button
             onClick={() => {
               if (showRevealWarning && onConfirmReveal) {
                 onConfirmReveal();
@@ -71,15 +70,25 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           </button>
         )}
 
-        {/* Botón Correcta: solo cuando está revelado (en Examen) o siempre (en Training) */}
         {isPracticeMode && (
-          <button 
-            onClick={onCorrect} 
+          <button
+            onClick={onCorrect}
             disabled={isTransitioning || (revealed && wasRevealed)}
             tabIndex={1}
             className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3 text-[9px] sm:text-[8px]`}
           >
             Correcta
+          </button>
+        )}
+
+        {voiceMode && onRepeat && (
+          <button
+            onClick={onRepeat}
+            disabled={isTransitioning}
+            tabIndex={1}
+            className={`${baseButtonClass} order-3 text-[9px] sm:text-[8px] ${isVoiceListening ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-white text-rose-600 border border-rose-100 hover:bg-rose-50'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {isVoiceListening ? 'Escuchando…' : 'Repetir'}
           </button>
         )}
       </div>
