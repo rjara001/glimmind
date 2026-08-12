@@ -26,14 +26,14 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
   // Voice: | Responder por voz |
   return (
     <div className="w-full max-w-xl mt-4 px-2 sm:px-0">
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 bg-white/50 backdrop-blur-sm p-2 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 bg-white/50 backdrop-blur-sm p-2 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm">
 
         {!isPracticeMode && (
           <button
             onClick={onCheckAnswer}
             disabled={isTransitioning || revealed}
             tabIndex={2}
-            className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed text-[9px] sm:text-[8px]`}
+            className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-2 text-[9px] sm:text-[8px]`}
           >
             Validar
           </button>
@@ -43,7 +43,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
           onClick={onNext}
           disabled={isTransitioning}
           tabIndex={isPracticeMode ? 3 : 4}
-          className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] sm:text-[8px]`}
+          className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-1 text-[9px] sm:text-[8px]`}
         >
           Pasar
         </button>
@@ -61,7 +61,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
             }}
             disabled={isTransitioning || (isPracticeMode && revealed)}
             tabIndex={isPracticeMode ? 2 : 3}
-            className={`${baseButtonClass} bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] sm:text-[8px]`}
+            className={`${baseButtonClass} bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3 text-[9px] sm:text-[8px]`}
           >
             Revelar
           </button>
@@ -72,7 +72,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
             onClick={onCorrect}
             disabled={isTransitioning || (revealed && wasRevealed)}
             tabIndex={1}
-            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} text-[9px] sm:text-[8px]`}
+            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || (revealed && wasRevealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-3 text-[9px] sm:text-[8px]`}
           >
             Correcta
           </button>
