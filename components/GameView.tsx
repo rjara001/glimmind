@@ -12,6 +12,7 @@ import { SettingsModal } from './game/SettingsModal';
 import { AttemptList } from './game/AttemptList';
 import { useImmersiveHeader } from '../hooks/useImmersiveHeader';
 import { useGameVoice } from '../hooks/useGameVoice';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { VoiceCommandId } from '../types';
 
 interface GameViewProps {
@@ -37,6 +38,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
+  const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis();
   const { 
     gameView, 
     gameState, 
@@ -56,6 +58,11 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
 
   const immersive = useImmersiveHeader();
+
+  const handleSpeakAnswer = useCallback((text: string, lang: string) => {
+    if (!speechSupported || !text) return;
+    void speakAnswer(text, lang);
+  }, [speechSupported, speakAnswer]);
 
   const voiceRef = useRef<ReturnType<typeof useGameVoice>>(null);
 
@@ -340,6 +347,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceEnabled={list.settings.voiceEnabled === true}
                voiceTermLang={voiceTermLang}
                voiceDefLang={voiceDefLang}
+               onSpeakAnswer={handleSpeakAnswer}
             />
              {showRevealWarning && (
                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
