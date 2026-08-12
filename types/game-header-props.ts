@@ -10,4 +10,6 @@ export interface GameHeaderProps {
   onBack: () => void;
   onSettingsClick: () => void;
   onRestart?: () => void;
+  voiceEnabled?: boolean;
+  onVoiceToggle?: () => void;
 }

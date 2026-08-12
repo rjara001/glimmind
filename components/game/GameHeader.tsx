@@ -2,7 +2,7 @@
 import React from 'react';
 import { GameHeaderProps } from '../../types/game-header-props';
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart }) => {
+export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart, voiceEnabled, onVoiceToggle }) => {
   const isPracticeMode = gameMode === 'training';
 
   return (
@@ -32,15 +32,30 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
             <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Sesión {sessionRepasos}</span>
           </div>
           <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
-            <span className="px-3 py-1 text-xs font-bold text-slate-500">
-              {isPracticeMode ? 'Practice Mode' : 'Real Mode'}
-            </span>
-          </div>
-          <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
             <span className="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-bold text-slate-500">
               {isPracticeMode ? 'Practice' : 'Real'}
             </span>
           </div>
+          {onVoiceToggle && (
+            <button
+              onClick={onVoiceToggle}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all ${
+                voiceEnabled
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200'
+              }`}
+              aria-label={voiceEnabled ? 'Desactivar voz' : 'Activar voz'}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                {voiceEnabled ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                )}
+              </svg>
+              <span className="hidden sm:inline">{voiceEnabled ? 'Voz ON' : 'Voz'}</span>
+            </button>
+          )}
           {onRestart && (
             <button onClick={onRestart} className="text-slate-400 hover:text-rose-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm group" aria-label="Restart list">
               <svg className="w-6 h-6 group-hover:-rotate-180 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
