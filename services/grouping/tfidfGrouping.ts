@@ -10,9 +10,11 @@ const STOPWORDS = new Set([
 
 const normalizeText = (text: string): string =>
   text
+    .toLowerCase()
+    .trim()
+    .replace(/[-–—]+/g, ' ')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+    .replace(/[\u0300-\u036f]/g, '');
 
 const tokenize = (text: string): string[] =>
   normalizeText(text)

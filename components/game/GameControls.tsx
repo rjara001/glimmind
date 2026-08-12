@@ -25,7 +25,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onCheckAnswe
   // Modo Training: Pasar | Revelar | Correcta (no Validar)
   // Voice: | Responder por voz |
   return (
-    <div className="w-full max-w-xl mt-4 px-2 sm:px-0">
+    <div className="justify-self-center w-full max-w-xl mt-4 px-2 sm:px-0">
       <div className="grid grid-cols-3 gap-2 sm:gap-3 bg-white/50 backdrop-blur-sm p-2 sm:p-3 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm">
 
         {!isPracticeMode && (

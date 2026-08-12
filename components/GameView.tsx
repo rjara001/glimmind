@@ -102,7 +102,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     if (feedback === 'correct') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
-      actions.handleCorrect();
+      if (!isVoiceActive) {
+        actions.handleCorrect();
+      }
     } else if (feedback === 'incorrect') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
@@ -251,19 +253,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
   const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
 
-  console.log('[GameView] voice swap', {
-    flipOrder: list.settings.flipOrder,
-    originalTermLang: list.settings.voiceTermLang,
-    originalDefLang: list.settings.voiceDefLang,
-    swappedTermLang: voiceTermLang,
-    swappedDefLang: voiceDefLang,
-  });
-  console.log('[GameView] voice settings', {
-    voiceEnabled: list.settings.voiceEnabled,
-    voiceTermLang: list.settings.voiceTermLang,
-    voiceDefLang: list.settings.voiceDefLang,
-    isReversed,
-  });
   
   // Calculate correct count from associations (status === 'correct' or isLearned === true)
   const correctCount = gameState.associations.filter((a: any) => a.status === 'correct' || a.isLearned === true).length;

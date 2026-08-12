@@ -20,7 +20,7 @@ export interface UseGameVoiceOptions {
   revealed?: boolean;
 }
 
-const FEEDBACK_DELAY_MS = 1300;
+const FEEDBACK_DELAY_MS = 500;
 
 export function useGameVoice({
   list,
@@ -224,21 +224,29 @@ export function useGameVoice({
     if (feedback === 'correct') {
       clearFeedbackTimer();
       setPhaseBoth('feedback');
-      feedbackTimerRef.current = setTimeout(() => {
-        feedbackTimerRef.current = null;
-        if (shouldRunRef.current) onAdvanceRef.current();
-      }, FEEDBACK_DELAY_MS);
+      void (async () => {
+        await ttsRef.current.speak('Correcto', languages.ttsLang);
+        if (!shouldRunRef.current) return;
+        feedbackTimerRef.current = setTimeout(() => {
+          feedbackTimerRef.current = null;
+          if (shouldRunRef.current) onAdvanceRef.current();
+        }, FEEDBACK_DELAY_MS);
+      })();
     } else if (feedback === 'incorrect') {
       clearFeedbackTimer();
       setPhaseBoth('feedback');
-      feedbackTimerRef.current = setTimeout(() => {
-        feedbackTimerRef.current = null;
-        if (shouldRunRef.current) void speakCurrentWord();
-      }, FEEDBACK_DELAY_MS);
+      void (async () => {
+        await ttsRef.current.speak('Incorrecto', languages.ttsLang);
+        if (!shouldRunRef.current) return;
+        feedbackTimerRef.current = setTimeout(() => {
+          feedbackTimerRef.current = null;
+          if (shouldRunRef.current) void speakCurrentWord();
+        }, FEEDBACK_DELAY_MS);
+      })();
     } else if (feedback === 'none') {
       void speakCurrentWord();
     }
-  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id]);
+  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang]);
 
   const repeat = useCallback(() => {
     clearFeedbackTimer();

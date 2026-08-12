@@ -50,6 +50,7 @@ function normalizeString(s: string, ignoreArticles: boolean): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[-–—]+/g, ' ')
     .replace(/[^\w\s]/gi, "");
 
   if (!ignoreArticles) return normalized;
