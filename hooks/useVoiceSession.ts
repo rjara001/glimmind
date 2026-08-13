@@ -5,6 +5,7 @@ import { useGameStore } from '../store/gameStore';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../services/voice/languages';
+import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
 import { createActivityEvent } from '../utils/activity';
 
 export interface VoiceSessionCounts {
@@ -24,6 +25,7 @@ export interface VoiceSessionResult {
 }
 
 const RESULT_DELAY_MS = 900;
+const LISTENING_TIMEOUT_MS = 2000;
 
 export function useVoiceSession(list: AssociationList) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
@@ -39,6 +41,17 @@ export function useVoiceSession(list: AssociationList) {
   const shouldRunRef = useRef(false);
   const phaseRef = useRef<VoicePhase>('idle');
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answerHandledRef = useRef(false);
+  const listeningFailedRef = useRef(false);
+  const transcriptRef = useRef('');
+
+  useEffect(() => {
+    gameRef.current = gameRef.current.updateList(list);
+  }, [list]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   const setPhaseBoth = useCallback((next: VoicePhase) => {
     phaseRef.current = next;
@@ -47,10 +60,38 @@ export function useVoiceSession(list: AssociationList) {
 
   const tts = useSpeechSynthesis();
   const stt = useSpeechRecognition({
+    onInterim: (text) => {
+      if (answerHandledRef.current) return;
+      const current = gameRef.current.currentAssociation;
+      if (!current) return;
+      if (phaseRef.current !== 'listening_for_answer') return;
+
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const expected = isReversed ? current.definition : current.term;
+
+      console.log('[STT] expected="' + expected + '"');
+      console.log('[STT] interim="' + text + '"');
+      console.log('[STT] exact match=' + isExactExpectedAnswer(text, expected));
+
+      if (isExactExpectedAnswer(text, expected)) {
+        console.log('[STT] EARLY MATCH → accepting answer');
+        answerHandledRef.current = true;
+        stt.stop();
+        setTranscript(text);
+        transcriptRef.current = text;
+        setPhaseBoth('evaluating');
+        void handleAnswer(text);
+      }
+    },
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (answerHandledRef.current) {
+        console.log('[STT] answer already handled → ignored final:', trimmed);
+        return;
+      }
       setTranscript(trimmed);
+      transcriptRef.current = trimmed;
       if (phaseRef.current === 'listening_for_answer') {
         setPhaseBoth('evaluating');
         void handleAnswer(trimmed);
@@ -75,19 +116,18 @@ export function useVoiceSession(list: AssociationList) {
     stt.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
-    const lang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
-    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
-    const rate = list.settings.voiceRate;
-    const pitch = list.settings.voicePitch;
 
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
     setPhaseBoth('speaking');
-    await tts.speak(word, lang || languages.ttsLang, voiceId, rate, pitch);
+    await tts.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
+    answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermLang, list.settings.voiceDefLang, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
 
   const handleAnswer = useCallback(
     (answer: string) => {
@@ -152,6 +192,7 @@ export function useVoiceSession(list: AssociationList) {
       if (!trimmed) return;
       stt.abort();
       setTranscript(trimmed);
+      transcriptRef.current = trimmed;
       setPhaseBoth('evaluating');
       void handleAnswer(trimmed);
     },
@@ -196,6 +237,32 @@ export function useVoiceSession(list: AssociationList) {
       tts.cancel();
     };
   }, []);
+
+  useEffect(() => {
+    if (phaseRef.current !== 'listening_for_answer') return;
+    if (stt.isListening) return;
+    if (answerHandledRef.current) return;
+    if (listeningFailedRef.current) return;
+
+    const timeout = setTimeout(() => {
+      if (phaseRef.current !== 'listening_for_answer') return;
+      if (stt.isListening) return;
+      if (answerHandledRef.current) return;
+      if (listeningFailedRef.current) return;
+
+      listeningFailedRef.current = true;
+      const pending = transcriptRef.current.trim();
+      if (pending) {
+        setPhaseBoth('evaluating');
+        void handleAnswer(pending);
+      } else {
+        setPhaseBoth('idle');
+        setError('No speech detected.');
+      }
+    }, LISTENING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [phase, stt.isListening, handleAnswer, setPhaseBoth]);
 
   return {
     phase,

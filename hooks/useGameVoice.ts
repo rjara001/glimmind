@@ -3,7 +3,8 @@ import { Association, AssociationList, VoiceCommandId, VoiceCommandsConfig } fro
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../services/voice/languages';
-import { matchVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
+import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
+import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
 
@@ -21,6 +22,7 @@ export interface UseGameVoiceOptions {
 }
 
 const FEEDBACK_DELAY_MS = 500;
+const LISTENING_TIMEOUT_MS = 2000;
 
 export function useGameVoice({
   list,
@@ -48,6 +50,10 @@ export function useGameVoice({
   const onCommandRef = useRef(onCommand);
   const revealedRef = useRef(revealed);
   const feedbackRef = useRef(feedback);
+  const answerHandledRef = useRef(false);
+  const listeningFailedRef = useRef(false);
+  const transcriptRef = useRef('');
+  const lastCommandRef = useRef<VoiceCommandId | null>(null);
 
   useEffect(() => {
     currentAssociationRef.current = currentAssociation;
@@ -77,6 +83,10 @@ export function useGameVoice({
     feedbackRef.current = feedback;
   }, [feedback]);
 
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
   const setPhaseBoth = useCallback((next: GameVoicePhase) => {
     phaseRef.current = next;
     setPhase(next);
@@ -84,12 +94,56 @@ export function useGameVoice({
 
   const tts = useSpeechSynthesis();
   const stt = useSpeechRecognition({
+    onInterim: (text) => {
+      if (answerHandledRef.current) return;
+      const current = currentAssociationRef.current;
+      if (!current) return;
+      if (phaseRef.current !== 'listening') return;
+      if (revealedRef.current) return;
+
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const expected = isReversed ? current.definition : current.term;
+
+      console.log('[STT] expected="' + expected + '"');
+      console.log('[STT] interim="' + text + '"');
+      console.log('[STT] exact match=' + isExactExpectedAnswer(text, expected));
+
+      if (isExactExpectedAnswer(text, expected)) {
+        console.log('[STT] EARLY MATCH → accepting answer');
+        answerHandledRef.current = true;
+        sttRef.current.stop();
+        setTranscript(text);
+        transcriptRef.current = text;
+        setPhaseBoth('evaluating');
+        onSubmitVoiceRef.current(text);
+        return;
+      }
+
+      const exactCommand = matchExactVoiceCommand(text, commandsRef.current);
+      if (exactCommand) {
+        console.log('[STT] interim exact command matched:', exactCommand, 'text:', text);
+        lastCommandRef.current = exactCommand;
+        onCommandRef.current?.(exactCommand);
+      }
+    },
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (answerHandledRef.current) {
+        console.log('[STT] answer already handled → ignored final:', trimmed);
+        return;
+      }
       setTranscript(trimmed);
+      transcriptRef.current = trimmed;
+
       const matched = matchVoiceCommand(trimmed, commandsRef.current);
       if (matched) {
+        if (lastCommandRef.current === matched) {
+          console.log('[STT] final command already handled in interim → ignored:', matched);
+          return;
+        }
+        lastCommandRef.current = matched;
+        console.log('[STT] final command matched:', matched, 'text:', trimmed);
         if (matched === 'continue') {
           if (phaseRef.current === 'feedback') {
             clearFeedbackTimer();
@@ -120,9 +174,6 @@ export function useGameVoice({
     onError: (message) => {
       setError(message);
       setPhaseBoth('idle');
-    },
-    onTransientMessage: (message) => {
-      setError(message);
     },
   });
 
@@ -159,14 +210,12 @@ export function useGameVoice({
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
-    const lang = languages.ttsLang;
-    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
-    const rate = list.settings.voiceRate;
-    const pitch = list.settings.voicePitch;
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
+    lastCommandRef.current = null;
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang, voiceId, rate, pitch);
+    const spoke = await ttsRef.current.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -176,8 +225,10 @@ export function useGameVoice({
       setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
     }
     setPhaseBoth('listening');
+    answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.ttsLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
   const speakAnswer = useCallback(async () => {
     if (!shouldRunRef.current) return;
@@ -187,13 +238,12 @@ export function useGameVoice({
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.term : current.definition;
     const lang = languages.sttLang;
-    const voiceId = isReversed ? list.settings.voiceTermId : list.settings.voiceDefId;
-    const rate = list.settings.voiceRate;
-    const pitch = list.settings.voicePitch;
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
+    lastCommandRef.current = null;
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang, voiceId, rate, pitch);
+    const spoke = await ttsRef.current.speak(word, lang, isReversed ? list.settings.voiceTermId : list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -203,6 +253,8 @@ export function useGameVoice({
       setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
     }
     setPhaseBoth('listening');
+    answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
   }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
@@ -232,7 +284,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Correcto', languages.ttsLang);
+        await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -243,7 +295,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Incorrecto', languages.ttsLang);
+        await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -253,7 +305,32 @@ export function useGameVoice({
     } else if (feedback === 'none') {
       void speakCurrentWord();
     }
-  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang]);
+  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
+
+  useEffect(() => {
+    if (phaseRef.current !== 'listening') return;
+    if (sttRef.current.isListening) return;
+    if (answerHandledRef.current) return;
+    if (listeningFailedRef.current) return;
+
+    const timeout = setTimeout(() => {
+      if (phaseRef.current !== 'listening') return;
+      if (sttRef.current.isListening) return;
+      if (answerHandledRef.current) return;
+      if (listeningFailedRef.current) return;
+
+      listeningFailedRef.current = true;
+      const pending = transcriptRef.current.trim();
+      if (pending) {
+        onSubmitVoiceRef.current(pending);
+      } else {
+        setPhaseBoth('idle');
+        setError('No speech detected.');
+      }
+    }, LISTENING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [phase, setPhaseBoth]);
 
   const repeat = useCallback(() => {
     clearFeedbackTimer();
