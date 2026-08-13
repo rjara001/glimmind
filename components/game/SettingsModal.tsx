@@ -186,15 +186,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz</label>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {termLabel}</label>
                 <select
-                  value={draft.voiceId || ''}
-                  onChange={(e) => setDraft({ ...draft, voiceId: e.target.value || undefined })}
+                  value={draft.voiceTermId || ''}
+                  onChange={(e) => setDraft({ ...draft, voiceTermId: e.target.value || undefined })}
                   className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                  aria-label="Voz"
+                  aria-label={`Voz de ${termLabel}`}
                 >
                   <option value="">Auto (por idioma)</option>
-                  {buildVoiceOptions(voices, draft.voiceTermLang || draft.voiceDefLang || 'es').map((opt) => (
+                  {buildVoiceOptions(voices, draft.voiceTermLang).map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {defLabel}</label>
+                <select
+                  value={draft.voiceDefId || ''}
+                  onChange={(e) => setDraft({ ...draft, voiceDefId: e.target.value || undefined })}
+                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                  aria-label={`Voz de ${defLabel}`}
+                >
+                  <option value="">Auto (por idioma)</option>
+                  {buildVoiceOptions(voices, draft.voiceDefLang).map((opt) => (
                     <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
