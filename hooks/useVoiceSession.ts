@@ -75,15 +75,19 @@ export function useVoiceSession(list: AssociationList) {
     stt.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
+    const lang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
+    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
+    const rate = list.settings.voiceRate;
+    const pitch = list.settings.voicePitch;
 
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    await tts.speak(word, languages.ttsLang);
+    await tts.speak(word, lang || languages.ttsLang, voiceId, rate, pitch);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermLang, list.settings.voiceDefLang, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
 
   const handleAnswer = useCallback(
     (answer: string) => {

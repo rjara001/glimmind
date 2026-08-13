@@ -57,7 +57,7 @@ export function useSpeechSynthesis() {
   }, [supported]);
 
   const speak = useCallback(
-    (text: string, lang: string | null): Promise<SpeakResult> => {
+    (text: string, lang: string | null, voiceId?: string, rate?: number, pitch?: number): Promise<SpeakResult> => {
       return (async () => {
         if (!supported || !text) {
           return { ok: true, voiceName: null, voicesCount: 0 };
@@ -71,12 +71,24 @@ export function useSpeechSynthesis() {
             synth.cancel();
             synth.resume();
             const utterance = new SpeechSynthesisUtterance(text);
-            const voice = resolveVoiceForLang(lang, availableVoices);
+            let voice: SpeechSynthesisVoice | undefined;
+            if (voiceId) {
+              voice = availableVoices.find((v) => v.voiceURI === voiceId);
+            }
+            if (!voice) {
+              voice = resolveVoiceForLang(lang, availableVoices);
+            }
             if (voice) {
               utterance.voice = voice;
               utterance.lang = voice.lang;
             } else if (lang) {
               utterance.lang = lang;
+            }
+            if (typeof rate === 'number') {
+              utterance.rate = rate;
+            }
+            if (typeof pitch === 'number') {
+              utterance.pitch = pitch;
             }
             console.log(
               '[TTS] speak start lang=',
@@ -85,6 +97,10 @@ export function useSpeechSynthesis() {
               availableVoices.length,
               'voice=',
               voice?.name ?? '(none)',
+              'rate=',
+              typeof rate === 'number' ? rate : '(default)',
+              'pitch=',
+              typeof pitch === 'number' ? pitch : '(default)',
             );
 
             let settled = false;
@@ -117,8 +133,6 @@ export function useSpeechSynthesis() {
             utterance.addEventListener('error', onError);
             setIsSpeaking(true);
 
-            // Chromium drops an utterance when speak() follows cancel() synchronously.
-            // Defer the actual speak a tick so the flush takes effect.
             window.setTimeout(() => {
               synth.speak(utterance);
             }, SPEAK_AFTER_CANCEL_DELAY_MS);
