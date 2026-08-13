@@ -73,7 +73,10 @@ export function useSpeechSynthesis() {
             const utterance = new SpeechSynthesisUtterance(text);
             let voice: SpeechSynthesisVoice | undefined;
             if (voiceId) {
-              voice = availableVoices.find((v) => v.voiceURI === voiceId);
+              const candidate = availableVoices.find((v) => v.voiceURI === voiceId);
+              if (candidate && (!lang || candidate.lang.toLowerCase().startsWith(String(lang).toLowerCase()))) {
+                voice = candidate;
+              }
             }
             if (!voice) {
               voice = resolveVoiceForLang(lang, availableVoices);
@@ -137,7 +140,7 @@ export function useSpeechSynthesis() {
               synth.speak(utterance);
             }, SPEAK_AFTER_CANCEL_DELAY_MS);
 
-            const estimatedMs = Math.max(4000, Math.min(12000, text.split(/\s+/).length * 1000 + 1500));
+            const estimatedMs = Math.max(8000, Math.min(20000, text.split(/\s+/).length * 1200 + 2000));
             watchdogTimer = setTimeout(() => {
               console.log('[TTS] watchdog timeout, cancelling');
               synth.cancel();
