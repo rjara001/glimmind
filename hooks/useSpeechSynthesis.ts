@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { resolveVoiceForLang } from '../services/voice/voicePicker';
 
 const VOICE_CHANGED_TIMEOUT_MS = 2000;
-const WATCHDOG_RETRY_DELAY_MS = 150;
+const WATCHDOG_RETRY_DELAY_MS = 300;
 const SPEAK_AFTER_CANCEL_DELAY_MS = 50;
 
 export interface SpeakResult {
@@ -57,7 +57,7 @@ export function useSpeechSynthesis() {
   }, [supported]);
 
   const speak = useCallback(
-    (text: string, lang: string | null): Promise<SpeakResult> => {
+    (text: string, lang: string | null, voiceId?: string, rate?: number, pitch?: number): Promise<SpeakResult> => {
       return (async () => {
         if (!supported || !text) {
           return { ok: true, voiceName: null, voicesCount: 0 };
@@ -71,12 +71,24 @@ export function useSpeechSynthesis() {
             synth.cancel();
             synth.resume();
             const utterance = new SpeechSynthesisUtterance(text);
-            const voice = resolveVoiceForLang(lang, availableVoices);
+            let voice: SpeechSynthesisVoice | undefined;
+            if (voiceId) {
+              voice = availableVoices.find((v) => v.voiceURI === voiceId);
+            }
+            if (!voice) {
+              voice = resolveVoiceForLang(lang, availableVoices);
+            }
             if (voice) {
               utterance.voice = voice;
               utterance.lang = voice.lang;
             } else if (lang) {
               utterance.lang = lang;
+            }
+            if (typeof rate === 'number') {
+              utterance.rate = rate;
+            }
+            if (typeof pitch === 'number') {
+              utterance.pitch = pitch;
             }
             console.log(
               '[TTS] speak start lang=',
@@ -85,6 +97,10 @@ export function useSpeechSynthesis() {
               availableVoices.length,
               'voice=',
               voice?.name ?? '(none)',
+              'rate=',
+              typeof rate === 'number' ? rate : '(default)',
+              'pitch=',
+              typeof pitch === 'number' ? pitch : '(default)',
             );
 
             let settled = false;
@@ -123,7 +139,7 @@ export function useSpeechSynthesis() {
               synth.speak(utterance);
             }, SPEAK_AFTER_CANCEL_DELAY_MS);
 
-            const estimatedMs = Math.max(3000, Math.min(10000, text.split(/\s+/).length * 700));
+            const estimatedMs = Math.max(4000, Math.min(12000, text.split(/\s+/).length * 1000 + 1500));
             watchdogTimer = setTimeout(() => {
               console.log('[TTS] watchdog timeout, cancelling');
               synth.cancel();
