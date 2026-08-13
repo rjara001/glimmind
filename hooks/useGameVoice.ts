@@ -218,11 +218,7 @@ export function useGameVoice({
     const spoke = await ttsRef.current.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
-      const reason =
-        spoke.voicesCount === 0
-          ? 'El navegador no tiene voces instaladas.'
-          : `Se usó la voz "${spoke.voiceName ?? 'por defecto'}".`;
-      setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
+      console.warn('[Voice] TTS failed:', word, 'voice=', spoke.voiceName, 'voices=', spoke.voicesCount);
     }
     setPhaseBoth('listening');
     answerHandledRef.current = false;
@@ -246,11 +242,7 @@ export function useGameVoice({
     const spoke = await ttsRef.current.speak(word, lang, isReversed ? list.settings.voiceTermId : list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
-      const reason =
-        spoke.voicesCount === 0
-          ? 'El navegador no tiene voces instaladas.'
-          : `Se usó la voz "${spoke.voiceName ?? 'por defecto'}".`;
-      setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
+      console.warn('[Voice] TTS failed:', word, 'voice=', spoke.voiceName, 'voices=', spoke.voicesCount);
     }
     setPhaseBoth('listening');
     answerHandledRef.current = false;
@@ -284,8 +276,11 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
+        const spoke = await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
+        if (!spoke.ok) {
+          console.warn('[Voice] TTS feedback failed:', 'Correcto', 'voice=', spoke.voiceName);
+        }
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
           if (shouldRunRef.current) onAdvanceRef.current();
@@ -295,8 +290,11 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
+        const spoke = await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
+        if (!spoke.ok) {
+          console.warn('[Voice] TTS feedback failed:', 'Incorrecto', 'voice=', spoke.voiceName);
+        }
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
           if (shouldRunRef.current) void speakCurrentWord();
