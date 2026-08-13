@@ -42,6 +42,10 @@ export function useVoiceSession(list: AssociationList) {
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerHandledRef = useRef(false);
 
+  useEffect(() => {
+    gameRef.current = gameRef.current.updateList(list);
+  }, [list]);
+
   const setPhaseBoth = useCallback((next: VoicePhase) => {
     phaseRef.current = next;
     setPhase(next);
