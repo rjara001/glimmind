@@ -4,7 +4,7 @@ import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../services/voice/languages';
 import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
-import { matchVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
+import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
 
@@ -22,6 +22,7 @@ export interface UseGameVoiceOptions {
 }
 
 const FEEDBACK_DELAY_MS = 500;
+const LISTENING_TIMEOUT_MS = 2000;
 
 export function useGameVoice({
   list,
@@ -50,6 +51,9 @@ export function useGameVoice({
   const revealedRef = useRef(revealed);
   const feedbackRef = useRef(feedback);
   const answerHandledRef = useRef(false);
+  const listeningFailedRef = useRef(false);
+  const transcriptRef = useRef('');
+  const lastCommandRef = useRef<VoiceCommandId | null>(null);
 
   useEffect(() => {
     currentAssociationRef.current = currentAssociation;
@@ -79,6 +83,10 @@ export function useGameVoice({
     feedbackRef.current = feedback;
   }, [feedback]);
 
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
   const setPhaseBoth = useCallback((next: GameVoicePhase) => {
     phaseRef.current = next;
     setPhase(next);
@@ -105,8 +113,17 @@ export function useGameVoice({
         answerHandledRef.current = true;
         sttRef.current.stop();
         setTranscript(text);
+        transcriptRef.current = text;
         setPhaseBoth('evaluating');
         onSubmitVoiceRef.current(text);
+        return;
+      }
+
+      const exactCommand = matchExactVoiceCommand(text, commandsRef.current);
+      if (exactCommand) {
+        console.log('[STT] interim exact command matched:', exactCommand, 'text:', text);
+        lastCommandRef.current = exactCommand;
+        onCommandRef.current?.(exactCommand);
       }
     },
     onFinal: (text) => {
@@ -117,8 +134,16 @@ export function useGameVoice({
         return;
       }
       setTranscript(trimmed);
+      transcriptRef.current = trimmed;
+
       const matched = matchVoiceCommand(trimmed, commandsRef.current);
       if (matched) {
+        if (lastCommandRef.current === matched) {
+          console.log('[STT] final command already handled in interim → ignored:', matched);
+          return;
+        }
+        lastCommandRef.current = matched;
+        console.log('[STT] final command matched:', matched, 'text:', trimmed);
         if (matched === 'continue') {
           if (phaseRef.current === 'feedback') {
             clearFeedbackTimer();
@@ -187,6 +212,8 @@ export function useGameVoice({
     const word = isReversed ? current.definition : current.term;
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
+    lastCommandRef.current = null;
     setPhaseBoth('speaking');
     const spoke = await ttsRef.current.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
@@ -199,6 +226,7 @@ export function useGameVoice({
     }
     setPhaseBoth('listening');
     answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
   }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
@@ -212,6 +240,8 @@ export function useGameVoice({
     const lang = languages.sttLang;
     setError(null);
     setTranscript('');
+    transcriptRef.current = '';
+    lastCommandRef.current = null;
     setPhaseBoth('speaking');
     const spoke = await ttsRef.current.speak(word, lang, isReversed ? list.settings.voiceTermId : list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
@@ -224,6 +254,7 @@ export function useGameVoice({
     }
     setPhaseBoth('listening');
     answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
   }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
@@ -275,6 +306,31 @@ export function useGameVoice({
       void speakCurrentWord();
     }
   }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
+
+  useEffect(() => {
+    if (phaseRef.current !== 'listening') return;
+    if (sttRef.current.isListening) return;
+    if (answerHandledRef.current) return;
+    if (listeningFailedRef.current) return;
+
+    const timeout = setTimeout(() => {
+      if (phaseRef.current !== 'listening') return;
+      if (sttRef.current.isListening) return;
+      if (answerHandledRef.current) return;
+      if (listeningFailedRef.current) return;
+
+      listeningFailedRef.current = true;
+      const pending = transcriptRef.current.trim();
+      if (pending) {
+        onSubmitVoiceRef.current(pending);
+      } else {
+        setPhaseBoth('idle');
+        setError('No speech detected.');
+      }
+    }, LISTENING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [phase, setPhaseBoth]);
 
   const repeat = useCallback(() => {
     clearFeedbackTimer();
