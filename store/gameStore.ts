@@ -184,6 +184,7 @@ function mergeSettings(local: AssociationList['settings'], cloud: AssociationLis
     voiceEnabled: cloud.voiceEnabled ?? local.voiceEnabled,
     voiceTermLang: cloud.voiceTermLang ?? local.voiceTermLang,
     voiceDefLang: cloud.voiceDefLang ?? local.voiceDefLang,
+    voiceId: cloud.voiceId ?? local.voiceId,
     voiceCommands: cloud.voiceCommands ?? local.voiceCommands,
   };
 }

@@ -5,6 +5,7 @@ import { useGameStore } from '../store/gameStore';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../services/voice/languages';
+import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
 import { createActivityEvent } from '../utils/activity';
 
 export interface VoiceSessionCounts {
@@ -39,6 +40,7 @@ export function useVoiceSession(list: AssociationList) {
   const shouldRunRef = useRef(false);
   const phaseRef = useRef<VoicePhase>('idle');
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answerHandledRef = useRef(false);
 
   const setPhaseBoth = useCallback((next: VoicePhase) => {
     phaseRef.current = next;
@@ -47,9 +49,35 @@ export function useVoiceSession(list: AssociationList) {
 
   const tts = useSpeechSynthesis();
   const stt = useSpeechRecognition({
+    onInterim: (text) => {
+      if (answerHandledRef.current) return;
+      const current = gameRef.current.currentAssociation;
+      if (!current) return;
+      if (phaseRef.current !== 'listening_for_answer') return;
+
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const expected = isReversed ? current.definition : current.term;
+
+      console.log('[STT] expected="' + expected + '"');
+      console.log('[STT] interim="' + text + '"');
+      console.log('[STT] exact match=' + isExactExpectedAnswer(text, expected));
+
+      if (isExactExpectedAnswer(text, expected)) {
+        console.log('[STT] EARLY MATCH → accepting answer');
+        answerHandledRef.current = true;
+        stt.stop();
+        setTranscript(text);
+        setPhaseBoth('evaluating');
+        void handleAnswer(text);
+      }
+    },
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (answerHandledRef.current) {
+        console.log('[STT] answer already handled → ignored final:', trimmed);
+        return;
+      }
       setTranscript(trimmed);
       if (phaseRef.current === 'listening_for_answer') {
         setPhaseBoth('evaluating');
@@ -79,9 +107,10 @@ export function useVoiceSession(list: AssociationList) {
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    await tts.speak(word, languages.ttsLang);
+    await tts.speak(word, languages.ttsLang, list.settings.voiceId);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
+    answerHandledRef.current = false;
     stt.start(languages.sttLang);
   }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
 

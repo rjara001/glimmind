@@ -57,7 +57,7 @@ export function useSpeechSynthesis() {
   }, [supported]);
 
   const speak = useCallback(
-    (text: string, lang: string | null): Promise<SpeakResult> => {
+    (text: string, lang: string | null, voiceId?: string): Promise<SpeakResult> => {
       return (async () => {
         if (!supported || !text) {
           return { ok: true, voiceName: null, voicesCount: 0 };
@@ -71,7 +71,13 @@ export function useSpeechSynthesis() {
             synth.cancel();
             synth.resume();
             const utterance = new SpeechSynthesisUtterance(text);
-            const voice = resolveVoiceForLang(lang, availableVoices);
+            let voice: SpeechSynthesisVoice | undefined;
+            if (voiceId) {
+              voice = availableVoices.find((v) => v.voiceURI === voiceId);
+            }
+            if (!voice) {
+              voice = resolveVoiceForLang(lang, availableVoices);
+            }
             if (voice) {
               utterance.voice = voice;
               utterance.lang = voice.lang;

@@ -49,26 +49,33 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
 
 export interface UseSpeechRecognitionOptions {
   onFinal: (transcript: string) => void;
+  onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
   onTransientMessage?: (message: string) => void;
 }
 
-export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: UseSpeechRecognitionOptions) {
+export function useSpeechRecognition({ onFinal, onInterim, onError, onTransientMessage }: UseSpeechRecognitionOptions) {
   const supported = getRecognitionConstructor() !== null;
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const shouldRunRef = useRef(false);
+  const intentionalStopRef = useRef(false);
   const langRef = useRef<string | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onFinalRef = useRef(onFinal);
+  const onInterimRef = useRef(onInterim);
   const onErrorRef = useRef(onError);
   const onTransientRef = useRef(onTransientMessage);
 
   useEffect(() => {
     onFinalRef.current = onFinal;
   }, [onFinal]);
+
+  useEffect(() => {
+    onInterimRef.current = onInterim;
+  }, [onInterim]);
 
   useEffect(() => {
     onErrorRef.current = onError;
@@ -141,10 +148,14 @@ export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: U
       };
 
       instance.onend = () => {
-        if (!shouldRunRef.current || recognitionRef.current !== instance) {
+        const wasIntentionalStop = intentionalStopRef.current;
+        intentionalStopRef.current = false;
+        console.log('[STT] onend shouldRun=' + shouldRunRef.current + ' intentionalStop=' + wasIntentionalStop);
+        if (!shouldRunRef.current || wasIntentionalStop || recognitionRef.current !== instance) {
           setIsListening(false);
           return;
         }
+        console.log('[STT] auto restart scheduled');
         restartTimerRef.current = setTimeout(() => {
           restartTimerRef.current = null;
           if (!shouldRunRef.current || recognitionRef.current !== instance) return;
@@ -169,9 +180,15 @@ export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: U
             interim += transcript;
           }
         }
+        if (interim) {
+          onInterimRef.current?.(interim);
+        }
+        console.log('[STT] interim="' + interim + '"');
         setInterimTranscript(interim);
         if (final) {
-          onFinalRef.current(final.trim());
+          const trimmed = final.trim();
+          console.log('[STT] final="' + trimmed + '"');
+          onFinalRef.current(trimmed);
         }
       };
 
@@ -196,6 +213,8 @@ export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: U
   );
 
   const stop = useCallback(() => {
+    console.log('[STT] stop reason=intentional');
+    intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
     setIsListening(false);
@@ -207,6 +226,8 @@ export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: U
   }, [clearRestartTimer]);
 
   const abort = useCallback(() => {
+    console.log('[STT] stop reason=abort');
+    intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
     setIsListening(false);
@@ -220,6 +241,7 @@ export function useSpeechRecognition({ onFinal, onError, onTransientMessage }: U
   useEffect(() => {
     return () => {
       shouldRunRef.current = false;
+      intentionalStopRef.current = true;
       clearRestartTimer();
       try {
         recognitionRef.current?.abort();

@@ -3,6 +3,7 @@ import { Association, AssociationList, VoiceCommandId, VoiceCommandsConfig } fro
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../services/voice/languages';
+import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
 import { matchVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
@@ -48,6 +49,7 @@ export function useGameVoice({
   const onCommandRef = useRef(onCommand);
   const revealedRef = useRef(revealed);
   const feedbackRef = useRef(feedback);
+  const answerHandledRef = useRef(false);
 
   useEffect(() => {
     currentAssociationRef.current = currentAssociation;
@@ -84,9 +86,36 @@ export function useGameVoice({
 
   const tts = useSpeechSynthesis();
   const stt = useSpeechRecognition({
+    onInterim: (text) => {
+      if (answerHandledRef.current) return;
+      const current = currentAssociationRef.current;
+      if (!current) return;
+      if (phaseRef.current !== 'listening') return;
+      if (revealedRef.current) return;
+
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const expected = isReversed ? current.definition : current.term;
+
+      console.log('[STT] expected="' + expected + '"');
+      console.log('[STT] interim="' + text + '"');
+      console.log('[STT] exact match=' + isExactExpectedAnswer(text, expected));
+
+      if (isExactExpectedAnswer(text, expected)) {
+        console.log('[STT] EARLY MATCH → accepting answer');
+        answerHandledRef.current = true;
+        sttRef.current.stop();
+        setTranscript(text);
+        setPhaseBoth('evaluating');
+        onSubmitVoiceRef.current(text);
+      }
+    },
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (answerHandledRef.current) {
+        console.log('[STT] answer already handled → ignored final:', trimmed);
+        return;
+      }
       setTranscript(trimmed);
       const matched = matchVoiceCommand(trimmed, commandsRef.current);
       if (matched) {
@@ -162,7 +191,7 @@ export function useGameVoice({
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, languages.ttsLang);
+    const spoke = await ttsRef.current.speak(word, languages.ttsLang, list.settings.voiceId);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -172,6 +201,7 @@ export function useGameVoice({
       setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
     }
     setPhaseBoth('listening');
+    answerHandledRef.current = false;
     sttRef.current.start(languages.sttLang);
   }, [list.settings.flipOrder, languages.sttLang, setPhaseBoth]);
 
@@ -186,7 +216,7 @@ export function useGameVoice({
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang);
+    const spoke = await ttsRef.current.speak(word, lang, list.settings.voiceId);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -196,6 +226,7 @@ export function useGameVoice({
       setError(`No se pudo reproducir el audio de voz. ${reason} Revisa el volumen del sistema.`);
     }
     setPhaseBoth('listening');
+    answerHandledRef.current = false;
     sttRef.current.start(languages.sttLang);
   }, [list.settings.flipOrder, languages.sttLang, setPhaseBoth]);
 
@@ -225,7 +256,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Correcto', languages.ttsLang);
+        await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceId);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -236,7 +267,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Incorrecto', languages.ttsLang);
+        await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceId);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
