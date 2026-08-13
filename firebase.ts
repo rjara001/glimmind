@@ -12,14 +12,15 @@ import {
   collection, 
   query, 
   where, 
-  onSnapshot, 
   doc, 
   setDoc, 
   deleteDoc, 
   updateDoc, 
   getDocs, 
+  getDoc,
   connectFirestoreEmulator 
 } from 'firebase/firestore';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // En Vite, las variables de entorno se acceden vía import.meta.env
 // Usamos un cast a any para evitar errores de compilación si los tipos de Vite no están presentes en el entorno global
@@ -47,22 +48,38 @@ const firebaseConfig = isDemo ? {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app, 'us-central1');
 const googleProvider = new GoogleAuthProvider();
 
-// Solo conectar emuladores si estamos en local y NO tenemos llaves reales
+// Connect emulators only in local dev (demo mode without keys, or explicit VITE_USE_EMULATORS=true)
+const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
+const useEmulatorsFlag = env.VITE_USE_EMULATORS === 'true';
 const isLocalhost = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-if (isLocalhost && isDemo) {
-  if (!(globalThis as any)._fb_emulators_connected) {
-    try {
-      connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-      connectFirestoreEmulator(db, "localhost", 8080);
-      (globalThis as any)._fb_emulators_connected = true;
-      console.log("🔥 Modo local: Emuladores conectados");
-    } catch (e) {
-      console.warn("Aviso emuladores:", e);
-    }
+export const isUsingEmulators = isLocalhost && (isDemo || useEmulatorsFlag);
+
+interface EmulatorConnectionFlag {
+  _fb_emulators_connected?: boolean;
+}
+
+function hasEmulatorsConnected(): boolean {
+  return (globalThis as unknown as EmulatorConnectionFlag)._fb_emulators_connected === true;
+}
+
+function markEmulatorsConnected(): void {
+  (globalThis as unknown as EmulatorConnectionFlag)._fb_emulators_connected = true;
+}
+
+if (isUsingEmulators && !hasEmulatorsConnected()) {
+  try {
+    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "localhost", 8080);
+    connectFunctionsEmulator(functions, "localhost", 5001);
+    markEmulatorsConnected();
+    console.log("🔥 Modo local: Emuladores conectados");
+  } catch (e) {
+    console.warn("Aviso emuladores:", e);
   }
 }
 
@@ -71,16 +88,17 @@ export const isConfigured = !isDemo;
 export { 
   auth, 
   db, 
+  functions,
   googleProvider, 
   signInWithPopup, 
   onAuthStateChanged,
   collection,
   query,
   where,
-  onSnapshot,
   doc,
   setDoc,
   deleteDoc,
   updateDoc,
-  getDocs
+  getDocs,
+  getDoc
 };

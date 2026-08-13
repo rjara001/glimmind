@@ -1,86 +1,29 @@
+import { Association } from '../types';
+import { MIN_GROUP_SIZE, MIN_GROUP_SIZE_ABSOLUTE, MIN_GROUP_SIZE_RATIO } from '../constants/limits';
+import { semanticGrouping } from './grouping/semanticGrouping';
+import { tfidfGrouping } from './grouping/tfidfGrouping';
+import { GroupSuggestion } from './grouping/clustering';
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { Association } from "../types";
+export type { GroupSuggestion as AIGroupSuggestion };
 
-/**
- * Servicio de IA para Glimmind.
- * Gestiona la comunicación con Gemini siguiendo las directrices oficiales.
- */
+const computeMinGroupSize = (count: number): number =>
+  Math.max(MIN_GROUP_SIZE_ABSOLUTE, Math.round(MIN_GROUP_SIZE_RATIO * count));
+
 export const aiService = {
-  groupAssociations: async (associations: Association[], concept: string) => {
-    let apiKey: string | undefined;
-
-    // DIAGNÓSTICO PROFUNDO DE ENTORNO
-    console.log("--- 🔍 INVESTIGACIÓN DE ENTORNO ---");
-    try {
-      console.log("1. ¿Existe el objeto 'process'?:", typeof process !== 'undefined');
-      if (typeof process !== 'undefined') {
-        console.log("2. ¿Existe 'process.env'?:", !!process.env);
-        apiKey = process.env.API_KEY;
-        console.log("3. ¿Valor de API_KEY detectado?:", !!apiKey);
-        console.log("4. Longitud de la cadena:", apiKey?.length || 0);
-      }
-    } catch (e) {
-      console.error("❌ Error crítico accediendo a variables de entorno:", e);
-    }
-    console.log("----------------------------------");
-
-    if (!apiKey || apiKey.length < 5) {
-      throw new Error(
-        "No se pudo detectar la API_KEY en process.env. " +
-        "Si estás en local, verifica tu configuración de compilación (Vite/Webpack/etc) " +
-        "para asegurar que process.env.API_KEY esté disponible en el navegador."
-      );
+  groupAssociations: async (associations: Association[], _concept: string): Promise<GroupSuggestion[]> => {
+    const activeAssociations = associations.filter((a) => !a.isArchived);
+    if (activeAssociations.length < MIN_GROUP_SIZE) {
+      return [];
     }
 
-    // Se crea la instancia justo antes de la llamada para asegurar frescura de la Key
-    const ai = new GoogleGenAI({ apiKey });
+    const items = activeAssociations.map((a) => `${a.term} ${a.definition}`.trim());
+    const minGroupSize = computeMinGroupSize(activeAssociations.length);
 
-    const dataToProcess = associations
-      .map((a, index) => `${index}|${a.term}|${a.definition}`)
-      .join('\n');
-
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept}" y agrúpalas en categorías lógicas para facilitar su memorización.
-        
-        DATOS DE ENTRADA:
-        ${dataToProcess}
-
-        REQUISITOS:
-        - Devuelve un array JSON.
-        - Estructura: [{"groupName": "nombre", "indices": [0, 1, ...]}]`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                groupName: { type: Type.STRING },
-                indices: {
-                  type: Type.ARRAY,
-                  items: { type: Type.INTEGER }
-                }
-              },
-              required: ["groupName", "indices"]
-            }
-          }
-        }
-      });
-
-      // Acceso mediante la propiedad .text (no método) según las guías
-      const jsonStr = response.text;
-      
-      if (!jsonStr) {
-        throw new Error("Respuesta vacía de la IA.");
-      }
-      
-      return JSON.parse(jsonStr.trim());
-    } catch (error: any) {
-      console.error("❌ Fallo en la llamada a Gemini:", error);
-      throw new Error(error.message || "Error al procesar la lista con IA.");
+    const semanticSuggestions = await semanticGrouping(items, minGroupSize);
+    if (semanticSuggestions) {
+      return semanticSuggestions;
     }
+
+    return tfidfGrouping(items, minGroupSize);
   }
 };

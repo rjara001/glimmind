@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { auth, googleProvider, signInWithPopup, isConfigured } from '../firebase';
 
 interface AuthProps {
@@ -7,15 +7,27 @@ interface AuthProps {
 }
 
 export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   const handleGoogleLogin = async () => {
     if (!isConfigured) {
       alert("Firebase no está configurado correctamente.");
       return;
     }
+    if (isLoggingIn) return;
+    
+    setIsLoggingIn(true);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore COOP error - it's a known Google OAuth issue that doesn't affect login
+      // The login actually succeeds, onAuthStateChanged will handle the state change
+      if (error?.message?.includes('Cross-Origin-Opener-Policy')) {
+        console.log('Login popup closed (COOP), waiting for auth state...');
+        return;
+      }
       console.error("Error logging in:", error);
+      setIsLoggingIn(false);
     }
   };
 

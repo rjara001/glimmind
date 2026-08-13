@@ -1,53 +1,150 @@
 
-import React, { useState } from 'react';
-import { AssociationList, Association, AssociationStatus } from '../types';
+import React, { useState, useMemo, useRef } from 'react';
+import { AssociationList, Association } from '../types';
+import { flattenAssociations } from '../utils/flattenAssociations';
+import { computeStateBreakdown } from '../utils/progress';
+import { useGameStore } from '../store/gameStore';
+import { GoalWidget } from './GoalWidget';
+import { BigListCard } from './BigListCard';
+import { computeQuotaStatus, countCards } from '../utils/quota';
+import { parseCsvPairs, isHeaderPair } from '../utils/csv';
+import { useToast } from './Toast';
+
+const BIG_LIST_THRESHOLD = 200;
 
 interface DashboardProps {
   lists: AssociationList[];
+  lastPlayedId?: string;
   onCreate: (name: string, concept: string, initialAssociations: Association[]) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete, onEdit, onPlay }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onDelete, onEdit, onPlay }) => {
+  const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newConcept, setNewConcept] = useState('');
   const [bulkData, setBulkData] = useState('');
   const [showBulk, setShowBulk] = useState(false);
+  const [importTab, setImportTab] = useState<'paste' | 'upload'>('paste');
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const progress = useGameStore(state => state.progress);
+  const setGoalTarget = useGameStore(state => state.setGoalTarget);
+  const quota = useGameStore(state => state.quota);
+  const isPremium = quota?.tier === 'premium';
+
+  const quotaStatus = useMemo(() => {
+    if (!quota) return null;
+    return computeQuotaStatus(countCards(lists), quota.cardQuota);
+  }, [lists, quota]);
+
+  const stats = useMemo(() => {
+    let totalWords = 0;
+    let totalLearned = 0;
+    lists.forEach(list => {
+      const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
+      totalWords += activeAssociations.length;
+      totalLearned += activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+    });
+    return {
+      totalWords,
+      totalLearned,
+      percentage: totalWords > 0 ? Math.round((totalLearned / totalWords) * 100) : 0
+    };
+  }, [lists]);
+
+  const recentLists = useMemo(() => {
+    return [...lists].sort((a, b) => {
+      if (!a.updatedAt || !b.updatedAt) return 0;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }).slice(0, 3);
+  }, [lists]);
+
+  const currentList = lastPlayedId ? lists.find(l => l.id === lastPlayedId) : null;
+
+  const bigLists = useMemo(() => {
+    return lists.filter(list =>
+      (list.associations || []).filter((a: any) => !a.isArchived).length > BIG_LIST_THRESHOLD
+    );
+  }, [lists]);
+
   const parseBulkData = (text: string): Association[] => {
-    if (!text.trim()) return [];
-    
-    return text.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        // Soporta tab, punto y coma o coma
-        const parts = line.split(/[\t;]|,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        const term = parts[0]?.replace(/^"|"$/g, '').trim() || '';
-        const definition = parts[1]?.replace(/^"|"$/g, '').trim() || '';
-        
-        return {
-          id: crypto.randomUUID(),
-          term,
-          definition,
-          status: AssociationStatus.DESCONOCIDA
-        };
-      })
-      .filter(a => a.term || a.definition);
+    const pairs = parseCsvPairs(text);
+    const associations: Association[] = pairs.map(pair => ({
+      id: crypto.randomUUID(),
+      term: pair.term,
+      definition: pair.definition,
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+      isArchived: false,
+    }));
+    return flattenAssociations(associations);
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFileName(file.name);
+    setIsReadingFile(true);
+    try {
+      const content = await file.text();
+      const pairs = parseCsvPairs(content);
+      const conceptParts = newConcept.split('/');
+      const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], conceptParts[0] || '', conceptParts[1] || '');
+      const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
+
+      if (dataPairs.length === 0) {
+        alert('El archivo no contiene tarjetas válidas.');
+        return;
+      }
+
+      const associations: Association[] = flattenAssociations(dataPairs.map(pair => ({
+        id: crypto.randomUUID(),
+        term: pair.term,
+        definition: pair.definition,
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      })));
+
+      setFileAssociations(associations);
+      showToast(`Se importaron ${associations.length} tarjetas de "${file.name}"`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
+      alert(`No se pudo importar el archivo: ${message}`);
+    } finally {
+      setIsReadingFile(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const resetBulkInputs = () => {
+    setBulkData('');
+    setFileAssociations([]);
+    setSelectedFileName(null);
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newName && newConcept) {
-      const initialAssocs = parseBulkData(bulkData);
+      const initialAssocs = [...parseBulkData(bulkData), ...fileAssociations];
+      console.log('[Dashboard][handleCreate] name=', newName, 'concept=', newConcept, 'initialAssocs=', initialAssocs.length);
       onCreate(newName, newConcept, initialAssocs);
       setNewName('');
       setNewConcept('');
-      setBulkData('');
+      resetBulkInputs();
       setIsCreating(false);
       setShowBulk(false);
     }
@@ -58,16 +155,115 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
     list.concept.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [continuePlay, setContinuePlay] = useState(false);
+
+  useMemo(() => {
+    if (lastPlayedId) setContinuePlay(true);
+  }, [lastPlayedId]);
+
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 shadow-lg">
+        <h2 className="text-2xl font-bold text-white mb-4">Tu Progreso</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Total Palabras</p>
+            <p className="text-3xl font-bold text-white">{stats.totalWords}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Aprendidas</p>
+            <p className="text-3xl font-bold text-white">{stats.totalLearned}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Por Aprender</p>
+            <p className="text-3xl font-bold text-white">{stats.totalWords - stats.totalLearned}</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
+            <p className="text-white/80 text-sm">Completado</p>
+            <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
+          </div>
+        </div>
+        <div className="mt-4 h-3 bg-white/20 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-white rounded-full transition-all duration-500"
+            style={{ width: `${stats.percentage}%` }}
+          />
+        </div>
+      </div>
+
+      {progress && (
+        <div className="mb-8">
+          <GoalWidget progress={progress} onSetTarget={setGoalTarget} />
+        </div>
+      )}
+
+      {quotaStatus && (
+        <div className={`mb-8 rounded-2xl border p-4 ${quotaStatus.state === 'blocked'
+          ? 'bg-rose-50 border-rose-200'
+          : quotaStatus.state === 'warning'
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-slate-50 border-slate-200'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className={`text-sm font-black uppercase tracking-wider ${quotaStatus.state === 'blocked'
+              ? 'text-rose-700'
+              : quotaStatus.state === 'warning'
+                ? 'text-amber-700'
+                : 'text-slate-600'}`}>
+              Tarjetas: {quotaStatus.used} / {quotaStatus.quota}
+            </p>
+            {quotaStatus.state === 'blocked' && (
+              <p className="text-sm font-medium text-rose-700">
+                Llegaste a tu límite de {quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.
+              </p>
+            )}
+            {quotaStatus.state === 'warning' && (
+              <p className="text-sm font-medium text-amber-700">
+                Te quedan {quotaStatus.remaining} tarjetas de tu límite de {quotaStatus.quota}.
+              </p>
+            )}
+          </div>
+          <div className="mt-3 h-2 bg-white rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${quotaStatus.state === 'blocked'
+                ? 'bg-rose-500'
+                : quotaStatus.state === 'warning'
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(100, quotaStatus.percentage)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {lastPlayedId && continuePlay && currentList && (
+        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-amber-700 font-medium">Continuar última sesión</p>
+            <p className="text-lg font-bold text-gray-900">{currentList.name}</p>
+          </div>
+          <button 
+            onClick={() => onPlay(lastPlayedId)}
+            className="bg-amber-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-amber-600 transition"
+          >
+            Continuar
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Tus Listas de Estudio</h2>
           <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
         </div>
         <button 
-          onClick={() => setIsCreating(true)}
-          className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
+          onClick={() => {
+            const emptyName = 'Sin nombre';
+            const emptyConcept = 'Valor 1 / Valor 2';
+            onCreate(emptyName, emptyConcept, []);
+          }}
+          disabled={quotaStatus?.state === 'blocked' && !isPremium}
+          title={quotaStatus?.state === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.quota} tarjetas` : undefined}
+          className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -76,7 +272,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
         </button>
       </div>
 
-      {/* Buscador de Listas */}
+      {recentLists.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas Recientes</h3>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {recentLists.map(list => {
+              const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
+              const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+              return (
+                <button
+                  key={list.id}
+                  onClick={() => onPlay(list.id)}
+                  className="flex-shrink-0 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition text-left min-w-[200px]"
+                >
+                  <p className="font-bold text-gray-900 truncate">{list.name}</p>
+                  <p className="text-sm text-gray-500">{learnedCount}/{activeAssociations.length} aprendidas</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {bigLists.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas en digestión</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {bigLists.map(list => {
+              const active = (list.associations || []).filter((a: any) => !a.isArchived);
+              const breakdown = computeStateBreakdown(active);
+              return (
+                <BigListCard
+                  key={list.id}
+                  list={list}
+                  breakdown={breakdown}
+                  milestones={progress?.milestones[list.id] || []}
+                  onPlay={onPlay}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,13 +371,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
               
               {showBulk && (
                 <div className="animate-in fade-in zoom-in-95 duration-200">
-                  <p className="text-xs text-gray-400 mb-2">Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".</p>
-                  <textarea 
-                    value={bulkData}
-                    onChange={(e) => setBulkData(e.target.value)}
-                    placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
-                    className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
-                  />
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setImportTab('paste')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'paste' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
+                    >
+                      Pegar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImportTab('upload')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'upload' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
+                    >
+                      Subir archivo
+                    </button>
+                  </div>
+                  {importTab === 'paste' && (
+                    <>
+                      <p className="text-xs text-gray-400 mb-2">Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".</p>
+                      <textarea 
+                        value={bulkData}
+                        onChange={(e) => setBulkData(e.target.value)}
+                        placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
+                        className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
+                      />
+                    </>
+                  )}
+                  {importTab === 'upload' && (
+                    <div className="flex flex-col items-center gap-2 py-3">
+                      <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isReadingFile}
+                        className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-wait"
+                      >
+                        {isReadingFile ? 'Leyendo archivo...' : 'Elegir archivo CSV'}
+                      </button>
+                      {selectedFileName && <p className="text-xs font-semibold text-gray-600">Archivo: {selectedFileName}</p>}
+                      {fileAssociations.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          <p className="text-xs font-semibold text-emerald-600">{fileAssociations.length} tarjetas listas para crear</p>
+                          <button type="button" onClick={() => { setFileAssociations([]); setSelectedFileName(null); }} className="text-xs text-gray-500 hover:text-red-500 underline transition">Quitar</button>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400">Formato .csv con "Término, Definición" por línea. El encabezado se detecta y se ignora automáticamente.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -145,7 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button 
                 type="button"
-                onClick={() => { setIsCreating(false); setBulkData(''); setShowBulk(false); }}
+                onClick={() => { setIsCreating(false); resetBulkInputs(); setShowBulk(false); }}
                 className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition"
               >
                 Cancelar
@@ -161,70 +442,69 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, onCreate, onDelete,
         </div>
       )}
 
-      {lists.length === 0 ? (
+      {filteredLists.length === 0 && !isCreating ? (
         <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
           <h3 className="text-xl font-semibold text-gray-900">No hay listas aún</h3>
           <p className="text-gray-500 mt-2">Crea tu primera lista para empezar a estudiar.</p>
         </div>
-      ) : filteredLists.length === 0 ? (
+      ) : filteredLists.length === 0 && searchTerm ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
           <h3 className="text-lg font-semibold text-gray-900">No se encontraron resultados</h3>
           <p className="text-gray-500 mt-1">Prueba con términos diferentes.</p>
-          <button 
-            onClick={() => setSearchTerm('')}
-            className="mt-4 text-indigo-600 font-bold hover:underline"
-          >
-            Ver todas las listas
-          </button>
+          <button onClick={() => setSearchTerm('')} className="mt-4 text-indigo-600 font-bold hover:underline">Ver todas las listas</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLists.map(list => (
-            <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-              <div className="flex justify-between items-start mb-4">
-                <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
-                  {list.concept}
-                </span>
-                <button 
-                  onClick={() => onDelete(list.id)}
-                  className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+          {filteredLists.map(list => {
+            const associations = list.associations || [];
+            const activeAssociations = associations.filter((a: any) => !a.isArchived);
+            const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+            const pendingCount = activeAssociations.filter((a: any) => a.status === 'pending').length;
+            const cycle4Count = activeAssociations.filter((a: any) => a.currentCycle === 4).length;
+            const canPlay = activeAssociations.length > 0;
+
+            return (
+              <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
+                    {list.concept}
+                  </span>
+                  <button onClick={() => onDelete(list.id)} className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
+                <p className="text-gray-500 text-sm mb-2">
+                  {activeAssociations.length} pairs
+                </p>
+                <div className="flex gap-2 text-xs mb-4">
+                  {learnedCount > 0 && (
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">
+                      {learnedCount} learned
+                    </span>
+                  )}
+                  {cycle4Count > 0 && (
+                    <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded font-medium">
+                      {cycle4Count} in cycle 4
+                    </span>
+                  )}
+                  {pendingCount > 0 && (
+                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded font-medium">
+                      {pendingCount} pending
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
+                    Study
+                  </button>
+                  <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                    Edit
+                  </button>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
-              <p className="text-gray-500 text-sm mb-6">
-                {list.associations.length} pares • {list.associations.filter(a => a.status === 'APRENDIDA').length} aprendidas
-              </p>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => onPlay(list.id)}
-                  disabled={list.associations.length === 0}
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-                >
-                  Estudiar
-                </button>
-                <button 
-                  onClick={() => onEdit(list.id)}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
-                >
-                  Editar
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

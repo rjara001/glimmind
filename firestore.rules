@@ -7,5 +7,18 @@ service cloud.firestore {
       // En producción deberías restringir a: allow read, write: if request.auth != null;
       allow read, write: if true;
     }
+
+    // Activity history, session summaries and global settings are always
+    // scoped to their owner. These rules take effect once the catch-all above
+    // is tightened for production.
+    match /users/{userId}/settings/main {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/activity/{eventId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/sessions/{sessionId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

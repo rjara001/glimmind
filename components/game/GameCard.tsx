@@ -1,0 +1,360 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { maskHint, getAutoHintMode } from '../../utils/maskHint';
+import { GameVoicePhase } from '../../hooks/useGameVoice';
+import { getLanguageFlag } from '../../services/voice/languageFlags';
+
+interface GameCardProps {
+  displayTerm: string | undefined;
+  displayDef: string | undefined;
+  labelTerm: string;
+  labelDef: string;
+  revealed: boolean;
+  isPracticeMode: boolean;
+  userInput: string;
+  onUserInput: (value: string) => void;
+  feedback: 'none' | 'correct' | 'incorrect';
+  similarity: number | null;
+  lastAttempt: string;
+  cycleColorName?: string;
+  showHints?: boolean;
+  currentCycle: number;
+  associationId?: string;
+  onEditCard?: (term: string, definition: string) => void;
+  isEditing?: boolean;
+  onStartEdit?: () => void;
+  onCancelEdit?: () => void;
+  attemptCount?: number;
+  inputRef?: React.Ref<HTMLInputElement>;
+  voiceMode?: boolean;
+  voicePhase?: GameVoicePhase;
+  voiceTranscript?: string;
+  voiceInterim?: string;
+  isVoiceListening?: boolean;
+  voiceError?: string | null;
+  voiceEnabled?: boolean;
+  voiceTermLang?: string;
+  voiceDefLang?: string;
+  onSpeakAnswer?: (text: string, lang: string) => void;
+  detectedVoiceCommand?: string;
+}
+
+export const GameCard: React.FC<GameCardProps> = ({ 
+  displayTerm, 
+  displayDef, 
+  labelTerm, 
+  labelDef, 
+  revealed, 
+  isPracticeMode, 
+  userInput, 
+  onUserInput, 
+  feedback,
+  similarity,
+  lastAttempt,
+  cycleColorName = 'indigo',
+  showHints = true,
+  currentCycle = 1,
+  associationId,
+  onEditCard,
+  isEditing = false,
+  onStartEdit,
+  onCancelEdit,
+  attemptCount,
+  inputRef,
+  voiceMode,
+  voicePhase,
+  voiceTranscript,
+  voiceInterim,
+  isVoiceListening,
+  voiceError,
+  voiceEnabled,
+  voiceTermLang,
+  voiceDefLang,
+  onSpeakAnswer,
+  detectedVoiceCommand,
+}) => {
+  const editTermRef = useRef<HTMLInputElement>(null);
+  const editDefRef = useRef<HTMLTextAreaElement>(null);
+  const [editTerm, setEditTerm] = useState(displayTerm || '');
+  const [editDef, setEditDef] = useState(displayDef || '');
+  const inputRefInternal = useRef<HTMLInputElement>(null);
+  const resolvedInputRef = inputRef || inputRefInternal;
+  const [isShaking, setIsShaking] = useState(false);
+  const [showCommandToast, setShowCommandToast] = useState(false);
+  const [commandToastText, setCommandToastText] = useState('');
+
+  useEffect(() => {
+    setEditTerm(displayTerm || '');
+    setEditDef(displayDef || '');
+  }, [displayTerm, displayDef]);
+
+  useEffect(() => {
+    if (feedback === 'incorrect') {
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
+
+  useEffect(() => {
+    if (detectedVoiceCommand) {
+      setCommandToastText(`Comando detectado: ${detectedVoiceCommand}`);
+      setShowCommandToast(true);
+      const timer = setTimeout(() => setShowCommandToast(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [detectedVoiceCommand]);
+
+  useEffect(() => {
+    if (!isPracticeMode && !revealed && feedback === 'none') {
+      requestAnimationFrame(() => {
+        resolvedInputRef.current?.focus();
+      });
+    }
+  }, [isPracticeMode, revealed, feedback]);
+
+  useEffect(() => {
+    if (isEditing) {
+      requestAnimationFrame(() => {
+        editTermRef.current?.focus();
+        editTermRef.current?.select();
+      });
+    }
+  }, [isEditing]);
+
+  const cycleStyles: Record<string, { bg: string, border: string, text: string, decoration: string }> = {
+    sky: { bg: 'bg-sky-50', border: 'border-sky-500/20', text: 'text-sky-500', decoration: 'bg-sky-600/10' },
+    yellow: { bg: 'bg-yellow-50', border: 'border-yellow-500/20', text: 'text-yellow-600', decoration: 'bg-yellow-600/10' },
+    rose: { bg: 'bg-rose-50', border: 'border-rose-500/20', text: 'text-rose-500', decoration: 'bg-rose-600/10' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-500/20', text: 'text-emerald-600', decoration: 'bg-emerald-600/10' },
+    slate: { bg: 'bg-slate-50', border: 'border-slate-500/20', text: 'text-slate-500', decoration: 'bg-slate-600/10' },
+    indigo: { bg: 'bg-indigo-50', border: 'border-indigo-500/20', text: 'text-indigo-400', decoration: 'bg-indigo-600/10' },
+  };
+
+  const currentStyle = cycleStyles[cycleColorName] || cycleStyles.indigo;
+
+  const feedbackClasses = feedback === 'correct' 
+    ? 'ring-8 ring-emerald-400 border-emerald-500'
+    : feedback === 'incorrect' 
+      ? 'ring-8 ring-rose-400 border-rose-500'
+      : currentStyle.border;
+
+  const showIncorrectFeedback = feedback === 'incorrect' && similarity !== null;
+  const showLastAttempt = Boolean(lastAttempt && feedback !== 'none' && !revealed);
+  const isDefinitionHidden = isPracticeMode && !revealed && !showHints;
+  const effectiveHintMode = showHints ? getAutoHintMode(currentCycle) : false;
+  const showEditButton = associationId && onEditCard && !isEditing && revealed;
+  const showAttemptCounter = typeof attemptCount === 'number' && !isPracticeMode;
+
+  const renderLabel = (label: string, lang: string | undefined) => {
+    if (!voiceEnabled) return label;
+    const flag = getLanguageFlag(lang);
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-sm leading-none">{flag}</span>
+        <span>{label}</span>
+      </span>
+    );
+  };
+
+  const handleSaveEdit = () => {
+    if (!onEditCard) return;
+    onEditCard(editTerm, editDef);
+  };
+
+  const handleCancelEdit = () => {
+    setEditTerm(displayTerm || '');
+    setEditDef(displayDef || '');
+    onCancelEdit?.();
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancelEdit();
+    }
+  };
+
+  const shakeClass = isShaking ? 'animate-shake' : '';
+
+  return (
+    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative min-h-[100px] flex flex-col justify-center transition-all duration-500 bg-rose-50 border-rose-500/20 ${feedback === 'correct' ? 'ring-8 ring-emerald-400 border-emerald-500' : feedback === 'incorrect' ? 'ring-8 ring-rose-400 border-rose-500' : ''}`}>
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-600/10 transition-colors duration-500"></div>
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
+      {showEditButton && (
+        <button
+          onClick={onStartEdit}
+          className="absolute top-4 right-4 text-slate-300 hover:text-indigo-500 transition-all p-2 rounded-xl hover:bg-white/50"
+          aria-label="Edit card"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125L18 9.375M19.5 7.125L16.5 4.125M19.5 7.125H16.5" />
+          </svg>
+        </button>
+      )}
+      {revealed && onSpeakAnswer && displayDef && (
+        <button
+          onClick={() => onSpeakAnswer(displayDef, voiceDefLang || 'es')}
+          className="absolute top-4 right-14 text-slate-300 hover:text-indigo-500 transition-all p-2 rounded-xl hover:bg-white/50"
+          aria-label="Escuchar respuesta"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+          </svg>
+        </button>
+      )}
+      <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
+
+      {showCommandToast && (
+        <div className="absolute bottom-3 right-3 z-50 bg-slate-900/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg animate-pulse">
+          {commandToastText}
+        </div>
+      )}
+      
+      {isEditing ? (
+        <div className="w-full max-w-full sm:max-w-2xl mx-auto space-y-4">
+          <div>
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelTerm, voiceTermLang)}</label>
+            <input
+              ref={editTermRef}
+              type="text"
+              value={editTerm}
+              onChange={(e) => setEditTerm(e.target.value)}
+              onKeyDown={handleEditKeyDown}
+              className="w-full bg-white border-2 border-indigo-100 rounded-2xl px-5 py-3 text-xl sm:text-2xl font-black text-slate-900 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
+              placeholder="Term"
+            />
+          </div>
+          <div>
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelDef, voiceDefLang)}</label>
+            <textarea
+              ref={editDefRef as any}
+              value={editDef}
+              onChange={(e) => setEditDef(e.target.value)}
+              onKeyDown={handleEditKeyDown}
+              className="w-full bg-white border-2 border-indigo-100 rounded-2xl px-5 py-3 text-lg sm:text-xl font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center resize-none"
+              placeholder="Definition"
+              rows={2}
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSaveEdit}
+              className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-indigo-700 transition-all"
+            >
+              Guardar
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              className="px-6 bg-white border-2 border-slate-200 text-slate-600 py-3 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-50 transition-all"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 mb-3 break-words leading-tight tracking-tight">{displayTerm}</h2>
+          
+          <div className="min-h-[100px] flex flex-col items-center justify-center gap-2">
+            {!isPracticeMode && !revealed ? (
+              <div className="w-full max-w-sm">
+                <input
+                  ref={resolvedInputRef}
+                  type="text"
+                  tabIndex={1}
+                  value={userInput}
+                  onChange={(e) => onUserInput(e.target.value)}
+                  className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-2 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50 ${shakeClass}`}
+                />
+                 {showHints && !revealed && (
+                    <div className="mt-1 text-center">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{renderLabel(labelDef, voiceDefLang)}</span>
+                     <p className="text-base font-medium text-slate-300 bg-slate-50/50 px-3 py-1 rounded-xl border border-slate-100/50 inline-block break-words">
+                       {maskHint(displayDef, effectiveHintMode)}
+                     </p>
+                     {showAttemptCounter && typeof attemptCount === 'number' && (
+                       <span className="block text-[10px] text-slate-400 font-medium mt-1">intentos: {attemptCount}</span>
+                     )}
+                   </div>
+                 )}
+               </div>
+            ) : (
+              <div className="text-center">
+                {showLastAttempt && (
+                   <div className="mb-3">
+                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Tu respuesta</span>
+                     <p className="text-xl font-medium text-slate-500 line-through">
+                       {lastAttempt}
+                     </p>
+                   </div>
+                )}
+                {!isDefinitionHidden && (
+                  <>
+                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelDef, voiceDefLang)}</span>
+                    <p className={`text-xl sm:text-2xl md:text-3xl font-black break-words ${revealed || !isPracticeMode ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-300 bg-slate-50/50'} px-4 py-2 rounded-2xl border-2 ${revealed || !isPracticeMode ? 'border-indigo-100/50' : 'border-slate-100/50'} inline-block shadow-sm`}>
+                      {revealed || !isPracticeMode ? displayDef : maskHint(displayDef, effectiveHintMode)}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          {voiceMode && (
+            <div className="w-full max-w-md mx-auto mt-3 space-y-2">
+              {voicePhase === 'speaking' && (
+                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest animate-pulse">Hablando…</p>
+              )}
+              {voicePhase === 'listening' && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className={`text-[10px] font-black uppercase tracking-widest animate-pulse ${isVoiceListening ? 'text-rose-500' : 'text-indigo-500'}`}>
+                    {isVoiceListening ? 'Escuchando…' : 'Procesando…'}
+                  </p>
+                  {(voiceInterim || voiceTranscript) && (
+                    <p className="text-sm font-bold text-slate-600">“{voiceInterim || voiceTranscript}”</p>
+                  )}
+                </div>
+              )}
+              {voicePhase === 'evaluating' && (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Evaluando…</p>
+                  {voiceTranscript && (
+                    <p className="text-sm font-bold text-slate-600">“{voiceTranscript}”</p>
+                  )}
+                </div>
+              )}
+              {voicePhase === 'feedback' && feedback !== 'none' && (
+                <div className={`rounded-2xl border px-4 py-3 ${feedback === 'correct' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${feedback === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {feedback === 'correct' ? '✓ Correcto' : '✗ Incorrecto'}
+                  </p>
+                  {voiceTranscript && (
+                    <p className="text-sm font-bold text-slate-700 mt-1">Dijiste: “{voiceTranscript}”</p>
+                  )}
+                  {similarity !== null && (
+                    <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Similitud: {similarity}%</p>
+                  )}
+                </div>
+              )}
+              {voiceError && (
+                <p className="text-[10px] font-bold text-rose-600">{voiceError}</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};

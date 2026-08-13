@@ -1,16 +1,22 @@
 
 import React, { useState } from 'react';
 import { Association, AssociationList } from '../types';
+import { downloadAssociationsCsv } from '../utils/csv';
 
 interface SmartGroupModalProps {
   originalList: AssociationList;
   onConfirm: (groups: { name: string, associations: Association[] }[]) => void;
   onCancel: () => void;
   suggestions: { groupName: string, indices: number[] }[];
+  analyzedCount?: number;
 }
 
-export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, onConfirm, onCancel, suggestions }) => {
+export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, onConfirm, onCancel, suggestions, analyzedCount }) => {
   const [selectedGroups, setSelectedGroups] = useState<number[]>(suggestions.map((_, i) => i));
+  const sourceAssociations = originalList.associations.filter(a => !a.isArchived);
+
+  const conceptParts = originalList.concept.split('/');
+  const csvHeader: [string, string] = [conceptParts[0] || 'Term', conceptParts[1] || 'Definition'];
 
   const toggleGroup = (index: number) => {
     setSelectedGroups(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
@@ -21,9 +27,10 @@ export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, 
       const sugg = suggestions[idx];
       return {
         name: sugg.groupName,
-        associations: sugg.indices.map(i => originalList.associations[i]).filter(Boolean)
+        associations: sugg.indices.map(i => sourceAssociations[i]).filter(Boolean)
       };
     });
+    downloadAssociationsCsv(sourceAssociations, `${originalList.name}.csv`, csvHeader);
     onConfirm(finalGroups);
   };
 
@@ -39,7 +46,12 @@ export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, 
             </div>
             <h2 className="text-2xl font-black">División Inteligente</h2>
           </div>
-          <p className="text-indigo-100 font-medium">Hemos analizado {originalList.associations.length} elementos. Selecciona los grupos que deseas crear:</p>
+          <p className="text-indigo-100 font-medium">
+            {analyzedCount && analyzedCount < sourceAssociations.length
+              ? `Hemos analizado las primeras ${analyzedCount} de ${sourceAssociations.length} elementos. `
+              : `Hemos analizado ${sourceAssociations.length} elementos. `}
+            Selecciona los grupos que deseas crear:
+          </p>
         </div>
 
         <div className="p-8 max-h-[50vh] overflow-y-auto bg-slate-50">
@@ -66,15 +78,20 @@ export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, 
           </div>
         </div>
 
-        <div className="p-8 bg-white border-t flex flex-col sm:flex-row gap-4">
-          <button onClick={onCancel} className="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition">Cancelar</button>
-          <button 
-            onClick={handleExecute}
-            disabled={selectedGroups.length === 0}
-            className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
-          >
-            Crear {selectedGroups.length} Listas Nuevas
-          </button>
+        <div className="p-8 bg-white border-t flex flex-col gap-4">
+          <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            Al crear estas listas, la lista original "{originalList.name}" se eliminará y sus tarjetas se repartirán entre las nuevas agrupaciones.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button onClick={onCancel} className="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition">Cancelar</button>
+            <button 
+              onClick={handleExecute}
+              disabled={selectedGroups.length === 0}
+              className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
+            >
+              Crear {selectedGroups.length} Listas Nuevas
+            </button>
+          </div>
         </div>
       </div>
     </div>

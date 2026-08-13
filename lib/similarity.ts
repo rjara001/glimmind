@@ -16,6 +16,7 @@ const normalize = (str: string): string => {
   return str
     .toLowerCase()
     .trim()
+    .replace(/[-–—]+/g, ' ')
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\w\s]/gi, '');

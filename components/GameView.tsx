@@ -1,442 +1,397 @@
-
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { AssociationList, Association, AssociationStatus, GameCycle, GameState } from '../types';
-import { calculateSimilarity } from '../utils/similarity';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Association, AssociationList, GameCycle } from '../types';
+import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameStore } from '../store/gameStore';
+import { useToast } from './Toast';
+import { GameHeader } from './game/GameHeader';
+import { GameCard } from './game/GameCard';
+import { GameControls } from './game/GameControls';
+import { CycleProgress } from './game/CycleProgress';
+import { FinishedScreen } from './game/FinishedScreen';
+import { SettingsModal } from './game/SettingsModal';
+import { AttemptList } from './game/AttemptList';
+import { useImmersiveHeader } from '../hooks/useImmersiveHeader';
+import { useGameVoice } from '../hooks/useGameVoice';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { VoiceCommandId } from '../types';
 
 interface GameViewProps {
   list: AssociationList;
-  onUpdateList: (list: AssociationList) => void;
-  onBack: () => void;
-  showSettings: boolean;
-  setShowSettings: (val: boolean) => void;
+  onBack: (updatedAssociations?: Association[]) => void;
+  onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
+  onUpdateList?: (updatedList: AssociationList) => Promise<void>;
+  autoStart?: boolean;
+  voiceMode?: boolean;
 }
 
-const STAGE_NAMES = [
-  "Intro",
-  "Descubrir",
-  "Reconocer",
-  "Maestría"
-];
+const cycleColorMap: Record<GameCycle, string> = {
+  1: 'sky',
+  2: 'yellow',
+  3: 'rose',
+  4: 'emerald',
+};
 
-export const GameView: React.FC<GameViewProps> = ({ list, onUpdateList, onBack, showSettings, setShowSettings }) => {
+export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false, voiceMode = false }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [isEditingCard, setIsEditingCard] = useState(false);
+  const [showRevealWarning, setShowRevealWarning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [gameState, setGameState] = useState<GameState>({
-    listId: list.id,
-    currentCycle: list.resumeState?.cycle || 1,
-    currentIndex: list.resumeState?.index || 0,
-    queue: list.resumeState?.queue || [],
-    isFinished: false,
-    revealed: false,
-    userInput: '',
-    wasRevealed: false
+  const { showToast } = useToast();
+  const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
+  const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<string | undefined>();
+  const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis();
+  const { 
+    gameView, 
+    gameState, 
+    currentAssociation, 
+    summary, 
+    feedback, 
+    userInput, 
+    isRevealed, 
+    similarity, 
+    lastAttempt,
+    attempts,
+    sessionRepasos,
+    actions 
+  } = useGameLogic({ list, autoStart });
+
+  const goalProgress = useGameStore(state => state.progress?.goalProgress ?? 0);
+  const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
+
+  const immersive = useImmersiveHeader();
+
+  const handleSpeakAnswer = useCallback((text: string, lang: string) => {
+    if (!speechSupported || !text) return;
+    void speakAnswer(text, lang);
+  }, [speechSupported, speakAnswer]);
+
+  const voiceRef = useRef<ReturnType<typeof useGameVoice>>(null);
+
+  const handleVoiceCommand = useCallback((command: VoiceCommandId) => {
+    setDetectedVoiceCommand(command);
+    if (command === 'reveal') {
+      actions.reveal();
+      void voiceRef.current?.speakAnswer();
+    } else if (command === 'pass') {
+      actions.handlePass();
+    } else if (command === 'stop') {
+      setIsVoiceActive(false);
+    }
+  }, [actions, setDetectedVoiceCommand]);
+
+  const voice = useGameVoice({
+    list,
+    enabled: isVoiceActive,
+    currentAssociation,
+    feedback,
+    evaluationCount: attempts.length,
+    onSubmitVoice: actions.submitVoice,
+    onAdvance: actions.handleCorrect,
+    commands: list.settings.voiceCommands,
+    onCommand: handleVoiceCommand,
+    revealed: isRevealed,
   });
 
-  const [associations, setAssociations] = useState<Association[]>(list.associations);
-  const [feedback, setFeedback] = useState<'none' | 'correct' | 'incorrect'>('none');
-
-  const stageCounts = useMemo(() => {
-    return {
-      1: associations.filter(a => a.status === AssociationStatus.DESCONOCIDA).length,
-      2: associations.filter(a => a.status === AssociationStatus.DESCUBIERTA).length,
-      3: associations.filter(a => a.status === AssociationStatus.RECONOCIDA).length,
-      4: associations.filter(a => a.status === AssociationStatus.CONOCIDA).length,
-      learned: associations.filter(a => a.status === AssociationStatus.APRENDIDA).length
-    };
-  }, [associations]);
-
-  const startCycle = useCallback((cycle: GameCycle, currentAssocs: Association[]) => {
-    let filter: AssociationStatus;
-    switch(cycle) {
-      case 1: filter = AssociationStatus.DESCONOCIDA; break;
-      case 2: filter = AssociationStatus.DESCUBIERTA; break;
-      case 3: filter = AssociationStatus.RECONOCIDA; break;
-      case 4: filter = AssociationStatus.CONOCIDA; break;
-      default: filter = AssociationStatus.DESCONOCIDA;
-    }
-
-    const queue = currentAssocs
-      .filter(a => a.status === filter)
-      .map(a => a.id)
-      .sort(() => Math.random() - 0.5);
-
-    if (queue.length === 0 && cycle < 4) {
-      startCycle((cycle + 1) as GameCycle, currentAssocs);
-      return;
-    }
-
-    const newState = {
-      ...gameState,
-      currentCycle: cycle,
-      currentIndex: 0,
-      queue,
-      isFinished: queue.length === 0 && cycle === 4,
-      revealed: false,
-      wasRevealed: false,
-      userInput: ''
-    };
-
-    setGameState(newState);
-    setFeedback('none');
-    
-    onUpdateList({
-      ...list,
-      associations: currentAssocs,
-      resumeState: { cycle, queue, index: 0 }
-    });
-  }, [onUpdateList, list, gameState]);
+  voiceRef.current = voice;
 
   useEffect(() => {
-    if (list.resumeState && list.resumeState.queue.length > 0) {
-      setGameState(prev => ({
-        ...prev,
-        currentCycle: list.resumeState!.cycle,
-        queue: list.resumeState!.queue,
-        currentIndex: list.resumeState!.index
-      }));
-    } else {
-      startCycle(1, associations);
+    if (!currentAssociation) return;
+    const isReversed = list.settings.flipOrder === 'reversed';
+    const expectedAnswer = isReversed ? currentAssociation.term : currentAssociation.definition;
+    
+    if (feedback === 'correct') {
+      const thresholdPercent = Math.round(list.settings.threshold * 100);
+      showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
+      if (!isVoiceActive) {
+        actions.handleCorrect();
+      }
+    } else if (feedback === 'incorrect') {
+      const thresholdPercent = Math.round(list.settings.threshold * 100);
+      showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
     }
+  }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
+  
+  // Sync game state to parent when associations change
+  useEffect(() => {
+    if (onUpdateAssociations && gameState.associations) {
+      onUpdateAssociations(gameState.associations);
+    }
+  }, [gameState.associations, onUpdateAssociations]);
+
+   // Auto-save is disabled - only save on back navigation to avoid stale data issues
+  // const handleAutoSave = () => { ... } - removed
+
+  const handleStartEdit = useCallback(() => {
+    setIsEditingCard(true);
   }, []);
 
-  const currentAssoc = useMemo(() => 
-    associations.find(a => a.id === gameState.queue[gameState.currentIndex]),
-    [associations, gameState.queue, gameState.currentIndex]
-  );
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingCard(false);
+  }, []);
 
-  const isReversed = list.settings.flipOrder === 'reversed';
-  const displayTerm = isReversed ? currentAssoc?.definition : currentAssoc?.term;
-  const displayDef = isReversed ? currentAssoc?.term : currentAssoc?.definition;
-  
-  const conceptParts = list.concept.split('/');
-  const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
-  const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
-
-  const advance = (nextStatus: AssociationStatus) => {
-    if (!currentAssoc) return;
-    
-    const updatedAssocs = associations.map(a => a.id === currentAssoc.id ? { ...a, status: nextStatus } : a);
-    setAssociations(updatedAssocs);
-    
-    if (gameState.currentIndex < gameState.queue.length - 1) {
-      const nextIndex = gameState.currentIndex + 1;
-      setGameState(prev => ({ 
-        ...prev, 
-        currentIndex: nextIndex, 
-        revealed: false, 
-        wasRevealed: false,
-        userInput: ''
-      }));
-      setFeedback('none');
-
-      onUpdateList({
-        ...list,
-        associations: updatedAssocs,
-        resumeState: {
-          cycle: gameState.currentCycle,
-          queue: gameState.queue,
-          index: nextIndex
-        }
-      });
-    } else {
-      if (gameState.currentCycle < 4) {
-        startCycle((gameState.currentCycle + 1) as GameCycle, updatedAssocs);
-      } else {
-        setGameState(prev => ({ ...prev, isFinished: true }));
-        onUpdateList({
-          ...list,
-          associations: updatedAssocs,
-          resumeState: undefined
-        });
+  const handleEditCard = useCallback(async (term: string, definition: string) => {
+    const updatedAssociations = gameState.associations.map(a => {
+      if (a.id === currentAssociation?.id) {
+        return { ...a, term: term.trim(), definition: definition.trim(), updatedAt: Date.now() };
       }
-    }
-  };
+      return a;
+    });
 
-  const checkAnswer = () => {
-    if (!displayDef || !gameState.userInput) return;
-    
-    const similarity = calculateSimilarity(gameState.userInput, displayDef);
-    const isCorrect = similarity >= (list.settings.threshold || 0.9);
-    
-    if (isCorrect) {
-      setFeedback('correct');
-      setTimeout(() => handleNext(), 600);
-    } else {
-      setFeedback('incorrect');
-      setGameState(p => ({ ...p, revealed: true, wasRevealed: true }));
-    }
-  };
-
-  const handleCorrect = () => {
-    if (!currentAssoc) return;
-    // En modo entrenamiento permitimos marcar como correcta siempre
-    // Si estamos en ciclo 1 (Intro) y marcamos correcta, se considera aprendida directamente
-    advance(gameState.currentCycle === 1 ? AssociationStatus.APRENDIDA : currentAssoc.status);
-  };
-
-  const handleNext = () => {
-    if (!currentAssoc) return;
-    let nextStatus = currentAssoc.status;
-    if (gameState.currentCycle === 1) nextStatus = AssociationStatus.DESCUBIERTA;
-    else if (gameState.currentCycle === 2) nextStatus = AssociationStatus.RECONOCIDA;
-    else if (gameState.currentCycle === 3) nextStatus = AssociationStatus.CONOCIDA;
-    else if (gameState.currentCycle === 4) nextStatus = AssociationStatus.APRENDIDA;
-    advance(nextStatus);
-  };
+    await onUpdateAssociations(updatedAssociations);
+    setIsEditingCard(false);
+  }, [currentAssociation?.id, gameState.associations, onUpdateAssociations]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showSettings || gameState.isFinished) return;
-      
-      if (list.settings.mode === 'real' && !gameState.revealed && feedback === 'none') {
-        if (e.key === 'Enter') checkAnswer();
+      if (showSettings || gameState.isFinished || !currentAssociation) return;
+
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      const isTyping = isInput;
+
+      if (feedback !== 'none') {
+        if (e.key === 'Enter' && feedback === 'correct') {
+          e.preventDefault();
+          actions.handleCorrect();
+        }
         return;
       }
 
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        if (!gameState.revealed) {
-          setGameState(p => ({ ...p, revealed: true, wasRevealed: true }));
-        } else {
-          handleNext();
+      if (list.settings.mode === 'training') {
+        if (!isTyping && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          if (!isRevealed) {
+            actions.reveal();
+          } else {
+            actions.handlePass();
+          }
+        }
+        return;
+      }
+
+      if (isTyping) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          actions.checkAnswer();
+        }
+      } else {
+        if (e.key === ' ' && isRevealed) {
+          e.preventDefault();
+          actions.handlePass();
         }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState.revealed, gameState.userInput, showSettings, gameState.isFinished, list.settings.mode, feedback]);
+  }, [showSettings, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput]);
 
-  useEffect(() => {
-    if (list.settings.mode === 'real' && !gameState.revealed && inputRef.current) {
-      inputRef.current.focus();
+  const handleArchiveLearnedCards = async () => {
+    if (!summary || summary.learned === 0) {
+      actions.restart();
+      return;
     }
-  }, [gameState.currentIndex, gameState.revealed, list.settings.mode]);
+    const learnedCardIds = gameState.associations.filter(a => a.isLearned).map(a => a.id);
+    if (learnedCardIds.length > 0) {
+      const updatedAssociations = list.associations.map(assoc => {
+        if (learnedCardIds.includes(assoc.id)) {
+          return { ...assoc, isArchived: true, isLearned: false, currentCycle: 1, status: 'pending' as const };
+        }
+        return assoc;
+      });
+      const updatedList = { ...list, associations: updatedAssociations };
+      try {
+        await onUpdateAssociations(updatedAssociations);
+        const remainingToPlay = updatedAssociations.filter(a => !a.isArchived).length;
+        if (remainingToPlay === 0) {
+          onBack(updatedAssociations);
+        } else {
+          actions.restart(updatedList);
+        }
+      } catch (error) {
+        console.error("Error passing updated associations to parent:", error);
+      }
+    } else {
+      actions.restart();
+    }
+  };
 
-  if (gameState.isFinished) return (
-    <div className="max-w-md mx-auto mt-20 p-10 bg-white rounded-[3rem] shadow-2xl text-center border border-slate-100 animate-in zoom-in-95 duration-500">
-      <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
-      </div>
-      <h2 className="text-3xl font-black text-slate-900 mb-2">¡Sesión Lista!</h2>
-      <p className="text-slate-500 mb-8 font-medium">Has fortalecido todas las conexiones de esta lista.</p>
-      <div className="flex flex-col gap-3">
-        <button onClick={() => {
-           const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
-           setAssociations(reset);
-           startCycle(1, reset);
-        }} className="bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition">Reiniciar Aprendizaje</button>
-        <button onClick={onBack} className="text-slate-400 font-bold py-2 hover:text-indigo-600 transition text-sm">Regresar al Panel</button>
-      </div>
-    </div>
-  );
+  const handleFullRestart = async () => {
+    const resetAssociations = list.associations.map(assoc => ({ ...assoc, isArchived: false, isLearned: false, currentCycle: 1, status: 'pending' as const }));
+    const updatedList = { ...list, associations: resetAssociations };
+    try {
+      await onUpdateAssociations(resetAssociations);
+      actions.restart(updatedList);
+    } catch (error) {
+      console.error("Error during full restart:", error);
+    }
+  };
 
-  const isPracticeMode = list.settings.mode === 'training';
+  const handleHeaderRestart = () => {
+    if (confirm('¿Reiniciar todo el progreso de esta lista?')) {
+      handleFullRestart();
+    }
+  };
+
+  const isReversed = list.settings.flipOrder === 'reversed';
+  const isTransitioning = feedback === 'correct';
+
+  if (gameView === 'summary') {
+    const restartAction = (gameState.associations.length === 0) ? handleFullRestart : actions.restart;
+    return <FinishedScreen summary={summary} onRestart={restartAction} onBack={onBack} onArchive={handleArchiveLearnedCards} />;
+  }
+
+  if (!currentAssociation) {
+    return <div className="w-full h-full flex items-center justify-center"><div className="text-slate-500">Cargando...</div></div>;
+  }
+
+  const displayTerm = isReversed ? currentAssociation.definition : currentAssociation.term;
+  const displayDef = isReversed ? currentAssociation.term : currentAssociation.definition;
+  const conceptParts = list.concept.split('/');
+  const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
+  const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
+  const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
+  const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
+
+  
+  // Calculate correct count from associations (status === 'correct' or isLearned === true)
+  const correctCount = gameState.associations.filter((a: any) => a.status === 'correct' || a.isLearned === true).length;
+  const cycleStats = { pending: gameState.activeQueue.length - gameState.currentIndex, correct: correctCount };
+  const cycleColorName = cycleColorMap[gameState.globalCycle as GameCycle] || 'slate';
+  const cycleColorClass = cycleColorName === 'sky' ? 'text-sky-600' : cycleColorName === 'yellow' ? 'text-yellow-600' : cycleColorName === 'rose' ? 'text-rose-600' : cycleColorName === 'emerald' ? 'text-emerald-600' : 'text-slate-600';
+  const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
+  const attemptCount = attempts.filter(a => a.associationId === currentAssociation?.id).length;
+
+  const handleReveal = useCallback(() => {
+    if (attemptCount === 0) {
+      setShowRevealWarning(true);
+    } else {
+      actions.reveal();
+    }
+  }, [attemptCount, actions]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
-      {/* Cabecera Compacta */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 px-2">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm group">
-             <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
+      <div
+        className="sm:hidden"
+        onTouchStart={immersive.handleTouchStart}
+        onTouchMove={immersive.handleTouchMove}
+        onTouchEnd={immersive.handleTouchEnd}
+      >
+        <div
+          className="transition-all duration-300 ease-out overflow-hidden"
+          style={{
+            maxHeight: immersive.isVisible ? '200px' : '0px',
+            opacity: immersive.isVisible ? 1 : 0,
+            marginBottom: immersive.isVisible ? '12px' : '0px',
+          }}
+        >
+          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+        </div>
+        {!immersive.isVisible && (
+          <div className="flex justify-center mb-2">
+            <div className="w-12 h-1 bg-slate-300 rounded-full" />
+          </div>
+        )}
+      </div>
+      <div className="hidden sm:block">
+        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+      </div>
+      {!immersive.isVisible && (
+        <div className="sm:hidden flex justify-between items-center mb-2 px-1">
+          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
           </button>
-          <div className="flex flex-col">
-            <h2 className="text-xs font-black text-slate-800 leading-none">{list.name}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Fila {gameState.currentIndex + 1}/{gameState.queue.length}</span>
-              <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-              <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">{stageCounts.learned} Aprendidas</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
-          <span className="px-3 py-1 text-[8px] font-black text-slate-500 uppercase tracking-widest">
-            {isPracticeMode ? 'Modo Práctica' : 'Modo Real'}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Lado Izquierdo: Tarjeta y Controles */}
-        <div className="flex-1 w-full flex flex-col items-center">
-          <div className={`w-full bg-white rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 border-white p-6 md:p-10 text-center relative overflow-hidden min-h-[300px] flex flex-col justify-center transition-all duration-300 ${feedback === 'correct' ? 'ring-8 ring-emerald-400' : feedback === 'incorrect' ? 'ring-8 ring-rose-400' : ''}`}>
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-600/10"></div>
-            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] block mb-1">{labelTerm}</span>
-            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-6 break-words leading-tight tracking-tight">{displayTerm}</h2>
-            
-            <div className="min-h-[100px] flex flex-col items-center justify-center gap-4">
-              {!isPracticeMode && !gameState.revealed ? (
-                <div className="w-full max-w-sm animate-in slide-in-from-bottom-2 duration-300">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    autoFocus
-                    value={gameState.userInput}
-                    onChange={(e) => setGameState(p => ({ ...p, userInput: e.target.value }))}
-                    onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                    placeholder={`¿Cuál es el/la ${labelDef.toLowerCase()}?`}
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center"
-                  />
-                </div>
-              ) : (
-                <>
-                  {gameState.revealed ? (
-                    <div className="animate-in fade-in zoom-in slide-in-from-bottom-2 duration-500 text-center">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">{labelDef}</span>
-                      <p className="text-2xl md:text-3xl font-black text-indigo-600 bg-indigo-50/50 px-6 py-3 rounded-2xl border-2 border-indigo-100/50 inline-block shadow-sm">
-                        {displayDef}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="w-7 h-10 bg-slate-50 rounded-lg animate-pulse border-2 border-slate-100 flex items-center justify-center text-slate-200 font-black text-lg">?</div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="w-full max-w-xl mt-4">
-            <div className="grid grid-cols-3 gap-3 bg-white/50 backdrop-blur-sm p-3 rounded-3xl border border-slate-100 shadow-sm">
-              <button onClick={handleNext} className="bg-slate-50 border border-slate-200 text-slate-500 h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all hover:bg-white hover:text-indigo-600">Pasar</button>
-              
-              <button 
-                onClick={() => {
-                  if (!isPracticeMode && !gameState.revealed) {
-                    checkAnswer();
-                  } else {
-                    setGameState(p => ({...p, revealed: !p.revealed, wasRevealed: true}));
-                  }
-                }} 
-                className={`h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest shadow-sm active:scale-90 transition-all flex flex-col items-center justify-center ${gameState.revealed ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-white text-indigo-600 border border-indigo-100'}`}
-              >
-                {!isPracticeMode && !gameState.revealed ? 'Validar' : gameState.revealed ? 'Ocultar' : 'Revelar'}
-              </button>
-
-              <button 
-                onClick={handleCorrect} 
-                disabled={!isPracticeMode && (gameState.wasRevealed || gameState.revealed)} 
-                className={`h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest shadow-md active:scale-90 transition-all flex items-center justify-center gap-2 ${!isPracticeMode && (gameState.wasRevealed || gameState.revealed) ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-              >
-                Correcta
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Lado Derecho: Progreso de Etapas (Vertical en Desktop) */}
-        <div className="w-full lg:w-40 bg-white/40 rounded-[2rem] p-5 border border-white flex flex-col gap-3">
-          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-center lg:text-left">Ciclos</h3>
-          
-          <div className="flex lg:flex-col justify-between lg:justify-start gap-3 lg:gap-4">
-            {[1, 2, 3, 4].map((c) => {
-              const count = stageCounts[c as keyof typeof stageCounts];
-              const isActive = gameState.currentCycle === c;
-              const isCompleted = gameState.currentCycle > c;
-
-              return (
-                <div key={c} className={`flex flex-col lg:flex-row items-center gap-2 transition-all duration-300 ${isActive ? 'scale-105' : 'opacity-60'}`}>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm ${
-                    isCompleted 
-                      ? 'bg-emerald-500 border-emerald-500 text-white' 
-                      : isActive 
-                        ? 'bg-white border-indigo-600 text-indigo-600 ring-4 ring-indigo-50 shadow-indigo-100' 
-                        : 'bg-white border-slate-200 text-slate-400'
-                  }`}>
-                    {isCompleted ? (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
-                    ) : (
-                      <span className="text-[10px] font-black">{count}</span>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-center lg:items-start">
-                    <span className={`text-[7px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
-                      {STAGE_NAMES[c-1]}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-2 pt-3 border-t border-slate-100">
-             <div className="flex justify-between items-center mb-1">
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Master</span>
-                <span className="text-[8px] font-black text-indigo-600">{Math.round((stageCounts.learned / associations.length) * 100)}%</span>
-             </div>
-             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${(stageCounts.learned / associations.length) * 100}%` }}></div>
-             </div>
-          </div>
-        </div>
-      </div>
-
-      {showSettings && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white">
-            <h3 className="text-3xl font-black text-slate-900 mb-8 tracking-tighter text-center">Ajustes</h3>
-            
-            <div className="space-y-4 mb-8">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Modo de Juego</p>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => onUpdateList({ ...list, settings: { ...list.settings, mode: 'training' } })}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${isPracticeMode ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
-                  >
-                    Práctica
-                  </button>
-                  <button 
-                    onClick={() => onUpdateList({ ...list, settings: { ...list.settings, mode: 'real' } })}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${!isPracticeMode ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}
-                  >
-                    Real
-                  </button>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => onUpdateList({ ...list, settings: { ...list.settings, flipOrder: isReversed ? 'normal' : 'reversed' } })}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all shadow-sm ${isReversed ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                  <span className="text-xs font-bold">Invertir Caras</span>
-                </div>
-                <div className={`w-10 h-6 rounded-full relative transition-colors ${isReversed ? 'bg-indigo-400' : 'bg-slate-200'}`}>
-                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isReversed ? 'left-5' : 'left-1'}`}></div>
-                </div>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => {
-                  if(confirm('¿Reiniciar todo el progreso de esta lista?')) {
-                     const reset = associations.map(a => ({ ...a, status: AssociationStatus.DESCONOCIDA }));
-                     setAssociations(reset);
-                     onUpdateList({ ...list, associations: reset, resumeState: undefined });
-                     startCycle(1, reset);
-                     setShowSettings(false);
-                  }
-                }}
-                className="w-full bg-rose-50 text-rose-600 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest hover:bg-rose-100 transition active:scale-95"
-              >
-                Reiniciar Lista
-              </button>
-              <button 
-                onClick={() => setShowSettings(false)}
-                className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition active:scale-95 shadow-xl shadow-slate-200"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
+          <span className="text-xs font-bold text-slate-500 truncate mx-2">{list.name}</span>
+          <div className="w-9"></div>
         </div>
       )}
+      <div className={`flex flex-col lg:flex-row gap-6 items-start ${immersive.isVisible ? 'mt-2' : ''}`}>
+        <div className="flex-1 w-full flex flex-col items-center">
+          <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
+            <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Pendientes:</span><span className={`text-sm font-bold ${cycleColorClass}`}>{cycleStats.pending}</span></div>
+            <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Correctas:</span><span className="text-sm font-bold text-emerald-600">{cycleStats.correct}</span></div>
+          </div>
+          <div className="w-full">
+            <GameCard 
+              displayTerm={displayTerm} 
+              displayDef={displayDef} 
+              labelTerm={labelTerm} 
+              labelDef={labelDef} 
+              revealed={isRevealed} 
+              isPracticeMode={list.settings.mode === 'training'} 
+              userInput={userInput} 
+              onUserInput={actions.setUserInput} 
+              feedback={feedback} 
+              similarity={similarity}
+              lastAttempt={lastAttempt}
+              cycleColorName={cycleColorName}
+              showHints={list.settings.showHints !== false}
+              currentCycle={currentAssociation?.currentCycle ?? 1}
+              associationId={currentAssociation?.id}
+              onEditCard={handleEditCard}
+              isEditing={isEditingCard}
+              onStartEdit={handleStartEdit}
+              onCancelEdit={handleCancelEdit}
+               attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
+               inputRef={inputRef}
+               voiceMode={isVoiceActive}
+               voicePhase={voice.phase}
+               voiceTranscript={voice.transcript}
+               voiceInterim={voice.interim}
+               isVoiceListening={voice.isListening}
+               voiceError={voice.error}
+               voiceEnabled={list.settings.voiceEnabled === true}
+               voiceTermLang={voiceTermLang}
+               voiceDefLang={voiceDefLang}
+               onSpeakAnswer={handleSpeakAnswer}
+            />
+             {showRevealWarning && (
+               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+                 <p className="text-xs font-bold text-amber-800">Veo que no has hecho intentos.</p>
+                 <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowRevealWarning(false);
+                        requestAnimationFrame(() => {
+                          inputRef.current?.focus();
+                        });
+                      }}
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition"
+                    >
+                      Intentar
+                    </button>
+                   <button
+                     onClick={() => {
+                       setShowRevealWarning(false);
+                       actions.reveal();
+                     }}
+                     className="px-3 py-1.5 bg-white border border-amber-300 text-amber-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-50 transition"
+                   >
+                     Revelar
+                   </button>
+                 </div>
+               </div>
+             )}
+            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
+            <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
+          </div>
+        </div>
+        <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
+      </div>
+      {showSettings && <SettingsModal 
+        list={list} 
+        onUpdateList={async (updatedList) => {
+          console.log("Updated list:", updatedList);  
+          
+          if (onUpdateList) {
+            await onUpdateList(updatedList);
+          } else {
+            await onUpdateAssociations(updatedList.associations);
+          }
+        }} 
+        onClose={() => setShowSettings(false)} 
+      />}
     </div>
   );
 };

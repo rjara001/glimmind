@@ -1,27 +1,26 @@
 
-export enum AssociationStatus {
-  DESCONOCIDA = 'DESCONOCIDA',
-  DESCUBIERTA = 'DESCUBIERTA',
-  RECONOCIDA = 'RECONOCIDA',
-  CONOCIDA = 'CONOCIDA',
-  APRENDIDA = 'APRENDIDA'
-}
+export type GameMode = 'training' | 'real';
+export type GameCycle = 1 | 2 | 3 | 4;
+export type GameFeedback = 'none' | 'correct' | 'incorrect';
+export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
+export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
+export type VoiceCommandId = 'reveal' | 'pass' | 'continue' | 'stop';
+export type VoiceCommandsConfig = Record<VoiceCommandId, string[]>;
 
 export interface Association {
   id: string;
   term: string;
   definition: string;
-  status: AssociationStatus;
-  history?: boolean;
-}
-
-export type GameMode = 'training' | 'real';
-export type FlipOrder = 'normal' | 'reversed';
-
-export interface ListSettings {
-  mode: GameMode;
-  flipOrder: FlipOrder;
-  threshold: number;
+  currentCycle: number;
+  status: 'pending' | 'correct';
+  isLearned: boolean;
+  isArchived: boolean;
+  hits?: number;
+  misses?: number;
+  timesPlayed?: number;
+  lastPlayedAt?: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface AssociationList {
@@ -30,26 +29,56 @@ export interface AssociationList {
   name: string;
   concept: string;
   associations: Association[];
-  settings: ListSettings;
-  createdAt: number;
-  updatedAt?: number;
-  // Estado para persistir el progreso entre sesiones
-  resumeState?: {
-    cycle: GameCycle;
-    queue: string[];
-    index: number;
+  isArchived: boolean;
+  settings: {
+    mode: GameMode;
+    flipOrder: 'normal' | 'reversed';
+    threshold: number;
+    ignoreArticles?: boolean;
+    showHints?: boolean;
+    hintMode?: HintMode | false;
+    voiceEnabled?: boolean;
+    voiceTermLang?: VoiceLanguage;
+    voiceDefLang?: VoiceLanguage;
+    voiceTermId?: string;
+    voiceDefId?: string;
+    voiceRate?: number;
+    voicePitch?: number;
+    voiceCommands?: VoiceCommandsConfig;
   };
+  createdAt?: any;
+  updatedAt?: any;
 }
 
-export type GameCycle = 1 | 2 | 3 | 4;
+export interface GameSummary {
+  learned: number;
+  known: number;
+  recognized: number;
+  seen: number;
+}
+
+export interface Attempt {
+  userInput: string;
+  similarity: number;
+  threshold: number;
+  expectedAnswer: string;
+  timestamp: number;
+  associationId: string;
+}
 
 export interface GameState {
   listId: string;
-  currentCycle: GameCycle;
+  globalCycle: GameCycle;
+  associations: Association[];
+  activeQueue: string[];
   currentIndex: number;
-  queue: string[];
   isFinished: boolean;
+  summary: GameSummary | null;
   revealed: boolean;
   userInput: string;
-  wasRevealed: boolean;
+  feedback: GameFeedback;
+  similarity: number | null;
+  lastAttempt: string;
+  attempts: Attempt[];
+  revealedAssociations: string[];
 }
