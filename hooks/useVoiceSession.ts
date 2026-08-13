@@ -4,10 +4,9 @@ import { GlimmindGame } from '../services/gameEngine';
 import { useGameStore } from '../store/gameStore';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
-import { useAudioRecorder } from './useAudioRecorder';
 import { resolveVoiceLanguages } from '../services/voice/languages';
+import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
 import { createActivityEvent } from '../utils/activity';
-import { uploadAudioRecording, buildAudioPath } from '../services/audioService';
 
 export interface VoiceSessionCounts {
   total: number;
@@ -26,6 +25,7 @@ export interface VoiceSessionResult {
 }
 
 const RESULT_DELAY_MS = 900;
+const LISTENING_TIMEOUT_MS = 2000;
 
 export function useVoiceSession(list: AssociationList) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
@@ -35,14 +35,23 @@ export function useVoiceSession(list: AssociationList) {
   const [isFinished, setIsFinished] = useState(false);
 
   const trackingEnabled = useGameStore.getState().settings.activityHistoryEnabled;
-  const audioRecordingEnabled = useGameStore.getState().settings.audioRecordingEnabled;
 
   const gameRef = useRef(GlimmindGame.create(list, { trackingEnabled }));
   const sessionIdRef = useRef(crypto.randomUUID());
   const shouldRunRef = useRef(false);
   const phaseRef = useRef<VoicePhase>('idle');
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const audioBlobRef = useRef<Blob | null>(null);
+  const answerHandledRef = useRef(false);
+  const listeningFailedRef = useRef(false);
+  const transcriptRef = useRef('');
+
+  useEffect(() => {
+    gameRef.current = gameRef.current.updateList(list);
+  }, [list]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   const setPhaseBoth = useCallback((next: VoicePhase) => {
     phaseRef.current = next;
@@ -50,25 +59,45 @@ export function useVoiceSession(list: AssociationList) {
   }, []);
 
   const tts = useSpeechSynthesis();
-  const audioRecorder = useAudioRecorder({
-    enabled: audioRecordingEnabled,
-    onRecordingAvailable: (blob) => {
-      audioBlobRef.current = blob;
-    },
-  });
   const stt = useSpeechRecognition({
+    onInterim: (text) => {
+      if (answerHandledRef.current) return;
+      const current = gameRef.current.currentAssociation;
+      if (!current) return;
+      if (phaseRef.current !== 'listening_for_answer') return;
+
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const expected = isReversed ? current.definition : current.term;
+
+      console.log('[STT] expected="' + expected + '"');
+      console.log('[STT] interim="' + text + '"');
+      console.log('[STT] exact match=' + isExactExpectedAnswer(text, expected));
+
+      if (isExactExpectedAnswer(text, expected)) {
+        console.log('[STT] EARLY MATCH → accepting answer');
+        answerHandledRef.current = true;
+        stt.stop();
+        setTranscript(text);
+        transcriptRef.current = text;
+        setPhaseBoth('evaluating');
+        void handleAnswer(text);
+      }
+    },
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (answerHandledRef.current) {
+        console.log('[STT] answer already handled → ignored final:', trimmed);
+        return;
+      }
       setTranscript(trimmed);
-      audioRecorder.stopRecording();
+      transcriptRef.current = trimmed;
       if (phaseRef.current === 'listening_for_answer') {
         setPhaseBoth('evaluating');
         void handleAnswer(trimmed);
       }
     },
     onError: (message) => {
-      audioRecorder.abortRecording();
       setError(message);
       setPhaseBoth('idle');
     },
@@ -85,26 +114,20 @@ export function useVoiceSession(list: AssociationList) {
     if (!current) return;
 
     stt.abort();
-    audioRecorder.abortRecording();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
-    const lang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
-    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
-    const rate = list.settings.voiceRate;
-    const pitch = list.settings.voicePitch;
 
     setError(null);
     setTranscript('');
-    audioBlobRef.current = null;
+    transcriptRef.current = '';
     setPhaseBoth('speaking');
-    await tts.speak(word, lang || languages.ttsLang, voiceId, rate, pitch);
+    await tts.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
-    if (audioRecordingEnabled) {
-      audioRecorder.startRecording();
-    }
+    answerHandledRef.current = false;
+    listeningFailedRef.current = false;
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermLang, list.settings.voiceDefLang, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled, uploadAudio]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
 
   const handleAnswer = useCallback(
     (answer: string) => {
@@ -139,14 +162,8 @@ export function useVoiceSession(list: AssociationList) {
       const after = evaluated.processAction({ type: correct ? 'CORRECT' : 'PASS' });
       gameRef.current = after;
 
-      if (audioBlobRef.current) {
-        void uploadAudio(audioBlobRef.current, correct, current.term, answer);
-        audioBlobRef.current = null;
-      }
-
       if (after.state.isFinished) {
         stt.abort();
-        audioRecorder.abortRecording();
         setIsFinished(true);
         setPhaseBoth('finished');
         return;
@@ -158,7 +175,7 @@ export function useVoiceSession(list: AssociationList) {
         if (shouldRunRef.current) void playCurrentWord();
       }, RESULT_DELAY_MS);
     },
-    [list.id, trackingEnabled, stt, playCurrentWord, setPhaseBoth, audioRecorder, uploadAudio],
+    [list.id, trackingEnabled, stt, playCurrentWord, setPhaseBoth],
   );
 
   const repeat = useCallback(() => {
@@ -175,6 +192,7 @@ export function useVoiceSession(list: AssociationList) {
       if (!trimmed) return;
       stt.abort();
       setTranscript(trimmed);
+      transcriptRef.current = trimmed;
       setPhaseBoth('evaluating');
       void handleAnswer(trimmed);
     },
@@ -195,10 +213,9 @@ export function useVoiceSession(list: AssociationList) {
       resultTimerRef.current = null;
     }
     stt.abort();
-    audioRecorder.abortRecording();
     tts.cancel();
     setPhaseBoth('idle');
-  }, [stt, audioRecorder, tts, setPhaseBoth]);
+  }, [stt, tts, setPhaseBoth]);
 
   const restart = useCallback(() => {
     stop();
@@ -217,10 +234,35 @@ export function useVoiceSession(list: AssociationList) {
       shouldRunRef.current = false;
       if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
       stt.abort();
-      audioRecorder.abortRecording();
       tts.cancel();
     };
   }, []);
+
+  useEffect(() => {
+    if (phaseRef.current !== 'listening_for_answer') return;
+    if (stt.isListening) return;
+    if (answerHandledRef.current) return;
+    if (listeningFailedRef.current) return;
+
+    const timeout = setTimeout(() => {
+      if (phaseRef.current !== 'listening_for_answer') return;
+      if (stt.isListening) return;
+      if (answerHandledRef.current) return;
+      if (listeningFailedRef.current) return;
+
+      listeningFailedRef.current = true;
+      const pending = transcriptRef.current.trim();
+      if (pending) {
+        setPhaseBoth('evaluating');
+        void handleAnswer(pending);
+      } else {
+        setPhaseBoth('idle');
+        setError('No speech detected.');
+      }
+    }, LISTENING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [phase, stt.isListening, handleAnswer, setPhaseBoth]);
 
   return {
     phase,

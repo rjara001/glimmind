@@ -1,7 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
+ 
+import React, { useState, useEffect, useCallback } from 'react';
 import { AssociationList, VoiceCommandId, VoiceLanguage } from '../../types';
 import { DEFAULT_VOICE_COMMANDS, resolveVoiceCommands } from '../../services/voice/commands';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 
 const THRESHOLD_MIN = 50;
 const THRESHOLD_MAX = 100;
@@ -24,6 +25,20 @@ interface VoiceOption {
 function getSpeechVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
   return window.speechSynthesis.getVoices();
+}
+
+const PREVIEW_TEXT: Record<string, string> = {
+  es: 'Hola, soy Glimmind',
+  en: 'Hello, I am Glimmind',
+  fr: 'Bonjour, je suis Glimmind',
+  de: 'Hallo, ich bin Glimmind',
+  it: 'Ciao, sono Glimmind',
+  pt: 'Olá, eu sou Glimmind',
+};
+
+function getPreviewText(lang: VoiceLanguage | string | undefined): string {
+  const base = String(lang || 'es').split('-')[0];
+  return PREVIEW_TEXT[base] || PREVIEW_TEXT['en'];
 }
 
 function buildVoiceOptions(voices: SpeechSynthesisVoice[], lang: VoiceLanguage | string | null | undefined): VoiceOption[] {
@@ -49,6 +64,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList, onClose }) => {
   const [draft, setDraft] = useState(list.settings);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const { speak } = useSpeechSynthesis();
 
   console.log('[SettingsModal] opened with settings', list.settings);
   const isReversed = draft.flipOrder === 'reversed';
@@ -60,6 +76,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const conceptParts = list.concept.split('/');
   const termLabel = conceptParts[0] || 'Término';
   const defLabel = conceptParts[1] || 'Definición';
+
+  const playTestVoice = useCallback(async (lang: VoiceLanguage | string | undefined, voiceId?: string) => {
+    const text = getPreviewText(lang);
+    const rate = draft.voiceRate ?? 1;
+    const pitch = draft.voicePitch ?? 1;
+    await speak(text, lang || 'es', voiceId, rate, pitch);
+  }, [speak, draft.voiceRate, draft.voicePitch]);
 
   useEffect(() => {
     const load = () => setVoices(getSpeechVoices());
@@ -187,31 +210,81 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {termLabel}</label>
-                <select
-                  value={draft.voiceTermId || ''}
-                  onChange={(e) => setDraft({ ...draft, voiceTermId: e.target.value || undefined })}
-                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                  aria-label={`Voz de ${termLabel}`}
-                >
-                  <option value="">Auto (por idioma)</option>
-                  {buildVoiceOptions(voices, draft.voiceTermLang).map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={draft.voiceTermId || ''}
+                    onChange={(e) => setDraft({ ...draft, voiceTermId: e.target.value || undefined })}
+                    className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                    aria-label={`Voz de ${termLabel}`}
+                  >
+                    <option value="">Auto (por idioma)</option>
+                    {buildVoiceOptions(voices, draft.voiceTermLang).map((opt) => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => playTestVoice(draft.voiceTermLang, draft.voiceTermId)}
+                    className="px-3 py-2.5 rounded-xl bg-white border-2 border-indigo-100 text-xs font-black text-indigo-600 active:scale-95 transition-all"
+                    aria-label={`Probar voz de ${termLabel}`}
+                  >
+                    🔊
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {defLabel}</label>
-                <select
-                  value={draft.voiceDefId || ''}
-                  onChange={(e) => setDraft({ ...draft, voiceDefId: e.target.value || undefined })}
-                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-                  aria-label={`Voz de ${defLabel}`}
-                >
-                  <option value="">Auto (por idioma)</option>
-                  {buildVoiceOptions(voices, draft.voiceDefLang).map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={draft.voiceDefId || ''}
+                    onChange={(e) => setDraft({ ...draft, voiceDefId: e.target.value || undefined })}
+                    className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                    aria-label={`Voz de ${defLabel}`}
+                  >
+                    <option value="">Auto (por idioma)</option>
+                    {buildVoiceOptions(voices, draft.voiceDefLang).map((opt) => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => playTestVoice(draft.voiceDefLang, draft.voiceDefId)}
+                    className="px-3 py-2.5 rounded-xl bg-white border-2 border-indigo-100 text-xs font-black text-indigo-600 active:scale-95 transition-all"
+                    aria-label={`Probar voz de ${defLabel}`}
+                  >
+                    🔊
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Velocidad</label>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={1.5}
+                    step={0.05}
+                    value={draft.voiceRate ?? 1}
+                    onChange={(e) => setDraft({ ...draft, voiceRate: Number(e.target.value) })}
+                    className="w-full accent-indigo-600"
+                    aria-label="Velocidad de voz"
+                  />
+                  <div className="text-[10px] text-slate-500 font-black text-right">{Math.round((draft.voiceRate ?? 1) * 100)}%</div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tono</label>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    value={draft.voicePitch ?? 1}
+                    onChange={(e) => setDraft({ ...draft, voicePitch: Number(e.target.value) })}
+                    className="w-full accent-indigo-600"
+                    aria-label="Tono de voz"
+                  />
+                  <div className="text-[10px] text-slate-500 font-black text-right">{Math.round((draft.voicePitch ?? 1) * 100)}%</div>
+                </div>
               </div>
               <div className="pt-3 border-t border-slate-200">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voice commands</p>

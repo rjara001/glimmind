@@ -57,3 +57,22 @@ export function matchVoiceCommand(
   }
   return null;
 }
+
+export function matchExactVoiceCommand(
+  text: string,
+  commands: VoiceCommandsConfig,
+): VoiceCommandId | null {
+  const normalized = normalizeCommandText(text);
+  if (!normalized) return null;
+
+  for (const id of COMMAND_IDS) {
+    const keywords = commands[id];
+    for (const keyword of keywords) {
+      const normalizedKeyword = normalizeCommandText(keyword);
+      if (normalizedKeyword && normalized === normalizedKeyword) {
+        return id;
+      }
+    }
+  }
+  return null;
+}

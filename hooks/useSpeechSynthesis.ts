@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { resolveVoiceForLang } from '../services/voice/voicePicker';
 
 const VOICE_CHANGED_TIMEOUT_MS = 2000;
-const WATCHDOG_RETRY_DELAY_MS = 150;
+const WATCHDOG_RETRY_DELAY_MS = 300;
 const SPEAK_AFTER_CANCEL_DELAY_MS = 50;
 
 export interface SpeakResult {
@@ -133,11 +133,13 @@ export function useSpeechSynthesis() {
             utterance.addEventListener('error', onError);
             setIsSpeaking(true);
 
+            // Chromium drops an utterance when speak() follows cancel() synchronously.
+            // Defer the actual speak a tick so the flush takes effect.
             window.setTimeout(() => {
               synth.speak(utterance);
             }, SPEAK_AFTER_CANCEL_DELAY_MS);
 
-            const estimatedMs = Math.max(3000, Math.min(10000, text.split(/\s+/).length * 700));
+            const estimatedMs = Math.max(4000, Math.min(12000, text.split(/\s+/).length * 1000 + 1500));
             watchdogTimer = setTimeout(() => {
               console.log('[TTS] watchdog timeout, cancelling');
               synth.cancel();
