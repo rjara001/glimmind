@@ -40,6 +40,10 @@ export interface AssociationList {
     voiceEnabled?: boolean;
     voiceTermLang?: VoiceLanguage;
     voiceDefLang?: VoiceLanguage;
+    voiceTermId?: string;
+    voiceDefId?: string;
+    voiceRate?: number;
+    voicePitch?: number;
     voiceCommands?: VoiceCommandsConfig;
   };
   createdAt?: any;

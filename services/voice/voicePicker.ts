@@ -9,8 +9,13 @@ export interface VoiceLike {
 export function resolveVoiceForLang(
   lang: string | null,
   voices: VoiceLike[],
+  preferredVoiceName?: string | null,
 ): VoiceLike | undefined {
   if (voices.length === 0) return undefined;
+  if (preferredVoiceName) {
+    const match = voices.find((voice) => voice.name === preferredVoiceName);
+    if (match) return match;
+  }
   if (!lang) {
     return voices.find((voice) => voice.default) ?? voices[0];
   }

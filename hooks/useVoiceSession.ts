@@ -88,42 +88,23 @@ export function useVoiceSession(list: AssociationList) {
     audioRecorder.abortRecording();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
+    const lang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
+    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
+    const rate = list.settings.voiceRate;
+    const pitch = list.settings.voicePitch;
 
     setError(null);
     setTranscript('');
     audioBlobRef.current = null;
     setPhaseBoth('speaking');
-    await tts.speak(word, languages.ttsLang);
+    await tts.speak(word, lang || languages.ttsLang, voiceId, rate, pitch);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
     if (audioRecordingEnabled) {
       audioRecorder.startRecording();
     }
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
-
-  const uploadAudio = useCallback(async (blob: Blob, correct: boolean, term: string, transcript: string) => {
-    const userId = useGameStore.getState().user?.uid || 'anonymous';
-    const current = gameRef.current.currentAssociation;
-    if (!current) return;
-    try {
-      const metadata: Parameters<typeof uploadAudioRecording>[1] = {
-        userId,
-        listId: list.id,
-        associationId: current.id,
-        sessionId: sessionIdRef.current,
-        term,
-        transcript,
-        correct,
-        timestamp: Date.now(),
-      };
-      const path = buildAudioPath(metadata);
-      await uploadAudioRecording(blob, metadata);
-      console.log('[Audio] Uploaded:', path);
-    } catch (err) {
-      console.error('[Audio] Upload failed:', err);
-    }
-  }, [list.id]);
+  }, [list.settings.flipOrder, list.settings.voiceTermLang, list.settings.voiceDefLang, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled, uploadAudio]);
 
   const handleAnswer = useCallback(
     (answer: string) => {

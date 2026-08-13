@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AssociationList, VoiceCommandId, VoiceLanguage } from '../../types';
 import { DEFAULT_VOICE_COMMANDS, resolveVoiceCommands } from '../../services/voice/commands';
 
@@ -16,6 +16,30 @@ const VOICE_LANGUAGE_OPTIONS: { value: VoiceLanguage; label: string }[] = [
   { value: 'pt', label: '🇧🇷 Portugués' },
 ];
 
+interface VoiceOption {
+  id: string;
+  label: string;
+}
+
+function getSpeechVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  return window.speechSynthesis.getVoices();
+}
+
+function buildVoiceOptions(voices: SpeechSynthesisVoice[], lang: VoiceLanguage | string | null | undefined): VoiceOption[] {
+  const options: VoiceOption[] = [];
+  for (const voice of voices) {
+    const match = !lang || voice.lang.toLowerCase().startsWith(String(lang).toLowerCase());
+    if (match || options.length === 0) {
+      options.push({
+        id: voice.voiceURI,
+        label: `${voice.name} (${voice.lang})${voice.default ? ' • default' : ''}`,
+      });
+    }
+  }
+  return options.slice(0, 40);
+}
+
 interface SettingsModalProps {
   list: AssociationList;
   onUpdateList: (list: AssociationList) => void;
@@ -24,6 +48,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList, onClose }) => {
   const [draft, setDraft] = useState(list.settings);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   console.log('[SettingsModal] opened with settings', list.settings);
   const isReversed = draft.flipOrder === 'reversed';
@@ -35,6 +60,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const conceptParts = list.concept.split('/');
   const termLabel = conceptParts[0] || 'Término';
   const defLabel = conceptParts[1] || 'Definición';
+
+  useEffect(() => {
+    const load = () => setVoices(getSpeechVoices());
+    load();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('voiceschanged', load);
+      return () => window.speechSynthesis.removeEventListener('voiceschanged', load);
+    }
+  }, []);
 
   const handleAccept = () => {
     const updated = { ...list, settings: draft };
@@ -148,6 +182,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
                 >
                   {VOICE_LANGUAGE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {termLabel}</label>
+                <select
+                  value={draft.voiceTermId || ''}
+                  onChange={(e) => setDraft({ ...draft, voiceTermId: e.target.value || undefined })}
+                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                  aria-label={`Voz de ${termLabel}`}
+                >
+                  <option value="">Auto (por idioma)</option>
+                  {buildVoiceOptions(voices, draft.voiceTermLang).map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voz de {defLabel}</label>
+                <select
+                  value={draft.voiceDefId || ''}
+                  onChange={(e) => setDraft({ ...draft, voiceDefId: e.target.value || undefined })}
+                  className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                  aria-label={`Voz de ${defLabel}`}
+                >
+                  <option value="">Auto (por idioma)</option>
+                  {buildVoiceOptions(voices, draft.voiceDefLang).map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
               </div>

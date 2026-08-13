@@ -212,12 +212,16 @@ export function useGameVoice({
     audioRecorder.abortRecording();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
+    const lang = languages.ttsLang;
+    const voiceId = isReversed ? list.settings.voiceDefId : list.settings.voiceTermId;
+    const rate = list.settings.voiceRate;
+    const pitch = list.settings.voicePitch;
     setError(null);
     setTranscript('');
     pendingTranscriptRef.current = '';
     audioBlobRef.current = null;
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, languages.ttsLang);
+    const spoke = await ttsRef.current.speak(word, lang, voiceId, rate, pitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -231,7 +235,7 @@ export function useGameVoice({
       audioRecorder.startRecording();
     }
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, languages.ttsLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.ttsLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
 
   const speakAnswer = useCallback(async () => {
     if (!shouldRunRef.current) return;
@@ -242,12 +246,15 @@ export function useGameVoice({
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.term : current.definition;
     const lang = languages.sttLang;
+    const voiceId = isReversed ? list.settings.voiceTermId : list.settings.voiceDefId;
+    const rate = list.settings.voiceRate;
+    const pitch = list.settings.voicePitch;
     setError(null);
     setTranscript('');
     pendingTranscriptRef.current = '';
     audioBlobRef.current = null;
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang);
+    const spoke = await ttsRef.current.speak(word, lang, voiceId, rate, pitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -261,7 +268,7 @@ export function useGameVoice({
       audioRecorder.startRecording();
     }
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
 
   useEffect(() => {
     if (enabled) {
