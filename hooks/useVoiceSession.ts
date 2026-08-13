@@ -112,7 +112,7 @@ export function useVoiceSession(list: AssociationList) {
     setPhaseBoth('listening_for_answer');
     answerHandledRef.current = false;
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
 
   const handleAnswer = useCallback(
     (answer: string) => {

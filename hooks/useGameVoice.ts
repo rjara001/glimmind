@@ -200,7 +200,7 @@ export function useGameVoice({
     setPhaseBoth('listening');
     answerHandledRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
   const speakAnswer = useCallback(async () => {
     if (!shouldRunRef.current) return;
@@ -225,7 +225,7 @@ export function useGameVoice({
     setPhaseBoth('listening');
     answerHandledRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
 
   useEffect(() => {
     if (enabled) {
@@ -274,7 +274,7 @@ export function useGameVoice({
     } else if (feedback === 'none') {
       void speakCurrentWord();
     }
-  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang]);
+  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
 
   const repeat = useCallback(() => {
     clearFeedbackTimer();
