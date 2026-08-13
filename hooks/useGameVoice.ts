@@ -150,9 +150,6 @@ export function useGameVoice({
       setError(message);
       setPhaseBoth('idle');
     },
-    onTransientMessage: (message) => {
-      setError(message);
-    },
   });
 
   const ttsRef = useRef(tts);

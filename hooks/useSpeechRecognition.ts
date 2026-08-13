@@ -51,10 +51,9 @@ export interface UseSpeechRecognitionOptions {
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
-  onTransientMessage?: (message: string) => void;
 }
 
-export function useSpeechRecognition({ onFinal, onInterim, onError, onTransientMessage }: UseSpeechRecognitionOptions) {
+export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechRecognitionOptions) {
   const supported = getRecognitionConstructor() !== null;
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -67,7 +66,6 @@ export function useSpeechRecognition({ onFinal, onInterim, onError, onTransientM
   const onFinalRef = useRef(onFinal);
   const onInterimRef = useRef(onInterim);
   const onErrorRef = useRef(onError);
-  const onTransientRef = useRef(onTransientMessage);
 
   useEffect(() => {
     onFinalRef.current = onFinal;
@@ -80,10 +78,6 @@ export function useSpeechRecognition({ onFinal, onInterim, onError, onTransientM
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
-
-  useEffect(() => {
-    onTransientRef.current = onTransientMessage;
-  }, [onTransientMessage]);
 
   const clearRestartTimer = useCallback(() => {
     if (restartTimerRef.current) {
@@ -136,7 +130,6 @@ export function useSpeechRecognition({ onFinal, onInterim, onError, onTransientM
           return;
         }
         if (event.error === 'no-speech') {
-          onTransientRef.current?.('No speech detected.');
           return;
         }
         if (event.error === 'aborted') return;
