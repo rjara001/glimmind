@@ -57,7 +57,7 @@ export function useSpeechSynthesis() {
   }, [supported]);
 
   const speak = useCallback(
-    (text: string, lang: string | null, voiceId?: string): Promise<SpeakResult> => {
+    (text: string, lang: string | null, voiceId?: string, rate?: number, pitch?: number): Promise<SpeakResult> => {
       return (async () => {
         if (!supported || !text) {
           return { ok: true, voiceName: null, voicesCount: 0 };
@@ -84,6 +84,12 @@ export function useSpeechSynthesis() {
             } else if (lang) {
               utterance.lang = lang;
             }
+            if (typeof rate === 'number') {
+              utterance.rate = rate;
+            }
+            if (typeof pitch === 'number') {
+              utterance.pitch = pitch;
+            }
             console.log(
               '[TTS] speak start lang=',
               lang,
@@ -91,6 +97,10 @@ export function useSpeechSynthesis() {
               availableVoices.length,
               'voice=',
               voice?.name ?? '(none)',
+              'rate=',
+              typeof rate === 'number' ? rate : '(default)',
+              'pitch=',
+              typeof pitch === 'number' ? pitch : '(default)',
             );
 
             let settled = false;

@@ -41,6 +41,8 @@ export interface AssociationList {
     voiceTermLang?: VoiceLanguage;
     voiceDefLang?: VoiceLanguage;
     voiceId?: string;
+    voiceRate?: number;
+    voicePitch?: number;
     voiceCommands?: VoiceCommandsConfig;
   };
   createdAt?: any;

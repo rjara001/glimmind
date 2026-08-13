@@ -107,7 +107,7 @@ export function useVoiceSession(list: AssociationList) {
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    await tts.speak(word, languages.ttsLang, list.settings.voiceId);
+    await tts.speak(word, languages.ttsLang, list.settings.voiceId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
     answerHandledRef.current = false;

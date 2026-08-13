@@ -191,7 +191,7 @@ export function useGameVoice({
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, languages.ttsLang, list.settings.voiceId);
+    const spoke = await ttsRef.current.speak(word, languages.ttsLang, list.settings.voiceId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -216,7 +216,7 @@ export function useGameVoice({
     setError(null);
     setTranscript('');
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang, list.settings.voiceId);
+    const spoke = await ttsRef.current.speak(word, lang, list.settings.voiceId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       const reason =
@@ -256,7 +256,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceId);
+        await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -267,7 +267,7 @@ export function useGameVoice({
       clearFeedbackTimer();
       setPhaseBoth('feedback');
       void (async () => {
-        await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceId);
+        await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;

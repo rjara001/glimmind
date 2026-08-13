@@ -199,6 +199,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
                   ))}
                 </select>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Velocidad</label>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={1.5}
+                    step={0.05}
+                    value={draft.voiceRate ?? 1}
+                    onChange={(e) => setDraft({ ...draft, voiceRate: Number(e.target.value) })}
+                    className="w-full accent-indigo-600"
+                    aria-label="Velocidad de voz"
+                  />
+                  <div className="text-[10px] text-slate-500 font-black text-right">{Math.round((draft.voiceRate ?? 1) * 100)}%</div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tono</label>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    value={draft.voicePitch ?? 1}
+                    onChange={(e) => setDraft({ ...draft, voicePitch: Number(e.target.value) })}
+                    className="w-full accent-indigo-600"
+                    aria-label="Tono de voz"
+                  />
+                  <div className="text-[10px] text-slate-500 font-black text-right">{Math.round((draft.voicePitch ?? 1) * 100)}%</div>
+                </div>
+              </div>
               <div className="pt-3 border-t border-slate-200">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Voice commands</p>
                 <p className="text-[10px] text-slate-400 mb-3">Comma-separated keywords, recognized in the answer language.</p>
