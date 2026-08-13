@@ -27,6 +27,20 @@ function getSpeechVoices(): SpeechSynthesisVoice[] {
   return window.speechSynthesis.getVoices();
 }
 
+const PREVIEW_TEXT: Record<string, string> = {
+  es: 'Hola, soy Glimmind',
+  en: 'Hello, I am Glimmind',
+  fr: 'Bonjour, je suis Glimmind',
+  de: 'Hallo, ich bin Glimmind',
+  it: 'Ciao, sono Glimmind',
+  pt: 'Olá, eu sou Glimmind',
+};
+
+function getPreviewText(lang: VoiceLanguage | string | undefined): string {
+  const base = String(lang || 'es').split('-')[0];
+  return PREVIEW_TEXT[base] || PREVIEW_TEXT['en'];
+}
+
 function buildVoiceOptions(voices: SpeechSynthesisVoice[], lang: VoiceLanguage | string | null | undefined): VoiceOption[] {
   const options: VoiceOption[] = [];
   for (const voice of voices) {
@@ -64,7 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ list, onUpdateList
   const defLabel = conceptParts[1] || 'Definición';
 
   const playTestVoice = useCallback(async (lang: VoiceLanguage | string | undefined, voiceId?: string) => {
-    const text = 'me encanta estudiar con la app glimmind';
+    const text = getPreviewText(lang);
     const rate = draft.voiceRate ?? 1;
     const pitch = draft.voicePitch ?? 1;
     await speak(text, lang || 'es', voiceId, rate, pitch);
