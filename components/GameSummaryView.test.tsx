@@ -39,7 +39,7 @@ describe('GameSummaryView', () => {
 
   it('shows a loading message while sessions are loading', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       sessions: [],
       sessionsLoading: true,
     });
@@ -49,7 +49,7 @@ describe('GameSummaryView', () => {
 
   it('shows the empty sessions message when enabled and no sessions exist', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       sessions: [],
       sessionsLoading: false,
     });
@@ -59,7 +59,7 @@ describe('GameSummaryView', () => {
 
   it('renders session summaries when enabled', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       sessions: [makeSession()],
       sessionsLoading: false,
     });

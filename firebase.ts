@@ -21,9 +21,8 @@ import {
   connectFirestoreEmulator 
 } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 
-// En Vite, las variables de entorno se acceden vía import.meta.env
-// Usamos un cast a any para evitar errores de compilación si los tipos de Vite no están presentes en el entorno global
 const config = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY,
   authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN,
@@ -33,7 +32,6 @@ const config = {
   appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID
 };
 
-// Si no hay apiKey real, usamos una de respaldo para evitar que la app crashee en modo demo
 const isDemo = !config.apiKey || config.apiKey === "fake-api-key";
 
 const firebaseConfig = isDemo ? {
@@ -49,9 +47,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app, 'us-central1');
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Connect emulators only in local dev (demo mode without keys, or explicit VITE_USE_EMULATORS=true)
 const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
 const useEmulatorsFlag = env.VITE_USE_EMULATORS === 'true';
 const isLocalhost = typeof window !== 'undefined' && 
@@ -89,6 +87,7 @@ export {
   auth, 
   db, 
   functions,
+  storage,
   googleProvider, 
   signInWithPopup, 
   onAuthStateChanged,

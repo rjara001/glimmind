@@ -40,7 +40,7 @@ describe('HistoryView', () => {
 
   it('renders activity events grouped when enabled', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       activity: [
         makeEvent(),
         makeEvent({
@@ -60,7 +60,7 @@ describe('HistoryView', () => {
 
   it('shows the load more button when a next cursor exists', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       activity: [makeEvent()],
       activityNextCursor: 'cursor-1',
       loadActivity: vi.fn(),
@@ -71,7 +71,7 @@ describe('HistoryView', () => {
 
   it('filters activity by list', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       lists: [
         {
           id: 'l1',

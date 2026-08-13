@@ -4,8 +4,10 @@ import { GlimmindGame } from '../services/gameEngine';
 import { useGameStore } from '../store/gameStore';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
+import { useAudioRecorder } from './useAudioRecorder';
 import { resolveVoiceLanguages } from '../services/voice/languages';
 import { createActivityEvent } from '../utils/activity';
+import { uploadAudioRecording, buildAudioPath } from '../services/audioService';
 
 export interface VoiceSessionCounts {
   total: number;
@@ -33,12 +35,14 @@ export function useVoiceSession(list: AssociationList) {
   const [isFinished, setIsFinished] = useState(false);
 
   const trackingEnabled = useGameStore.getState().settings.activityHistoryEnabled;
+  const audioRecordingEnabled = useGameStore.getState().settings.audioRecordingEnabled;
 
   const gameRef = useRef(GlimmindGame.create(list, { trackingEnabled }));
   const sessionIdRef = useRef(crypto.randomUUID());
   const shouldRunRef = useRef(false);
   const phaseRef = useRef<VoicePhase>('idle');
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioBlobRef = useRef<Blob | null>(null);
 
   const setPhaseBoth = useCallback((next: VoicePhase) => {
     phaseRef.current = next;
@@ -46,17 +50,25 @@ export function useVoiceSession(list: AssociationList) {
   }, []);
 
   const tts = useSpeechSynthesis();
+  const audioRecorder = useAudioRecorder({
+    enabled: audioRecordingEnabled,
+    onRecordingAvailable: (blob) => {
+      audioBlobRef.current = blob;
+    },
+  });
   const stt = useSpeechRecognition({
     onFinal: (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       setTranscript(trimmed);
+      audioRecorder.stopRecording();
       if (phaseRef.current === 'listening_for_answer') {
         setPhaseBoth('evaluating');
         void handleAnswer(trimmed);
       }
     },
     onError: (message) => {
+      audioRecorder.abortRecording();
       setError(message);
       setPhaseBoth('idle');
     },
@@ -73,17 +85,45 @@ export function useVoiceSession(list: AssociationList) {
     if (!current) return;
 
     stt.abort();
+    audioRecorder.abortRecording();
     const isReversed = list.settings.flipOrder === 'reversed';
     const word = isReversed ? current.definition : current.term;
 
     setError(null);
     setTranscript('');
+    audioBlobRef.current = null;
     setPhaseBoth('speaking');
     await tts.speak(word, languages.ttsLang);
     if (!shouldRunRef.current) return;
     setPhaseBoth('listening_for_answer');
+    if (audioRecordingEnabled) {
+      audioRecorder.startRecording();
+    }
     stt.start(languages.sttLang);
-  }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, tts, stt, languages.ttsLang, languages.sttLang, setPhaseBoth, audioRecorder, audioRecordingEnabled]);
+
+  const uploadAudio = useCallback(async (blob: Blob, correct: boolean, term: string, transcript: string) => {
+    const userId = useGameStore.getState().user?.uid || 'anonymous';
+    const current = gameRef.current.currentAssociation;
+    if (!current) return;
+    try {
+      const metadata: Parameters<typeof uploadAudioRecording>[1] = {
+        userId,
+        listId: list.id,
+        associationId: current.id,
+        sessionId: sessionIdRef.current,
+        term,
+        transcript,
+        correct,
+        timestamp: Date.now(),
+      };
+      const path = buildAudioPath(metadata);
+      await uploadAudioRecording(blob, metadata);
+      console.log('[Audio] Uploaded:', path);
+    } catch (err) {
+      console.error('[Audio] Upload failed:', err);
+    }
+  }, [list.id]);
 
   const handleAnswer = useCallback(
     (answer: string) => {
@@ -118,8 +158,14 @@ export function useVoiceSession(list: AssociationList) {
       const after = evaluated.processAction({ type: correct ? 'CORRECT' : 'PASS' });
       gameRef.current = after;
 
+      if (audioBlobRef.current) {
+        void uploadAudio(audioBlobRef.current, correct, current.term, answer);
+        audioBlobRef.current = null;
+      }
+
       if (after.state.isFinished) {
         stt.abort();
+        audioRecorder.abortRecording();
         setIsFinished(true);
         setPhaseBoth('finished');
         return;
@@ -131,7 +177,7 @@ export function useVoiceSession(list: AssociationList) {
         if (shouldRunRef.current) void playCurrentWord();
       }, RESULT_DELAY_MS);
     },
-    [list.id, trackingEnabled, stt, playCurrentWord, setPhaseBoth],
+    [list.id, trackingEnabled, stt, playCurrentWord, setPhaseBoth, audioRecorder, uploadAudio],
   );
 
   const repeat = useCallback(() => {
@@ -168,9 +214,10 @@ export function useVoiceSession(list: AssociationList) {
       resultTimerRef.current = null;
     }
     stt.abort();
+    audioRecorder.abortRecording();
     tts.cancel();
     setPhaseBoth('idle');
-  }, [stt, tts, setPhaseBoth]);
+  }, [stt, audioRecorder, tts, setPhaseBoth]);
 
   const restart = useCallback(() => {
     stop();
@@ -189,6 +236,7 @@ export function useVoiceSession(list: AssociationList) {
       shouldRunRef.current = false;
       if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
       stt.abort();
+      audioRecorder.abortRecording();
       tts.cancel();
     };
   }, []);
