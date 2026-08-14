@@ -8,6 +8,10 @@ const EMULATOR_FUNCTIONS_BASE = isUsingEmulators ? '/functions' : `http://localh
 const FUNCTIONS_BASE = env.VITE_FUNCTIONS_BASE
   || (isUsingEmulators ? EMULATOR_FUNCTIONS_BASE : PROD_FUNCTIONS_BASE);
 
+const SECOND_GEN_FUNCTIONS: Record<string, string> = {
+  synthesizeSpeech: isUsingEmulators ? undefined : 'https://us-central1-fladycard-22a3e.cloudfunctions.net',
+};
+
 async function getToken(): Promise<string | null> {
   const currentUser = auth.currentUser;
   if (!currentUser) return null;
@@ -21,7 +25,8 @@ async function getToken(): Promise<string | null> {
 export async function callFunction<T>(functionName: string, data: any): Promise<T> {
   const token = await getToken();
 
-  const base = FUNCTIONS_BASE.replace(/\/$/, '');
+  const override = SECOND_GEN_FUNCTIONS[functionName];
+  const base = (override || FUNCTIONS_BASE).replace(/\/$/, '');
   const payload = JSON.stringify(data);
   console.log('[callFunction] POST', `${base}/${functionName}`, 'payloadLength=', payload.length, 'hasToken=', !!token);
   

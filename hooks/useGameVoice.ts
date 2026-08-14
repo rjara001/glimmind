@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Association, AssociationList, VoiceCommandId, VoiceCommandsConfig } from '../types';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
+import { useAudioRecorder } from './useAudioRecorder';
+import { uploadAudioRecording } from '../services/audioService';
+import { useGameStore } from '../store/gameStore';
 import { resolveVoiceLanguages } from '../services/voice/languages';
 import { isExactExpectedAnswer } from '../services/voice/earlyMatch';
 import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../services/voice/commands';
@@ -19,6 +22,7 @@ export interface UseGameVoiceOptions {
   commands?: VoiceCommandsConfig;
   onCommand?: (command: VoiceCommandId) => void;
   revealed?: boolean;
+  audioRecordingEnabled?: boolean;
 }
 
 const FEEDBACK_DELAY_MS = 500;
@@ -35,6 +39,7 @@ export function useGameVoice({
   commands,
   onCommand,
   revealed = false,
+  audioRecordingEnabled = false,
 }: UseGameVoiceOptions) {
   const [phase, setPhase] = useState<GameVoicePhase>('idle');
   const [transcript, setTranscript] = useState('');
@@ -54,6 +59,17 @@ export function useGameVoice({
   const listeningFailedRef = useRef(false);
   const transcriptRef = useRef('');
   const lastCommandRef = useRef<VoiceCommandId | null>(null);
+  const sessionIdRef = useRef(crypto.randomUUID());
+  const pendingBlobRef = useRef<Blob | null>(null);
+
+  const audioRecorder = useAudioRecorder({
+    enabled: enabled && audioRecordingEnabled,
+    onRecordingAvailable: (blob) => {
+      pendingBlobRef.current = blob;
+    },
+  });
+
+  const { startRecording, stopRecording, abortRecording } = audioRecorder;
 
   useEffect(() => {
     currentAssociationRef.current = currentAssociation;
@@ -92,7 +108,7 @@ export function useGameVoice({
     setPhase(next);
   }, []);
 
-  const tts = useSpeechSynthesis();
+  const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const stt = useSpeechRecognition({
     onInterim: (text) => {
       if (answerHandledRef.current) return;
@@ -216,6 +232,7 @@ export function useGameVoice({
     lastCommandRef.current = null;
     setPhaseBoth('speaking');
     const spoke = await ttsRef.current.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
+    console.log('[GameVoice] speak provider=', list.settings.ttsProvider, 'voiceId=', isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, 'word=', word, 'settingsKeys=', Object.keys(list.settings || {}));
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       console.warn('[Voice] TTS failed:', word, 'voice=', spoke.voiceName, 'voices=', spoke.voicesCount);
@@ -271,6 +288,21 @@ export function useGameVoice({
   }, [enabled, clearFeedbackTimer, setPhaseBoth]);
 
   useEffect(() => {
+    if (!enabled || !audioRecordingEnabled) {
+      console.log('[Audio] recorder disabled');
+      abortRecording();
+      return;
+    }
+    if (phase === 'listening') {
+      console.log('[Audio] startRecording phase=', phase);
+      startRecording();
+    } else {
+      console.log('[Audio] stopRecording phase=', phase);
+      stopRecording();
+    }
+  }, [enabled, audioRecordingEnabled, phase, startRecording, stopRecording, abortRecording]);
+
+  useEffect(() => {
     if (!shouldRunRef.current) return;
     if (feedback === 'correct') {
       clearFeedbackTimer();
@@ -304,6 +336,33 @@ export function useGameVoice({
       void speakCurrentWord();
     }
   }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
+
+  useEffect(() => {
+    if (feedback === 'correct' || feedback === 'incorrect') {
+      const blob = pendingBlobRef.current;
+      if (!blob || !currentAssociation) return;
+      const userId = useGameStore.getState().user?.uid || '';
+      const isReversed = list.settings.flipOrder === 'reversed';
+      const term = isReversed ? currentAssociation.definition : currentAssociation.term;
+      const transcript = transcriptRef.current;
+      console.log('[Audio] uploading blobSize=', blob.size, 'term=', term, 'transcript=', transcript, 'correct=', feedback === 'correct');
+      void uploadAudioRecording(blob, {
+        userId,
+        listId: list.id,
+        associationId: currentAssociation.id,
+        sessionId: sessionIdRef.current,
+        term,
+        transcript,
+        correct: feedback === 'correct',
+        timestamp: Date.now(),
+      }).then((url) => {
+        console.log('[Audio] upload ok url=', url);
+      }).catch((error) => {
+        console.error('[Audio] upload failed:', error);
+      });
+      pendingBlobRef.current = null;
+    }
+  }, [feedback, currentAssociation?.id, list.id, list.settings.flipOrder]);
 
   useEffect(() => {
     if (phaseRef.current !== 'listening') return;

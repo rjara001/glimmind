@@ -19,7 +19,7 @@ export function buildAudioPath(metadata: AudioUploadMetadata): string {
   const date = new Date(metadata.timestamp);
   const datePrefix = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
   const timePrefix = `${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`;
-  return `audio/${matchFolder}/${metadata.userId}/${metadata.listId}/${metadata.associationId}/${datePrefix}_${timePrefix}_${safeTerm}_${safeTranscript}.webm`;
+  return `audio/${metadata.userId}/${matchFolder}/${metadata.listId}/${metadata.associationId}/${datePrefix}_${timePrefix}_${safeTerm}_${safeTranscript}.webm`;
 }
 
 export async function uploadAudioRecording(blob: Blob, metadata: AudioUploadMetadata): Promise<string> {

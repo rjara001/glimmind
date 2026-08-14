@@ -4,8 +4,16 @@ export type GameCycle = 1 | 2 | 3 | 4;
 export type GameFeedback = 'none' | 'correct' | 'incorrect';
 export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
 export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
+export type VoiceProvider = 'browser' | 'chirp';
 export type VoiceCommandId = 'reveal' | 'pass' | 'continue' | 'stop';
 export type VoiceCommandsConfig = Record<VoiceCommandId, string[]>;
+
+export interface ChirpVoice {
+  id: string;
+  languageCode: string;
+  label: string;
+  lang: VoiceLanguage;
+}
 
 export interface Association {
   id: string;
@@ -38,6 +46,7 @@ export interface AssociationList {
     showHints?: boolean;
     hintMode?: HintMode | false;
     voiceEnabled?: boolean;
+    ttsProvider?: VoiceProvider;
     voiceTermLang?: VoiceLanguage;
     voiceDefLang?: VoiceLanguage;
     voiceTermId?: string;

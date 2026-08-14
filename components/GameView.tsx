@@ -39,7 +39,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const { showToast } = useToast();
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
   const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<string | undefined>();
-  const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis();
+  const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const { 
     gameView, 
     gameState, 
@@ -90,6 +90,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     commands: list.settings.voiceCommands,
     onCommand: handleVoiceCommand,
     revealed: isRevealed,
+    audioRecordingEnabled: useGameStore.getState().settings.audioRecordingEnabled,
   });
 
   voiceRef.current = voice;
