@@ -31,6 +31,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
     setSettings({ ...settings, activityHistoryEnabled: !settings.activityHistoryEnabled });
   };
 
+  const handleToggleAudioRecording = () => {
+    setSettings({ ...settings, audioRecordingEnabled: !settings.audioRecordingEnabled });
+  };
+
   const handleTogglePremium = async () => {
     if (!user?.uid || user.uid === 'dev-user-local') {
       showToast('Inicia sesión para cambiar el estado premium.', 'error');
@@ -107,6 +111,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             <span
               className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                 settings.activityHistoryEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
+        <div className="p-6 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-gray-900">Grabación de audio</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Guarda los audios de tus intentos en modo voz, separados por acierto y error.
+              Temporal: los archivos se eliminan automáticamente.
+            </p>
+            {settings.audioRecordingEnabled ? (
+              <p className="text-xs text-amber-600 mt-2 font-medium">
+                Activo. Las grabaciones se suben a la nube y se eliminan en forma automática.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-2">
+                Desactivado por defecto. No se guardan audios.
+              </p>
+            )}
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings.audioRecordingEnabled}
+            aria-label="Grabación de audio"
+            onClick={handleToggleAudioRecording}
+            className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              settings.audioRecordingEnabled ? 'bg-indigo-600' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                settings.audioRecordingEnabled ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>

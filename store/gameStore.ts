@@ -173,22 +173,23 @@ function getAssociationTimestamp(association: { updatedAt?: unknown; createdAt?:
   return Number.isFinite(ms) ? ms : 0;
 }
 
-function mergeSettings(local: AssociationList['settings'], cloud: AssociationList['settings']): AssociationList['settings'] {
+function mergeSettings(older: AssociationList['settings'], newer: AssociationList['settings']): AssociationList['settings'] {
   return {
-    mode: cloud.mode ?? local.mode,
-    flipOrder: cloud.flipOrder ?? local.flipOrder,
-    threshold: cloud.threshold ?? local.threshold,
-    ignoreArticles: cloud.ignoreArticles ?? local.ignoreArticles,
-    showHints: cloud.showHints ?? local.showHints,
-    hintMode: cloud.hintMode ?? local.hintMode,
-    voiceEnabled: cloud.voiceEnabled ?? local.voiceEnabled,
-    voiceTermLang: cloud.voiceTermLang ?? local.voiceTermLang,
-    voiceDefLang: cloud.voiceDefLang ?? local.voiceDefLang,
-    voiceTermId: cloud.voiceTermId ?? local.voiceTermId,
-    voiceDefId: cloud.voiceDefId ?? local.voiceDefId,
-    voiceRate: cloud.voiceRate ?? local.voiceRate,
-    voicePitch: cloud.voicePitch ?? local.voicePitch,
-    voiceCommands: cloud.voiceCommands ?? local.voiceCommands,
+    mode: newer.mode ?? older.mode,
+    flipOrder: newer.flipOrder ?? older.flipOrder,
+    threshold: newer.threshold ?? older.threshold,
+    ignoreArticles: newer.ignoreArticles ?? older.ignoreArticles,
+    showHints: newer.showHints ?? older.showHints,
+    hintMode: newer.hintMode ?? older.hintMode,
+    voiceEnabled: newer.voiceEnabled ?? older.voiceEnabled,
+    voiceTermLang: newer.voiceTermLang ?? older.voiceTermLang,
+    voiceDefLang: newer.voiceDefLang ?? older.voiceDefLang,
+    voiceTermId: newer.voiceTermId ?? older.voiceTermId,
+    voiceDefId: newer.voiceDefId ?? older.voiceDefId,
+    voiceRate: newer.voiceRate ?? older.voiceRate,
+    voicePitch: newer.voicePitch ?? older.voicePitch,
+    voiceCommands: newer.voiceCommands ?? older.voiceCommands,
+    ttsProvider: newer.ttsProvider ?? older.ttsProvider,
   };
 }
 
@@ -713,7 +714,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       const listToSave = pickLocalOrCloudList(localList, cloudList);
-      console.log('[syncToCloud] chosen list assocCount=', listToSave.associations?.length || 0, 'updatedAt=', listToSave.updatedAt);
+      console.log('[syncToCloud] chosen list assocCount=', listToSave.associations?.length || 0, 'updatedAt=', listToSave.updatedAt, 'ttsProvider=', listToSave.settings?.ttsProvider, 'voiceTermId=', listToSave.settings?.voiceTermId);
       
       await listService.updateList(listToSave.id, {
         name: listToSave.name,

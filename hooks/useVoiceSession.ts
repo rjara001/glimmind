@@ -58,7 +58,8 @@ export function useVoiceSession(list: AssociationList) {
     setPhase(next);
   }, []);
 
-  const tts = useSpeechSynthesis();
+  const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
+  console.log('[VoiceSession] ttsProvider=', list.settings.ttsProvider, 'voiceTermId=', list.settings.voiceTermId, 'voiceDefId=', list.settings.voiceDefId);
   const stt = useSpeechRecognition({
     onInterim: (text) => {
       if (answerHandledRef.current) return;

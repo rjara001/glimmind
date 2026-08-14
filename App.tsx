@@ -155,7 +155,7 @@ const AppContent: React.FC = () => {
   }, [showToast]);
 
   const handleUpdateList = useCallback(async (updatedList: any) => {
-    console.log('[App][handleUpdateList] listId=', updatedList.id, 'assocCount=', updatedList.associations?.length || 0);
+    console.log('[App][handleUpdateList] listId=', updatedList.id, 'assocCount=', updatedList.associations?.length || 0, 'settingsKeys=', Object.keys(updatedList.settings || {}), 'ttsProvider=', updatedList.settings?.ttsProvider);
     const { lists } = useGameStore.getState();
     const prevList = lists.find(l => l.id === updatedList.id);
     if (prevList && user) {

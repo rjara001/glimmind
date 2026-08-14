@@ -49,7 +49,7 @@ describe('RankingView', () => {
 
   it('renders the plays ranking when enabled', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       lists: [
         makeList({
           associations: [
@@ -68,7 +68,7 @@ describe('RankingView', () => {
 
   it('switches to the weakness ranking when the tab is clicked', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       lists: [
         makeList({
           associations: [
@@ -87,7 +87,7 @@ describe('RankingView', () => {
 
   it('shows the empty data message when no cards have been played', () => {
     useGameStore.setState({
-      settings: { activityHistoryEnabled: true },
+      settings: { activityHistoryEnabled: true, audioRecordingEnabled: false },
       lists: [
         makeList({
           associations: [makeAssociation({ hits: 0, misses: 0, timesPlayed: 0 })],
