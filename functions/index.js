@@ -13,6 +13,7 @@ const aiService = require("./src/services/aiService");
 const adminService = require("./src/services/adminService");
 const chirpTtsService = require("./src/services/chirpTtsService");
 const chirpVoicesService = require("./src/services/chirpVoicesService");
+const chipttSttService = require("./src/services/chipttSttService");
 
 exports.getLists = onRequest({ cors: true }, async (req, res) => {
   const { userId } = req.body;
@@ -512,6 +513,47 @@ exports.listTtsVoices = onRequest(
         reason: error.message,
         code: error.code || null,
       });
+    }
+  }
+);
+
+exports.transcribeSpeech = onRequest(
+  { cors: true, timeoutSeconds: 60, memory: "256MiB" },
+  async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { audioContent, encoding, sampleRateHertz, languageCode } = req.body || {};
+    if (!audioContent || typeof audioContent !== 'string') {
+      return res.status(400).json({ error: 'Se requiere audioContent para transcribir.' });
+    }
+
+    let uid;
+    try {
+      const token = await getAuth().verifyIdToken(authHeader.slice(7));
+      uid = token.uid;
+    } catch (error) {
+      console.error('[transcribeSpeech] token verification failed:', error.message);
+      return res.status(401).json({ error: 'Unauthorized', reason: error.message });
+    }
+
+    const audioSeconds = Math.max(1, Math.ceil((sampleRateHertz || 48000) / 1000));
+
+    try {
+      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
+      const transcript = await chipttSttService.callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode);
+      res.json({ transcript });
+    } catch (error) {
+      console.error('[transcribeSpeech] failed:', error.message);
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message });
+      }
+      if (error.code === 'RATE_LIMITED') {
+        return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
+      }
+      return res.status(502).json({ error: 'Error al transcribir la voz.' });
     }
   }
 );

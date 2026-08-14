@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import * as chipttModule from '../hooks/useChipttSTT';
 
 type MockRecognitionInstance = {
   onresult: ((event: any) => void) | null;
@@ -49,6 +50,7 @@ describe('useSpeechRecognition', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('calls onInterim with interim transcript', async () => {
@@ -159,5 +161,41 @@ describe('useSpeechRecognition', () => {
     });
 
     expect(mockInstance.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('delegates start/stop/abort to useChipttSTT when provider is chiptt', async () => {
+    const mockChipttStart = vi.fn();
+    const mockChipttStop = vi.fn();
+    const mockChipttAbort = vi.fn();
+
+    vi.spyOn(chipttModule, 'useChipttSTT').mockReturnValue({
+      supported: true,
+      isListening: false,
+      interimTranscript: '',
+      start: mockChipttStart,
+      stop: mockChipttStop,
+      abort: mockChipttAbort,
+    });
+
+    const onFinal = vi.fn();
+    const { result } = renderHook(() => useSpeechRecognition({ onFinal, provider: 'chiptt' }));
+
+    await act(async () => {
+      result.current.start('es');
+    });
+
+    expect(mockChipttStart).toHaveBeenCalledWith('es');
+
+    await act(async () => {
+      result.current.stop();
+    });
+
+    expect(mockChipttStop).toHaveBeenCalled();
+
+    await act(async () => {
+      result.current.abort();
+    });
+
+    expect(mockChipttAbort).toHaveBeenCalled();
   });
 });

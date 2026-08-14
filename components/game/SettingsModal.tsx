@@ -185,6 +185,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const ttsProvider =
     draft.ttsProvider || 'browser';
 
+  const sttProvider =
+    draft.sttProvider || 'browser';
+
   const thresholdPercent =
     Math.round(draft.threshold * 100);
 
@@ -612,6 +615,59 @@ console.log('[LOCAL DEBUG] SETTINGS AFTER UPDATE', {
                   'chirp' && (
                   <p className="text-[10px] text-slate-400 mt-1.5">
                     Calidad premium · fallback automático a browser si se agota la cuota
+                  </p>
+                )}
+              </div>
+
+              {/* STT PROVIDER */}
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                  STT Provider
+                </label>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        sttProvider:
+                          'browser',
+                      })
+                    }
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                      sttProvider ===
+                      'browser'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-slate-500 border border-slate-200'
+                    }`}
+                  >
+                    Browser
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        sttProvider:
+                          'chiptt',
+                      })
+                    }
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                      sttProvider ===
+                      'chiptt'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-slate-500 border border-slate-200'
+                    }`}
+                  >
+                    Chiptt
+                  </button>
+                </div>
+
+                {sttProvider ===
+                  'chiptt' && (
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    Calidad premium · requiere grabación de audio
                   </p>
                 )}
               </div>

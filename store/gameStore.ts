@@ -190,6 +190,7 @@ function mergeSettings(older: AssociationList['settings'], newer: AssociationLis
     voicePitch: newer.voicePitch ?? older.voicePitch,
     voiceCommands: newer.voiceCommands ?? older.voiceCommands,
     ttsProvider: newer.ttsProvider ?? older.ttsProvider,
+    sttProvider: newer.sttProvider ?? older.sttProvider,
   };
 }
 

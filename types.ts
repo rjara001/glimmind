@@ -5,6 +5,7 @@ export type GameFeedback = 'none' | 'correct' | 'incorrect';
 export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
 export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
 export type VoiceProvider = 'browser' | 'chirp';
+export type SttProvider = 'browser' | 'chiptt';
 export type VoiceCommandId = 'reveal' | 'pass' | 'continue' | 'stop';
 export type VoiceCommandsConfig = Record<VoiceCommandId, string[]>;
 
@@ -47,6 +48,7 @@ export interface AssociationList {
     hintMode?: HintMode | false;
     voiceEnabled?: boolean;
     ttsProvider?: VoiceProvider;
+    sttProvider?: SttProvider;
     voiceTermLang?: VoiceLanguage;
     voiceDefLang?: VoiceLanguage;
     voiceTermId?: string;

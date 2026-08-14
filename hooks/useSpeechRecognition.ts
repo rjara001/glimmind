@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SttProvider } from '../types';
+import { useChipttSTT } from './useChipttSTT';
 
 interface RecognitionAlternative {
   transcript: string;
@@ -51,9 +53,17 @@ export interface UseSpeechRecognitionOptions {
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
+  provider?: SttProvider;
 }
 
-export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechRecognitionOptions) {
+export function useSpeechRecognition({
+  onFinal,
+  onInterim,
+  onError,
+  provider = 'browser',
+}: UseSpeechRecognitionOptions) {
+  const chipttStt = useChipttSTT({ onFinal, onInterim, onError });
+
   const supported = getRecognitionConstructor() !== null;
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -192,6 +202,11 @@ export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechR
 
   const start = useCallback(
     (lang: string | null) => {
+      if (provider === 'chiptt') {
+        chipttStt.start(lang);
+        return;
+      }
+
       const instance = ensureInstance(lang);
       if (!instance) return;
       shouldRunRef.current = true;
@@ -202,10 +217,15 @@ export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechR
         // Instance may already be running
       }
     },
-    [ensureInstance],
+    [provider, chipttStt.start, ensureInstance],
   );
 
   const stop = useCallback(() => {
+    if (provider === 'chiptt') {
+      chipttStt.stop();
+      return;
+    }
+
     console.log('[STT] stop reason=intentional');
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
@@ -216,9 +236,14 @@ export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechR
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer]);
+  }, [provider, chipttStt.stop, clearRestartTimer]);
 
   const abort = useCallback(() => {
+    if (provider === 'chiptt') {
+      chipttStt.abort();
+      return;
+    }
+
     console.log('[STT] stop reason=abort');
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
@@ -229,7 +254,7 @@ export function useSpeechRecognition({ onFinal, onInterim, onError }: UseSpeechR
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer]);
+  }, [provider, chipttStt.abort, clearRestartTimer]);
 
   useEffect(() => {
     return () => {

@@ -61,6 +61,7 @@ export function useVoiceSession(list: AssociationList) {
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   console.log('[VoiceSession] ttsProvider=', list.settings.ttsProvider, 'voiceTermId=', list.settings.voiceTermId, 'voiceDefId=', list.settings.voiceDefId);
   const stt = useSpeechRecognition({
+    provider: list.settings.sttProvider || 'browser',
     onInterim: (text) => {
       if (answerHandledRef.current) return;
       const current = gameRef.current.currentAssociation;

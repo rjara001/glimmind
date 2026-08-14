@@ -110,6 +110,7 @@ export function useGameVoice({
 
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const stt = useSpeechRecognition({
+    provider: list.settings.sttProvider || 'browser',
     onInterim: (text) => {
       if (answerHandledRef.current) return;
       const current = currentAssociationRef.current;
