@@ -27,8 +27,8 @@ async function handleSynthesizeSpeech(req, res) {
   const charCount = text.length;
 
   try {
-    await chirpTtsService.checkAndIncrementQuota(getDb(), uid, charCount);
-    const audioContent = await chirpTtsService.callGoogleTts(text, voiceId, rate, pitch);
+    await chirpTtsService.verifyUserHasRemainingTtsQuota(getDb(), uid, charCount);
+    const audioContent = await chirpTtsService.sendTextToChirpSynthesizer(text, voiceId, rate, pitch);
     res.json({ audioContent });
   } catch (error) {
     console.error('[synthesizeSpeech] failed:', error.message);

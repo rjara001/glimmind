@@ -28,7 +28,7 @@ async function handleTranscribeExistingAudio(req, res) {
 
   let result;
   try {
-    result = await chipttSttService.callGoogleSttRecognize(audioContent, languageCode);
+    result = await chipttSttService.sendAudioToChirpRecognizer(audioContent, languageCode);
   } catch (error) {
     console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'RATE_LIMITED') {
@@ -41,7 +41,7 @@ async function handleTranscribeExistingAudio(req, res) {
   }
 
   try {
-    await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
+    await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
   } catch (error) {
     console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
