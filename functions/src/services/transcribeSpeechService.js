@@ -1,6 +1,6 @@
 const { getDb, getAuth } = require("../utils/firebase");
 const { CHIPTT_STT_MAX_SINGLE_DURATION } = require("../utils/constants");
-const chipttSttService = require("./chipttSttService");
+const sttService = require("./sttService");
 
 async function handleTranscribeSpeech(req, res) {
   const authHeader = req.headers.authorization;
@@ -31,7 +31,7 @@ async function handleTranscribeSpeech(req, res) {
 
   let transcript;
   try {
-    transcript = await chipttSttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
+    transcript = await sttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
   } catch (error) {
     console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'RATE_LIMITED') {
@@ -44,7 +44,7 @@ async function handleTranscribeSpeech(req, res) {
   }
 
   try {
-    await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
+    await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
   } catch (error) {
     console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {

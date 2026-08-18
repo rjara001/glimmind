@@ -1,7 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { getDb, getAuth } = require("../utils/firebase");
 const { CHIPTT_STT_MAX_SINGLE_DURATION } = require("../utils/constants");
-const chipttSttService = require("../services/chipttSttService");
+const sttService = require("../services/sttService");
 
 exports.transcribeSpeech = onRequest(
   { cors: true, timeoutSeconds: 60, memory: "256MiB" },
@@ -34,7 +34,7 @@ exports.transcribeSpeech = onRequest(
 
     let transcript;
     try {
-      transcript = await chipttSttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
+      transcript = await sttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
     } catch (error) {
       console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'RATE_LIMITED') {
@@ -47,7 +47,7 @@ exports.transcribeSpeech = onRequest(
     }
 
     try {
-      await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
+      await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
     } catch (error) {
       console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
@@ -88,7 +88,7 @@ exports.transcribeExistingAudio = onRequest(
 
     let result;
     try {
-      result = await chipttSttService.sendAudioToGoogleSpeechRecognitionRecognize(audioContent, languageCode);
+      result = await sttService.sendAudioToGoogleSpeechRecognitionRecognize(audioContent, languageCode);
     } catch (error) {
       console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'RATE_LIMITED') {
@@ -101,7 +101,7 @@ exports.transcribeExistingAudio = onRequest(
     }
 
     try {
-      await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
+      await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
     } catch (error) {
       console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {

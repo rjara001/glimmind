@@ -1,6 +1,6 @@
 const { getDb, getAuth } = require("../utils/firebase");
 const { CHIPTT_STT_MAX_SINGLE_DURATION } = require("../utils/constants");
-const chipttSttService = require("./chipttSttService");
+const sttService = require("./sttService");
 
 async function handleTranscribeExistingAudio(req, res) {
   const authHeader = req.headers.authorization;
@@ -28,7 +28,7 @@ async function handleTranscribeExistingAudio(req, res) {
 
   let result;
   try {
-    result = await chipttSttService.sendAudioToChirpRecognizer(audioContent, languageCode);
+    result = await sttService.sendAudioToChirpRecognizer(audioContent, languageCode);
   } catch (error) {
     console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'RATE_LIMITED') {
@@ -41,7 +41,7 @@ async function handleTranscribeExistingAudio(req, res) {
   }
 
   try {
-    await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
+    await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
   } catch (error) {
     console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
     if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
