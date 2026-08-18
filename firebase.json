@@ -1,7 +1,7 @@
 
 {
   "functions": {
-    "source": "functions"
+    "source": "backend/src/functions"
   },
   "firestore": {
     "rules": "firestore.rules"
@@ -17,7 +17,8 @@
       "**/node_modules/**",
       "app/**",
       "lib/**",
-      "functions/**"
+      "backend/**",
+      "src/**"
     ],
     "rewrites": [
       {
