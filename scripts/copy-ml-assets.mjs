@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const onnxSrc = resolve(root, 'node_modules/onnxruntime-web/dist');
-const onnxDest = resolve(root, 'public/onnx');
+const onnxDest = resolve(root, 'src/public/onnx');
 const transformersSrc = resolve(root, 'node_modules/@huggingface/transformers/dist/transformers.web.min.js');
-const transformersDest = resolve(root, 'public/transformers.web.min.js');
+const transformersDest = resolve(root, 'src/public/transformers.web.min.js');
 
 if (!existsSync(onnxSrc) || !existsSync(transformersSrc)) {
   console.warn('[copy-ml-assets] dependencies missing, skipping. Run `npm install` first.');

@@ -30,7 +30,7 @@ dist-ssr
 .env
 
 # Generated ML assets (copied from node_modules by scripts/copy-ml-assets.mjs)
-/public/onnx/
-/public/transformers.web.min.js
+/src/public/onnx/
+/src/public/transformers.web.min.js
 
 .opencode/
