@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dashboard } from './components/Dashboard';
-import { GameView } from './components/GameView';
+import { Dashboard } from './components/views/Dashboard';
+import { GameView } from './components/views/GameView';
 import { ListEditor } from './components/ListEditor';
-import { QuickAddModal } from './components/QuickAddModal';
-import { SettingsView } from './components/SettingsView';
-import { HistoryView } from './components/HistoryView';
-import { ReportsView } from './components/ReportsView';
+import { QuickAddModal } from './components/modals/QuickAddModal';
+import { SettingsView } from './components/views/SettingsView';
+import { HistoryView } from './components/views/HistoryView';
+import { ReportsView } from './components/views/ReportsView';
 import { Auth } from './components/Auth';
-import { ToastProvider, useToast } from './components/Toast';
-import { CelebrationOverlay } from './components/CelebrationOverlay';
+import { ToastProvider, useToast } from './components/layout/Toast';
+import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { useGameStore } from './store/gameStore';
 import { auth, onAuthStateChanged } from './firebase';
 import type { User } from 'firebase/auth';
 import { listService } from './services/firestoreService';
+import { Association, AssociationList } from './types';
 import { APP_VERSION } from './constants/version';
 import { computeQuotaStatus, countCards } from './utils/quota';
 import { createActivityEvent, buildListDiffEvents } from './utils/activity';
@@ -53,7 +54,6 @@ const AppContent: React.FC = () => {
   const quota = useGameStore(state => state.quota);
   const isPremium = quota?.tier === 'premium';
   
-  console.log('[DEBUG] render - view:', view, 'currentListId:', currentListId, 'lists.length:', lists.length, 'currentList:', currentList?.name);
 
   // Auth state listener
   useEffect(() => {
@@ -114,13 +114,13 @@ const AppContent: React.FC = () => {
       await syncFromCloud();
       showToast('Datos sincronizados desde la nube', 'success');
     } catch (error) {
-      showToast('Error al sincronizar', 'error');
+      showToast(error instanceof Error ? error.message : 'Error al sincronizar', 'error');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleUpdateAssociationsWrapper = useCallback(async (updatedAssociations: any[]) => {
+  const handleUpdateAssociationsWrapper = useCallback(async (updatedAssociations: Association[]) => {
     if (currentListId) {
       updateAssociations(currentListId, updatedAssociations);
     }
@@ -154,8 +154,7 @@ const AppContent: React.FC = () => {
     showToast(`Agregado a "${targetList.name}"`, 'success');
   }, [showToast]);
 
-  const handleUpdateList = useCallback(async (updatedList: any) => {
-    console.log('[App][handleUpdateList] listId=', updatedList.id, 'assocCount=', updatedList.associations?.length || 0, 'settingsKeys=', Object.keys(updatedList.settings || {}), 'ttsProvider=', updatedList.settings?.ttsProvider);
+  const handleUpdateList = useCallback(async (updatedList: AssociationList) => {
     const { lists } = useGameStore.getState();
     const prevList = lists.find(l => l.id === updatedList.id);
     if (prevList && user) {
@@ -174,17 +173,15 @@ const AppContent: React.FC = () => {
     
     if (user && user.uid !== GUEST_ID) {
       try {
-        console.log('[App][handleUpdateList] calling syncToCloud for', updatedList.id);
         await useGameStore.getState().syncToCloud(updatedList.id);
         useGameStore.getState().loadQuota();
-      } catch (error: any) {
-        console.error('[App][handleUpdateList] failed:', error);
-        showToast(error.message || 'Error al guardar la lista', 'error');
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Error al guardar la lista', 'error');
       }
     }
   }, [setLists, user, showToast]);
 
-  const handleCreateList = async (name: string, concept: string, initialAssocs: any[]) => {
+  const handleCreateList = async (name: string, concept: string, initialAssocs: Association[]) => {
     const { lists, quota } = useGameStore.getState();
     useGameStore.getState().setActivityRecordingEnabled(false);
 
@@ -196,14 +193,12 @@ const AppContent: React.FC = () => {
     const isPremiumNow = currentQuota?.tier === 'premium';
     const isBlocked = !isPremiumNow && currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
 
-    console.log('[App][handleCreateList] name=', name, 'initialAssocs=', initialAssocs.length, 'quota=', JSON.stringify(currentQuota), 'isPremiumNow=', isPremiumNow, 'isBlocked=', isBlocked);
 
     if (isBlocked) {
       await useGameStore.getState().loadQuota();
       const refreshedQuota = useGameStore.getState().quota;
       const refreshedPremium = refreshedQuota?.tier === 'premium';
       if (!refreshedPremium && refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
-        console.log('[App][handleCreateList] BLOCKED by quota', JSON.stringify(refreshedQuota));
         showToast(`Llegaste a tu límite de ${refreshedQuota.cardQuota} tarjetas.`, 'error');
         useGameStore.getState().setActivityRecordingEnabled(true);
         return;
@@ -232,14 +227,13 @@ const AppContent: React.FC = () => {
     
     if (user && user.uid !== GUEST_ID) {
       try {
-        console.log('[App][handleCreateList] creating list on cloud for user', user.uid, 'assocs=', initialAssocs.length);
         const newId = await listService.createList(newListData);
         const updatedList = { ...newList, id: newId };
         const { lists } = useGameStore.getState();
         setLists(lists.map(l => l.id === tempId ? updatedList : l));
         setCurrentList(newId);
         useGameStore.getState().loadQuota();
-        const createdEvents = initialAssocs.map((association: any) => createActivityEvent({
+        const createdEvents = initialAssocs.map((association: Association) => createActivityEvent({
           userId: user.uid,
           listId: newId,
           cardId: association.id,
@@ -247,15 +241,13 @@ const AppContent: React.FC = () => {
           type: 'card_created',
         }));
         useGameStore.getState().recordActivity(createdEvents);
-        console.log('[App][handleCreateList] created list', newId, 'assocs=', initialAssocs.length);
-      } catch (error: any) {
-        console.error('[App][handleCreateList] failed:', error);
-        showToast(error.message || 'Error al crear la lista', 'error');
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Error al crear la lista', 'error');
         useGameStore.getState().loadQuota();
       }
     } else {
       setCurrentList(tempId);
-      const createdEvents = initialAssocs.map((association: any) => createActivityEvent({
+      const createdEvents = initialAssocs.map((association: Association) => createActivityEvent({
         userId: GUEST_ID,
         listId: tempId,
         cardId: association.id,
@@ -279,12 +271,11 @@ const AppContent: React.FC = () => {
         await listService.deleteList(id);
         useGameStore.getState().loadQuota();
       } catch (error) {
-        console.error("Failed to delete list:", error);
       }
     }
   };
 
-  const handleCreateMultipleLists = async (groups: { name: string, associations: any[] }[]) => {
+  const handleCreateMultipleLists = async (groups: { name: string; associations: Association[] }[]) => {
     if (!user || !currentList) return;
     useGameStore.getState().setActivityRecordingEnabled(false);
     const { lists, quota } = useGameStore.getState();
@@ -311,9 +302,9 @@ const AppContent: React.FC = () => {
       settings: { mode: 'training' as const, flipOrder: 'normal' as const, threshold: 0.95, ignoreArticles: true, showHints: true },
     }));
 
-    const emitMovedEvents = (targets: { id: string; associations: any[] }[]) => {
+    const emitMovedEvents = (targets: { id: string; associations: Association[] }[]) => {
       const events = targets.flatMap(({ id, associations }) =>
-        associations.map((association: any) => createActivityEvent({
+        associations.map((association: Association) => createActivityEvent({
           userId: user.uid || GUEST_ID,
           listId: id,
           cardId: association.id,
@@ -346,7 +337,6 @@ const AppContent: React.FC = () => {
       useGameStore.getState().loadQuota();
       showToast(`${groups.length} agrupaciones creadas con éxito`, 'success');
     } catch (error) {
-      console.error("Failed to split list:", error);
       showToast(error instanceof Error ? error.message : 'No se pudo dividir la lista.', 'error');
     }
     useGameStore.getState().setActivityRecordingEnabled(true);
@@ -453,12 +443,9 @@ const AppContent: React.FC = () => {
             onDelete={handleDeleteList} 
             onEdit={(id) => { setCurrentList(id); setView('editor'); }} 
             onPlay={(id) => { 
-              console.log('[DEBUG] Play clicked, id:', id); 
               setCurrentList(id); 
               localStorage.setItem(LAST_PLAYED_KEY, id);
               setLastPlayedId(id);
-              console.log('[DEBUG] currentListId set to:', useGameStore.getState().currentListId); 
-              console.log('[DEBUG] lists:', useGameStore.getState().lists.length); 
               handleStartGame(id);
             }}
           />

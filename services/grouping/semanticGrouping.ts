@@ -49,7 +49,6 @@ export async function semanticGrouping(items: string[], minGroupSize?: number): 
 
     return clusterBySimilarity(vectors, items, SIMILARITY_THRESHOLD, minGroupSize);
   } catch (error) {
-    console.warn('[semanticGrouping] falling back to keyword grouping:', error);
     return null;
   } finally {
     worker.terminate();

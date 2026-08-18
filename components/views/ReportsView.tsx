@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GameSummaryView } from './GameSummaryView';
+import { GameSummaryView } from '../GameSummaryView';
 import { RankingView } from './RankingView';
 
 interface ReportsViewProps {

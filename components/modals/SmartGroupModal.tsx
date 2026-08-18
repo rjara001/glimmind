@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Association, AssociationList } from '../types';
-import { downloadAssociationsCsv } from '../utils/csv';
+import { Association, AssociationList } from '../../types';
+import { downloadAssociationsCsv } from '../../utils/csv';
 
 interface SmartGroupModalProps {
   originalList: AssociationList;

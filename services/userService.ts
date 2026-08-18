@@ -7,7 +7,6 @@ export const userService = {
     try {
       return await callFunction<UserQuota>('getQuota', { userId });
     } catch (error) {
-      console.error("Error fetching quota:", error);
       return null;
     }
   },

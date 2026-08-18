@@ -9,8 +9,8 @@ import {
   DEFAULT_VOICE_COMMANDS,
   resolveVoiceCommands,
 } from '../../services/voice/commands';
-import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
-import { useChirpVoices } from '../../hooks/useChirpVoices';
+import { useSpeechSynthesis } from '../../hooks/voice/useSpeechSynthesis';
+import { useChirpVoices } from '../../hooks/voice/useChirpVoices';
 import {
   isChirpVoiceId,
 } from '../../services/voice/chirpVoices';
@@ -157,16 +157,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     draft.ttsProvider || 'browser'
   );
 
-  console.log(
-    '[SettingsModal] opened with settings',
-    list.settings
-  );
-
-  console.log(
-    '[SettingsModal] normalized draft',
-    draft
-  );
-
   const isReversed =
     draft.flipOrder === 'reversed';
 
@@ -208,17 +198,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const text = getPreviewText(lang);
       const rate = draft.voiceRate ?? 1;
       const pitch = draft.voicePitch ?? 1;
-
-      console.log(
-        '[SettingsModal] test voice',
-        {
-          provider: draft.ttsProvider,
-          lang,
-          voiceId,
-          rate,
-          pitch,
-        }
-      );
 
       await speak(
         text,
@@ -268,34 +247,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const finalSettings =
       normalizeVoiceSettings(draft);
 
-    console.log(
-      '[SettingsModal] saving settings',
-      JSON.stringify({
-        ...finalSettings,
-        voiceTermId:
-          finalSettings.voiceTermId,
-        voiceDefId:
-          finalSettings.voiceDefId,
-        ttsProvider:
-          finalSettings.ttsProvider,
-      })
-    );
-console.log('[LOCAL DEBUG] SETTINGS BEFORE SAVE', {
-  provider: draft.ttsProvider,
-  termLang: draft.voiceTermLang,
-  termVoiceId: draft.voiceTermId,
-  defLang: draft.voiceDefLang,
-  defVoiceId: draft.voiceDefId,
-});
     const updated = {
       ...list,
       settings: finalSettings,
     };
-console.log('[LOCAL DEBUG] SETTINGS AFTER UPDATE', {
-  provider: updated.settings.ttsProvider,
-  termVoiceId: updated.settings.voiceTermId,
-  defVoiceId: updated.settings.voiceDefId,
-});
     onUpdateList(updated);
     onClose();
   };

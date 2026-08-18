@@ -1,6 +1,6 @@
 const { getDb } = require("../utils/firebase");
 const { FieldValue } = require("../utils/firebase");
-const { CHIPTT_STT_GLOBAL_LIMIT, CHIPTT_STT_USER_LIMIT, CHIPTT_STT_CALL_TIMEOUT_MS } = require("../utils/constants");
+const { CHIPTT_STT_GLOBAL_LIMIT, CHIPTT_STT_USER_LIMIT, CHIPTT_STT_PREMIUM_USER_LIMIT, CHIPTT_STT_CALL_TIMEOUT_MS } = require("../utils/constants");
 
 function monthKey() {
   const d = new Date();
@@ -38,6 +38,12 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
     : { monthKey: currentMonth, audioSecondsUsed: 0 };
 
   if (globalData.audioSecondsUsed >= CHIPTT_STT_GLOBAL_LIMIT) {
+    console.error('[Chiptt] global quota exceeded', {
+      uid,
+      audioSeconds,
+      globalUsed: globalData.audioSecondsUsed,
+      globalLimit: CHIPTT_STT_GLOBAL_LIMIT,
+    });
     const error = new Error(
       "El servicio de transcripción alcanzó su límite mensual global. Intenta el próximo mes."
     );
@@ -45,13 +51,32 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
     throw error;
   }
 
-  if (userData.audioSecondsUsed >= CHIPTT_STT_USER_LIMIT) {
+  const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
+  const metaSnap = await metaRef.get();
+  const userTier = metaSnap.exists ? (metaSnap.data().tier || 'free') : 'free';
+  const userLimit = userTier === 'premium' ? CHIPTT_STT_PREMIUM_USER_LIMIT : CHIPTT_STT_USER_LIMIT;
+
+  if (userData.audioSecondsUsed >= userLimit) {
+    console.error('[Chiptt] user quota exceeded', {
+      uid,
+      audioSeconds,
+      userUsed: userData.audioSecondsUsed,
+      userLimit,
+      tier: userTier,
+    });
     const error = new Error(
-      `Llegaste a tu límite mensual de transcripción (${CHIPTT_STT_USER_LIMIT} segundos). Vuelve el próximo mes.`
+      `Llegaste a tu límite mensual de transcripción (${userLimit} segundos). Vuelve el próximo mes.`
     );
     error.code = "USER_QUOTA_EXCEEDED";
     throw error;
   }
+
+  console.error('[Chiptt] quota check passed', {
+    uid,
+    audioSeconds,
+    globalUsed: globalData.audioSecondsUsed,
+    userUsed: userData.audioSecondsUsed,
+  });
 
   const batch = db.batch();
 
@@ -145,6 +170,11 @@ async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCo
   if (!response.ok) {
     const bodyText = await response.text().catch(() => "");
 
+    console.error('[Chiptt] Google STT HTTP error', {
+      status: response.status,
+      body: bodyText.slice(0, 500),
+    });
+
     const error = new Error(
       `STT HTTP ${response.status}: ${bodyText.slice(0, 500)}`
     );
@@ -161,10 +191,19 @@ async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCo
     data.results?.[0]?.alternatives?.[0]?.transcript;
 
   if (!transcript) {
-    const error = new Error("Respuesta vacía de STT.");
-    error.code = "STT_ERROR";
+    console.error('[Chiptt] Google STT no transcript', {
+      resultsCount: data.results?.length || 0,
+      alternativesCount: data.results?.[0]?.alternatives?.length || 0,
+    });
+    const error = new Error("No speech detected.");
+    error.code = "NO_SPEECH";
     throw error;
   }
+
+  console.error('[Chiptt] Google STT success', {
+    transcriptLength: transcript.length,
+    transcriptPreview: transcript.slice(0, 100),
+  });
 
   return transcript;
 }
@@ -175,4 +214,5 @@ module.exports = {
   getAccessToken,
   CHIPTT_STT_GLOBAL_LIMIT,
   CHIPTT_STT_USER_LIMIT,
+  CHIPTT_STT_PREMIUM_USER_LIMIT,
 };

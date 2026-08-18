@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import * as chipttModule from '../hooks/useChipttSTT';
+import { useSpeechRecognition } from '../hooks/voice/useSpeechRecognition';
+import * as chipttModule from '../hooks/voice/stt/useChipTTSTT';
 
 type MockRecognitionInstance = {
   onresult: ((event: any) => void) | null;
@@ -163,15 +163,19 @@ describe('useSpeechRecognition', () => {
     expect(mockInstance.start).toHaveBeenCalledTimes(2);
   });
 
-  it('delegates start/stop/abort to useChipttSTT when provider is chiptt', async () => {
+  it('delegates start/stop/abort to useChipTTSTT when provider is chiptt', async () => {
     const mockChipttStart = vi.fn();
     const mockChipttStop = vi.fn();
     const mockChipttAbort = vi.fn();
 
-    vi.spyOn(chipttModule, 'useChipttSTT').mockReturnValue({
+    vi.spyOn(chipttModule, 'useChipTTSTT').mockReturnValue({
       supported: true,
       isListening: false,
+      isProcessing: false,
       interimTranscript: '',
+      recordingTimeLeft: 0,
+      recordingElapsed: 0,
+      maxRecordingSeconds: 0,
       start: mockChipttStart,
       stop: mockChipttStop,
       abort: mockChipttAbort,

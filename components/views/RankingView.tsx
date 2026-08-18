@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { rankByPlays, rankByWeakness, CardContext } from '../utils/ranking';
-import { CardLevel } from '../types/activity';
-import { LEVEL_LABELS } from '../utils/activity';
-import { HistoryEmptyState } from './HistoryEmptyState';
+import { useGameStore } from '../../store/gameStore';
+import { rankByPlays, rankByWeakness, CardContext } from '../../utils/ranking';
+import { CardLevel } from '../../types/activity';
+import { LEVEL_LABELS } from '../../utils/activity';
+import { HistoryEmptyState } from '../HistoryEmptyState';
 
 interface RankingViewProps {
   onGoToSettings: () => void;

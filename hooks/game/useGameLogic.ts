@@ -1,11 +1,11 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Association, AssociationList } from '../types';
-import { GlimmindGame } from '../services/gameEngine';
-import { useGameStore } from '../store/gameStore';
-import { CardActivityEvent, GameSessionSummary } from '../types/activity';
-import { createActivityEvent, levelOf } from '../utils/activity';
-import { computeStateBreakdown } from '../utils/progress';
+import { Association, AssociationList } from '../../types';
+import { GlimmindGame } from '../../services/gameEngine';
+import { useGameStore } from '../../store/gameStore';
+import { CardActivityEvent, GameSessionSummary } from '../../types/activity';
+import { createActivityEvent, levelOf } from '../../utils/activity';
+import { computeStateBreakdown } from '../../utils/progress';
 
 export const useGameLogic = ({ list, autoStart = false }: { list: AssociationList; autoStart?: boolean }) => {
   const trackingEnabled = useGameStore((state) => state.settings.activityHistoryEnabled);

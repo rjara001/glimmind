@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AssociationList, Association } from '../types';
-import { ListRecommendation } from '../types/recommendation';
-import { normalizeText } from '../utils/text';
-import { recommendListsFor } from '../utils/recommendList';
+import { AssociationList, Association } from '../../types';
+import { ListRecommendation } from '../../types/recommendation';
+import { normalizeText } from '../../utils/text';
+import { recommendListsFor } from '../../utils/recommendList';
 
 interface QuickAddModalProps {
   lists: AssociationList[];

@@ -16,7 +16,7 @@ describe('settingsService local storage', () => {
   it('round-trips saved settings', () => {
     const settings = { activityHistoryEnabled: true, audioRecordingEnabled: false };
     settingsService.saveLocalSettings(settings);
-    expect(settingsService.loadLocalSettings()).toEqual(settings);
+    expect(settingsService.loadLocalSettings()).toEqual({ ...settings, voiceSttFallback: false });
   });
 
   it('merges partial saved settings with defaults', () => {

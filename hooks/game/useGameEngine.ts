@@ -1,7 +1,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
-import { AssociationList, GameState, GameFeedback } from '../types';
-import { GlimmindGame } from '../services/gameEngine';
+import { AssociationList, GameState, GameFeedback } from '../../types';
+import { GlimmindGame } from '../../services/gameEngine';
 
 /**
  * This hook is the definitive controller connecting the React UI to the immutable GlimmindGame engine.

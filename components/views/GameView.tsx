@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Association, AssociationList, GameCycle } from '../types';
-import { useGameLogic } from '../hooks/useGameLogic';
-import { useGameStore } from '../store/gameStore';
-import { useToast } from './Toast';
-import { GameHeader } from './game/GameHeader';
-import { GameCard } from './game/GameCard';
-import { GameControls } from './game/GameControls';
-import { CycleProgress } from './game/CycleProgress';
-import { FinishedScreen } from './game/FinishedScreen';
-import { SettingsModal } from './game/SettingsModal';
-import { AttemptList } from './game/AttemptList';
-import { useImmersiveHeader } from '../hooks/useImmersiveHeader';
-import { useGameVoice } from '../hooks/useGameVoice';
-import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
-import { VoiceCommandId } from '../types';
+import { Association, AssociationList, GameCycle } from '../../types';
+import { useGameLogic } from '../../hooks/game/useGameLogic';
+import { useGameStore } from '../../store/gameStore';
+import { useToast } from '../layout/Toast';
+import { GameHeader } from '../game/GameHeader';
+import { GameCard } from '../game/GameCard';
+import { GameControls } from '../game/GameControls';
+import { CycleProgress } from '../game/CycleProgress';
+import { FinishedScreen } from '../game/FinishedScreen';
+import { SettingsModal } from '../../components/modals/SettingsModal';
+import { AttemptList } from '../game/AttemptList';
+import { useImmersiveHeader } from '../../hooks/ui/useImmersiveHeader';
+import { useGameVoice } from '../../hooks/voice/useGameVoice';
+import { useSpeechSynthesis } from '../../hooks/voice/useSpeechSynthesis';
+import { VoiceCommandId } from '../../types';
 
 interface GameViewProps {
   list: AssociationList;

@@ -23,10 +23,8 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
       // Ignore COOP error - it's a known Google OAuth issue that doesn't affect login
       // The login actually succeeds, onAuthStateChanged will handle the state change
       if (error?.message?.includes('Cross-Origin-Opener-Policy')) {
-        console.log('Login popup closed (COOP), waiting for auth state...');
         return;
       }
-      console.error("Error logging in:", error);
       setIsLoggingIn(false);
     }
   };

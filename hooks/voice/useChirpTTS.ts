@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { synthesizeSpeech } from '../services/voice/chirpTts';
+import { synthesizeSpeech } from '../../services/voice/chirpTts';
 import { SpeakResult } from './useSpeechSynthesis';
 
 export function useChirpTTS() {
@@ -30,9 +30,7 @@ export function useChirpTTS() {
       cleanup();
 
       try {
-        console.log('[Chirp] synthesizeSpeech start text=', text, 'voiceId=', voiceId, 'rate=', rate, 'pitch=', pitch);
         const result = await synthesizeSpeech(text, voiceId, rate, pitch);
-        console.log('[Chirp] synthesizeSpeech ok audioLength=', result.audioContent.length);
         const blob = await fetch(`data:audio/mp3;base64,${result.audioContent}`).then((r) => {
           if (!r.ok) throw new Error('Failed to decode audio');
           return r.blob();
@@ -67,7 +65,6 @@ export function useChirpTTS() {
           });
         });
       } catch (error) {
-        console.error('[Chirp] synthesizeSpeech failed:', error);
         cleanup();
         return { ok: false, voiceName: voiceId, voicesCount: 0 };
       }

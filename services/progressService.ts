@@ -7,7 +7,6 @@ export const progressService = {
     try {
       return await callFunction<UserProgress | null>('getProgress', { userId });
     } catch (error) {
-      console.error("Error fetching progress:", error);
       return null;
     }
   },

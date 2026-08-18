@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { useToast } from './Toast';
-import { userService } from '../services/userService';
+import { useGameStore } from '../../store/gameStore';
+import { useToast } from '../layout/Toast';
+import { userService } from '../../services/userService';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -33,6 +33,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
 
   const handleToggleAudioRecording = () => {
     setSettings({ ...settings, audioRecordingEnabled: !settings.audioRecordingEnabled });
+  };
+
+  const handleToggleFallback = () => {
+    setSettings({ ...settings, voiceSttFallback: !settings.voiceSttFallback });
   };
 
   const handleTogglePremium = async () => {
@@ -147,6 +151,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             <span
               className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                 settings.audioRecordingEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
+        <div className="p-6 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-gray-900">Fallback de reconocimiento de voz</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Si el reconocimiento del navegador falla hasta 3 veces seguidas, se activa
+              automáticamente un reconocimiento externo para intentar leer tu respuesta.
+            </p>
+            {settings.voiceSttFallback ? (
+              <p className="text-xs text-amber-600 mt-2 font-medium">
+                Activo. Tenés hasta 3 intentos antes de que se intente el reconocimiento externo.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-2">
+                Desactivado por defecto. Si fallás el reconocimiento del navegador, la respuesta
+                se considera incorrecta sin intentos adicionales.
+              </p>
+            )}
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings.voiceSttFallback}
+            aria-label="Fallback de reconocimiento de voz"
+            onClick={handleToggleFallback}
+            className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              settings.voiceSttFallback ? 'bg-indigo-600' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                settings.voiceSttFallback ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SettingsView } from './SettingsView';
+import { SettingsView } from './views/SettingsView';
 import { useGameStore } from '../store/gameStore';
 import { DEFAULT_SETTINGS } from '../types/settings';
-import { ToastProvider } from './Toast';
+import { ToastProvider } from './layout/Toast';
 
 describe('SettingsView', () => {
   const onBack = vi.fn();

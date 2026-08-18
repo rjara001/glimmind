@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SttProvider } from '../types';
-import { useChipttSTT } from './useChipttSTT';
+import { SttProvider } from '../../types/stt';
 
 interface RecognitionAlternative {
   transcript: string;
@@ -49,21 +48,13 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
 }
 
-export interface UseSpeechRecognitionOptions {
+export interface UseBrowserSTTOptions {
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
-  provider?: SttProvider;
 }
 
-export function useSpeechRecognition({
-  onFinal,
-  onInterim,
-  onError,
-  provider = 'browser',
-}: UseSpeechRecognitionOptions) {
-  const chipttStt = useChipttSTT({ onFinal, onInterim, onError });
-
+export function useBrowserSTT({ onFinal, onInterim, onError }: UseBrowserSTTOptions): SttProvider {
   const supported = getRecognitionConstructor() !== null;
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -153,12 +144,10 @@ export function useSpeechRecognition({
       instance.onend = () => {
         const wasIntentionalStop = intentionalStopRef.current;
         intentionalStopRef.current = false;
-        console.log('[STT] onend shouldRun=' + shouldRunRef.current + ' intentionalStop=' + wasIntentionalStop);
         if (!shouldRunRef.current || wasIntentionalStop || recognitionRef.current !== instance) {
           setIsListening(false);
           return;
         }
-        console.log('[STT] auto restart scheduled');
         restartTimerRef.current = setTimeout(() => {
           restartTimerRef.current = null;
           if (!shouldRunRef.current || recognitionRef.current !== instance) return;
@@ -186,11 +175,9 @@ export function useSpeechRecognition({
         if (interim) {
           onInterimRef.current?.(interim);
         }
-        console.log('[STT] interim="' + interim + '"');
         setInterimTranscript(interim);
         if (final) {
           const trimmed = final.trim();
-          console.log('[STT] final="' + trimmed + '"');
           onFinalRef.current(trimmed);
         }
       };
@@ -202,11 +189,6 @@ export function useSpeechRecognition({
 
   const start = useCallback(
     (lang: string | null) => {
-      if (provider === 'chiptt') {
-        chipttStt.start(lang);
-        return;
-      }
-
       const instance = ensureInstance(lang);
       if (!instance) return;
       shouldRunRef.current = true;
@@ -217,16 +199,10 @@ export function useSpeechRecognition({
         // Instance may already be running
       }
     },
-    [provider, chipttStt.start, ensureInstance],
+    [ensureInstance],
   );
 
   const stop = useCallback(() => {
-    if (provider === 'chiptt') {
-      chipttStt.stop();
-      return;
-    }
-
-    console.log('[STT] stop reason=intentional');
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
@@ -236,15 +212,9 @@ export function useSpeechRecognition({
     } catch {
       // Instance may not be running
     }
-  }, [provider, chipttStt.stop, clearRestartTimer]);
+  }, [clearRestartTimer]);
 
   const abort = useCallback(() => {
-    if (provider === 'chiptt') {
-      chipttStt.abort();
-      return;
-    }
-
-    console.log('[STT] stop reason=abort');
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
@@ -254,7 +224,7 @@ export function useSpeechRecognition({
     } catch {
       // Instance may not be running
     }
-  }, [provider, chipttStt.abort, clearRestartTimer]);
+  }, [clearRestartTimer]);
 
   useEffect(() => {
     return () => {
@@ -273,7 +243,11 @@ export function useSpeechRecognition({
     () => ({
       supported,
       isListening,
+      isProcessing: false,
       interimTranscript,
+      recordingTimeLeft: 0,
+      recordingElapsed: 0,
+      maxRecordingSeconds: 0,
       start,
       stop,
       abort,

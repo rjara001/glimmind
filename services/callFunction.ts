@@ -28,7 +28,6 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   const override = SECOND_GEN_FUNCTIONS[functionName];
   const base = (override || FUNCTIONS_BASE).replace(/\/$/, '');
   const payload = JSON.stringify(data);
-  console.log('[callFunction] POST', `${base}/${functionName}`, 'payloadLength=', payload.length, 'hasToken=', !!token);
   
   const response = await fetch(`${base}/${functionName}`, {
     method: 'POST',
@@ -40,12 +39,21 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   });
 
   const text = await response.text();
-  console.log('[callFunction]', functionName, 'status=', response.status, 'response=', text.slice(0, 200));
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const errorJson = JSON.parse(text);
+      errorMessage = errorJson.error || errorJson.detail || errorMessage;
+    } catch {
+      if (text) errorMessage = text.slice(0, 200);
+    }
+    throw new Error(errorMessage);
   }
 
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Invalid JSON response from server');
+  }
 }

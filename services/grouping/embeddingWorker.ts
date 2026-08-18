@@ -86,7 +86,6 @@ const getPipeline = (): Promise<FeatureExtractor> => {
         },
       });
     } catch (webgpuError) {
-      console.warn('[embeddingWorker] WebGPU unavailable, falling back to WASM:', webgpuError);
       pipeline = await module.pipeline('feature-extraction', EMBEDDING_MODEL_ID, {
         dtype: 'q8',
         progress_callback: (progress: unknown) => {

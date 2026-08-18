@@ -7,7 +7,7 @@ import { VoiceFinished } from './VoiceFinished';
 interface VoiceGameViewProps {
   list: AssociationList;
   onBack: () => void;
-  onUpdateAssociations: (updatedAssociations: any[]) => Promise<void>;
+  onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
 }
 
 export const VoiceGameView: React.FC<VoiceGameViewProps> = ({ list, onBack, onUpdateAssociations }) => {
@@ -70,6 +70,9 @@ export const VoiceGameView: React.FC<VoiceGameViewProps> = ({ list, onBack, onUp
           interim={session.interim}
           error={session.error}
           isListening={session.isListening}
+          recordingTimeLeft={session.recordingTimeLeft}
+          recordingElapsed={session.recordingElapsed}
+          maxRecordingSeconds={session.maxRecordingSeconds}
           onRepeat={session.repeat}
           onStop={session.stop}
           onSubmitTyped={session.submitTyped}

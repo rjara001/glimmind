@@ -1,7 +1,9 @@
 import { callFunction } from '../../services/callFunction';
 
 export interface ChipttTranscribeResponse {
-  transcript: string;
+  transcript?: string;
+  noSpeech?: boolean;
+  message?: string;
 }
 
 export interface ChipttTranscribeOptions {
@@ -9,6 +11,7 @@ export interface ChipttTranscribeOptions {
   encoding?: string;
   sampleRateHertz?: number;
   languageCode?: string;
+  audioDuration?: number;
 }
 
 export async function transcribeSpeech(

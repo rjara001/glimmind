@@ -1,7 +1,7 @@
 import React from 'react';
-import { GoalWidgetProps } from '../types/goal-widget-props';
-import { StateBreakdown } from '../types/progress';
-import { todayKey, emptyDailyProgress } from '../utils/progress';
+import { GoalWidgetProps } from '../../types/goal-widget-props';
+import { StateBreakdown } from '../../types/progress';
+import { todayKey, emptyDailyProgress } from '../../utils/progress';
 
 const GOAL_PRESETS = [30, 50, 100];
 

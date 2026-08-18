@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { RankingView } from './RankingView';
+import { RankingView } from './views/RankingView';
 import { useGameStore } from '../store/gameStore';
 import { DEFAULT_SETTINGS } from '../types/settings';
 import { Association, AssociationList } from '../types';

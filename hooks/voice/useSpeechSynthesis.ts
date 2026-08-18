@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { VoiceProvider } from '../types';
-import { resolveVoiceForLang } from '../services/voice/voicePicker';
+import { VoiceProvider } from '../../types';
+import { resolveVoiceForLang } from '../../services/voice/voicePicker';
 import {
   getDefaultChirpVoiceId,
   isChirpVoiceId,
-} from '../services/voice/chirpVoices';
+} from '../../services/voice/chirpVoices';
 import { useChirpTTS } from './useChirpTTS';
 
 const VOICE_CHANGED_TIMEOUT_MS = 2000;
@@ -125,15 +125,6 @@ export function useSpeechSynthesis(
           };
         }
 
-        console.log(
-          '[TTS] provider=',
-          provider,
-          'voiceId=',
-          voiceId,
-          'lang=',
-          lang
-        );
-
         /*
          * IMPORTANT:
          * Chirp must never receive a Browser voice ID.
@@ -152,20 +143,6 @@ export function useSpeechSynthesis(
             : undefined;
 
         if (provider === 'chirp') {
-          console.log(
-            '[TTS] Chirp voice resolution',
-            {
-              requestedVoiceId: voiceId,
-              resolvedVoiceId:
-                resolvedChirpVoiceId,
-              lang,
-            }
-          );
-
-          console.log(
-            '[TTS] attempting Chirp TTS'
-          );
-
           const chirpResult =
             await chirp.speak(
               text,
@@ -177,10 +154,6 @@ export function useSpeechSynthesis(
           if (chirpResult.ok) {
             return chirpResult;
           }
-
-          console.log(
-            '[TTS] Chirp failed, falling back to browser'
-          );
         }
 
         const synth =
@@ -258,25 +231,6 @@ export function useSpeechSynthesis(
                 utterance.pitch = pitch;
               }
 
-              console.log(
-                '[TTS] speak start lang=',
-                lang,
-                'voices=',
-                availableVoices.length,
-                'voice=',
-                voice?.name ?? '(none)',
-                'rate=',
-                typeof rate ===
-                  'number'
-                  ? rate
-                  : '(default)',
-                'pitch=',
-                typeof pitch ===
-                  'number'
-                  ? pitch
-                  : '(default)'
-              );
-
               let settled = false;
 
               let watchdogTimer:
@@ -321,23 +275,12 @@ export function useSpeechSynthesis(
               };
 
               const onDone = () => {
-                console.log(
-                  '[TTS] end'
-                );
-
                 settle(true);
               };
 
               const onError = (
                 event: Event
               ) => {
-                console.log(
-                  '[TTS] error',
-                  (
-                    event as SpeechSynthesisErrorEvent
-                  ).error
-                );
-
                 settle(false);
               };
 
@@ -373,10 +316,6 @@ export function useSpeechSynthesis(
 
               watchdogTimer =
                 setTimeout(() => {
-                  console.log(
-                    '[TTS] watchdog timeout, cancelling'
-                  );
-
                   synth.cancel();
                   settle(false);
                 }, estimatedMs);
@@ -389,10 +328,6 @@ export function useSpeechSynthesis(
           return first;
         }
 
-        console.log(
-          '[TTS] retry speak'
-        );
-
         await new Promise(
           (resolve) =>
             setTimeout(
@@ -404,13 +339,21 @@ export function useSpeechSynthesis(
         const second =
           await speakOnce();
 
-        if (!second.ok) {
-          console.log(
-            '[TTS] failed after retry'
-          );
-        }
+        const result = second;
 
-        return second;
+        console.warn(
+          '[TTS][DIAG] speak',
+          {
+            provider,
+            text,
+            voiceId,
+            rate,
+            pitch,
+            result,
+          }
+        );
+
+        return result;
       })();
     },
     [

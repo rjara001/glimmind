@@ -12,6 +12,9 @@ interface VoiceCardProps {
   onRepeat: () => void;
   onStop: () => void;
   onSubmitTyped: (text: string) => void;
+  recordingTimeLeft?: number;
+  recordingElapsed?: number;
+  maxRecordingSeconds?: number;
 }
 
 export const VoiceCard: React.FC<VoiceCardProps> = ({
@@ -25,6 +28,9 @@ export const VoiceCard: React.FC<VoiceCardProps> = ({
   onRepeat,
   onStop,
   onSubmitTyped,
+  recordingTimeLeft,
+  recordingElapsed,
+  maxRecordingSeconds,
 }) => {
   const [typedInput, setTypedInput] = useState('');
   const [showTypedFallback, setShowTypedFallback] = useState(false);
@@ -57,6 +63,20 @@ export const VoiceCard: React.FC<VoiceCardProps> = ({
             <p className="text-sm font-bold text-slate-500">Evaluando…</p>
           )}
         </div>
+
+        {isListening && typeof recordingTimeLeft === 'number' && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-slate-500">
+              Tiempo restante: {Math.max(0, recordingTimeLeft)}s
+            </p>
+            <div className="w-full bg-slate-100 rounded-full h-2 mt-1">
+              <div
+                className="bg-indigo-500 h-2 rounded-full transition-all"
+                style={{ width: `${Math.max(0, ((recordingTimeLeft || 0) / (maxRecordingSeconds || 60)) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {spokenText && (
           <div className="mb-4">

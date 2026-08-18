@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { CelebrationOverlayProps } from '../types/celebration-overlay-props';
+import { CelebrationOverlayProps } from '../../types/celebration-overlay-props';
 
 const CONFETTI_COUNT = 40;
 const AUTO_CLOSE_MS = 4000;

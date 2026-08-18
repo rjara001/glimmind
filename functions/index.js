@@ -2,7 +2,7 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { getDb, FieldValue, getAuth } = require("./src/utils/firebase");
 const { requireAuth, metaRefFor, todayKey } = require("./src/utils/helpers");
 const { QuotaExceededError } = require("./src/utils/helpers");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA } = require("./src/utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA, CHIPTT_STT_MAX_SINGLE_DURATION } = require("./src/utils/constants");
 
 const listService = require("./src/services/listService");
 const progressService = require("./src/services/progressService");
@@ -525,7 +525,7 @@ exports.transcribeSpeech = onRequest(
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { audioContent, encoding, sampleRateHertz, languageCode } = req.body || {};
+    const { audioContent, encoding, sampleRateHertz, languageCode, audioDuration } = req.body || {};
     if (!audioContent || typeof audioContent !== 'string') {
       return res.status(400).json({ error: 'Se requiere audioContent para transcribir.' });
     }
@@ -539,21 +539,37 @@ exports.transcribeSpeech = onRequest(
       return res.status(401).json({ error: 'Unauthorized', reason: error.message });
     }
 
-    const audioSeconds = Math.max(1, Math.ceil((sampleRateHertz || 48000) / 1000));
+    const audioSeconds = Math.max(1, Math.ceil(audioDuration || (Buffer.from(audioContent, 'base64').length / 4000)));
+    if (audioDuration > CHIPTT_STT_MAX_SINGLE_DURATION) {
+      return res.status(400).json({ error: `Recording cannot exceed ${CHIPTT_STT_MAX_SINGLE_DURATION} seconds.` });
+    }
 
+    console.error('[transcribeSpeech] request', { uid, audioDuration, audioSeconds });
+
+    let transcript;
     try {
-      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
-      const transcript = await chipttSttService.callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode);
-      res.json({ transcript });
+      transcript = await chipttSttService.callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode);
     } catch (error) {
-      console.error('[transcribeSpeech] failed:', error.message);
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message });
-      }
+      console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'RATE_LIMITED') {
         return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
       }
-      return res.status(502).json({ error: 'Error al transcribir la voz.' });
+      if (error.code === 'NO_SPEECH') {
+        return res.status(200).json({ noSpeech: true, message: 'No speech detected.' });
+      }
+      return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
     }
+
+    try {
+      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
+    } catch (error) {
+      console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message, code: error.code });
+      }
+      return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
+    }
+
+    res.json({ transcript });
   }
 );

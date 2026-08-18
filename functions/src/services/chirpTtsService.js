@@ -1,7 +1,7 @@
 const { getDb } = require("../utils/firebase");
 const { FieldValue } = require("../utils/firebase");
 const { todayKey } = require("../utils/helpers");
-const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_CALL_TIMEOUT_MS } = require("../utils/constants");
+const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_PREMIUM_USER_LIMIT, CHIRP_TTS_CALL_TIMEOUT_MS } = require("../utils/constants");
 
 function monthKey() {
   const d = new Date();
@@ -62,9 +62,14 @@ async function checkAndIncrementQuota(db, uid, charCount) {
     throw error;
   }
 
-  if (userData.charsUsed >= CHIRP_TTS_USER_LIMIT) {
+  const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
+  const metaSnap = await metaRef.get();
+  const userTier = metaSnap.exists ? (metaSnap.data().tier || 'free') : 'free';
+  const userLimit = userTier === 'premium' ? CHIRP_TTS_PREMIUM_USER_LIMIT : CHIRP_TTS_USER_LIMIT;
+
+  if (userData.charsUsed >= userLimit) {
     const error = new Error(
-      `Llegaste a tu límite mensual de voz (${CHIRP_TTS_USER_LIMIT} caracteres). Vuelve el próximo mes.`
+      `Llegaste a tu límite mensual de voz (${userLimit} caracteres). Vuelve el próximo mes.`
     );
     error.code = "USER_QUOTA_EXCEEDED";
     throw error;
@@ -194,4 +199,5 @@ module.exports = {
   getAccessToken,
   CHIRP_TTS_GLOBAL_LIMIT,
   CHIRP_TTS_USER_LIMIT,
+  CHIRP_TTS_PREMIUM_USER_LIMIT,
 };

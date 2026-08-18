@@ -3,11 +3,11 @@ import type { ReactElement } from 'react';
 import { AssociationList, Association } from '../types';
 import { aiService, AIGroupSuggestion } from '../services/aiService';
 import { flattenAssociations } from '../utils/flattenAssociations';
-import { SmartGroupModal } from './SmartGroupModal';
+import { SmartGroupModal } from './modals/SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { computeQuotaStatus } from '../utils/quota';
 import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
-import { useToast } from './Toast';
+import { useToast } from './layout/Toast';
 import { MIN_GROUP_SIZE } from '../constants/limits';
 
 type SortField = 'term' | 'definition';

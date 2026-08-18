@@ -1,7 +1,7 @@
 import React from 'react';
-import { BigListCardProps } from '../types/big-list-card-props';
-import { StateBreakdown } from '../types/progress';
-import { MILESTONE_THRESHOLDS, nextMilestoneThreshold } from '../utils/progress';
+import { BigListCardProps } from '../../types/big-list-card-props';
+import { StateBreakdown } from '../../types/progress';
+import { MILESTONE_THRESHOLDS, nextMilestoneThreshold } from '../../utils/progress';
 
 const STATE_SEGMENTS: { key: keyof StateBreakdown; colorClass: string; label: string }[] = [
   { key: 'nuevas', colorClass: 'bg-slate-400', label: 'Nuevas' },

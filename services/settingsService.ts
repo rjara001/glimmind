@@ -9,7 +9,6 @@ export const settingsService = {
     try {
       return await callFunction<UserSettings | null>('getSettings', { userId });
     } catch (error) {
-      console.error('Error fetching settings:', error);
       return null;
     }
   },

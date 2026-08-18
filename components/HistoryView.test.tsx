@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { HistoryView } from './HistoryView';
+import { HistoryView } from './views/HistoryView';
 import { useGameStore } from '../store/gameStore';
 import { DEFAULT_SETTINGS } from '../types/settings';
 import { CardActivityEvent } from '../types/activity';

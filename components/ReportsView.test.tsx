@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ReportsView } from './ReportsView';
+import { ReportsView } from './views/ReportsView';
 import { useGameStore } from '../store/gameStore';
 import { DEFAULT_SETTINGS } from '../types/settings';
 

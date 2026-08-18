@@ -1,14 +1,12 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { AssociationList, Association } from '../types';
-import { flattenAssociations } from '../utils/flattenAssociations';
-import { computeStateBreakdown } from '../utils/progress';
-import { useGameStore } from '../store/gameStore';
-import { GoalWidget } from './GoalWidget';
-import { BigListCard } from './BigListCard';
-import { computeQuotaStatus, countCards } from '../utils/quota';
-import { parseCsvPairs, isHeaderPair } from '../utils/csv';
-import { useToast } from './Toast';
+import { AssociationList, Association } from '../../types';
+import { flattenAssociations } from '../../utils/flattenAssociations';
+import { computeStateBreakdown } from '../../utils/progress';
+import { useGameStore } from '../../store/gameStore';
+import { GoalWidget } from '../layout/GoalWidget';
+import { BigListCard } from '../cards/BigListCard';
+import { useToast } from '../layout/Toast';
 
 const BIG_LIST_THRESHOLD = 200;
 
@@ -140,7 +138,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
     e.preventDefault();
     if (newName && newConcept) {
       const initialAssocs = [...parseBulkData(bulkData), ...fileAssociations];
-      console.log('[Dashboard][handleCreate] name=', newName, 'concept=', newConcept, 'initialAssocs=', initialAssocs.length);
       onCreate(newName, newConcept, initialAssocs);
       setNewName('');
       setNewConcept('');

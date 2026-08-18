@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SettingsModal } from './SettingsModal';
+import { SettingsModal } from '../modals/SettingsModal';
 import { AssociationList } from '../../types';
 
 const createMockList = (overrides: Partial<AssociationList> = {}): AssociationList => ({

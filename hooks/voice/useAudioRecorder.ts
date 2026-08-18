@@ -56,14 +56,12 @@ export function useAudioRecorder({ enabled = false, onRecordingAvailable }: UseA
       chunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
-        console.log('[Audio] dataavailable size=', event.data.size);
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
 
       recorder.onstop = () => {
-        console.log('[Audio] recorder.onstop chunks=', chunksRef.current.length);
         const blob = new Blob(chunksRef.current, { type: mimeType });
         chunksRef.current = [];
         setIsRecording(false);

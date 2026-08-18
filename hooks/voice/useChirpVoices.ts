@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { listTtsVoices } from '../services/voice/chirpVoicesApi';
+import { listTtsVoices } from '../../services/voice/chirpVoicesApi';
 import { ChirpVoice } from '../../types';
 
 export function useChirpVoices(lang?: string) {

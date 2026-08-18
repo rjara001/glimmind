@@ -8,7 +8,6 @@ export const listService = {
     try {
       return await callFunction<AssociationList[]>('getLists', { userId });
     } catch (error) {
-      console.error("Error fetching lists:", error);
       return [];
     }
   },
@@ -28,7 +27,6 @@ export const listService = {
     try {
       return await callFunction<AssociationList>('getList', { listId });
     } catch (error) {
-      console.error("Error getting list:", error);
       return null;
     }
   },

@@ -38,54 +38,121 @@ This design:
 - Makes every state transition deterministic and testable
 - Works seamlessly with React's `useState` and Zustand
 
-### Fuzzy Answer Validation
+### Folder Organization
 
-The validation pipeline works in three stages:
-
-1. **Normalization**: Input is lowercased and decomposed via Unicode NFD, stripping combining diacritical marks (`\u0300-\u036f`). "canción" matches "cancion".
-2. **Levenshtein Distance**: A dynamic programming matrix computes the minimum edit distance between normalized strings.
-3. **Similarity Score**: `(1 - distance / maxLength) × 100`. A configurable threshold (default 95%) determines correctness.
-
-### 4-Cycle Progression
-
-| Cycle | Label | Meaning |
-|-------|-------|---------|
-| 1 | Nueva (New) | First exposure |
-| 2 | Vista (Seen) | Previously seen, needs review |
-| 3 | Reconocida (Recognized) | Familiar but not automatic |
-| 4 | Conocida (Known) | Nearly mastered |
-| — | Learned | Mastered (exits rotation) |
-
-- **Correct answer**: Advances or marks as learned (cycle 1 only).
-- **Incorrect / PASS**: Moves to the next cycle for future review.
-- **Cycle exhaustion**: When the current queue is fully processed, the engine generates a new queue for the next cycle. If no cards remain for any cycle, the session ends.
-
-### Project Structure
+The codebase is organized by **domain** rather than by file type. This keeps related code close and makes it easier to navigate as the project grows.
 
 ```
 src/
 ├── services/
-│   ├── gameEngine.ts          # Immutable game engine (344 lines)
-│   ├── aiService.ts           # Gemini AI proxy (Cloud Functions call)
+│   ├── gameEngine.ts          # Immutable game engine
+│   ├── aiService.ts           # Gemini AI proxy
 │   ├── firestoreService.ts    # Firebase Functions HTTP client
-│   └── gameEngine.test.ts     # Engine tests (440+ lines)
+│   ├── voice/
+│   │   ├── chipttStt.ts       # Chip STT API client
+│   │   ├── chirpVoices.ts     # Chirp voice catalog
+│   │   ├── commands.ts        # Voice command matching
+│   │   ├── earlyMatch.ts      # Early STT answer matching
+│   │   ├── languageFlags.ts   # Language flag emojis
+│   │   ├── languages.ts       # Voice language resolution
+│   │   └── voicePicker.ts     # Browser voice selection
+│   ├── grouping/              # Semantic grouping engine
+│   └── ...
 ├── components/
-│   ├── Dashboard.tsx          # List overview, stats, search
-│   ├── GameView.tsx           # Game screen orchestrator
-│   ├── ListEditor.tsx         # CRUD for study lists + AI grouping
-│   └── game/
-│       ├── GameCard.tsx       # Card display with hidden/revealed state
-│       ├── GameControls.tsx   # Action buttons
-│       ├── CycleProgress.tsx  # Cycle distribution visualization
-│       └── FinishedScreen.tsx # End-of-session summary
+│   ├── views/                 # Top-level screens
+│   │   ├── GameView.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── HistoryView.tsx
+│   │   ├── RankingView.tsx
+│   │   ├── ReportsView.tsx
+│   │   ├── SettingsView.tsx
+│   │   ├── GameSummaryView.tsx
+│   │   └── Auth.tsx
+│   ├── game/                  # Game-specific presentational components
+│   │   ├── GameCard.tsx       # Card orchestrator
+│   │   ├── CardBadges.tsx     # Overlay badges
+│   │   ├── CardToolbar.tsx    # Edit / listen buttons
+│   │   ├── CardContent.tsx    # Term, input, hints
+│   │   ├── CardFeedback.tsx   # Correct/incorrect feedback
+│   │   ├── CardVoiceIndicator.tsx
+│   │   ├── CardEditForm.tsx
+│   │   ├── GameHeader.tsx
+│   │   ├── GameControls.tsx
+│   │   ├── CycleProgress.tsx
+│   │   ├── FinishedScreen.tsx
+│   │   └── AttemptList.tsx
+│   ├── modals/                # Modal dialogs
+│   │   ├── QuickAddModal.tsx
+│   │   ├── SmartGroupModal.tsx
+│   │   └── SettingsModal.tsx
+│   ├── layout/                # Shared layout primitives
+│   │   ├── Toast.tsx
+│   │   ├── GameHeader.tsx
+│   │   ├── GoalWidget.tsx
+│   │   └── CelebrationOverlay.tsx
+│   ├── cards/                 # Reusable card layouts
+│   │   └── BigListCard.tsx
+│   └── voice/                 # Voice study mode screens
+│       ├── VoiceGameView.tsx
+│       ├── VoiceCard.tsx
+│       └── VoiceFinished.tsx
+├── hooks/
+│   ├── voice/                 # Voice domain hooks
+│   │   ├── useVoiceSession.ts # Standalone voice session
+│   │   ├── useGameVoice.ts    # Integrated game voice
+│   │   ├── useVoiceGameRefs.ts
+│   │   ├── useVoiceSTT.ts
+│   │   ├── useSpeechSynthesis.ts
+│   │   ├── useSpeechRecognition.ts
+│   │   ├── useSTT.ts
+│   │   ├── useChirpTTS.ts
+│   │   ├── useChirpVoices.ts
+│   │   ├── useAudioRecorder.ts
+│   │   └── stt/
+│   │       ├── useBrowserSTT.ts
+│   │       └── useChipTTSTT.ts
+│   ├── game/                  # Game logic hooks
+│   │   ├── useGameLogic.ts
+│   │   └── useGameEngine.ts
+│   └── ui/                    # UI utility hooks
+│       ├── useImmersiveHeader.ts
+│       ├── useMediaQuery.ts
+│       └── useFitWidth.ts
 ├── store/
 │   └── gameStore.ts           # Zustand global state
-├── hooks/
-│   └── useGameLogic.ts        # Bridge between UI and game engine
 ├── types/
 │   └── ...                    # TypeScript interfaces
-└── App.tsx                    # Root component with routing
+├── constants/
+│   └── voice.ts               # Voice timing constants
+├── utils/
+│   └── ...                    # Pure utility functions
+├── docs/                      # Design docs and plans
+└── App.tsx                    # Root component
 ```
+
+### Domain Boundaries
+
+- **`components/views/`** — route-level screens. They compose layout, game, and modal components but contain minimal business logic.
+- **`components/game/`** — presentational components for the flashcard game. Each component owns a single visual concern (content, feedback, toolbar, badges, voice indicator).
+- **`hooks/voice/`** — all voice-related hooks. `useVoiceSession` is the standalone voice-study flow; `useGameVoice` is the integrated in-game voice mode.
+- **`hooks/game/`** — bridges between React and the immutable engine.
+- **`services/voice/`** — pure service layer for TTS/STT providers, command matching, and language resolution. No React dependencies.
+
+### Voice Architecture
+
+The voice layer has two consumer-facing modes:
+
+| Mode | Hook | Consumer |
+|------|------|----------|
+| **Integrated** | `useGameVoice` | `GameView` + `GameCard` |
+| **Standalone session** | `useVoiceSession` | `VoiceGameView` |
+
+Both modes share:
+- `useSpeechSynthesis` — browser + Chirp TTS provider
+- `useSpeechRecognition` → `useSTT` → `useBrowserSTT` / `useChipTTSTT` — STT provider selection
+- `constants/voice.ts` — shared timing constants
+
+This separation allows the voice stack to evolve independently from the game logic while keeping the public API stable for each consumer.
 
 ## Tech Stack
 

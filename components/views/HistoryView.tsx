@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { CardActivityEvent, CardActivityType } from '../types/activity';
-import { LEVEL_LABELS } from '../utils/activity';
-import { HistoryEmptyState } from './HistoryEmptyState';
+import { useGameStore } from '../../store/gameStore';
+import { CardActivityEvent, CardActivityType } from '../../types/activity';
+import { LEVEL_LABELS } from '../../utils/activity';
+import { HistoryEmptyState } from '../HistoryEmptyState';
 
 interface HistoryViewProps {
   onBack: () => void;
