@@ -1,4 +1,5 @@
-const { getAccessToken } = require("./chirpTtsService");
+const { getAccessToken } = require("../utils/googleApiClient");
+const { GOOGLE_VOICES_URL } = require("../utils/constants");
 
 const VOICE_LIST_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -29,7 +30,7 @@ async function fetchGoogleVoices() {
   const accessToken = await getAccessToken();
 
   const response = await fetch(
-    "https://texttospeech.googleapis.com/v1/voices",
+    GOOGLE_VOICES_URL,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,

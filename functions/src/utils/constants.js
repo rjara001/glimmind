@@ -8,6 +8,7 @@ const GLOBAL_AI_DAILY_CAP = 200;
 const MAX_CARDS_PER_LIST = 3000;
 const MAX_CARDS_PER_AI_REQUEST = 2000;
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 const MAX_EVENTS_PER_BATCH = 400;
 const MAX_ACTIVITY_PAGE = 200;
@@ -27,6 +28,15 @@ const CHIPTT_STT_MAX_SINGLE_DURATION = 60;
 const CHIPTT_STT_USER_LIMIT = 300;
 const CHIPTT_STT_PREMIUM_USER_LIMIT = 7200;
 const CHIPTT_STT_CALL_TIMEOUT_MS = 30000;
+
+const GCP_PROJECT_ID = "fladycard-22a3e";
+const GCP_REGION = "us-central1";
+
+const GOOGLE_TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
+const GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize";
+const GOOGLE_STT_RECOGNIZE_URL = `https://eu-speech.googleapis.com/v2/projects/${GCP_PROJECT_ID}/locations/eu/recognizers/_:recognize`;
+const GOOGLE_VOICES_URL = "https://texttospeech.googleapis.com/v1/voices";
+const GOOGLE_METADATA_TOKEN_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
 module.exports = {
   COLLECTION_NAME,
@@ -53,4 +63,11 @@ module.exports = {
   CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,
   CHIPTT_STT_CALL_TIMEOUT_MS,
+  GCP_PROJECT_ID,
+  GCP_REGION,
+  GOOGLE_TTS_URL,
+  GOOGLE_STT_URL,
+  GOOGLE_STT_RECOGNIZE_URL,
+  GOOGLE_VOICES_URL,
+  GOOGLE_METADATA_TOKEN_URL,
 };

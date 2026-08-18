@@ -1,7 +1,8 @@
 const { getDb } = require("../utils/firebase");
 const { FieldValue } = require("../utils/firebase");
 const { todayKey } = require("../utils/helpers");
-const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_PREMIUM_USER_LIMIT, CHIRP_TTS_CALL_TIMEOUT_MS } = require("../utils/constants");
+const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_PREMIUM_USER_LIMIT, CHIRP_TTS_CALL_TIMEOUT_MS, GOOGLE_TTS_URL } = require("../utils/constants");
+const { sendAuthenticatedRequest } = require("../utils/googleApiClient");
 
 function monthKey() {
   const d = new Date();
@@ -98,97 +99,33 @@ async function checkAndIncrementQuota(db, uid, charCount) {
   await batch.commit();
 }
 
-async function getAccessToken() {
-  try {
-    const response = await fetch(
-      'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token',
-      {
-        headers: { 'Metadata-Flavor': 'Google' },
-        signal: AbortSignal.timeout(2000),
-      }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.access_token;
-    }
-  } catch (e) {
-    // Local development: use ADC
-  }
-
-  try {
-    const { execSync } = require("child_process");
-
-    const token = execSync(
-      "gcloud auth application-default print-access-token",
-      { encoding: "utf8" }
-    ).trim();
-
-    if (token) return token;
-  } catch (e) {
-    console.error("[Chirp] ADC token error:", e);
-  }
-
-  throw new Error(
-    "No se pudo obtener access token para Google Cloud TTS."
-  );
-}
 async function callGoogleTts(text, voiceId, rate, pitch) {
-  const accessToken = await getAccessToken();
-
   const parts = String(voiceId).split("-");
   const languageCode =
     parts.length >= 2 ? `${parts[0]}-${parts[1]}` : parts[0] || "es";
 
-  // Chirp3-HD no soporta pitch.
   const audioConfig = {
     audioEncoding: "MP3",
     speakingRate: typeof rate === "number" ? rate : 1,
   };
 
-  const response = await fetch(
-    "https://texttospeech.googleapis.com/v1/text:synthesize",
+  const data = await sendAuthenticatedRequest(
+    GOOGLE_TTS_URL,
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
-        "x-goog-user-project": "fladycard-22a3e",
-      },
-      body: JSON.stringify({
-        input: {
-          text: String(text),
-        },
-        voice: {
-          languageCode,
-          name: String(voiceId),
-        },
-        audioConfig,
-      }),
-      signal: AbortSignal.timeout(CHIRP_TTS_CALL_TIMEOUT_MS),
+      input: { text: String(text) },
+      voice: { languageCode, name: String(voiceId) },
+      audioConfig,
+    },
+    CHIRP_TTS_CALL_TIMEOUT_MS,
+    (data) => {
+      if (!data.audioContent) {
+        const error = new Error("Respuesta vacía de TTS.");
+        error.code = "TTS_ERROR";
+        return error;
+      }
+      return null;
     }
   );
-
-  if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-
-    const error = new Error(
-      `TTS HTTP ${response.status}: ${bodyText.slice(0, 500)}`
-    );
-
-    error.code =
-      response.status === 429 ? "RATE_LIMITED" : "TTS_ERROR";
-
-    throw error;
-  }
-
-  const data = await response.json();
-
-  if (!data.audioContent) {
-    const error = new Error("Respuesta vacía de TTS.");
-    error.code = "TTS_ERROR";
-    throw error;
-  }
 
   return data.audioContent;
 }
@@ -196,7 +133,7 @@ async function callGoogleTts(text, voiceId, rate, pitch) {
 module.exports = {
   checkAndIncrementQuota,
   callGoogleTts,
-  getAccessToken,
+  getQuotaDoc,
   CHIRP_TTS_GLOBAL_LIMIT,
   CHIRP_TTS_USER_LIMIT,
   CHIRP_TTS_PREMIUM_USER_LIMIT,

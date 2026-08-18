@@ -1,4 +1,4 @@
-const { GEMINI_MODELS, RETRIES_PER_MODEL, RETRY_BASE_DELAY_MS, PER_CALL_TIMEOUT_MS } = require("../utils/constants");
+const { GEMINI_MODELS, RETRIES_PER_MODEL, RETRY_BASE_DELAY_MS, PER_CALL_TIMEOUT_MS, GEMINI_API_BASE_URL } = require("../utils/constants");
 
 function sleepWithJitter(attempt) {
   const baseDelay = RETRY_BASE_DELAY_MS * (2 ** attempt);
@@ -28,7 +28,7 @@ async function callGemini(apiKey, prompt, processedCount) {
       const attemptStartedAt = Date.now();
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          `${GEMINI_API_BASE_URL}/models/${model}:generateContent`,
           {
             method: "POST",
             headers: {

@@ -1,6 +1,7 @@
 const { getDb } = require("../utils/firebase");
 const { FieldValue } = require("../utils/firebase");
-const { CHIPTT_STT_GLOBAL_LIMIT, CHIPTT_STT_USER_LIMIT, CHIPTT_STT_PREMIUM_USER_LIMIT, CHIPTT_STT_CALL_TIMEOUT_MS } = require("../utils/constants");
+const { CHIPTT_STT_GLOBAL_LIMIT, CHIPTT_STT_USER_LIMIT, CHIPTT_STT_PREMIUM_USER_LIMIT, CHIPTT_STT_CALL_TIMEOUT_MS, GOOGLE_STT_RECOGNIZE_URL, GOOGLE_STT_URL } = require("../utils/constants");
+const { sendAuthenticatedRequest } = require("../utils/googleApiClient");
 
 function monthKey() {
   const d = new Date();
@@ -101,102 +102,34 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
   await batch.commit();
 }
 
-async function getAccessToken() {
-  try {
-    const response = await fetch(
-      'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token',
-      {
-        headers: { 'Metadata-Flavor': 'Google' },
-        signal: AbortSignal.timeout(2000),
-      }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.access_token;
-    }
-  } catch (e) {
-    // Local development: use ADC
-  }
-
-  try {
-    const { execSync } = require("child_process");
-
-    const token = execSync(
-      "gcloud auth application-default print-access-token",
-      { encoding: "utf8" }
-    ).trim();
-
-    if (token) return token;
-  } catch (e) {
-    console.error("[Chiptt] ADC token error:", e);
-  }
-
-  throw new Error(
-    "No se pudo obtener access token para Google Cloud STT."
-  );
-}
-
 async function callGoogleSttRecognize(audioContent, languageCode) {
-  console.log('Passthrouhgt callGoogleSttRecognize');
-  
-  const accessToken = await getAccessToken();
-
-  const body = {
-    config: {
-      auto_decoding_config: {},
-      language_codes: [languageCode || "es-US"],
-      model: "chirp_3",
-    },
-    content: audioContent,
-  };
-
-  const response = await fetch(
-    "https://eu-speech.googleapis.com/v2/projects/fladycard-22a3e/locations/eu/recognizers/_:recognize",
+  const data = await sendAuthenticatedRequest(
+    GOOGLE_STT_RECOGNIZE_URL,
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Authorization": `Bearer ${accessToken}`,
-        "x-goog-user-project": "fladycard-22a3e",
+      config: {
+        auto_decoding_config: {},
+        language_codes: [languageCode || "es-US"],
+        model: "chirp_3",
       },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(CHIPTT_STT_CALL_TIMEOUT_MS),
+      content: audioContent,
+    },
+    CHIPTT_STT_CALL_TIMEOUT_MS,
+    (data) => {
+      const transcript = data.results?.[0]?.alternatives?.[0]?.transcript;
+      if (!transcript) {
+        console.error('[Chiptt] Google STT Recognize no transcript', {
+          resultsCount: data.results?.length || 0,
+          alternativesCount: data.results?.[0]?.alternatives?.length || 0,
+        });
+        const error = new Error("No speech detected.");
+        error.code = "NO_SPEECH";
+        return error;
+      }
+      return null;
     }
   );
 
-  if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-
-    console.error('[Chiptt] Google STT Recognize HTTP error', {
-      status: response.status,
-      body: bodyText.slice(0, 500),
-    });
-
-    const error = new Error(
-      `STT HTTP ${response.status}: ${bodyText.slice(0, 500)}`
-    );
-
-    error.code =
-      response.status === 429 ? "RATE_LIMITED" : "STT_ERROR";
-
-    throw error;
-  }
-
-  const data = await response.json();
-
-  const transcript =
-    data.results?.[0]?.alternatives?.[0]?.transcript;
-
-  if (!transcript) {
-    console.error('[Chiptt] Google STT Recognize no transcript', {
-      resultsCount: data.results?.length || 0,
-      alternativesCount: data.results?.[0]?.alternatives?.length || 0,
-    });
-    const error = new Error("No speech detected.");
-    error.code = "NO_SPEECH";
-    throw error;
-  }
+  const transcript = data.results?.[0]?.alternatives?.[0]?.transcript;
 
   console.error('[Chiptt] Google STT Recognize success', {
     transcriptLength: transcript.length,
@@ -209,67 +142,37 @@ async function callGoogleSttRecognize(audioContent, languageCode) {
 }
 
 async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode) {
-  const accessToken = await getAccessToken();
-
-  const body = {
-    config: {
-      encoding: encoding || "WEBM_OPUS",
-      sampleRateHertz: sampleRateHertz || 48000,
-      languageCode: languageCode || "es",
-      alternativeLanguageCodes: ["en"],
-      maxAlternatives: 1,
-    },
-    audio: {
-      content: audioContent,
-    },
-  };
-
-  const response = await fetch(
-    "https://speech.googleapis.com/v1/speech:recognize",
+  const data = await sendAuthenticatedRequest(
+    GOOGLE_STT_URL,
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
-        "x-goog-user-project": "fladycard-22a3e",
+      config: {
+        encoding: encoding || "WEBM_OPUS",
+        sampleRateHertz: sampleRateHertz || 48000,
+        languageCode: languageCode || "es",
+        alternativeLanguageCodes: ["en"],
+        maxAlternatives: 1,
       },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(CHIPTT_STT_CALL_TIMEOUT_MS),
+      audio: {
+        content: audioContent,
+      },
+    },
+    CHIPTT_STT_CALL_TIMEOUT_MS,
+    (data) => {
+      const transcript = data.results?.[0]?.alternatives?.[0]?.transcript;
+      if (!transcript) {
+        console.error('[Chiptt] Google STT no transcript', {
+          resultsCount: data.results?.length || 0,
+          alternativesCount: data.results?.[0]?.alternatives?.length || 0,
+        });
+        const error = new Error("No speech detected.");
+        error.code = "NO_SPEECH";
+        return error;
+      }
+      return null;
     }
   );
 
-  if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-
-    console.error('[Chiptt] Google STT HTTP error', {
-      status: response.status,
-      body: bodyText.slice(0, 500),
-    });
-
-    const error = new Error(
-      `STT HTTP ${response.status}: ${bodyText.slice(0, 500)}`
-    );
-
-    error.code =
-      response.status === 429 ? "RATE_LIMITED" : "STT_ERROR";
-
-    throw error;
-  }
-
-  const data = await response.json();
-
-  const transcript =
-    data.results?.[0]?.alternatives?.[0]?.transcript;
-
-  if (!transcript) {
-    console.error('[Chiptt] Google STT no transcript', {
-      resultsCount: data.results?.length || 0,
-      alternativesCount: data.results?.[0]?.alternatives?.length || 0,
-    });
-    const error = new Error("No speech detected.");
-    error.code = "NO_SPEECH";
-    throw error;
-  }
+  const transcript = data.results?.[0]?.alternatives?.[0]?.transcript;
 
   console.error('[Chiptt] Google STT success', {
     transcriptLength: transcript.length,
@@ -283,7 +186,6 @@ module.exports = {
   checkAndIncrementQuota,
   callGoogleStt,
   callGoogleSttRecognize,
-  getAccessToken,
   CHIPTT_STT_GLOBAL_LIMIT,
   CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,
