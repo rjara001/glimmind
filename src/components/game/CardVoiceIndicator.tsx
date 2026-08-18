@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameVoicePhase } from '../../hooks/useGameVoice';
+import { GameVoicePhase } from '../../hooks/voice/useGameVoice';
 
 interface CardVoiceIndicatorProps {
   voiceMode: boolean;

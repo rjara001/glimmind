@@ -1,5 +1,5 @@
 import { useSTT } from './useSTT';
-import { SttProviderType } from '../../types';
+import { SttProviderType } from '../../../types';
 
 export interface UseSpeechRecognitionOptions {
   onFinal: (transcript: string) => void;

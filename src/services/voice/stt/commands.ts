@@ -1,5 +1,5 @@
-import { VoiceCommandId, VoiceCommandsConfig } from '../../types';
-import { normalizeText } from '../../utils/text';
+import { VoiceCommandId, VoiceCommandsConfig } from '../../../types';
+import { normalizeText } from '../../../utils/text';
 
 export const DEFAULT_VOICE_COMMANDS: VoiceCommandsConfig = {
   reveal: ['revelar', 'mostrar', 'reveal', 'show'],

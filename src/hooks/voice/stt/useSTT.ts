@@ -1,7 +1,7 @@
-import { useBrowserSTT } from './stt/useBrowserSTT';
-import { useChipTTSTT } from './stt/useChipTTSTT';
-import { SttProvider } from '../../types/stt';
-import { SttProviderType } from '../../types';
+import { useBrowserSTT } from './useBrowserSTT';
+import { useChipTTSTT } from './useChipTTSTT';
+import { SttProvider } from '../../../types/stt';
+import { SttProviderType } from '../../../types';
 
 export interface UseSTTOptions {
   provider: SttProviderType;

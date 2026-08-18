@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Association, AssociationList, VoiceCommandId, VoiceCommandsConfig } from '../../types';
-import { useSpeechSynthesis } from './useSpeechSynthesis';
-import { useSpeechRecognition } from './useSpeechRecognition';
+import { useSpeechSynthesis } from './tts/useSpeechSynthesis';
+import { useSpeechRecognition } from './stt/useSpeechRecognition';
 import { useAudioRecorder } from './useAudioRecorder';
 import { uploadAudioRecording } from '../../services/audioService';
 import { useGameStore } from '../../store/gameStore';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
-import { isExactExpectedAnswer } from '../../services/voice/earlyMatch';
-import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../../services/voice/commands';
+import { isExactExpectedAnswer } from '../../services/voice/stt/earlyMatch';
+import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../../services/voice/stt/commands';
 import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS } from '../../constants/voice';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';

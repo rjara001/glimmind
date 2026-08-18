@@ -705,12 +705,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       
       if (!cloudList) {
         console.log('[syncToCloud] cloudList missing, creating with', localList.associations?.length || 0, 'assocs');
-        await listService.updateList(localList.id, {
+        const newId = await listService.createList({
           name: localList.name,
           concept: localList.concept,
           associations: localList.associations,
           settings: localList.settings,
+          userId: user.uid,
+          isArchived: false,
         });
+        const updatedLists = lists.map(l => l.id === listId ? { ...l, id: newId } : l);
+        set({ lists: updatedLists });
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
         return;
       }
 

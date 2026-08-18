@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { transcribeSpeech } from '../../../services/voice/chipttStt';
+import { transcribeSpeech } from '../../../services/voice/stt/chipttStt';
 import { SttProvider } from '../../../types/stt';
 
 const MAX_RECORDING_SECONDS = 20;

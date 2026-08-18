@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VoicePhase } from '../../hooks/useVoiceSession';
+import { VoicePhase } from '../../hooks/voice/useVoiceSession';
 
 interface VoiceCardProps {
   displayWord: string;

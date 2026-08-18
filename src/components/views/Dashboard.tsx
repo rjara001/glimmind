@@ -3,6 +3,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import { AssociationList, Association } from '../../types';
 import { flattenAssociations } from '../../utils/flattenAssociations';
 import { computeStateBreakdown } from '../../utils/progress';
+import { computeQuotaStatus, countCards } from '../../utils/quota';
+import { parseCsvPairs, isHeaderPair } from '../../utils/csv';
 import { useGameStore } from '../../store/gameStore';
 import { GoalWidget } from '../layout/GoalWidget';
 import { BigListCard } from '../cards/BigListCard';

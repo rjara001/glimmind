@@ -1,5 +1,5 @@
-import { calculateSimilarity } from '../../utils/similarity';
-import { normalizeText } from '../../utils/text';
+import { calculateSimilarity } from '../../../utils/similarity';
+import { normalizeText } from '../../../utils/text';
 
 const AMBIGUOUS_BAND_RATIO = 0.55;
 

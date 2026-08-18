@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateAnswer } from '@/services/voice/evaluateAnswer';
+import { evaluateAnswer } from '@/services/voice/stt/evaluateAnswer';
 
 describe('evaluateAnswer', () => {
   it('accepts an exact match ignoring case and accents', async () => {

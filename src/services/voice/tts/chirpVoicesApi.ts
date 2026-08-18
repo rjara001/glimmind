@@ -1,5 +1,5 @@
-import { callFunction } from '../../services/callFunction';
-import { ChirpVoice } from '../../types';
+import { callFunction } from '../../callFunction';
+import { ChirpVoice } from '../../../types';
 
 export interface ListTtsVoicesResponse {
   voices: ChirpVoice[];

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useSpeechRecognition } from '@/hooks/voice/useSpeechRecognition';
+import { useSpeechRecognition } from '@/hooks/voice/stt/useSpeechRecognition';
 import * as chipttModule from '@/hooks/voice/stt/useChipTTSTT';
 
 type MockRecognitionInstance = {

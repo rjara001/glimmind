@@ -1,5 +1,5 @@
 import React from 'react';
-import { VoiceSessionCounts } from '../../hooks/useVoiceSession';
+import { VoiceSessionCounts } from '../../hooks/voice/useVoiceSession';
 
 interface VoiceFinishedProps {
   listName: string;

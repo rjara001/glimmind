@@ -12,7 +12,7 @@ import { SettingsModal } from '../../components/modals/SettingsModal';
 import { AttemptList } from '../game/AttemptList';
 import { useImmersiveHeader } from '../../hooks/ui/useImmersiveHeader';
 import { useGameVoice } from '../../hooks/voice/useGameVoice';
-import { useSpeechSynthesis } from '../../hooks/voice/useSpeechSynthesis';
+import { useSpeechSynthesis } from '../../hooks/voice/tts/useSpeechSynthesis';
 import { VoiceCommandId } from '../../types';
 
 interface GameViewProps {

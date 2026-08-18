@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { AssociationList } from '../../types';
-import { useVoiceSession } from '../../hooks/useVoiceSession';
+import { AssociationList, Association } from '../../types';
+import { useVoiceSession } from '../../hooks/voice/useVoiceSession';
 import { VoiceCard } from './VoiceCard';
 import { VoiceFinished } from './VoiceFinished';
 
@@ -15,12 +15,13 @@ export const VoiceGameView: React.FC<VoiceGameViewProps> = ({ list, onBack, onUp
   const lastSyncedRef = useRef('');
 
   useEffect(() => {
-    if (session.gameState.associations.length === 0) return;
-    const snapshot = JSON.stringify(session.gameState.associations);
+    const associations = session.gameState?.associations;
+    if (!associations || associations.length === 0) return;
+    const snapshot = JSON.stringify(associations);
     if (lastSyncedRef.current === snapshot) return;
     lastSyncedRef.current = snapshot;
-    void onUpdateAssociations(session.gameState.associations);
-  }, [session.gameState.associations, onUpdateAssociations]);
+    void onUpdateAssociations(associations);
+  }, [session.gameState?.associations, onUpdateAssociations]);
 
   if (session.isFinished) {
     return (
@@ -70,9 +71,6 @@ export const VoiceGameView: React.FC<VoiceGameViewProps> = ({ list, onBack, onUp
           interim={session.interim}
           error={session.error}
           isListening={session.isListening}
-          recordingTimeLeft={session.recordingTimeLeft}
-          recordingElapsed={session.recordingElapsed}
-          maxRecordingSeconds={session.maxRecordingSeconds}
           onRepeat={session.repeat}
           onStop={session.stop}
           onSubmitTyped={session.submitTyped}

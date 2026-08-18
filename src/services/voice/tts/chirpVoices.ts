@@ -1,4 +1,4 @@
-import { ChirpVoice } from '../../types';
+import { ChirpVoice } from '../../../types';
 
 export function isChirpVoiceId(voiceId: string | undefined): boolean {
   if (!voiceId) return false;

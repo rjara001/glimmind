@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AssociationList } from '../../types';
 import { GlimmindGame } from '../../services/gameEngine';
 import { useGameStore } from '../../store/gameStore';
-import { isExactExpectedAnswer } from '../../services/voice/earlyMatch';
+import { isExactExpectedAnswer } from '../../services/voice/stt/earlyMatch';
 import { createActivityEvent } from '../../utils/activity';
 import { RESULT_DELAY_MS, LISTENING_TIMEOUT_MS } from '../../constants/voice';
 import { useVoiceGameRefs } from './useVoiceGameRefs';

@@ -8,12 +8,12 @@ import {
 import {
   DEFAULT_VOICE_COMMANDS,
   resolveVoiceCommands,
-} from '../../services/voice/commands';
-import { useSpeechSynthesis } from '../../hooks/voice/useSpeechSynthesis';
-import { useChirpVoices } from '../../hooks/voice/useChirpVoices';
+} from '../../services/voice/stt/commands';
+import { useSpeechSynthesis } from '../../hooks/voice/tts/useSpeechSynthesis';
+import { useChirpVoices } from '../../hooks/voice/tts/useChirpVoices';
 import {
   isChirpVoiceId,
-} from '../../services/voice/chirpVoices';
+} from '../../services/voice/tts/chirpVoices';
 
 const THRESHOLD_MIN = 50;
 const THRESHOLD_MAX = 100;

@@ -4,7 +4,7 @@ import {
   matchVoiceCommand,
   normalizeCommandText,
   resolveVoiceCommands,
-} from '@/services/voice/commands';
+} from '@/services/voice/stt/commands';
 import { VoiceCommandsConfig } from '@//types';
 
 describe('normalizeCommandText', () => {

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { useSpeechSynthesis } from './useSpeechSynthesis';
-import { useSpeechRecognition } from './useSpeechRecognition';
+import { useSpeechSynthesis } from './tts/useSpeechSynthesis';
+import { useSpeechRecognition } from './stt/useSpeechRecognition';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
 import { AssociationList } from '../../types';
 

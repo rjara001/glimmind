@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { synthesizeSpeech } from '../../services/voice/chirpTts';
+import { synthesizeSpeech } from '../../../services/voice/tts/chirpTts';
 import { SpeakResult } from './useSpeechSynthesis';
 
 export function useChirpTTS() {

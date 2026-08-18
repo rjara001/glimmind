@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { GameVoicePhase } from '../../hooks/useGameVoice';
+import { GameVoicePhase } from '../../hooks/voice/useGameVoice';
 import { getLanguageFlag } from '../../services/voice/languageFlags';
 import { CardBadges } from './CardBadges';
 import { CardToolbar } from './CardToolbar';

@@ -1,4 +1,4 @@
-import { callFunction } from '../../services/callFunction';
+import { callFunction } from '../../callFunction';
 
 export interface ChipttTranscribeResponse {
   transcript?: string;

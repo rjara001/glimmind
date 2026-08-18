@@ -1,4 +1,4 @@
-import { normalizeText } from '../../utils/text';
+import { normalizeText } from '../../../utils/text';
 
 export function normalizeForExactMatch(text: string): string {
   return normalizeText(text).replace(/[^\w\s]/gi, '');

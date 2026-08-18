@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveVoiceForLang, VoiceLike } from '@/services/voice/voicePicker';
+import { resolveVoiceForLang, VoiceLike } from '@/services/voice/tts/voicePicker';
 
 const voice = (lang: string, overrides: Partial<VoiceLike> = {}): VoiceLike => ({
   lang,

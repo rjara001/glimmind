@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { VoiceProvider } from '../../types';
-import { resolveVoiceForLang } from '../../services/voice/voicePicker';
+import { VoiceProvider } from '../../../types';
+import { resolveVoiceForLang } from '../../../services/voice/tts/voicePicker';
 import {
   getDefaultChirpVoiceId,
   isChirpVoiceId,
-} from '../../services/voice/chirpVoices';
+} from '../../../services/voice/tts/chirpVoices';
 import { useChirpTTS } from './useChirpTTS';
 
 const VOICE_CHANGED_TIMEOUT_MS = 2000;

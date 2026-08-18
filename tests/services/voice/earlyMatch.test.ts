@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isExactExpectedAnswer, normalizeForExactMatch } from '@/services/voice/earlyMatch';
+import { isExactExpectedAnswer, normalizeForExactMatch } from '@/services/voice/stt/earlyMatch';
 
 describe('normalizeForExactMatch', () => {
   it('lowercases text', () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { listTtsVoices } from '../../services/voice/chirpVoicesApi';
-import { ChirpVoice } from '../../types';
+import { listTtsVoices } from '../../../services/voice/tts/chirpVoicesApi';
+import { ChirpVoice } from '../../../types';
 
 export function useChirpVoices(lang?: string) {
   const [voices, setVoices] = useState<ChirpVoice[]>([]);
