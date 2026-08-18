@@ -137,6 +137,77 @@ async function getAccessToken() {
   );
 }
 
+async function callGoogleSttRecognize(audioContent, languageCode) {
+  console.log('Passthrouhgt callGoogleSttRecognize');
+  
+  const accessToken = await getAccessToken();
+
+  const body = {
+    config: {
+      auto_decoding_config: {},
+      language_codes: [languageCode || "es-US"],
+      model: "chirp_3",
+    },
+    content: audioContent,
+  };
+
+  const response = await fetch(
+    "https://eu-speech.googleapis.com/v2/projects/fladycard-22a3e/locations/eu/recognizers/_:recognize",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": `Bearer ${accessToken}`,
+        "x-goog-user-project": "fladycard-22a3e",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(CHIPTT_STT_CALL_TIMEOUT_MS),
+    }
+  );
+
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => "");
+
+    console.error('[Chiptt] Google STT Recognize HTTP error', {
+      status: response.status,
+      body: bodyText.slice(0, 500),
+    });
+
+    const error = new Error(
+      `STT HTTP ${response.status}: ${bodyText.slice(0, 500)}`
+    );
+
+    error.code =
+      response.status === 429 ? "RATE_LIMITED" : "STT_ERROR";
+
+    throw error;
+  }
+
+  const data = await response.json();
+
+  const transcript =
+    data.results?.[0]?.alternatives?.[0]?.transcript;
+
+  if (!transcript) {
+    console.error('[Chiptt] Google STT Recognize no transcript', {
+      resultsCount: data.results?.length || 0,
+      alternativesCount: data.results?.[0]?.alternatives?.length || 0,
+    });
+    const error = new Error("No speech detected.");
+    error.code = "NO_SPEECH";
+    throw error;
+  }
+
+  console.error('[Chiptt] Google STT Recognize success', {
+    transcriptLength: transcript.length,
+    transcriptPreview: transcript.slice(0, 100),
+    billedDuration: data.metadata?.totalBilledDuration,
+    requestId: data.metadata?.requestId,
+  });
+
+  return { transcript, metadata: data.metadata };
+}
+
 async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode) {
   const accessToken = await getAccessToken();
 
@@ -211,6 +282,7 @@ async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCo
 module.exports = {
   checkAndIncrementQuota,
   callGoogleStt,
+  callGoogleSttRecognize,
   getAccessToken,
   CHIPTT_STT_GLOBAL_LIMIT,
   CHIPTT_STT_USER_LIMIT,

@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
-import { isExactExpectedAnswer } from '../../services/voice/earlyMatch';
 import { AssociationList } from '../../types';
 
 export interface UseVoiceSTTOptions {
@@ -10,6 +9,7 @@ export interface UseVoiceSTTOptions {
   onInterim: (text: string) => void;
   onFinal: (text: string) => void;
   onError: (message: string) => void;
+  onAudioChunk?: (blob: Blob) => void;
 }
 
 export interface UseVoiceSTTResult {
@@ -21,7 +21,7 @@ export interface UseVoiceSTTResult {
   abort: () => void;
 }
 
-export function useVoiceSTT({ list, onInterim, onFinal, onError }: UseVoiceSTTOptions): UseVoiceSTTResult {
+export function useVoiceSTT({ list, onInterim, onFinal, onError, onAudioChunk }: UseVoiceSTTOptions): UseVoiceSTTResult {
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const languages = resolveVoiceLanguages(list.concept, list.settings.flipOrder, {
     termLang: list.settings.voiceTermLang,
@@ -39,6 +39,7 @@ export function useVoiceSTT({ list, onInterim, onFinal, onError }: UseVoiceSTTOp
     onError: (message) => {
       onError(message);
     },
+    onAudioChunk,
   });
 
   const stop = useCallback(() => {

@@ -1,19 +1,20 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { getDb, FieldValue, getAuth } = require("./src/utils/firebase");
+const { getDb } = require("./src/utils/firebase");
 const { requireAuth, metaRefFor, todayKey } = require("./src/utils/helpers");
 const { QuotaExceededError } = require("./src/utils/helpers");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA, CHIPTT_STT_MAX_SINGLE_DURATION } = require("./src/utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA } = require("./src/utils/constants");
 
 const listService = require("./src/services/listService");
 const progressService = require("./src/services/progressService");
 const settingsService = require("./src/services/settingsService");
 const activityService = require("./src/services/activityService");
 const userService = require("./src/services/userService");
-const aiService = require("./src/services/aiService");
 const adminService = require("./src/services/adminService");
-const chirpTtsService = require("./src/services/chirpTtsService");
-const chirpVoicesService = require("./src/services/chirpVoicesService");
-const chipttSttService = require("./src/services/chipttSttService");
+const { handleTranscribeExistingAudio } = require("./src/services/transcribeExistingAudioService");
+const { handleTranscribeSpeech } = require("./src/services/transcribeSpeechService");
+const { handleSynthesizeSpeech } = require("./src/services/synthesizeSpeechService");
+const { handleListTtsVoices } = require("./src/services/listTtsVoicesService");
+const { handleAiGroup } = require("./src/services/aiGroupService");
 
 exports.getLists = onRequest({ cors: true }, async (req, res) => {
   const { userId } = req.body;
@@ -353,223 +354,24 @@ exports.setUserPremium = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 900, memory: "512MiB" }, async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized", authHeaderPresent: !!authHeader, authPrefix: authHeader ? authHeader.split(" ")[0] : null });
-  }
-
-  const { concept, associations } = req.body;
-  const receivedCount = Array.isArray(associations) ? associations.length : 0;
-  if (receivedCount < 3) {
-    return res.status(400).json({ error: "Se necesitan al menos 3 elementos para usar la IA." });
-  }
-  const dataToProcess = (Array.isArray(associations) ? associations : []).slice(0, 2000);
-  const processedCount = dataToProcess.length;
-
-  let uid;
-  try {
-    const token = await getAuth().verifyIdToken(authHeader.slice(7));
-    uid = token.uid;
-  } catch (error) {
-    console.error(`[aiGroup] token verification failed: ${error.message}`);
-    return res.status(401).json({ error: "Unauthorized", reason: error.message });
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "El servicio de IA no está configurado." });
-  }
-
-  try {
-    const metaRef = metaRefFor(getDb(), uid);
-    const today = todayKey();
-    const globalRef = getDb().collection("usage").doc("global");
-
-    const metaSnap = await metaRef.get();
-    const meta = metaSnap.data();
-    const aiQuotaDaily = meta.aiQuotaDaily || 3;
-    const aiUsedToday = meta.aiDateKey === today ? (meta.aiUsedToday || 0) : 0;
-    if (aiUsedToday >= aiQuotaDaily) {
-      return res.status(429).json({
-        error: `Llegaste a tu límite diario de IA (${aiQuotaDaily} usos). Vuelve mañana.`,
-      });
-    }
-
-    const globalSnap = await globalRef.get();
-    const globalData = globalSnap.exists ? globalSnap.data() : { dateKey: today, aiCalls: 0 };
-    const globalCalls = globalData.dateKey === today ? (globalData.aiCalls || 0) : 0;
-    if (globalCalls >= 200) {
-      return res.status(429).json({ error: "El servicio de IA alcanzó su límite diario. Intenta mañana." });
-    }
-
-    const lines = dataToProcess
-      .map((a, index) => `${index}|${a.term}|${a.definition}`)
-      .join("\n");
-
-    const prompt = `Actúa como un experto en mnemotecnia. Analiza estas asociaciones de "${concept || ""}" y agrúpalas en categorías lógicas para facilitar su memorización.
-
-DATOS DE ENTRADA:
-${lines}
-
-REQUISITOS:
-- Devuelve un array JSON.
-- Estructura: [{"groupName": "nombre", "indices": [0, 1, ...]}]`;
-
-    const aiResult = await aiService.callGemini(apiKey, prompt, processedCount);
-
-    if (aiResult.error) {
-      const status = aiResult.status === 429 ? 503 : 502;
-      return res.status(status).json({ error: aiResult.error });
-    }
-
-    const groups = aiResult.result;
-
-    await metaRef.update({
-      aiUsedToday: aiUsedToday + 1,
-      aiDateKey: today,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    await globalRef.set({ dateKey: today, aiCalls: globalCalls + 1 }, { merge: true });
-
-    res.json(groups);
-  } catch (error) {
-    console.error("[AI] Gemini call failed:", error.message);
-    if (error.code === "RATE_LIMITED") {
-      return res.status(503).json({
-        error: "El servicio de IA está temporalmente saturado. Intenta en unos minutos.",
-      });
-    }
-    return res.status(502).json({ error: "Error al procesar la lista con IA." });
-  }
-});
+exports.aiGroup = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 900, memory: "512MiB" }, handleAiGroup);
 
 exports.synthesizeSpeech = onRequest(
   { cors: true, timeoutSeconds: 60, memory: "256MiB" },
-  async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { text, voiceId, rate, pitch } = req.body || {};
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      return res.status(400).json({ error: 'Se requiere texto para sintetizar.' });
-    }
-    if (!voiceId || typeof voiceId !== 'string') {
-      return res.status(400).json({ error: 'Se requiere voiceId para sintetizar.' });
-    }
-
-    let uid;
-    try {
-      const token = await getAuth().verifyIdToken(authHeader.slice(7));
-      uid = token.uid;
-    } catch (error) {
-      console.error('[synthesizeSpeech] token verification failed:', error.message);
-      return res.status(401).json({ error: 'Unauthorized', reason: error.message });
-    }
-
-    const charCount = text.length;
-
-    try {
-      await chirpTtsService.checkAndIncrementQuota(getDb(), uid, charCount);
-      const audioContent = await chirpTtsService.callGoogleTts(text, voiceId, rate, pitch);
-      res.json({ audioContent });
-    } catch (error) {
-      console.error('[synthesizeSpeech] failed:', error.message);
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message });
-      }
-      if (error.code === 'RATE_LIMITED') {
-        return res.status(503).json({ error: 'El servicio de TTS está temporalmente saturado. Intenta en unos minutos.' });
-      }
-      return res.status(502).json({ error: 'Error al sintetizar la voz.' });
-    }
-  }
+  handleSynthesizeSpeech
 );
 
 exports.listTtsVoices = onRequest(
   { cors: true, timeoutSeconds: 30, memory: "256MiB" },
-  async (req, res) => {
-    if (req.method === 'OPTIONS') {
-      res.set('Access-Control-Allow-Origin', '*');
-      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.set('Access-Control-Max-Age', '3600');
-      res.status(204).send('');
-      return;
-    }
-
-    res.set('Access-Control-Allow-Origin', '*');
-
-    try {
-      const voices = await chirpVoicesService.getChirpVoices();
-      console.log(`[listTtsVoices] returning ${voices.length} voices`);
-      res.json({ voices });
-    } catch (error) {
-      console.error("[listTtsVoices] failed:", error.message);
-      res.status(502).json({
-        error: "Error al obtener las voces de TTS.",
-        reason: error.message,
-        code: error.code || null,
-      });
-    }
-  }
+  handleListTtsVoices
 );
 
 exports.transcribeSpeech = onRequest(
   { cors: true, timeoutSeconds: 60, memory: "256MiB" },
-  async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  handleTranscribeSpeech
+);
 
-    const { audioContent, encoding, sampleRateHertz, languageCode, audioDuration } = req.body || {};
-    if (!audioContent || typeof audioContent !== 'string') {
-      return res.status(400).json({ error: 'Se requiere audioContent para transcribir.' });
-    }
-
-    let uid;
-    try {
-      const token = await getAuth().verifyIdToken(authHeader.slice(7));
-      uid = token.uid;
-    } catch (error) {
-      console.error('[transcribeSpeech] token verification failed:', error.message);
-      return res.status(401).json({ error: 'Unauthorized', reason: error.message });
-    }
-
-    const audioSeconds = Math.max(1, Math.ceil(audioDuration || (Buffer.from(audioContent, 'base64').length / 4000)));
-    if (audioDuration > CHIPTT_STT_MAX_SINGLE_DURATION) {
-      return res.status(400).json({ error: `Recording cannot exceed ${CHIPTT_STT_MAX_SINGLE_DURATION} seconds.` });
-    }
-
-    console.error('[transcribeSpeech] request', { uid, audioDuration, audioSeconds });
-
-    let transcript;
-    try {
-      transcript = await chipttSttService.callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode);
-    } catch (error) {
-      console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
-      if (error.code === 'RATE_LIMITED') {
-        return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
-      }
-      if (error.code === 'NO_SPEECH') {
-        return res.status(200).json({ noSpeech: true, message: 'No speech detected.' });
-      }
-      return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
-    }
-
-    try {
-      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
-    } catch (error) {
-      console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message, code: error.code });
-      }
-      return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
-    }
-
-    res.json({ transcript });
-  }
+exports.transcribeExistingAudio = onRequest(
+  { cors: true, timeoutSeconds: 60, memory: "256MiB" },
+  handleTranscribeExistingAudio
 );

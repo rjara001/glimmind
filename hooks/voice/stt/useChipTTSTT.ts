@@ -198,6 +198,57 @@ export function useChipTTSTT({ onFinal, onInterim, onError }: UseChipTTSTTOption
     setRecordingElapsed(0);
   }, [clearTimer]);
 
+  const blobToBase64 = useCallback((blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        if (base64) {
+          resolve(base64);
+        } else {
+          reject(new Error('Failed to encode audio blob.'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read audio blob.'));
+    });
+  }, []);
+
+  const transcribeExistingAudio = useCallback(
+    async (blob: Blob, languageCode?: string): Promise<string> => {
+      if (!supported) {
+        throw new Error('Chirp STT not supported in this browser.');
+      }
+
+      const base64 = await blobToBase64(blob);
+      const encoding = blob.type.includes('ogg')
+        ? 'OGG_OPUS'
+        : blob.type.includes('opus')
+          ? 'WEBM_OPUS'
+          : 'WEBM';
+
+      const result = await transcribeSpeech({
+        audioContent: base64,
+        encoding,
+        sampleRateHertz: 48000,
+        languageCode: languageCode || undefined,
+        audioDuration: Math.max(1, Math.min(Math.ceil(60), 60)),
+      });
+
+      if (result.noSpeech) {
+        throw new Error(result.message || 'No speech detected.');
+      }
+
+      const trimmed = result.transcript?.trim();
+      if (!trimmed) {
+        throw new Error('No speech detected.');
+      }
+
+      return trimmed;
+    },
+    [supported, blobToBase64],
+  );
+
   const start = useCallback(
     (lang: string | null) => {
       if (!supported || isListeningRef.current || isProcessingRef.current) return;
@@ -376,7 +427,8 @@ export function useChipTTSTT({ onFinal, onInterim, onError }: UseChipTTSTTOption
       start,
       stop,
       abort,
+      transcribeExistingAudio,
     }),
-    [supported, isListening, isProcessing, recordingTimeLeft, recordingElapsed, start, stop, abort],
+    [supported, isListening, isProcessing, recordingTimeLeft, recordingElapsed, start, stop, abort, transcribeExistingAudio],
   );
 }

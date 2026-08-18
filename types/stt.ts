@@ -9,4 +9,5 @@ export interface SttProvider {
   start(language: string | null): void;
   stop(): void;
   abort(): void;
+  transcribeExistingAudio?(blob: Blob, languageCode?: string): Promise<string>;
 }

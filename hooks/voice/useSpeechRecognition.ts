@@ -6,6 +6,7 @@ export interface UseSpeechRecognitionOptions {
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
   provider?: SttProviderType;
+  onAudioChunk?: (blob: Blob) => void;
 }
 
 export function useSpeechRecognition({
@@ -13,11 +14,13 @@ export function useSpeechRecognition({
   onFinal,
   onInterim,
   onError,
+  onAudioChunk,
 }: UseSpeechRecognitionOptions) {
   return useSTT({
     provider,
     onFinal,
     onInterim,
     onError,
+    onAudioChunk,
   });
 }
