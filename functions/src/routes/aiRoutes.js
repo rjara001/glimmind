@@ -66,7 +66,7 @@ REQUISITOS:
 - Devuelve un array JSON.
 - Estructura: [{"groupName": "nombre", "indices": [0, 1, ...]}]`;
 
-    const aiResult = await aiService.callGemini(apiKey, prompt, processedCount);
+    const aiResult = await aiService.callGeminiWithRetryAndFallback(apiKey, prompt, processedCount);
 
     if (aiResult.error) {
       const status = aiResult.status === 429 ? 503 : 502;

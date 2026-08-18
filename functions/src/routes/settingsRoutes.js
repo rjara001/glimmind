@@ -13,7 +13,7 @@ exports.getSettings = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await settingsService.getSettings(getDb(), userId);
+    const data = await settingsService.loadUserSettings(getDb(), userId);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,7 +30,7 @@ exports.updateSettings = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await settingsService.updateSettings(getDb(), userId, settings);
+    const data = await settingsService.persistUserSettings(getDb(), userId, settings);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });

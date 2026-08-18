@@ -13,7 +13,7 @@ async function handleListTtsVoices(req, res) {
   res.set('Access-Control-Allow-Origin', '*');
 
   try {
-    const voices = await chirpVoicesService.getChirpVoices();
+    const voices = await chirpVoicesService.getCachedOrFreshChirpVoices();
     console.log(`[listTtsVoices] returning ${voices.length} voices`);
     res.json({ voices });
   } catch (error) {

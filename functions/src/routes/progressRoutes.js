@@ -13,7 +13,7 @@ exports.getProgress = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await progressService.getProgress(getDb(), userId);
+    const data = await progressService.loadUserLearningProgress(getDb(), userId);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,7 +30,7 @@ exports.updateProgress = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await progressService.updateProgress(getDb(), userId, progress);
+    const data = await progressService.persistUserLearningProgress(getDb(), userId, progress);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });

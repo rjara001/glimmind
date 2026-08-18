@@ -34,7 +34,7 @@ exports.transcribeSpeech = onRequest(
 
     let transcript;
     try {
-      transcript = await chipttSttService.callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode);
+      transcript = await chipttSttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
     } catch (error) {
       console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'RATE_LIMITED') {
@@ -47,7 +47,7 @@ exports.transcribeSpeech = onRequest(
     }
 
     try {
-      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
+      await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
     } catch (error) {
       console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
@@ -88,7 +88,7 @@ exports.transcribeExistingAudio = onRequest(
 
     let result;
     try {
-      result = await chipttSttService.callGoogleSttRecognize(audioContent, languageCode);
+      result = await chipttSttService.sendAudioToGoogleSpeechRecognitionRecognize(audioContent, languageCode);
     } catch (error) {
       console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'RATE_LIMITED') {
@@ -101,7 +101,7 @@ exports.transcribeExistingAudio = onRequest(
     }
 
     try {
-      await chipttSttService.checkAndIncrementQuota(getDb(), uid, audioSeconds);
+      await chipttSttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
     } catch (error) {
       console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {

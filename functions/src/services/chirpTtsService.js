@@ -4,35 +4,17 @@ const { todayKey } = require("../utils/helpers");
 const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_PREMIUM_USER_LIMIT, CHIRP_TTS_CALL_TIMEOUT_MS, GOOGLE_TTS_URL } = require("../utils/constants");
 const { sendAuthenticatedRequest } = require("../utils/googleApiClient");
 
-function monthKey() {
+function resolveCurrentMonthKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function getQuotaDoc(db, path) {
-  const ref = db.doc(path);
-  const snap = await ref.get();
-  const currentMonth = monthKey();
-
-  if (snap.exists) {
-    const data = snap.data();
-    if (data.monthKey !== currentMonth) {
-      return { ref, data: { monthKey: currentMonth, charsUsed: 0 } };
-    }
-    return { ref, data };
-  }
-
-  return { ref, data: { monthKey: currentMonth, charsUsed: 0 } };
-}
-
-async function checkAndIncrementQuota(db, uid, charCount) {
-  const currentMonth = monthKey();
-
+function buildTtsQuotaDocumentRefs(db, uid, monthKey) {
   const globalRef = db
     .collection("usage")
     .doc("chirpTts")
     .collection("global")
-    .doc(currentMonth);
+    .doc(monthKey);
 
   const userRef = db
     .collection("usage")
@@ -40,8 +22,13 @@ async function checkAndIncrementQuota(db, uid, charCount) {
     .collection("users")
     .doc(uid)
     .collection("months")
-    .doc(currentMonth);
+    .doc(monthKey);
 
+  return { globalRef, userRef };
+}
+
+async function fetchTtsQuotaDocuments(db, uid, monthKey) {
+  const { globalRef, userRef } = buildTtsQuotaDocumentRefs(db, uid, monthKey);
   const [globalSnap, userSnap] = await Promise.all([
     globalRef.get(),
     userRef.get(),
@@ -49,12 +36,16 @@ async function checkAndIncrementQuota(db, uid, charCount) {
 
   const globalData = globalSnap.exists
     ? globalSnap.data()
-    : { monthKey: currentMonth, charsUsed: 0 };
+    : { monthKey: monthKey, charsUsed: 0 };
 
   const userData = userSnap.exists
     ? userSnap.data()
-    : { monthKey: currentMonth, charsUsed: 0 };
+    : { monthKey: monthKey, charsUsed: 0 };
 
+  return { globalRef, userRef, globalData, userData };
+}
+
+function assertGlobalTtsQuotaHasCapacity(globalData, charCount) {
   if (globalData.charsUsed >= CHIRP_TTS_GLOBAL_LIMIT) {
     const error = new Error(
       "El servicio de voz alcanzó su límite mensual global. Intenta el próximo mes."
@@ -62,7 +53,9 @@ async function checkAndIncrementQuota(db, uid, charCount) {
     error.code = "GLOBAL_QUOTA_EXCEEDED";
     throw error;
   }
+}
 
+async function assertUserTtsQuotaHasCapacity(db, uid, userData, charCount) {
   const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
   const metaSnap = await metaRef.get();
   const userTier = metaSnap.exists ? (metaSnap.data().tier || 'free') : 'free';
@@ -75,13 +68,15 @@ async function checkAndIncrementQuota(db, uid, charCount) {
     error.code = "USER_QUOTA_EXCEEDED";
     throw error;
   }
+}
 
+async function persistTtsQuotaUsage(db, globalRef, userRef, globalData, userData, charCount, monthKey) {
   const batch = db.batch();
 
   batch.set(
     globalRef,
     {
-      monthKey: currentMonth,
+      monthKey: monthKey,
       charsUsed: globalData.charsUsed + charCount,
     },
     { merge: true }
@@ -90,7 +85,7 @@ async function checkAndIncrementQuota(db, uid, charCount) {
   batch.set(
     userRef,
     {
-      monthKey: currentMonth,
+      monthKey: monthKey,
       charsUsed: userData.charsUsed + charCount,
     },
     { merge: true }
@@ -99,7 +94,15 @@ async function checkAndIncrementQuota(db, uid, charCount) {
   await batch.commit();
 }
 
-async function callGoogleTts(text, voiceId, rate, pitch) {
+async function verifyUserHasRemainingTtsQuota(db, uid, charCount) {
+  const monthKey = resolveCurrentMonthKey();
+  const { globalRef, userRef, globalData, userData } = await fetchTtsQuotaDocuments(db, uid, monthKey);
+  assertGlobalTtsQuotaHasCapacity(globalData, charCount);
+  await assertUserTtsQuotaHasCapacity(db, uid, userData, charCount);
+  await persistTtsQuotaUsage(db, globalRef, userRef, globalData, userData, charCount, monthKey);
+}
+
+async function sendTextToChirpSynthesizer(text, voiceId, rate, pitch) {
   const parts = String(voiceId).split("-");
   const languageCode =
     parts.length >= 2 ? `${parts[0]}-${parts[1]}` : parts[0] || "es";
@@ -131,9 +134,8 @@ async function callGoogleTts(text, voiceId, rate, pitch) {
 }
 
 module.exports = {
-  checkAndIncrementQuota,
-  callGoogleTts,
-  getQuotaDoc,
+  verifyUserHasRemainingTtsQuota,
+  sendTextToChirpSynthesizer,
   CHIRP_TTS_GLOBAL_LIMIT,
   CHIRP_TTS_USER_LIMIT,
   CHIRP_TTS_PREMIUM_USER_LIMIT,

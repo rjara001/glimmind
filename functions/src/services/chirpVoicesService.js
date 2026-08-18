@@ -26,7 +26,7 @@ function mapGoogleVoice(voice) {
   };
 }
 
-async function fetchGoogleVoices() {
+async function fetchChirpVoicesFromGoogle() {
   const accessToken = await getAccessToken();
 
   const response = await fetch(
@@ -62,18 +62,18 @@ async function fetchGoogleVoices() {
   return filtered;
 }
 
-async function getChirpVoices() {
+async function getCachedOrFreshChirpVoices() {
   const now = Date.now();
   if (cachedVoices && now - cachedAt < VOICE_LIST_CACHE_TTL_MS) {
     return cachedVoices;
   }
 
-  const voices = await fetchGoogleVoices();
+  const voices = await fetchChirpVoicesFromGoogle();
   cachedVoices = voices;
   cachedAt = now;
   return voices;
 }
 
 module.exports = {
-  getChirpVoices,
+  getCachedOrFreshChirpVoices,
 };

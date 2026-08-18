@@ -31,8 +31,8 @@ exports.synthesizeSpeech = onRequest(
     const charCount = text.length;
 
     try {
-      await chirpTtsService.checkAndIncrementQuota(getDb(), uid, charCount);
-      const audioContent = await chirpTtsService.callGoogleTts(text, voiceId, rate, pitch);
+      await chirpTtsService.verifyUserHasRemainingTtsQuota(getDb(), uid, charCount);
+      const audioContent = await chirpTtsService.sendTextToChirpSynthesizer(text, voiceId, rate, pitch);
       res.json({ audioContent });
     } catch (error) {
       console.error('[synthesizeSpeech] failed:', error.message);
@@ -62,7 +62,7 @@ exports.listTtsVoices = onRequest(
     res.set('Access-Control-Allow-Origin', '*');
 
     try {
-      const voices = await chirpVoicesService.getChirpVoices();
+      const voices = await chirpVoicesService.getCachedOrFreshChirpVoices();
       console.log(`[listTtsVoices] returning ${voices.length} voices`);
       res.json({ voices });
     } catch (error) {

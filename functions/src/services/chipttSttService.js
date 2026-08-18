@@ -1,21 +1,18 @@
 const { getDb } = require("../utils/firebase");
-const { FieldValue } = require("../utils/firebase");
 const { CHIPTT_STT_GLOBAL_LIMIT, CHIPTT_STT_USER_LIMIT, CHIPTT_STT_PREMIUM_USER_LIMIT, CHIPTT_STT_CALL_TIMEOUT_MS, GOOGLE_STT_RECOGNIZE_URL, GOOGLE_STT_URL } = require("../utils/constants");
 const { sendAuthenticatedRequest } = require("../utils/googleApiClient");
 
-function monthKey() {
+function resolveCurrentMonthKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function checkAndIncrementQuota(db, uid, audioSeconds) {
-  const currentMonth = monthKey();
-
+function buildSttQuotaDocumentRefs(db, uid, monthKey) {
   const globalRef = db
     .collection("usage")
     .doc("chipttStt")
     .collection("global")
-    .doc(currentMonth);
+    .doc(monthKey);
 
   const userRef = db
     .collection("usage")
@@ -23,8 +20,13 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
     .collection("users")
     .doc(uid)
     .collection("months")
-    .doc(currentMonth);
+    .doc(monthKey);
 
+  return { globalRef, userRef };
+}
+
+async function fetchSttQuotaDocuments(db, uid, monthKey) {
+  const { globalRef, userRef } = buildSttQuotaDocumentRefs(db, uid, monthKey);
   const [globalSnap, userSnap] = await Promise.all([
     globalRef.get(),
     userRef.get(),
@@ -32,15 +34,18 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
 
   const globalData = globalSnap.exists
     ? globalSnap.data()
-    : { monthKey: currentMonth, audioSecondsUsed: 0 };
+    : { monthKey: monthKey, audioSecondsUsed: 0 };
 
   const userData = userSnap.exists
     ? userSnap.data()
-    : { monthKey: currentMonth, audioSecondsUsed: 0 };
+    : { monthKey: monthKey, audioSecondsUsed: 0 };
 
+  return { globalRef, userRef, globalData, userData };
+}
+
+function assertGlobalSttQuotaHasCapacity(globalData, audioSeconds) {
   if (globalData.audioSecondsUsed >= CHIPTT_STT_GLOBAL_LIMIT) {
     console.error('[Chiptt] global quota exceeded', {
-      uid,
       audioSeconds,
       globalUsed: globalData.audioSecondsUsed,
       globalLimit: CHIPTT_STT_GLOBAL_LIMIT,
@@ -51,7 +56,9 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
     error.code = "GLOBAL_QUOTA_EXCEEDED";
     throw error;
   }
+}
 
+async function assertUserSttQuotaHasCapacity(db, uid, userData, audioSeconds) {
   const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
   const metaSnap = await metaRef.get();
   const userTier = metaSnap.exists ? (metaSnap.data().tier || 'free') : 'free';
@@ -71,20 +78,24 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
     error.code = "USER_QUOTA_EXCEEDED";
     throw error;
   }
+}
 
+function logSttQuotaCheckPassed(uid, audioSeconds, globalData, userData) {
   console.error('[Chiptt] quota check passed', {
     uid,
     audioSeconds,
     globalUsed: globalData.audioSecondsUsed,
     userUsed: userData.audioSecondsUsed,
   });
+}
 
+async function persistSttQuotaUsage(db, globalRef, userRef, globalData, userData, audioSeconds, monthKey) {
   const batch = db.batch();
 
   batch.set(
     globalRef,
     {
-      monthKey: currentMonth,
+      monthKey: monthKey,
       audioSecondsUsed: globalData.audioSecondsUsed + audioSeconds,
     },
     { merge: true }
@@ -93,7 +104,7 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
   batch.set(
     userRef,
     {
-      monthKey: currentMonth,
+      monthKey: monthKey,
       audioSecondsUsed: userData.audioSecondsUsed + audioSeconds,
     },
     { merge: true }
@@ -102,7 +113,16 @@ async function checkAndIncrementQuota(db, uid, audioSeconds) {
   await batch.commit();
 }
 
-async function callGoogleSttRecognize(audioContent, languageCode) {
+async function verifyUserHasRemainingSttQuota(db, uid, audioSeconds) {
+  const monthKey = resolveCurrentMonthKey();
+  const { globalRef, userRef, globalData, userData } = await fetchSttQuotaDocuments(db, uid, monthKey);
+  assertGlobalSttQuotaHasCapacity(globalData, audioSeconds);
+  await assertUserSttQuotaHasCapacity(db, uid, userData, audioSeconds);
+  logSttQuotaCheckPassed(uid, audioSeconds, globalData, userData);
+  await persistSttQuotaUsage(db, globalRef, userRef, globalData, userData, audioSeconds, monthKey);
+}
+
+async function sendAudioToChirpRecognizer(audioContent, languageCode) {
   const data = await sendAuthenticatedRequest(
     GOOGLE_STT_RECOGNIZE_URL,
     {
@@ -141,7 +161,7 @@ async function callGoogleSttRecognize(audioContent, languageCode) {
   return { transcript, metadata: data.metadata };
 }
 
-async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCode) {
+async function sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode) {
   const data = await sendAuthenticatedRequest(
     GOOGLE_STT_URL,
     {
@@ -183,9 +203,9 @@ async function callGoogleStt(audioContent, encoding, sampleRateHertz, languageCo
 }
 
 module.exports = {
-  checkAndIncrementQuota,
-  callGoogleStt,
-  callGoogleSttRecognize,
+  verifyUserHasRemainingSttQuota,
+  sendAudioToChirpRecognizer,
+  sendAudioToGoogleSpeechRecognition,
   CHIPTT_STT_GLOBAL_LIMIT,
   CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,

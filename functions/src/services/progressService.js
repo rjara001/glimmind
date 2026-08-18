@@ -1,4 +1,6 @@
-async function getProgress(db, userId) {
+const { FieldValue } = require("../utils/firebase");
+
+async function loadUserLearningProgress(db, userId) {
   const doc = await db.collection("users").doc(userId).collection("progress").doc("main").get();
   if (!doc.exists) {
     return null;
@@ -6,15 +8,15 @@ async function getProgress(db, userId) {
   return doc.data();
 }
 
-async function updateProgress(db, userId, progress) {
+async function persistUserLearningProgress(db, userId, progress) {
   await db.collection("users").doc(userId).collection("progress").doc("main").set({
     ...progress,
-    updatedAt: require("../utils/firebase").FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 }
 
 module.exports = {
-  getProgress,
-  updateProgress,
+  loadUserLearningProgress,
+  persistUserLearningProgress,
 };

@@ -15,7 +15,7 @@ exports.getLists = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await listService.getLists(getDb(), userId);
+    const data = await listService.fetchAllListsForUser(getDb(), userId);
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -32,7 +32,7 @@ exports.createList = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const id = await listService.createList(getDb(), userId, {
+    const id = await listService.persistNewListWithAssociations(getDb(), userId, {
       name,
       concept,
       associations,
@@ -54,7 +54,7 @@ exports.updateList = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await listService.updateList(getDb(), listId, uid, updates);
+    const data = await listService.applyUpdatesToListAndAdjustCardCounters(getDb(), listId, uid, updates);
     res.json(data);
   } catch (error) {
     if (error instanceof QuotaExceededError) {
@@ -77,7 +77,7 @@ exports.deleteList = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await listService.deleteList(getDb(), listId, uid);
+    const data = await listService.removeListAndDecrementUserCardCount(getDb(), listId, uid);
     res.json(data);
   } catch (error) {
     if (error.message === "List not found") {
@@ -100,7 +100,7 @@ exports.splitList = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await listService.splitList(getDb(), listId, uid, groups);
+    const data = await listService.divideOriginalListIntoGroupsAndReplaceIt(getDb(), listId, uid, groups);
     res.json(data);
   } catch (error) {
     if (error instanceof QuotaExceededError) {
@@ -123,7 +123,7 @@ exports.getList = onRequest({ cors: true }, async (req, res) => {
   if (!uid) return;
 
   try {
-    const data = await listService.getList(getDb(), listId, uid);
+    const data = await listService.fetchListByIdForUser(getDb(), listId, uid);
     res.json(data);
   } catch (error) {
     if (error.message === "List not found") {

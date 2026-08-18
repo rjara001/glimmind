@@ -1,136 +1,164 @@
 const { COLLECTION_NAME } = require("../utils/constants");
+const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../utils/helpers");
+const { FieldValue } = require("../utils/firebase");
+const { DEFAULT_CARD_QUOTA, PREMIUM_CARD_QUOTA, MAX_CARDS_PER_LIST } = require("../utils/constants");
 
-async function getLists(db, userId) {
+async function fetchAllListsForUser(db, userId) {
   const snapshot = await db.collection(COLLECTION_NAME)
     .where("userId", "==", userId)
     .get();
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-async function createList(db, userId, { name, concept, associations, settings }) {
-  const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../utils/helpers");
-  const { FieldValue } = require("../utils/firebase");
-  const { DEFAULT_CARD_QUOTA, PREMIUM_CARD_QUOTA, MAX_CARDS_PER_LIST } = require("../utils/constants");
-
-  await getOrCreateMeta(db, userId);
-  const metaSnap = await metaRefFor(db, userId).get();
-  const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
-  const isPremium = meta.tier === "premium";
-
-  const count = Array.isArray(associations) ? associations.length : 0;
+function resolveListCardLimit(userTier) {
+  const isPremium = userTier === "premium";
   const maxAllowed = isPremium ? PREMIUM_CARD_QUOTA : MAX_CARDS_PER_LIST;
+  return { isPremium, maxAllowed };
+}
+
+function validateListDoesNotExceedCardLimit(associations, maxAllowed) {
+  const count = Array.isArray(associations) ? associations.length : 0;
   if (count > maxAllowed) {
     throw new QuotaExceededError(`Una lista no puede superar ${maxAllowed} tarjetas.`);
   }
+  return count;
+}
+
+async function loadUserMetaForCardQuota(db, userId) {
+  await getOrCreateMeta(db, userId);
+  const metaSnap = await metaRefFor(db, userId).get();
+  const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+  return meta;
+}
+
+function validateUserCardQuotaNotExceeded(meta, newCardsCount) {
+  const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
+  const cardCount = meta.cardCount || 0;
+  const { isPremium } = resolveListCardLimit(meta.tier);
+  
+  if (!isPremium && newCardsCount > 0 && cardCount + newCardsCount > cardQuota) {
+    throw new QuotaExceededError(`Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+  }
+  return { cardQuota, cardCount, isPremium };
+}
+
+function buildListDocumentData({ userId, name, concept, associations, settings }) {
+  return {
+    userId,
+    name,
+    concept,
+    associations,
+    settings,
+    isArchived: false,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
+function buildMetaDocumentDataForListCreation(meta, newCardsCount) {
+  return {
+    ...metaDefaults(),
+    cardCount: newCardsCount,
+  };
+}
+
+async function persistNewListWithAssociations(db, userId, { name, concept, associations, settings }) {
+  const meta = await loadUserMetaForCardQuota(db, userId);
+  const { maxAllowed } = resolveListCardLimit(meta.tier);
+  validateListDoesNotExceedCardLimit(associations, maxAllowed);
+  const { cardQuota, cardCount, isPremium } = validateUserCardQuotaNotExceeded(meta, associations.length);
 
   const docRef = db.collection(COLLECTION_NAME).doc();
   await db.runTransaction(async (tx) => {
-    const metaSnap = await tx.get(require("../utils/helpers").metaRefFor(db, userId));
-    const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
-    const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
-    const cardCount = meta.cardCount || 0;
-    const isPremium = meta.tier === "premium";
-    console.log("[DEBUG][createList] userId=", userId, "cardQuota=", cardQuota, "cardCount=", cardCount, "count=", count, "isPremium=", isPremium);
-    if (!isPremium && count > 0 && cardCount + count > cardQuota) {
-      throw new QuotaExceededError(`Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    const metaSnap = await tx.get(metaRefFor(db, userId));
+    const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+    const currentCardCount = currentMeta.cardCount || 0;
+    const currentIsPremium = currentMeta.tier === "premium";
+    
+    if (!currentIsPremium && associations.length > 0 && currentCardCount + associations.length > (currentMeta.cardQuota || DEFAULT_CARD_QUOTA)) {
+      throw new QuotaExceededError(`Llegaste a tu límite de ${currentMeta.cardQuota || DEFAULT_CARD_QUOTA} tarjetas. Elimina o archiva tarjetas para añadir más.`);
     }
-    tx.set(docRef, {
-      userId,
-      name,
-      concept,
-      associations,
-      settings,
-      isArchived: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+
+    tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings }));
+    
     if (metaSnap.exists) {
-      tx.update(require("../utils/helpers").metaRefFor(db, userId), {
-        cardCount: FieldValue.increment(count),
+      tx.update(metaRefFor(db, userId), {
+        cardCount: FieldValue.increment(associations.length),
         updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
-      tx.set(require("../utils/helpers").metaRefFor(db, userId), { ...metaDefaults(), cardCount: count });
+      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, associations.length));
     }
   });
   return { id: docRef.id };
 }
 
-async function updateList(db, listId, uid, updates) {
-  const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../utils/helpers");
-  const { FieldValue } = require("../utils/firebase");
-  const { DEFAULT_CARD_QUOTA, PREMIUM_CARD_QUOTA, MAX_CARDS_PER_LIST } = require("../utils/constants");
-
+async function loadListOwnershipInfo(db, listId, uid) {
   const docRef = db.collection(COLLECTION_NAME).doc(listId);
   const docSnap = await docRef.get();
   if (!docSnap.exists) {
     throw new Error("List not found");
   }
-
   const oldData = docSnap.data();
   if (oldData.userId && oldData.userId !== uid) {
     throw new Error("Forbidden");
   }
+  return { docRef, oldData };
+}
 
+function calculateCardCountDelta(oldAssociations, newAssociations) {
+  const oldCount = Array.isArray(oldAssociations) ? oldAssociations.length : 0;
+  const newCount = Array.isArray(newAssociations) ? newAssociations.length : oldCount;
+  return newCount - oldCount;
+}
+
+async function applyUpdatesToListAndAdjustCardCounters(db, listId, uid, updates) {
+  const { docRef, oldData } = await loadListOwnershipInfo(db, listId, uid);
   const currentUserId = oldData.userId || uid;
-  const metaSnap = await metaRefFor(db, currentUserId).get();
-  const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
-  const isPremium = meta.tier === "premium";
-
-  const oldCount = Array.isArray(oldData.associations) ? oldData.associations.length : 0;
-  const newCount = Array.isArray(updates.associations) ? updates.associations.length : oldCount;
-
-  const maxAllowed = isPremium ? PREMIUM_CARD_QUOTA : MAX_CARDS_PER_LIST;
-  console.log("[updateList] uid=", uid, "currentUserId=", currentUserId, "isPremium=", isPremium, "oldCount=", oldCount, "newCount=", newCount, "maxAllowed=", maxAllowed, "meta=", JSON.stringify(meta));
-  if (newCount > maxAllowed && newCount > oldCount) {
+  
+  const meta = await loadUserMetaForCardQuota(db, currentUserId);
+  const { maxAllowed } = resolveListCardLimit(meta.tier);
+  const delta = calculateCardCountDelta(oldData.associations, updates.associations);
+  const newTotalCount = Array.isArray(oldData.associations) ? oldData.associations.length : 0;
+  
+  if (newTotalCount + delta > maxAllowed && delta > 0) {
     throw new QuotaExceededError(`Una lista no puede superar ${maxAllowed} tarjetas.`);
-  }
-
-  if (oldData.userId && newCount > oldCount) {
-    await getOrCreateMeta(db, oldData.userId);
   }
 
   await db.runTransaction(async (tx) => {
     const currentSnap = await tx.get(docRef);
-    if (!currentSnap.exists) {
-      return;
-    }
+    if (!currentSnap.exists) return;
+    
     const currentData = currentSnap.data();
     const currentUserId = currentData.userId || uid;
     const currentOldCount = Array.isArray(currentData.associations) ? currentData.associations.length : 0;
-    const delta = newCount - currentOldCount;
-
-    const metaRef = require("../utils/helpers").metaRefFor(db, currentUserId);
+    const currentDelta = calculateCardCountDelta(currentData.associations, updates.associations);
+    
+    const metaRef = metaRefFor(db, currentUserId);
     const metaSnap = await tx.get(metaRef);
-    const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
-    const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
-    const cardCount = meta.cardCount || 0;
-    const isPremium = meta.tier === "premium";
-
-    console.log("[updateList][tx] currentUserId=", currentUserId, "isPremium=", isPremium, "delta=", delta, "cardQuota=", cardQuota, "cardCount=", cardCount);
-    if (!isPremium && delta > 0 && cardCount + delta > cardQuota) {
-      throw new QuotaExceededError(`Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
-    }
-
+    const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+    validateUserCardQuotaNotExceeded(currentMeta, currentDelta);
+    
     tx.update(docRef, {
       ...updates,
       updatedAt: FieldValue.serverTimestamp(),
     });
-    if (delta !== 0) {
+    
+    if (currentDelta !== 0) {
       if (metaSnap.exists) {
         tx.update(metaRef, {
-          cardCount: FieldValue.increment(delta),
+          cardCount: FieldValue.increment(currentDelta),
           updatedAt: FieldValue.serverTimestamp(),
         });
       } else {
-        tx.set(metaRef, { ...metaDefaults(), cardCount: Math.max(0, delta) });
+        tx.set(metaRef, { ...metaDefaults(), cardCount: Math.max(0, currentDelta) });
       }
     }
   });
   return { success: true };
 }
 
-async function deleteList(db, listId, uid) {
+async function removeListAndDecrementUserCardCount(db, listId, uid) {
   const docRef = db.collection(COLLECTION_NAME).doc(listId);
   const docSnap = await docRef.get();
   if (!docSnap.exists) {
@@ -146,11 +174,8 @@ async function deleteList(db, listId, uid) {
   const count = Array.isArray(associations) ? associations.length : 0;
 
   if (ownerId) {
-    await require("../utils/helpers").getOrCreateMeta(db, ownerId);
+    await getOrCreateMeta(db, ownerId);
   }
-
-  const { metaDefaults, metaRefFor } = require("../utils/helpers");
-  const { FieldValue } = require("../utils/firebase");
 
   await db.runTransaction(async (tx) => {
     const metaRef = metaRefFor(db, ownerId);
@@ -169,7 +194,7 @@ async function deleteList(db, listId, uid) {
   return { success: true };
 }
 
-async function splitList(db, listId, uid, groups) {
+async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups) {
   const originalRef = db.collection(COLLECTION_NAME).doc(listId);
   const originalSnap = await originalRef.get();
   if (!originalSnap.exists) {
@@ -187,20 +212,11 @@ async function splitList(db, listId, uid, groups) {
   );
   const delta = totalNewCount - originalCount;
 
-  const { metaDefaults, QuotaExceededError, metaRefFor } = require("../utils/helpers");
-  const { FieldValue } = require("../utils/firebase");
-
   const createdIds = await db.runTransaction(async (tx) => {
     const metaRef = metaRefFor(db, uid);
     const metaSnap = await tx.get(metaRef);
     const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
-    const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
-    const cardCount = meta.cardCount || 0;
-    const isPremium = meta.tier === "premium";
-
-    if (!isPremium && delta > 0 && cardCount + delta > cardQuota) {
-      throw new QuotaExceededError(`Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
-    }
+    validateUserCardQuotaNotExceeded(meta, delta);
 
     const newRefs = [];
     for (const group of groups) {
@@ -235,7 +251,7 @@ async function splitList(db, listId, uid, groups) {
   return { ids: createdIds };
 }
 
-async function getList(db, listId, uid) {
+async function fetchListByIdForUser(db, listId, uid) {
   const doc = await db.collection(COLLECTION_NAME).doc(listId).get();
   if (!doc.exists) {
     throw new Error("List not found");
@@ -247,10 +263,10 @@ async function getList(db, listId, uid) {
 }
 
 module.exports = {
-  getLists,
-  createList,
-  updateList,
-  deleteList,
-  splitList,
-  getList,
+  fetchAllListsForUser,
+  persistNewListWithAssociations,
+  applyUpdatesToListAndAdjustCardCounters,
+  removeListAndDecrementUserCardCount,
+  divideOriginalListIntoGroupsAndReplaceIt,
+  fetchListByIdForUser,
 };
