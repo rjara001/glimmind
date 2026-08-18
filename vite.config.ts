@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       root: 'src',
+      envDir: '..',
       server: {
         port: 3001,
         host: '0.0.0.0',
@@ -19,6 +20,9 @@ export default defineConfig(({ mode }) => {
         }
       },
       plugins: [react()],
+      build: {
+        outDir: path.resolve(__dirname, 'dist'),
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, 'src'),
