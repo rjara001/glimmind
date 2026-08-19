@@ -1,7 +1,7 @@
 const { getDb } = require("../../utils/firebase");
-const { getOrCreateMeta, metaDefaults, metaRefFor } = require("../../utils/helpers");
+const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../../utils/helpers");
 const { FieldValue } = require("../../utils/firebase");
-const { COLLECTION_NAME } = require("../../utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST, DEFAULT_CARD_QUOTA } = require("../../utils/constants");
 const { validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
 function buildListDocumentData({ userId, name, concept, associations, settings }) {
@@ -63,12 +63,8 @@ async function fetchListByIdForUser(db, listId, uid) {
 
 async function persistNewListWithAssociations(db, userId, { name, concept, associations, settings }) {
   const meta = await loadUserMetaForCardQuota(db, userId);
-  const { maxAllowed } = validateListDoesNotExceedCardLimit(associations, meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST);
-  // Re-run with actual limit from quota helper
-  const { isPremium } = loadUserMetaForCardQuota(db, userId).then(m => ({ isPremium: m.tier === "premium" }));
-  
-  // Simplified: just use the limit directly
-  const count = validateListDoesNotExceedCardLimit(associations, MAX_CARDS_PER_LIST);
+  const maxAllowed = meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST;
+  const count = validateListDoesNotExceedCardLimit(associations, maxAllowed);
   const { cardQuota, cardCount } = validateUserCardQuotaNotExceeded(meta, count);
 
   const docRef = db.collection(COLLECTION_NAME).doc();
@@ -78,8 +74,8 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
     const currentCardCount = currentMeta.cardCount || 0;
     const currentIsPremium = currentMeta.tier === "premium";
     
-    if (!currentIsPremium && count > 0 && currentCardCount + count > (currentMeta.cardQuota || DEFAULT_CARD_QUOTA)) {
-      throw new QuotaExceededError(`Llegaste a tu límite de ${currentMeta.cardQuota || DEFAULT_CARD_QUOTA} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    if (!currentIsPremium && count > 0 && currentCardCount + count > Math.max(currentMeta.cardQuota || 0, DEFAULT_CARD_QUOTA)) {
+      throw new QuotaExceededError(`Llegaste a tu límite de ${Math.max(currentMeta.cardQuota || 0, DEFAULT_CARD_QUOTA)} tarjetas. Elimina o archiva tarjetas para añadir más.`);
     }
 
     tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings }));

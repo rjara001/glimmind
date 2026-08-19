@@ -38,7 +38,7 @@ async function handleTranscribeSpeech(req, res) {
       return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
     }
     if (error.code === 'NO_SPEECH') {
-      return res.status(200).json({ noSpeech: true, message: 'No speech detected.' });
+      return res.status(200).json({ noSpeech: true, message: 'No speech detected in live audio (service handler).' });
     }
     return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
   }

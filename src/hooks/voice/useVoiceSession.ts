@@ -206,6 +206,20 @@ export function useVoiceSession(list: AssociationList) {
 
       if (phaseRef.current !== 'listening_for_answer') return;
 
+      const isNoSpeech = message.startsWith('No speech detected');
+      if (isNoSpeech) {
+        setError(null);
+        stopSTTRef.current?.();
+        console.log('[STT] no speech, re-listening');
+        setTimeout(() => {
+          if (!shouldRunRef.current) return;
+          if (phaseRef.current !== 'listening_for_answer') return;
+          const lang = languagesRef.current.sttLang || 'es';
+          startSTTRef.current?.(lang);
+        }, 300);
+        return;
+      }
+
       browserAttemptCountRef.current += 1;
 
       if (browserAttemptCountRef.current >= MAX_BROWSER_ATTEMPTS) {
@@ -313,7 +327,7 @@ export function useVoiceSession(list: AssociationList) {
       }
 
       setPhaseBoth('idle');
-      setError('No speech detected.');
+      setError('No speech detected after Chirp fallback exhausted.');
       return;
     }
 
@@ -434,6 +448,7 @@ export function useVoiceSession(list: AssociationList) {
   useEffect(() => {
     if (phaseRef.current !== 'listening_for_answer') return;
     if (stt.isListening) return;
+    if (stt.isProcessing) return;
     if (answerHandledRef.current) return;
     if (listeningFailedRef.current) return;
     if (fallbackActiveRef.current) return;
@@ -441,6 +456,7 @@ export function useVoiceSession(list: AssociationList) {
     const timeout = setTimeout(() => {
       if (phaseRef.current !== 'listening_for_answer') return;
       if (stt.isListening) return;
+      if (stt.isProcessing) return;
       if (answerHandledRef.current) return;
       if (listeningFailedRef.current) return;
       if (fallbackActiveRef.current) return;
@@ -451,13 +467,13 @@ export function useVoiceSession(list: AssociationList) {
         setPhaseBoth('evaluating');
         void handleAnswerRef.current?.(pending);
       } else {
-        setError('No speech detected.');
+        setError('No speech detected (listening timeout).');
         setPhaseBoth('idle');
       }
     }, LISTENING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [phase, stt.isListening, setPhaseBoth, fallbackActiveRef]);
+  }, [phase, stt.isListening, stt.isProcessing, setPhaseBoth, fallbackActiveRef]);
 
   return {
     phase,

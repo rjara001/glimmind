@@ -20,7 +20,7 @@ async function sendAudioToChirpRecognizer(audioContent, languageCode) {
           resultsCount: data.results?.length || 0,
           alternativesCount: data.results?.[0]?.alternatives?.length || 0,
         });
-        const error = new Error("No speech detected.");
+        const error = new Error("No speech detected by Chirp (chipttSttService).");
         error.code = "NO_SPEECH";
         return error;
       }
@@ -63,7 +63,7 @@ async function sendAudioToGoogleSpeechRecognition(audioContent, encoding, sample
           resultsCount: data.results?.length || 0,
           alternativesCount: data.results?.[0]?.alternatives?.length || 0,
         });
-        const error = new Error("No speech detected.");
+        const error = new Error("No speech detected by Google STT (chipttSttService).");
         error.code = "NO_SPEECH";
         return error;
       }

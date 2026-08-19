@@ -8,7 +8,7 @@ import { useGameStore } from '../../store/gameStore';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
 import { isExactExpectedAnswer } from '../../services/voice/stt/earlyMatch';
 import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../../services/voice/stt/commands';
-import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS } from '../../constants/voice';
+import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS, RELISTEN_DELAY_MS } from '../../constants/voice';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
 
@@ -178,6 +178,19 @@ export function useGameVoice({
       }
     },
     onError: (message) => {
+      if (phaseRef.current !== 'listening') return;
+      const isNoSpeech = message.startsWith('No speech detected');
+      if (isNoSpeech) {
+        setError(null);
+        console.log('[Voice] no speech, re-listening');
+        setTimeout(() => {
+          if (!shouldRunRef.current) return;
+          if (phaseRef.current !== 'listening') return;
+          if (answerHandledRef.current) return;
+          sttRef.current.start(languages.sttLang);
+        }, RELISTEN_DELAY_MS);
+        return;
+      }
       setError(message);
       setPhaseBoth('idle');
     },
@@ -366,7 +379,7 @@ export function useGameVoice({
         onSubmitVoiceRef.current(pending);
       } else {
         setPhaseBoth('idle');
-        setError('No speech detected.');
+        setError('No speech detected (listening timeout, useGameVoice).');
       }
     }, LISTENING_TIMEOUT_MS);
 

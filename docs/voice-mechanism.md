@@ -263,7 +263,7 @@ function useSpeechRecognition(options): {
 | `not-allowed` | Fatal: "Microphone permission denied." |
 | `service-not-allowed` | Fatal: "Speech recognition service not allowed." |
 | `audio-capture` | Fatal: "No microphone input detected." |
-| `no-speech` | Transient: "No speech detected." |
+| `no-speech` | Transient: "No speech detected by browser recognition." |
 | `aborted` | Ignored (normal cleanup) |
 | `network` | Error: "Speech recognition network error." |
 | other | Generic error with code |

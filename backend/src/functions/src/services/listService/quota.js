@@ -23,7 +23,8 @@ async function loadUserMetaForCardQuota(db, userId) {
 }
 
 function validateUserCardQuotaNotExceeded(meta, newCardsCount) {
-  const cardQuota = meta.cardQuota || DEFAULT_CARD_QUOTA;
+  const storedQuota = meta.cardQuota || 0;
+  const cardQuota = Math.max(storedQuota, DEFAULT_CARD_QUOTA);
   const cardCount = meta.cardCount || 0;
   const { isPremium } = resolveListCardLimit(meta.tier);
   

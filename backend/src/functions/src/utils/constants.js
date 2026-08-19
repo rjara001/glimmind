@@ -1,11 +1,11 @@
 const COLLECTION_NAME = "lists";
 
-const DEFAULT_CARD_QUOTA = 1000;
+const DEFAULT_CARD_QUOTA = 5000;
 const PREMIUM_CARD_QUOTA = 5000;
 const DEFAULT_AI_DAILY_QUOTA = 3;
 const PREMIUM_AI_DAILY_QUOTA = 10;
 const GLOBAL_AI_DAILY_CAP = 200;
-const MAX_CARDS_PER_LIST = 3000;
+const MAX_CARDS_PER_LIST = 5000;
 const MAX_CARDS_PER_AI_REQUEST = 2000;
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
 const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -23,14 +23,15 @@ const CHIRP_TTS_USER_LIMIT = 5000;
 const CHIRP_TTS_PREMIUM_USER_LIMIT = 100000;
 const CHIRP_TTS_CALL_TIMEOUT_MS = 30000;
 
-const CHIPTT_STT_GLOBAL_LIMIT = 3000;
+const CHIPTT_STT_GLOBAL_LIMIT = 30000;
 const CHIPTT_STT_MAX_SINGLE_DURATION = 60;
-const CHIPTT_STT_USER_LIMIT = 300;
-const CHIPTT_STT_PREMIUM_USER_LIMIT = 7200;
+const CHIPTT_STT_USER_LIMIT = 3000;
+const CHIPTT_STT_PREMIUM_USER_LIMIT = 72000;
 const CHIPTT_STT_CALL_TIMEOUT_MS = 30000;
 
 const GCP_PROJECT_ID = "fladycard-22a3e";
 const GCP_REGION = "us-central1";
+
 
 const GOOGLE_TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
 const GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize";

@@ -35,3 +35,15 @@ export async function transcribeExistingAudio(
 ): Promise<ChipttTranscribeResponse> {
   return callFunction<ChipttTranscribeResponse>('transcribeExistingAudio', options);
 }
+
+export interface ChipttChirp3Options {
+  audioContent: string;
+  languageCode?: string;
+  audioDuration?: number;
+}
+
+export async function transcribeChirp3(
+  options: ChipttChirp3Options,
+): Promise<ChipttTranscribeResponse> {
+  return callFunction<ChipttTranscribeResponse>('transcribeChirp3', options);
+}

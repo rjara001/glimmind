@@ -142,7 +142,7 @@ export function useSpeechSynthesis(
                 )
             : undefined;
 
-        if (provider === 'chirp') {
+        if (provider === 'chirp' && resolvedChirpVoiceId) {
           const chirpResult =
             await chirp.speak(
               text,
