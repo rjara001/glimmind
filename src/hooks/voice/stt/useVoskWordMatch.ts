@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createModel, KaldiRecognizer, Model } from 'vosk-browser';
+import { KaldiRecognizer } from 'vosk-browser';
+import { useVoskModelContext } from '@/context/VoskModelContext';
 
-const MODEL_URL = '/models/vosk-model-small-en-us-0.15.tar.gz';
 const SAMPLE_RATE = 16000;
 
 export interface UseVoskWordMatchOptions {
@@ -15,6 +15,7 @@ export interface UseVoskWordMatchOptions {
 export interface VoskWordMatchState {
   isListening: boolean;
   isModelLoading: boolean;
+  isModelReady: boolean;
   partial: string;
   start: () => Promise<void>;
   stop: () => void;
@@ -28,10 +29,10 @@ export function useVoskWordMatch({
   onError,
 }: UseVoskWordMatchOptions): VoskWordMatchState {
   const [isListening, setIsListening] = useState(false);
-  const [isModelLoading, setIsModelLoading] = useState(false);
   const [partial, setPartial] = useState('');
 
-  const modelRef = useRef<Model | null>(null);
+  const { model, isReady, isLoading } = useVoskModelContext();
+
   const recognizerRef = useRef<KaldiRecognizer | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -43,38 +44,11 @@ export function useVoskWordMatch({
   const onInterimRef = useRef(onInterim);
   const onErrorRef = useRef(onError);
 
-  useEffect(() => {
-    expectedWordsRef.current = expectedWords;
-  }, [expectedWords]);
-  useEffect(() => {
-    onMatchRef.current = onMatch;
-  }, [onMatch]);
-  useEffect(() => {
-    onMismatchRef.current = onMismatch;
-  }, [onMismatch]);
-  useEffect(() => {
-    onInterimRef.current = onInterim;
-  }, [onInterim]);
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
-
-  const loadModel = useCallback(async (): Promise<Model> => {
-    if (modelRef.current) return modelRef.current;
-    setIsModelLoading(true);
-    try {
-      const model = await createModel(MODEL_URL);
-      modelRef.current = model;
-      return model;
-    } catch (error) {
-      onErrorRef.current?.(
-        error instanceof Error ? error.message : 'Failed to load Vosk model.',
-      );
-      throw error;
-    } finally {
-      setIsModelLoading(false);
-    }
-  }, []);
+  useEffect(() => { expectedWordsRef.current = expectedWords; }, [expectedWords]);
+  useEffect(() => { onMatchRef.current = onMatch; }, [onMatch]);
+  useEffect(() => { onMismatchRef.current = onMismatch; }, [onMismatch]);
+  useEffect(() => { onInterimRef.current = onInterim; }, [onInterim]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
   const cleanup = useCallback(() => {
     if (processorRef.current) {
@@ -95,51 +69,65 @@ export function useVoskWordMatch({
     }
     setIsListening(false);
     setPartial('');
+    console.log('[Vosk Matcher] Micrófono y procesador de audio liberados.');
   }, []);
 
   const start = useCallback(async () => {
     if (recognizerRef.current) return;
 
-    const model = await loadModel();
-
-    const grammar = [...expectedWordsRef.current, '[unk]'];
-    const recognizer = new model.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(grammar));
-    recognizerRef.current = recognizer;
-
-    recognizer.on('result', (message) => {
-      const resultMessage = message as { result: { text: string } };
-      const heard = resultMessage.result.text?.trim().toLowerCase();
-      if (!heard || heard === '[unk]') {
-        onMismatchRef.current?.(heard || '');
-        return;
-      }
-      const match = expectedWordsRef.current.find(
-        (w) => w.toLowerCase() === heard,
-      );
-      if (match) {
-        onMatchRef.current(match, 1);
-      } else {
-        onMismatchRef.current?.(heard);
-      }
-    });
-
-    recognizer.on('partialresult', (message) => {
-      const partialMessage = message as { result: { partial: string } };
-      const text = partialMessage.result.partial;
-      setPartial(text);
-      onInterimRef.current?.(text);
-    });
+    if (!isReady || !model) {
+      const msg = 'El modelo Vosk aún se está descargando en segundo plano.';
+      console.warn('[Vosk Matcher]', msg);
+      onErrorRef.current?.(msg);
+      return;
+    }
 
     try {
+      console.log('[Vosk Matcher] Creando instancia de KaldiRecognizer...');
+      const grammar = [...expectedWordsRef.current, '[unk]'];
+      const recognizer = new model.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(grammar));
+      recognizerRef.current = recognizer;
+
+      recognizer.on('result', (message) => {
+        const resultMessage = message as { result: { text: string } };
+        const heard = resultMessage.result.text?.trim().toLowerCase();
+
+        console.log('[Vosk Matcher] Texto reconocido:', heard);
+
+        if (!heard || heard === '[unk]') {
+          onMismatchRef.current?.(heard || '');
+          return;
+        }
+
+        const match = expectedWordsRef.current.find(
+          (w) => w.toLowerCase() === heard,
+        );
+
+        if (match) {
+          console.log('[Vosk Matcher] Match exacto:', match);
+          onMatchRef.current(match, 1);
+        } else {
+          onMismatchRef.current?.(heard);
+        }
+      });
+
+      recognizer.on('partialresult', (message) => {
+        const partialMessage = message as { result: { partial: string } };
+        const text = partialMessage.result.partial;
+        setPartial(text);
+        onInterimRef.current?.(text);
+      });
+
+      console.log('[Vosk Matcher] Solicitando micrófono...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
 
-      const audioContext = new AudioContext();
+      const audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
       audioContextRef.current = audioContext;
-      const source = audioContext.createMediaStreamSource(stream);
 
+      const source = audioContext.createMediaStreamSource(stream);
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
@@ -147,17 +135,22 @@ export function useVoskWordMatch({
         recognizerRef.current?.acceptWaveform(event.inputBuffer);
       };
 
+      const silence = audioContext.createGain();
+      silence.gain.value = 0;
+
       source.connect(processor);
-      processor.connect(audioContext.destination);
+      processor.connect(silence);
+      silence.connect(audioContext.destination);
 
       setIsListening(true);
+      console.log('[Vosk Matcher] Escuchando...');
     } catch (error) {
-      onErrorRef.current?.(
-        error instanceof Error ? error.message : 'Microphone access denied.',
-      );
+      const errorMsg = error instanceof Error ? error.message : 'Error al acceder al micrófono';
+      console.error('[Vosk Matcher] Error:', errorMsg);
+      onErrorRef.current?.(errorMsg);
       cleanup();
     }
-  }, [loadModel, cleanup]);
+  }, [isReady, model, cleanup]);
 
   const stop = useCallback(() => {
     cleanup();
@@ -166,10 +159,15 @@ export function useVoskWordMatch({
   useEffect(() => {
     return () => {
       cleanup();
-      modelRef.current?.terminate();
-      modelRef.current = null;
     };
   }, [cleanup]);
 
-  return { isListening, isModelLoading, partial, start, stop };
+  return {
+    isListening,
+    isModelLoading: isLoading,
+    isModelReady: isReady,
+    partial,
+    start,
+    stop,
+  };
 }

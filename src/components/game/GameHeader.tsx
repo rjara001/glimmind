@@ -2,7 +2,7 @@
 import React from 'react';
 import { GameHeaderProps } from '../../types/game-header-props';
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart, voiceEnabled, onVoiceToggle, isVoiceProcessing }) => {
+export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart, voiceEnabled, onVoiceToggle }) => {
   const isPracticeMode = gameMode === 'training';
 
   return (
@@ -39,37 +39,21 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
           {onVoiceToggle && (
             <button
               onClick={onVoiceToggle}
-              disabled={isVoiceProcessing}
               className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all ${
-                isVoiceProcessing
-                  ? 'bg-amber-100 text-amber-700 cursor-wait'
-                  : voiceEnabled
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200'
-              } ${isVoiceProcessing ? 'opacity-75' : ''}`}
-              aria-label={isVoiceProcessing ? 'Configurando Vosk...' : voiceEnabled ? 'Desactivar voz' : 'Activar voz'}
-              title={isVoiceProcessing ? 'Configurando Vosk, espere...' : undefined}
+                voiceEnabled
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200'
+              }`}
+              aria-label={voiceEnabled ? 'Desactivar voz' : 'Activar voz'}
             >
-              {isVoiceProcessing ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" className="opacity-75" />
-                  </svg>
-                  <span className="hidden sm:inline">Configurando...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    {voiceEnabled ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    )}
-                  </svg>
-                  <span className="hidden sm:inline">{voiceEnabled ? 'Voz ON' : 'Voz OFF'}</span>
-                </>
-              )}
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                {voiceEnabled ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                )}
+              </svg>
+              <span className="hidden sm:inline">{voiceEnabled ? 'Voz ON' : 'Voz OFF'}</span>
             </button>
           )}
           {onRestart && (

@@ -1,0 +1,1 @@
+export type AppView = 'dashboard' | 'game' | 'editor' | 'activity' | 'reports' | 'settings';

@@ -1,6 +1,6 @@
 # STT Fallback Mechanism
 
-**Status:** Draft — Source of truth  
+**Status:** Implemented — fallback logic live in `useVoiceSession`. Remaining gaps (best-transcript selection, UI indicator, validation tests) to be addressed in a follow-up.  
 **Scope:** Speech-to-Text fallback inside `useVoiceSession` / `useSTT`  
 **Related:** `.kilo/plans/external-stt-fallback.md`, `hooks/voice/stt/useBrowserSTT.ts`, `hooks/voice/stt/useChipTTSTT.ts`
 
