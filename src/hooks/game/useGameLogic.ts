@@ -7,12 +7,11 @@ import { CardActivityEvent, GameSessionSummary } from '../../types/activity';
 import { createActivityEvent, levelOf } from '../../utils/activity';
 import { computeStateBreakdown } from '../../utils/progress';
 
-export const useGameLogic = ({ list, autoStart = false }: { list: AssociationList; autoStart?: boolean }) => {
+export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const trackingEnabled = useGameStore((state) => state.settings.activityHistoryEnabled);
   const [game, setGame] = useState(() => GlimmindGame.create(list, { trackingEnabled }));
   const [sessionRepasos, setSessionRepasos] = useState(0);
   const prevViewRef = useRef<'card' | 'summary'>('card');
-  const autoStartAttempted = useRef(false);
   const gameRef = useRef(game);
   const sessionPlayedIds = useRef<Set<string>>(new Set());
   const sessionIdRef = useRef('');
@@ -35,16 +34,6 @@ export const useGameLogic = ({ list, autoStart = false }: { list: AssociationLis
   useEffect(() => {
     setGame(prev => prev.updateList(list));
   }, [list]);
-
-  useEffect(() => {
-    if (autoStart && !autoStartAttempted.current) {
-      const currentView = game.state.isFinished ? 'summary' : 'card';
-      if (currentView === 'summary') {
-        autoStartAttempted.current = true;
-        setGame(g => g.restart());
-      }
-    }
-  }, [autoStart, game.state.isFinished]);
 
   const play = useCallback((association: Association | undefined) => {
     if (!association) return;

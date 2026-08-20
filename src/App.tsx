@@ -40,7 +40,7 @@ const AppContent: React.FC = () => {
   const celebration = useGameStore((state) => state.celebration);
   const clearCelebration = useGameStore((state) => state.clearCelebration);
 
-  const { lastPlayedId, setLastPlayedId, autoStartGame } = useAppBootstrap(navigate);
+  const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
   const {
     isSyncing,
@@ -122,7 +122,6 @@ const AppContent: React.FC = () => {
               onUpdateAssociations={handleUpdateAssociations}
               onUpdateList={handleUpdateList}
               onBack={() => navigate('dashboard')}
-              autoStart={autoStartGame}
             />
           )}
           {view === 'settings' && (

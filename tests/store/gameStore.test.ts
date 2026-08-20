@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useGameStore } from '@/store/gameStore';
+import { useGameStore, mergeAssociations } from '@/store/gameStore';
 import { DEFAULT_SETTINGS } from '@/types/settings';
 import { CardActivityEvent, GameSessionSummary } from '@/types/activity';
+import { Association } from '@/types';
 
 const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
 const LOCAL_SESSIONS_KEY = 'glimmind_sessions';
@@ -100,5 +101,51 @@ describe('gameStore activity gate', () => {
     const saved = JSON.parse(localStorage.getItem(LOCAL_SESSIONS_KEY) || '[]');
     expect(saved.length).toBe(1);
     expect(saved[0].id).toBe('session-1');
+  });
+});
+
+describe('mergeAssociations', () => {
+  function makeAssociation(overrides: Partial<Association> = {}): Association {
+    return {
+      id: 'card-1',
+      term: 'term',
+      definition: 'def',
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+      isArchived: false,
+      ...overrides,
+    };
+  }
+
+  it('prefers the local association on equal timestamps with more game progress', () => {
+    const local = makeAssociation({ hits: 3, misses: 1, timesPlayed: 4, updatedAt: 100 });
+    const cloud = makeAssociation({ hits: 0, misses: 0, timesPlayed: 0, updatedAt: 100 });
+
+    const merged = mergeAssociations([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].hits).toBe(3);
+    expect(merged[0].timesPlayed).toBe(4);
+  });
+
+  it('prefers local on equal timestamps and equal progress', () => {
+    const local = makeAssociation({ term: 'local term', hits: 1, updatedAt: 100 });
+    const cloud = makeAssociation({ term: 'cloud term', hits: 1, updatedAt: 100 });
+
+    const merged = mergeAssociations([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].term).toBe('local term');
+  });
+
+  it('keeps the cloud association when it is strictly newer', () => {
+    const local = makeAssociation({ hits: 3, updatedAt: 100 });
+    const cloud = makeAssociation({ hits: 0, updatedAt: 200 });
+
+    const merged = mergeAssociations([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].hits).toBe(0);
   });
 });

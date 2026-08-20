@@ -13,7 +13,6 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
     return localStorage.getItem(LAST_PLAYED_KEY) || undefined;
   });
-  const [autoStartGame, setAutoStartGame] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
@@ -58,9 +57,8 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
     if (lastList) {
       useGameStore.getState().setCurrentList(lastPlayedId);
       navigate('game');
-      setAutoStartGame(true);
     }
   }, [isLoaded, user, lastPlayedId, navigate]);
 
-  return { lastPlayedId, setLastPlayedId, autoStartGame };
+  return { lastPlayedId, setLastPlayedId };
 }

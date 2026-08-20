@@ -255,6 +255,7 @@ export class GlimmindGame {
             ...associations[assocIndex],
             misses: (associations[assocIndex].misses ?? 0) + 1,
             lastPlayedAt: Date.now(),
+            updatedAt: Date.now(),
           };
         }
       }
@@ -291,6 +292,7 @@ export class GlimmindGame {
         hits: this.trackingEnabled ? (currentAssoc.hits ?? 0) + 1 : currentAssoc.hits,
         timesPlayed: this.trackingEnabled ? (currentAssoc.timesPlayed ?? 0) + 1 : currentAssoc.timesPlayed,
         lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
+        updatedAt: Date.now(),
       };
     } else if (action.type === "PASS") {
       associations[assocIndex] = {
@@ -298,6 +300,7 @@ export class GlimmindGame {
         currentCycle: (currentAssoc.currentCycle + 1) as GameCycle,
         timesPlayed: this.trackingEnabled ? (currentAssoc.timesPlayed ?? 0) + 1 : currentAssoc.timesPlayed,
         lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
+        updatedAt: Date.now(),
       };
     }
 

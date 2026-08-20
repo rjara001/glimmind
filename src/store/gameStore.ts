@@ -194,14 +194,27 @@ function mergeSettings(older: AssociationList['settings'], newer: AssociationLis
   };
 }
 
-function mergeAssociations(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
+function trackingScore(association: { hits?: number; misses?: number; timesPlayed?: number }): number {
+  return (association.hits ?? 0) + (association.misses ?? 0) + (association.timesPlayed ?? 0);
+}
+
+export function mergeAssociations(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
   const byId = new Map<string, Association>();
   for (const assoc of cloudAssociations) {
     byId.set(assoc.id, assoc);
   }
   for (const assoc of localAssociations) {
     const existing = byId.get(assoc.id);
-    if (!existing || getAssociationTimestamp(assoc) > getAssociationTimestamp(existing)) {
+    if (!existing) {
+      byId.set(assoc.id, assoc);
+      continue;
+    }
+    const localTime = getAssociationTimestamp(assoc);
+    const cloudTime = getAssociationTimestamp(existing);
+    if (localTime > cloudTime) {
+      byId.set(assoc.id, assoc);
+    } else if (localTime === cloudTime && trackingScore(assoc) >= trackingScore(existing)) {
+      // On equal timestamps prefer the side with more game progress, then local.
       byId.set(assoc.id, assoc);
     }
   }
@@ -728,10 +741,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         associations: listToSave.associations,
         settings: listToSave.settings,
       });
-
-      const updatedLists = lists.map(l => l.id === listId ? listToSave : l);
-      set({ lists: updatedLists });
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
     } catch (error) {
       console.error('[syncToCloud] error:', error);
     }

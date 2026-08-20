@@ -21,7 +21,6 @@ interface GameViewProps {
   onBack: (updatedAssociations?: Association[]) => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
   onUpdateList?: (updatedList: AssociationList) => Promise<void>;
-  autoStart?: boolean;
   voiceMode?: boolean;
 }
 
@@ -32,7 +31,7 @@ const cycleColorMap: Record<GameCycle, string> = {
   4: 'emerald',
 };
 
-export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, autoStart = false, voiceMode = false }) => {
+export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssociations, onUpdateList, voiceMode = false }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [showRevealWarning, setShowRevealWarning] = useState(false);
@@ -54,7 +53,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     attempts,
     sessionRepasos,
     actions 
-  } = useGameLogic({ list, autoStart });
+  } = useGameLogic({ list });
 
   const goalProgress = useGameStore(state => state.progress?.goalProgress ?? 0);
   const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);

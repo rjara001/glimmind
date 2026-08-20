@@ -497,6 +497,35 @@ describe('GlimmindGame', () => {
             expect(restarted.state.associations[0].timesPlayed).toBe(1);
         });
 
+        it('stamps updatedAt on associations mutated during gameplay', () => {
+            const before = Date.now();
+            const list = createMockList(createMockAssociations(1));
+            const game = GlimmindGame.create(list);
+
+            const result = game.processAction({ type: 'CORRECT' });
+            expect(result.state.associations[0].updatedAt).toBeDefined();
+            expect(result.state.associations[0].updatedAt!).toBeGreaterThanOrEqual(before);
+        });
+
+        it('stamps updatedAt on a PASS action', () => {
+            const list = createMockList(createMockAssociations(1));
+            const game = GlimmindGame.create(list);
+
+            const result = game.processAction({ type: 'PASS' });
+            expect(result.state.associations[0].updatedAt).toBeDefined();
+        });
+
+        it('stamps updatedAt on an incorrect checkAnswer', () => {
+            const list = createMockList([
+                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+            ]);
+            let game = GlimmindGame.create(list);
+            game = game.setUserInput('Wrong Answer');
+            game = game.checkAnswer();
+
+            expect(game.state.associations[0].updatedAt).toBeDefined();
+        });
+
         it('does not track counters when tracking is disabled', () => {
             const list = createMockList(createMockAssociations(1));
             let game = GlimmindGame.create(list, { trackingEnabled: false });
