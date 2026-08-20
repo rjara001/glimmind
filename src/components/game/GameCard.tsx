@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameVoicePhase } from '../../hooks/voice/useGameVoice';
+import { VoiceCommandId } from '../../types';
 import { getLanguageFlag } from '../../services/voice/languageFlags';
 import { CardBadges } from './CardBadges';
 import { CardToolbar } from './CardToolbar';
@@ -7,6 +8,7 @@ import { CardVoiceIndicator } from './CardVoiceIndicator';
 import { CardFeedback } from './CardFeedback';
 import { CardEditForm } from './CardEditForm';
 import { CardContent } from './CardContent';
+import { CommandToast } from './CommandToast';
 
 interface GameCardProps {
   displayTerm: string | undefined;
@@ -40,7 +42,7 @@ interface GameCardProps {
   voiceTermLang?: string;
   voiceDefLang?: string;
   onSpeakAnswer?: (text: string, lang: string) => void;
-  detectedVoiceCommand?: string;
+  detectedVoiceCommand?: VoiceCommandId;
   isFallbackActive?: boolean;
 }
 
@@ -80,8 +82,6 @@ export const GameCard: React.FC<GameCardProps> = ({
   isFallbackActive,
 }) => {
   const [isShaking, setIsShaking] = useState(false);
-  const [showCommandToast, setShowCommandToast] = useState(false);
-  const [commandToastText, setCommandToastText] = useState('');
 
   useEffect(() => {
     if (feedback === 'incorrect') {
@@ -90,15 +90,6 @@ export const GameCard: React.FC<GameCardProps> = ({
       return () => clearTimeout(timer);
     }
   }, [feedback]);
-
-  useEffect(() => {
-    if (detectedVoiceCommand) {
-      setCommandToastText(`Comando detectado: ${detectedVoiceCommand}`);
-      setShowCommandToast(true);
-      const timer = setTimeout(() => setShowCommandToast(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [detectedVoiceCommand]);
 
   const shakeClass = isShaking ? 'animate-shake' : '';
 
@@ -143,10 +134,10 @@ export const GameCard: React.FC<GameCardProps> = ({
       <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
 
       <CardBadges
-        showCommandToast={showCommandToast}
-        commandToastText={commandToastText}
         isFallbackActive={isFallbackActive}
       />
+
+      <CommandToast command={detectedVoiceCommand ?? null} />
       
       {isEditing ? (
         <CardEditForm

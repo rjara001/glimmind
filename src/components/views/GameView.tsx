@@ -14,6 +14,7 @@ import { useImmersiveHeader } from '../../hooks/ui/useImmersiveHeader';
 import { useGameVoice } from '../../hooks/voice/useGameVoice';
 import { useSpeechSynthesis } from '../../hooks/voice/tts/useSpeechSynthesis';
 import { VoiceCommandId } from '../../types';
+import { COMMAND_TOAST_MS } from '../../constants/voice';
 
 interface GameViewProps {
   list: AssociationList;
@@ -38,7 +39,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
-  const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<string | undefined>();
+  const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<VoiceCommandId | undefined>();
   const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const { 
     gameView, 
@@ -78,6 +79,12 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       setIsVoiceActive(false);
     }
   }, [actions, setDetectedVoiceCommand]);
+
+  useEffect(() => {
+    if (!detectedVoiceCommand) return;
+    const timer = setTimeout(() => setDetectedVoiceCommand(undefined), COMMAND_TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [detectedVoiceCommand]);
 
   const voice = useGameVoice({
     list,
@@ -354,6 +361,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceTermLang={voiceTermLang}
                voiceDefLang={voiceDefLang}
                onSpeakAnswer={handleSpeakAnswer}
+               detectedVoiceCommand={detectedVoiceCommand}
             />
              {showRevealWarning && (
                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
