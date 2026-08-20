@@ -13,7 +13,7 @@ import {
   resolveVoiceCommands,
   getAllVoiceCommandWords,
 } from '../../services/voice/stt/commands';
-import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS, RELISTEN_DELAY_MS } from '../../constants/voice';
+import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS, RELISTEN_DELAY_MS, VOSK_MIN_COMMAND_CONFIDENCE } from '../../constants/voice';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
 
@@ -88,6 +88,11 @@ export function useGameVoice({
     setPhase(next);
   }, []);
 
+const commandWords = useMemo(
+  () => getAllVoiceCommandWords(commands),
+  [commands],
+);
+
 const expectedWords = useMemo(() => {
   if (!currentAssociation) return undefined;
 
@@ -98,10 +103,8 @@ const expectedWords = useMemo(() => {
 
   // Voice commands are added as expected words so Vosk's constrained grammar
   // recognizes them during listening.
-  const commandWords = getAllVoiceCommandWords(commands);
-
   return [hiddenAnswer, ...commandWords];
-}, [currentAssociation, list.settings.flipOrder, commands]);
+}, [currentAssociation, list.settings.flipOrder, commandWords]);
 
   const languages = useMemo(
     () =>
@@ -116,6 +119,8 @@ const expectedWords = useMemo(() => {
   const stt = useSpeechRecognition({
     provider: list.settings.sttProvider || 'browser',
     expectedWords,
+    commandWords,
+    minCommandConfidence: VOSK_MIN_COMMAND_CONFIDENCE,
     onInterim: (text) => {
       if (answerHandledRef.current) return;
       const current = currentAssociationRef.current;

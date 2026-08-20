@@ -7,12 +7,16 @@ export interface UseSpeechRecognitionOptions {
   onError?: (message: string) => void;
   provider?: SttProviderType;
   expectedWords?: string[];
+  commandWords?: string[];
+  minCommandConfidence?: number;
   onAudioChunk?: (blob: Blob) => void;
 }
 
 export function useSpeechRecognition({
   provider = 'browser',
   expectedWords,
+  commandWords,
+  minCommandConfidence,
   onFinal,
   onInterim,
   onError,
@@ -21,6 +25,8 @@ export function useSpeechRecognition({
   return useSTT({
     provider,
     expectedWords,
+    commandWords,
+    minCommandConfidence,
     onFinal,
     onInterim,
     onError,

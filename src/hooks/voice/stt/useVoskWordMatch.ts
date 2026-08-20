@@ -6,14 +6,23 @@ const SAMPLE_RATE = 16000;
 
 export interface UseVoskWordMatchOptions {
   expectedWords: string[];
+  commandWords?: string[];
+  minCommandConfidence?: number;
   onMatch: (word: string, confidence: number) => void;
   onMismatch?: (heard: string) => void;
   onInterim?: (text: string) => void;
   onError?: (message: string) => void;
 }
 
+interface VoskWord {
+  conf: number;
+  word: string;
+}
+
 export function useVoskWordMatch({
   expectedWords,
+  commandWords,
+  minCommandConfidence,
   onMatch,
   onMismatch,
   onInterim,
@@ -30,12 +39,16 @@ export function useVoskWordMatch({
   const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   const expectedWordsRef = useRef(expectedWords);
+  const commandWordsRef = useRef(commandWords ?? []);
+  const minCommandConfidenceRef = useRef(minCommandConfidence ?? 0);
   const onMatchRef = useRef(onMatch);
   const onMismatchRef = useRef(onMismatch);
   const onInterimRef = useRef(onInterim);
   const onErrorRef = useRef(onError);
 
   useEffect(() => { expectedWordsRef.current = expectedWords; }, [expectedWords]);
+  useEffect(() => { commandWordsRef.current = commandWords ?? []; }, [commandWords]);
+  useEffect(() => { minCommandConfidenceRef.current = minCommandConfidence ?? 0; }, [minCommandConfidence]);
   useEffect(() => { onMatchRef.current = onMatch; }, [onMatch]);
   useEffect(() => { onMismatchRef.current = onMismatch; }, [onMismatch]);
   useEffect(() => { onInterimRef.current = onInterim; }, [onInterim]);
@@ -92,7 +105,7 @@ export function useVoskWordMatch({
       recognizerRef.current = recognizer;
 
       recognizer.on('result', (message) => {
-        const resultMessage = message as { result: { text: string } };
+        const resultMessage = message as { result: { result?: VoskWord[]; text: string } };
         const heard = resultMessage.result?.text?.trim().toLowerCase() || '';
 
         // Si la salida es unk o vacía, notificamos la falta de coincidencia
@@ -101,7 +114,10 @@ export function useVoskWordMatch({
           return;
         }
 
-        console.log('[Vosk English] Oído:', heard);
+        const confidence =
+          resultMessage.result?.result?.reduce((max, word) => Math.max(max, word.conf ?? 0), 0) ?? 0;
+
+        console.log('[Vosk English] Oído:', heard, '(conf:', confidence.toFixed(2) + ')');
 
         // Verificamos si la palabra escuchada coincide con alguna de las esperadas
         const match = expectedWordsRef.current.find(
@@ -109,7 +125,12 @@ export function useVoskWordMatch({
         );
 
         if (match) {
-          onMatchRef.current(match, 1);
+          const isCommand = commandWordsRef.current.includes(match);
+          if (isCommand && confidence < minCommandConfidenceRef.current) {
+            onMismatchRef.current?.(heard);
+            return;
+          }
+          onMatchRef.current(match, confidence);
         } else {
           onMismatchRef.current?.(heard);
         }

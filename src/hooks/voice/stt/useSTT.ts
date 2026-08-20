@@ -8,6 +8,8 @@ import { SttProviderType } from '../../../types';
 export interface UseSTTOptions {
   provider: SttProviderType;
   expectedWords?: string[];
+  commandWords?: string[];
+  minCommandConfidence?: number;
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
@@ -16,11 +18,15 @@ export interface UseSTTOptions {
 
 function useVoskSTT({
   expectedWords,
+  commandWords,
+  minCommandConfidence,
   onFinal,
   onInterim,
   onError,
 }: {
   expectedWords: string[];
+  commandWords?: string[];
+  minCommandConfidence?: number;
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
@@ -33,6 +39,8 @@ function useVoskSTT({
 
   const vosk = useVoskWordMatch({
     expectedWords,
+    commandWords,
+    minCommandConfidence,
     onMatch: (word) => {
       onFinal(word);
     },
@@ -98,10 +106,12 @@ function useVoskSTT({
   };
 }
 
-export function useSTT({ provider, expectedWords, onFinal, onInterim, onError, onAudioChunk }: UseSTTOptions): SttProvider {
+export function useSTT({ provider, expectedWords, commandWords, minCommandConfidence, onFinal, onInterim, onError, onAudioChunk }: UseSTTOptions): SttProvider {
   const browser = useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk });
   const chiptt = useChipTTSTT({ onFinal, onInterim, onError });
-  const vosk = expectedWords ? useVoskSTT({ expectedWords, onFinal, onInterim, onError }) : null;
+  const vosk = expectedWords
+    ? useVoskSTT({ expectedWords, commandWords, minCommandConfidence, onFinal, onInterim, onError })
+    : null;
 
   if (provider === 'chiptt') {
     return {
