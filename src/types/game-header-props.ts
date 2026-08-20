@@ -12,4 +12,5 @@ export interface GameHeaderProps {
   onRestart?: () => void;
   voiceEnabled?: boolean;
   onVoiceToggle?: () => void;
+  isVoiceProcessing?: boolean;
 }

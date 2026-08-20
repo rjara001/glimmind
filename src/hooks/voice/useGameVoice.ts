@@ -106,9 +106,16 @@ export function useGameVoice({
     setPhase(next);
   }, []);
 
+  const expectedWords = useMemo(() => {
+    if (!currentAssociation) return undefined;
+    const expected = list.settings.flipOrder === 'reversed' ? currentAssociation.definition : currentAssociation.term;
+    return [expected];
+  }, [currentAssociation, list.settings.flipOrder]);
+
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const stt = useSpeechRecognition({
     provider: list.settings.sttProvider || 'browser',
+    expectedWords,
     onInterim: (text) => {
       if (answerHandledRef.current) return;
       const current = currentAssociationRef.current;
@@ -251,28 +258,22 @@ export function useGameVoice({
     if (!current) return;
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
-    const word = isReversed ? current.term : current.definition;
-    const lang = languages.sttLang;
+    const word = isReversed ? current.definition : current.term;
     setError(null);
     setTranscript('');
     transcriptRef.current = '';
-    lastCommandRef.current = null;
     setPhaseBoth('speaking');
-    const spoke = await ttsRef.current.speak(word, lang, isReversed ? list.settings.voiceTermId : list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch);
+    const spoke = await ttsRef.current.speak(word, languages.ttsLang, isReversed ? list.settings.voiceDefId : list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
     if (!shouldRunRef.current) return;
     if (!spoke.ok) {
       console.warn('[Voice] TTS failed:', word, 'voice=', spoke.voiceName, 'voices=', spoke.voicesCount);
     }
-    setPhaseBoth('listening');
-    answerHandledRef.current = false;
-    listeningFailedRef.current = false;
-    sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
+    setPhaseBoth('evaluating');
+    onSubmitVoiceRef.current(word);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.ttsLang, setPhaseBoth, onSubmitVoice]);
 
   useEffect(() => {
-    if (enabled) {
-      shouldRunRef.current = true;
-    } else {
+    if (!enabled) {
       shouldRunRef.current = false;
       clearFeedbackTimer();
       sttRef.current.abort();
@@ -280,107 +281,22 @@ export function useGameVoice({
       setPhaseBoth('idle');
       setTranscript('');
       setError(null);
-    }
-    return () => {
-      shouldRunRef.current = false;
-      clearFeedbackTimer();
-      sttRef.current.abort();
-      ttsRef.current.cancel();
-    };
-  }, [enabled, clearFeedbackTimer, setPhaseBoth]);
-
-  useEffect(() => {
-    if (!enabled || !audioRecordingEnabled) {
-      abortRecording();
       return;
     }
-    if (phase === 'listening') {
-      startRecording();
-    } else {
-      stopRecording();
-    }
-  }, [enabled, audioRecordingEnabled, phase, startRecording, stopRecording, abortRecording]);
+
+    shouldRunRef.current = true;
+    void speakCurrentWord();
+  }, [enabled, speakCurrentWord, clearFeedbackTimer, setPhaseBoth]);
 
   useEffect(() => {
+    if (phase !== 'listening') return;
     if (!shouldRunRef.current) return;
-    if (feedback === 'correct') {
-      clearFeedbackTimer();
-      setPhaseBoth('feedback');
-      void (async () => {
-        const spoke = await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
-        if (!shouldRunRef.current) return;
-        if (!spoke.ok) {
-          console.warn('[Voice] TTS feedback failed:', 'Correcto', 'voice=', spoke.voiceName);
-        }
-        feedbackTimerRef.current = setTimeout(() => {
-          feedbackTimerRef.current = null;
-          if (shouldRunRef.current) onAdvanceRef.current();
-        }, FEEDBACK_DELAY_MS);
-      })();
-    } else if (feedback === 'incorrect') {
-      clearFeedbackTimer();
-      setPhaseBoth('feedback');
-      void (async () => {
-        const spoke = await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
-        if (!shouldRunRef.current) return;
-        if (!spoke.ok) {
-          console.warn('[Voice] TTS feedback failed:', 'Incorrecto', 'voice=', spoke.voiceName);
-        }
-        feedbackTimerRef.current = setTimeout(() => {
-          feedbackTimerRef.current = null;
-          if (shouldRunRef.current) void speakCurrentWord();
-        }, FEEDBACK_DELAY_MS);
-      })();
-    } else if (feedback === 'none') {
-      void speakCurrentWord();
-    }
-  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
-
-  useEffect(() => {
-    if (feedback === 'correct' || feedback === 'incorrect') {
-      const blob = pendingBlobRef.current;
-      if (!blob || !currentAssociation) return;
-      const userId = useGameStore.getState().user?.uid || '';
-      const isReversed = list.settings.flipOrder === 'reversed';
-      const term = isReversed ? currentAssociation.definition : currentAssociation.term;
-      const transcript = transcriptRef.current;
-      void uploadAudioRecording(blob, {
-        userId,
-        listId: list.id,
-        associationId: currentAssociation.id,
-        sessionId: sessionIdRef.current,
-        term,
-        transcript,
-        correct: feedback === 'correct',
-        timestamp: Date.now(),
-      }).then(() => {
-      }).catch((error) => {
-        console.error('[Audio] upload failed:', error);
-      });
-      pendingBlobRef.current = null;
-    }
-  }, [feedback, currentAssociation?.id, list.id, list.settings.flipOrder]);
-
-  useEffect(() => {
-    if (phaseRef.current !== 'listening') return;
-    if (sttRef.current.isListening) return;
-    if (answerHandledRef.current) return;
-    if (listeningFailedRef.current) return;
 
     const timeout = setTimeout(() => {
+      if (!shouldRunRef.current) return;
       if (phaseRef.current !== 'listening') return;
-      if (sttRef.current.isListening) return;
-      if (answerHandledRef.current) return;
-      if (listeningFailedRef.current) return;
-
-      listeningFailedRef.current = true;
-      const pending = transcriptRef.current.trim();
-      if (pending) {
-        onSubmitVoiceRef.current(pending);
-      } else {
-        setPhaseBoth('idle');
-        setError('No speech detected (listening timeout, useGameVoice).');
-      }
+      setError('No speech detected (listening timeout, useGameVoice).');
+      setPhaseBoth('idle');
     }, LISTENING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
@@ -407,6 +323,7 @@ export function useGameVoice({
     interim: stt.interimTranscript,
     error,
     isListening: stt.isListening,
+    isProcessing: stt.isProcessing,
     supported: stt.supported,
     repeat,
     speakAnswer,

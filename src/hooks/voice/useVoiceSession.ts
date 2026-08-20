@@ -490,6 +490,7 @@ export function useVoiceSession(list: AssociationList) {
     counts,
     isFinished,
     isListening: stt.isListening,
+    isProcessing: stt.isProcessing,
     currentAssociation: gameRef.current?.currentAssociation,
     gameState: gameRef.current?.state,
     start,

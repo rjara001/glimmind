@@ -287,7 +287,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             marginBottom: immersive.isVisible ? '12px' : '0px',
           }}
         >
-          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isVoiceProcessing={voice.isProcessing} />
         </div>
         {!immersive.isVisible && (
           <div className="flex justify-center mb-2">
@@ -296,7 +296,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         )}
       </div>
       <div className="hidden sm:block">
-        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isVoiceProcessing={voice.isProcessing} />
       </div>
       {!immersive.isVisible && (
         <div className="sm:hidden flex justify-between items-center mb-2 px-1">
