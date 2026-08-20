@@ -141,6 +141,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     SpeechSynthesisVoice[]
   >([]);
 
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const {
     voices: chirpVoices,
     isLoading: chirpVoicesLoading,
@@ -625,12 +644,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           'vosk',
                       })
                     }
+                    disabled={!isOnline}
                     className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
                       sttProvider ===
                       'vosk'
                         ? 'bg-indigo-600 text-white shadow-md'
                         : 'bg-white text-slate-500 border border-slate-200'
-                    }`}
+                    } ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Vosk
                   </button>
@@ -640,6 +660,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   'chiptt' && (
                   <p className="text-[10px] text-slate-400 mt-1.5">
                     Calidad premium · requiere grabación de audio
+                  </p>
+                )}
+
+                {sttProvider ===
+                  'vosk' && (
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    {isOnline
+                      ? 'Reconocimiento offline · requiere conexión solo para descargar el modelo (~41MB)'
+                      : 'Requiere conexión a internet para descargar el modelo'}
                   </p>
                 )}
               </div>
