@@ -164,8 +164,15 @@ export function useVoiceSession(list: AssociationList) {
     }
   }, [list.settings.flipOrder, setTranscript, setPhaseBoth, gameRef, phaseRef]);
 
+  const expectedWords = gameRef.current?.currentAssociation
+    ? [list.settings.flipOrder === 'reversed'
+        ? gameRef.current.currentAssociation.definition
+        : gameRef.current.currentAssociation.term]
+    : undefined;
+
   const { tts, stt, languages, stop: stopSTT, start: startSTT } = useVoiceSTT({
     list,
+    expectedWords,
     onInterim: handleSTTInterim,
     onFinal: (text: string) => {
       const trimmed = text.trim();

@@ -617,6 +617,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     Chiptt
                   </button>
+                  <button
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        sttProvider:
+                          'vosk',
+                      })
+                    }
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                      sttProvider ===
+                      'vosk'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-slate-500 border border-slate-200'
+                    }`}
+                  >
+                    Vosk
+                  </button>
                 </div>
 
                 {sttProvider ===

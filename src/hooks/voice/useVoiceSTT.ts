@@ -6,6 +6,7 @@ import { AssociationList } from '../../types';
 
 export interface UseVoiceSTTOptions {
   list: AssociationList;
+  expectedWords?: string[];
   onInterim: (text: string) => void;
   onFinal: (text: string) => void;
   onError: (message: string) => void;
@@ -21,7 +22,7 @@ export interface UseVoiceSTTResult {
   abort: () => void;
 }
 
-export function useVoiceSTT({ list, onInterim, onFinal, onError, onAudioChunk }: UseVoiceSTTOptions): UseVoiceSTTResult {
+export function useVoiceSTT({ list, expectedWords, onInterim, onFinal, onError, onAudioChunk }: UseVoiceSTTOptions): UseVoiceSTTResult {
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const languages = resolveVoiceLanguages(list.concept, list.settings.flipOrder, {
     termLang: list.settings.voiceTermLang,
@@ -30,6 +31,7 @@ export function useVoiceSTT({ list, onInterim, onFinal, onError, onAudioChunk }:
 
   const stt = useSpeechRecognition({
     provider: list.settings.sttProvider || 'browser',
+    expectedWords,
     onInterim: (text) => {
       onInterim(text);
     },

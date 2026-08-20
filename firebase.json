@@ -1,4 +1,3 @@
-
 {
   "functions": {
     "source": "backend/src/functions"
@@ -19,6 +18,21 @@
       "lib/**",
       "backend/**",
       "src/**"
+    ],
+    "headers": [
+      {
+        "source": "/models/**/*.tar.gz",
+        "headers": [
+          {
+            "key": "Content-Encoding",
+            "value": "identity"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/gzip"
+          }
+        ]
+      }
     ],
     "rewrites": [
       {

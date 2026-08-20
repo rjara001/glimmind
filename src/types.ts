@@ -5,7 +5,7 @@ export type GameFeedback = 'none' | 'correct' | 'incorrect';
 export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
 export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
 export type VoiceProvider = 'browser' | 'chirp';
-export type SttProviderType = 'browser' | 'chiptt';
+export type SttProviderType = 'browser' | 'chiptt' | 'vosk';
 export type VoiceCommandId = 'reveal' | 'pass' | 'continue' | 'stop';
 export type VoiceCommandsConfig = Record<VoiceCommandId, string[]>;
 
