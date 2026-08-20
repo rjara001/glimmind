@@ -26,6 +26,13 @@ export function resolveVoiceCommands(
   return resolved;
 }
 
+export function getAllVoiceCommandWords(
+  commands?: Partial<VoiceCommandsConfig>,
+): string[] {
+  const resolved = resolveVoiceCommands(commands);
+  return COMMAND_IDS.flatMap((id) => resolved[id] ?? []);
+}
+
 export function normalizeCommandText(text: string): string {
   return normalizeText(text).replace(/\s+/g, ' ');
 }

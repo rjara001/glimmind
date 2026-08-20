@@ -7,7 +7,12 @@ import { uploadAudioRecording } from '../../services/audioService';
 import { useGameStore } from '../../store/gameStore';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
 import { isExactExpectedAnswer } from '../../services/voice/stt/earlyMatch';
-import { matchVoiceCommand, matchExactVoiceCommand, resolveVoiceCommands } from '../../services/voice/stt/commands';
+import {
+  matchVoiceCommand,
+  matchExactVoiceCommand,
+  resolveVoiceCommands,
+  getAllVoiceCommandWords,
+} from '../../services/voice/stt/commands';
 import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS, RELISTEN_DELAY_MS } from '../../constants/voice';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
@@ -83,11 +88,20 @@ export function useGameVoice({
     setPhase(next);
   }, []);
 
-  const expectedWords = useMemo(() => {
-    if (!currentAssociation) return undefined;
-    const expected = list.settings.flipOrder === 'reversed' ? currentAssociation.definition : currentAssociation.term;
-    return [expected];
-  }, [currentAssociation, list.settings.flipOrder]);
+const expectedWords = useMemo(() => {
+  if (!currentAssociation) return undefined;
+
+  // If flipOrder is 'reversed', the definition is shown -> the hidden answer is the 'term'.
+  // If flipOrder is 'normal', the term is shown -> the hidden answer is the 'definition'.
+  const isReversed = list.settings.flipOrder === 'reversed';
+  const hiddenAnswer = isReversed ? currentAssociation.term : currentAssociation.definition;
+
+  // Voice commands are added as expected words so Vosk's constrained grammar
+  // recognizes them during listening.
+  const commandWords = getAllVoiceCommandWords(commands);
+
+  return [hiddenAnswer, ...commandWords];
+}, [currentAssociation, list.settings.flipOrder, commands]);
 
   const languages = useMemo(
     () =>

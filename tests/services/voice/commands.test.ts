@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_VOICE_COMMANDS,
+  getAllVoiceCommandWords,
   matchVoiceCommand,
   normalizeCommandText,
   resolveVoiceCommands,
@@ -41,6 +42,25 @@ describe('resolveVoiceCommands', () => {
   it('trims and drops blank keywords from provided arrays', () => {
     const resolved = resolveVoiceCommands({ continue: [' adelante ', '', 'continuar'] });
     expect(resolved.continue).toEqual(['adelante', 'continuar']);
+  });
+});
+
+describe('getAllVoiceCommandWords', () => {
+  it('flattens all default command keywords', () => {
+    expect(getAllVoiceCommandWords()).toEqual([
+      ...DEFAULT_VOICE_COMMANDS.reveal,
+      ...DEFAULT_VOICE_COMMANDS.pass,
+      ...DEFAULT_VOICE_COMMANDS.continue,
+      ...DEFAULT_VOICE_COMMANDS.stop,
+    ]);
+  });
+
+  it('flattens merged overrides with defaults', () => {
+    const words = getAllVoiceCommandWords({ reveal: ['show'] });
+    expect(words).toContain('show');
+    expect(words).not.toContain('revelar');
+    expect(words).toContain('next');
+    expect(words).toContain('stop');
   });
 });
 

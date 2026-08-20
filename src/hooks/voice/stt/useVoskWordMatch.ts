@@ -12,22 +12,13 @@ export interface UseVoskWordMatchOptions {
   onError?: (message: string) => void;
 }
 
-export interface VoskWordMatchState {
-  isListening: boolean;
-  isModelLoading: boolean;
-  isModelReady: boolean;
-  partial: string;
-  start: () => Promise<void>;
-  stop: () => void;
-}
-
 export function useVoskWordMatch({
   expectedWords,
   onMatch,
   onMismatch,
   onInterim,
   onError,
-}: UseVoskWordMatchOptions): VoskWordMatchState {
+}: UseVoskWordMatchOptions) {
   const [isListening, setIsListening] = useState(false);
   const [partial, setPartial] = useState('');
 
@@ -69,42 +60,55 @@ export function useVoskWordMatch({
     }
     setIsListening(false);
     setPartial('');
-    console.log('[Vosk Matcher] Micrófono y procesador de audio liberados.');
   }, []);
 
   const start = useCallback(async () => {
     if (recognizerRef.current) return;
 
     if (!isReady || !model) {
-      const msg = 'El modelo Vosk aún se está descargando en segundo plano.';
-      console.warn('[Vosk Matcher]', msg);
+      const msg = 'El modelo Vosk de inglés aún no está listo.';
       onErrorRef.current?.(msg);
       return;
     }
 
     try {
-      console.log('[Vosk Matcher] Creando instancia de KaldiRecognizer...');
-      const grammar = [...expectedWordsRef.current, '[unk]'];
-      const recognizer = new model.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(grammar));
+      // 1. Limpieza estricta de palabras en inglés para la gramática de Kaldi
+      // Reemplaza caracteres no alfabéticos (ej. "don't" -> "dont") y convierte a minúsculas
+      const cleanEnglishWords = expectedWordsRef.current
+        .map((w) => w.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim())
+        .filter(Boolean);
+
+      let recognizer: KaldiRecognizer;
+
+      // 2. Si tenemos palabras esperadas válidas, se las pasamos en formato JSON
+      if (cleanEnglishWords.length > 0) {
+        console.log('[Vosk English] Gramática acotada:', cleanEnglishWords);
+        recognizer = new model.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(cleanEnglishWords));
+      } else {
+        console.log('[Vosk English] Sin palabras esperadas, modo abierto.');
+        recognizer = new model.KaldiRecognizer(SAMPLE_RATE);
+      }
+
       recognizerRef.current = recognizer;
 
       recognizer.on('result', (message) => {
         const resultMessage = message as { result: { text: string } };
-        const heard = resultMessage.result.text?.trim().toLowerCase();
+        const heard = resultMessage.result?.text?.trim().toLowerCase() || '';
 
-        console.log('[Vosk Matcher] Texto reconocido:', heard);
-
-        if (!heard || heard === '[unk]') {
-          onMismatchRef.current?.(heard || '');
+        // Si la salida es unk o vacía, notificamos la falta de coincidencia
+        if (!heard || heard === '[unk]' || heard === '<unk>') {
+          onMismatchRef.current?.(heard);
           return;
         }
 
+        console.log('[Vosk English] Oído:', heard);
+
+        // Verificamos si la palabra escuchada coincide con alguna de las esperadas
         const match = expectedWordsRef.current.find(
-          (w) => w.toLowerCase() === heard,
+          (w) => w.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim() === heard,
         );
 
         if (match) {
-          console.log('[Vosk Matcher] Match exacto:', match);
           onMatchRef.current(match, 1);
         } else {
           onMismatchRef.current?.(heard);
@@ -113,12 +117,12 @@ export function useVoskWordMatch({
 
       recognizer.on('partialresult', (message) => {
         const partialMessage = message as { result: { partial: string } };
-        const text = partialMessage.result.partial;
-        setPartial(text);
-        onInterimRef.current?.(text);
+        const text = partialMessage.result?.partial || '';
+        const clean = text.replace(/\[unk\]|<unk>/g, '').trim();
+        setPartial(clean);
+        onInterimRef.current?.(clean);
       });
 
-      console.log('[Vosk Matcher] Solicitando micrófono...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
@@ -132,7 +136,9 @@ export function useVoskWordMatch({
       processorRef.current = processor;
 
       processor.onaudioprocess = (event) => {
-        recognizerRef.current?.acceptWaveform(event.inputBuffer);
+        if (recognizerRef.current) {
+          recognizerRef.current.acceptWaveform(event.inputBuffer);
+        }
       };
 
       const silence = audioContext.createGain();
@@ -143,10 +149,8 @@ export function useVoskWordMatch({
       silence.connect(audioContext.destination);
 
       setIsListening(true);
-      console.log('[Vosk Matcher] Escuchando...');
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Error al acceder al micrófono';
-      console.error('[Vosk Matcher] Error:', errorMsg);
+      const errorMsg = error instanceof Error ? error.message : 'Error al iniciar Vosk';
       onErrorRef.current?.(errorMsg);
       cleanup();
     }
@@ -157,9 +161,7 @@ export function useVoskWordMatch({
   }, [cleanup]);
 
   useEffect(() => {
-    return () => {
-      cleanup();
-    };
+    return () => cleanup();
   }, [cleanup]);
 
   return {
