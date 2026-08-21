@@ -10,7 +10,6 @@ export interface UseVoiceSTTOptions {
   onInterim: (text: string) => void;
   onFinal: (text: string) => void;
   onError: (message: string) => void;
-  onAudioChunk?: (blob: Blob) => void;
 }
 
 export interface UseVoiceSTTResult {
@@ -22,7 +21,7 @@ export interface UseVoiceSTTResult {
   abort: () => void;
 }
 
-export function useVoiceSTT({ list, expectedWords, onInterim, onFinal, onError, onAudioChunk }: UseVoiceSTTOptions): UseVoiceSTTResult {
+export function useVoiceSTT({ list, expectedWords, onInterim, onFinal, onError }: UseVoiceSTTOptions): UseVoiceSTTResult {
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const languages = resolveVoiceLanguages(list.concept, list.settings.flipOrder, {
     termLang: list.settings.voiceTermLang,
@@ -41,7 +40,6 @@ export function useVoiceSTT({ list, expectedWords, onInterim, onFinal, onError, 
     onError: (message) => {
       onError(message);
     },
-    onAudioChunk,
   });
 
   const stop = useCallback(() => {

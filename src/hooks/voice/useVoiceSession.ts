@@ -7,7 +7,6 @@ import { createActivityEvent } from '../../utils/activity';
 import { RESULT_DELAY_MS, LISTENING_TIMEOUT_MS } from '../../constants/voice';
 import { useVoiceGameRefs } from './useVoiceGameRefs';
 import { useVoiceSTT } from './useVoiceSTT';
-import { useChipTTSTT } from './stt/useChipTTSTT';
 
 export interface VoiceSessionCounts {
   total: number;
@@ -26,7 +25,6 @@ export interface VoiceSessionResult {
 }
 
 const MAX_BROWSER_ATTEMPTS = 3;
-const MAX_RECYCLE_CYCLES = 2;
 
 export function useVoiceSession(list: AssociationList) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
@@ -43,10 +41,6 @@ export function useVoiceSession(list: AssociationList) {
   }, [phaseRef, setPhase]);
 
   const browserAttemptCountRef = useRef(0);
-  const browserAudioBlobsRef = useRef<Blob[]>([]);
-  const fallbackActiveRef = useRef(false);
-  const recycleCountRef = useRef(0);
-  const chirpSttRef = useChipTTSTT({ onFinal: () => {}, onInterim: () => {}, onError: () => {} });
 
   const logFallback = useCallback((attempt: string, data: Record<string, unknown>) => {
     const currentAssociation = gameRef.current?.currentAssociation;
@@ -55,7 +49,6 @@ export function useVoiceSession(list: AssociationList) {
 
   const playCurrentWordRef = useRef<(() => Promise<void>) | null>(null);
   const handleAnswerRef = useRef<((answer: string) => void) | null>(null);
-  const runChirpFallbackRef = useRef<((expected: string) => Promise<void>) | null>(null);
   const stopSTTRef = useRef<(() => void) | null>(null);
   const startSTTRef = useRef<((lang: string) => void) | null>(null);
   const languagesRef = useRef<{ ttsLang: string | null; sttLang: string | null }>({ ttsLang: null, sttLang: null });
@@ -117,7 +110,7 @@ export function useVoiceSession(list: AssociationList) {
     const passed = evaluated.state.feedback === 'correct';
 
     logFallback(attemptLabel, {
-      provider: attemptLabel === 'chirp' ? 'chiptt' : 'browser',
+      provider: 'browser',
       transcript: text,
       expected,
       passed,
@@ -132,19 +125,15 @@ export function useVoiceSession(list: AssociationList) {
 
     browserAttemptCountRef.current += 1;
 
-    if (browserAttemptCountRef.current >= MAX_BROWSER_ATTEMPTS && attemptLabel !== 'chirp') {
+    if (browserAttemptCountRef.current >= MAX_BROWSER_ATTEMPTS) {
       answerHandledRef.current = true;
       setPhaseBoth('evaluating');
-      if (list.settings.voiceSttFallback && !fallbackActiveRef.current) {
-        void runChirpFallbackRef.current?.(expected);
-      } else {
-        void handleAnswerRef.current?.(text);
-      }
+      void handleAnswerRef.current?.(text);
       return true;
     }
 
     return false;
-  }, [list.settings.voiceSttFallback, logFallback, setPhaseBoth, gameRef]);
+  }, [logFallback, setPhaseBoth, gameRef]);
 
   const handleSTTInterim = useCallback((text: string) => {
     if (answerHandledRef.current) return;
@@ -202,8 +191,6 @@ export function useVoiceSession(list: AssociationList) {
     },
     onError: (message: string) => {
       setError(message);
-      const current = gameRef.current?.currentAssociation;
-      const expected = current ? (list.settings.flipOrder === 'reversed' ? current.definition : current.term) : '';
 
       logFallback(String(browserAttemptCountRef.current + 1), {
         provider: 'browser',
@@ -230,13 +217,8 @@ export function useVoiceSession(list: AssociationList) {
       browserAttemptCountRef.current += 1;
 
       if (browserAttemptCountRef.current >= MAX_BROWSER_ATTEMPTS) {
-        if (list.settings.voiceSttFallback && !fallbackActiveRef.current) {
-          answerHandledRef.current = true;
-          setPhaseBoth('evaluating');
-          void runChirpFallbackRef.current?.(expected);
-        } else {
-          setPhaseBoth('idle');
-        }
+        setPhaseBoth('idle');
+        setError('Speech recognition failed after maximum attempts.');
         return;
       }
 
@@ -248,121 +230,11 @@ export function useVoiceSession(list: AssociationList) {
         startSTTRef.current?.(lang);
       }, 300);
     },
-    onAudioChunk: (blob) => {
-      if (phaseRef.current === 'listening_for_answer' && !fallbackActiveRef.current) {
-        browserAudioBlobsRef.current.push(blob);
-        logFallback(String(browserAttemptCountRef.current + 1), {
-          provider: 'browser',
-          audioBlobSizeBytes: blob.size,
-          audioBlobCount: browserAudioBlobsRef.current.length,
-        });
-      }
-    },
   });
 
   stopSTTRef.current = stopSTT;
   startSTTRef.current = startSTT;
   languagesRef.current = languages;
-
-  const runChirpFallback = useCallback(async (expected: string) => {
-    if (!list.settings.voiceSttFallback) {
-      return;
-    }
-
-    fallbackActiveRef.current = true;
-    logFallback('chirp', {
-      provider: 'chiptt',
-      audioBlobCount: browserAudioBlobsRef.current.length,
-      totalAudioBlobSizeBytes: browserAudioBlobsRef.current.reduce((sum, blob) => sum + blob.size, 0),
-    });
-
-    setPhaseBoth('listening_for_answer');
-    setError(null);
-
-    let chirpTranscript = '';
-    try {
-      const blobs = browserAudioBlobsRef.current.filter((blob) => blob.size > 0);
-      if (blobs.length === 0) {
-        throw new Error('No audio captured from browser attempts.');
-      }
-
-      const lang = languagesRef.current.sttLang || 'es';
-      const results = await Promise.allSettled(
-        blobs.map((blob) => chirpSttRef.transcribeExistingAudio?.(blob, lang).catch(() => null))
-      );
-
-      const transcripts = results
-        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && typeof r.value === 'string' && r.value.trim().length > 0)
-        .map((r) => r.value.trim());
-
-      chirpTranscript = transcripts[0] || '';
-
-      logFallback('chirp', {
-        provider: 'chiptt',
-        transcript: chirpTranscript,
-        expected,
-        attempts: transcripts.length,
-        passed: !!chirpTranscript,
-      });
-
-      if (!chirpTranscript) {
-        throw new Error('No speech detected from Chirp fallback.');
-      }
-    } catch (err) {
-      logFallback('chirp', {
-        provider: 'chiptt',
-        error: err instanceof Error ? err.message : 'Unknown error',
-        passed: false,
-      });
-
-      if (recycleCountRef.current < MAX_RECYCLE_CYCLES) {
-        recycleCountRef.current += 1;
-        logFallback('recycle', {
-          provider: 'browser',
-          recycleCount: recycleCountRef.current,
-        });
-        browserAttemptCountRef.current = 0;
-        browserAudioBlobsRef.current = [];
-        fallbackActiveRef.current = false;
-        setTimeout(() => {
-          if (!shouldRunRef.current) return;
-          if (phaseRef.current !== 'listening_for_answer') return;
-          const lang = languagesRef.current.sttLang || 'es';
-          startSTTRef.current?.(lang);
-        }, 300);
-        return;
-      }
-
-      setPhaseBoth('idle');
-      setError('No speech detected after Chirp fallback exhausted.');
-      return;
-    }
-
-    const handled = evaluateAndHandle(chirpTranscript, expected, 'chirp');
-    if (!handled) {
-      if (recycleCountRef.current < MAX_RECYCLE_CYCLES) {
-        recycleCountRef.current += 1;
-        logFallback('recycle', {
-          provider: 'browser',
-          recycleCount: recycleCountRef.current,
-          reason: 'chirp_failed_similarity',
-        });
-        browserAttemptCountRef.current = 0;
-        browserAudioBlobsRef.current = [];
-        fallbackActiveRef.current = false;
-        setTimeout(() => {
-          if (!shouldRunRef.current) return;
-          if (phaseRef.current !== 'listening_for_answer') return;
-          const lang = languagesRef.current.sttLang || 'es';
-          startSTTRef.current?.(lang);
-        }, 300);
-      } else {
-        setPhaseBoth('idle');
-        setError('Incorrect after maximum attempts.');
-      }
-    }
-  }, [list.settings.voiceSttFallback, chirpSttRef, setPhaseBoth, logFallback, evaluateAndHandle, gameRef, phaseRef]);
-  runChirpFallbackRef.current = runChirpFallback;
 
   const playCurrentWord = useCallback(async () => {
     if (!shouldRunRef.current) return;
@@ -374,9 +246,6 @@ export function useVoiceSession(list: AssociationList) {
     const word = isReversed ? current.definition : current.term;
 
     browserAttemptCountRef.current = 0;
-    browserAudioBlobsRef.current = [];
-    fallbackActiveRef.current = false;
-    recycleCountRef.current = 0;
 
     setError(null);
     setTranscript('');
@@ -458,7 +327,6 @@ export function useVoiceSession(list: AssociationList) {
     if (stt.isProcessing) return;
     if (answerHandledRef.current) return;
     if (listeningFailedRef.current) return;
-    if (fallbackActiveRef.current) return;
 
     const timeout = setTimeout(() => {
       if (phaseRef.current !== 'listening_for_answer') return;
@@ -466,7 +334,6 @@ export function useVoiceSession(list: AssociationList) {
       if (stt.isProcessing) return;
       if (answerHandledRef.current) return;
       if (listeningFailedRef.current) return;
-      if (fallbackActiveRef.current) return;
 
       listeningFailedRef.current = true;
       const pending = transcriptRef.current?.trim();
@@ -480,7 +347,7 @@ export function useVoiceSession(list: AssociationList) {
     }, LISTENING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [phase, stt.isListening, stt.isProcessing, setPhaseBoth, fallbackActiveRef]);
+  }, [phase, stt.isListening, stt.isProcessing, setPhaseBoth]);
 
   return {
     phase,

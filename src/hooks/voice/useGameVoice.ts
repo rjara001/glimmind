@@ -59,7 +59,7 @@ export function useGameVoice({
   const revealedRef = useRef(revealed);
   const feedbackRef = useRef(feedback);
   const answerHandledRef = useRef(false);
-  const listeningFailedRef = useRef(false); // ✅ Declarado correctamente aquí
+  const listeningFailedRef = useRef(false);
   const transcriptRef = useRef('');
   const lastCommandRef = useRef<VoiceCommandId | null>(null);
   const sessionIdRef = useRef(crypto.randomUUID());
@@ -374,16 +374,15 @@ const expectedWords = useMemo(() => {
   useEffect(() => {
     if (phaseRef.current !== 'listening') return;
 
-    const provider = list.settings.sttProvider || 'browser';
-    if (provider === 'browser' || provider === 'vosk') return;
-
     if (sttRef.current.isListening) return;
+    if (sttRef.current.isProcessing) return;
     if (answerHandledRef.current) return;
     if (listeningFailedRef.current) return;
 
     const timeout = setTimeout(() => {
       if (phaseRef.current !== 'listening') return;
       if (sttRef.current.isListening) return;
+      if (sttRef.current.isProcessing) return;
       if (answerHandledRef.current) return;
       if (listeningFailedRef.current) return;
 
@@ -398,7 +397,7 @@ const expectedWords = useMemo(() => {
     }, LISTENING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [phase, setPhaseBoth, list.settings.sttProvider]);
+  }, [phase, setPhaseBoth]);
 
   const repeat = useCallback(() => {
     clearFeedbackTimer();

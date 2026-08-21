@@ -41,7 +41,8 @@ interface WindowWithSpeech extends Window {
 }
 
 const RESTART_DELAY_MS = 150;
-const MEDIA_RECORDER_MIME_TYPE = 'audio/webm;codecs=opus';
+const START_TIMEOUT_MS = 4000;
+const INACTIVITY_TIMEOUT_MS = 10000;
 
 function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
@@ -53,10 +54,13 @@ export interface UseBrowserSTTOptions {
   onFinal: (transcript: string) => void;
   onInterim?: (transcript: string) => void;
   onError?: (message: string) => void;
-  onAudioChunk?: (blob: Blob) => void;
 }
 
-export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: UseBrowserSTTOptions): SttProvider {
+export function useBrowserSTT({
+  onFinal,
+  onInterim,
+  onError,
+}: UseBrowserSTTOptions): SttProvider {
   const supported = getRecognitionConstructor() !== null;
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -66,31 +70,21 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
   const intentionalStopRef = useRef(false);
   const langRef = useRef<string | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Safety watchdogs: mobile browsers may never fire onstart/onend when the
+  // engine dies silently, so every session must have a guaranteed reset path.
+  const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingStartRef = useRef(false);
+
+  // Ref sync for callbacks and dynamic data
   const onFinalRef = useRef(onFinal);
   const onInterimRef = useRef(onInterim);
   const onErrorRef = useRef(onError);
-  const onAudioChunkRef = useRef(onAudioChunk);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const audioBlobRef = useRef<Blob | null>(null);
-
-  useEffect(() => {
-    onFinalRef.current = onFinal;
-  }, [onFinal]);
-
-  useEffect(() => {
-    onInterimRef.current = onInterim;
-  }, [onInterim]);
-
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
-
-  useEffect(() => {
-    onAudioChunkRef.current = onAudioChunk;
-  }, [onAudioChunk]);
+  useEffect(() => { onFinalRef.current = onFinal; }, [onFinal]);
+  useEffect(() => { onInterimRef.current = onInterim; }, [onInterim]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
   const clearRestartTimer = useCallback(() => {
     if (restartTimerRef.current) {
@@ -99,57 +93,66 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
     }
   }, []);
 
-  const cleanupMediaRecorder = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+  const clearSafetyTimers = useCallback(() => {
+    if (startTimerRef.current) {
+      clearTimeout(startTimerRef.current);
+      startTimerRef.current = null;
+    }
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    pendingStartRef.current = false;
+  }, []);
+
+  const armStartWatchdog = useCallback((instance: SpeechRecognitionLike) => {
+    if (startTimerRef.current) {
+      clearTimeout(startTimerRef.current);
+    }
+    startTimerRef.current = setTimeout(() => {
+      startTimerRef.current = null;
+      if (!pendingStartRef.current) return;
+      if (!shouldRunRef.current || recognitionRef.current !== instance) return;
+      pendingStartRef.current = false;
+      setIsListening(false);
+      setInterimTranscript('');
       try {
-        mediaRecorderRef.current.stop();
+        instance.abort();
       } catch {
-        // ignore
+        // ignore abort errors
       }
-    }
-    mediaRecorderRef.current = null;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    audioChunksRef.current = [];
+      onErrorRef.current?.('Speech recognition did not start. Check microphone availability.');
+    }, START_TIMEOUT_MS);
   }, []);
 
-  const startMediaRecorder = useCallback(async (): Promise<void> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      audioChunksRef.current = [];
-      audioBlobRef.current = null;
-
-      const mimeType = MediaRecorder.isTypeSupported(MEDIA_RECORDER_MIME_TYPE)
-        ? MEDIA_RECORDER_MIME_TYPE
-        : 'audio/webm';
-
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const chunks = audioChunksRef.current.slice();
-        audioChunksRef.current = [];
-        const blob = new Blob(chunks, { type: mimeType });
-        audioBlobRef.current = blob;
-        if (onAudioChunkRef.current) {
-          onAudioChunkRef.current(blob);
-        }
-      };
-
-      recorder.start(1000);
-    } catch {
-      // ignore audio capture errors
+  const armInactivityWatchdog = useCallback((instance: SpeechRecognitionLike) => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
     }
-  }, []);
+    inactivityTimerRef.current = setTimeout(() => {
+      inactivityTimerRef.current = null;
+      if (!shouldRunRef.current || recognitionRef.current !== instance) return;
+      console.warn('[BrowserSTT] Inactivity timeout reached; restarting recognition.');
+      try {
+        instance.abort();
+      } catch {
+        // ignore abort errors
+      }
+      // Force a restart in case onend never fires after the abort.
+      restartTimerRef.current = setTimeout(() => {
+        restartTimerRef.current = null;
+        if (!shouldRunRef.current || recognitionRef.current !== instance) return;
+        try {
+          instance.start();
+          pendingStartRef.current = true;
+          armStartWatchdog(instance);
+          armInactivityWatchdog(instance);
+        } catch {
+          // Instance may already be running
+        }
+      }, RESTART_DELAY_MS + 300);
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [armStartWatchdog]);
 
   const ensureInstance = useCallback(
     (lang: string | null): SpeechRecognitionLike | null => {
@@ -160,7 +163,7 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
       if (!Constructor) return null;
 
       clearRestartTimer();
-      cleanupMediaRecorder();
+      clearSafetyTimers();
       if (existing) {
         shouldRunRef.current = false;
         try {
@@ -179,15 +182,20 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
       if (lang) instance.lang = lang;
 
       instance.onstart = () => {
+        pendingStartRef.current = false;
+        if (startTimerRef.current) {
+          clearTimeout(startTimerRef.current);
+          startTimerRef.current = null;
+        }
         setIsListening(true);
-        void startMediaRecorder();
+        armInactivityWatchdog(instance);
       };
 
       instance.onerror = (event) => {
         const fatal = ['not-allowed', 'service-not-allowed', 'audio-capture'];
         if (fatal.includes(event.error)) {
           shouldRunRef.current = false;
-          cleanupMediaRecorder();
+          clearSafetyTimers();
           if (event.error === 'not-allowed') {
             onErrorRef.current?.('Microphone permission denied.');
           } else if (event.error === 'service-not-allowed') {
@@ -197,10 +205,7 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
           }
           return;
         }
-        if (event.error === 'no-speech') {
-          return;
-        }
-        if (event.error === 'aborted') return;
+        if (event.error === 'no-speech' || event.error === 'aborted') return;
         if (event.error === 'network') {
           onErrorRef.current?.('Speech recognition network error.');
         } else {
@@ -209,12 +214,12 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
       };
 
       instance.onend = () => {
-        cleanupMediaRecorder();
-
         const wasIntentionalStop = intentionalStopRef.current;
         intentionalStopRef.current = false;
         if (!shouldRunRef.current || wasIntentionalStop || recognitionRef.current !== instance) {
+          clearSafetyTimers();
           setIsListening(false);
+          setInterimTranscript('');
           return;
         }
         restartTimerRef.current = setTimeout(() => {
@@ -222,6 +227,8 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
           if (!shouldRunRef.current || recognitionRef.current !== instance) return;
           try {
             instance.start();
+            pendingStartRef.current = true;
+            armStartWatchdog(instance);
           } catch {
             // Instance may already be running
           }
@@ -229,87 +236,98 @@ export function useBrowserSTT({ onFinal, onInterim, onError, onAudioChunk }: Use
       };
 
       instance.onresult = (event) => {
+        armInactivityWatchdog(instance);
+
         let interim = '';
         let final = '';
+
         for (let i = event.resultIndex; i < event.results.length; i += 1) {
           const result = event.results[i];
           const alternative = result && result[0];
           const transcript = alternative?.transcript ?? '';
+
           if (result.isFinal) {
             final += transcript;
           } else {
             interim += transcript;
           }
         }
+
         if (interim) {
           onInterimRef.current?.(interim);
         }
         setInterimTranscript(interim);
+
         if (final) {
-          const trimmed = final.trim();
-          onFinalRef.current(trimmed);
+          onFinalRef.current(final.trim());
         }
       };
 
       return instance;
     },
-    [clearRestartTimer, cleanupMediaRecorder, startMediaRecorder],
+    [armInactivityWatchdog, armStartWatchdog, clearRestartTimer, clearSafetyTimers],
   );
 
   const start = useCallback(
-    (lang: string | null) => {
-      const instance = ensureInstance(lang);
+    (lang: string | null = 'en-US') => {
+      const instance = ensureInstance(lang || 'en-US');
       if (!instance) return;
       shouldRunRef.current = true;
+      intentionalStopRef.current = false;
       setInterimTranscript('');
       try {
         instance.start();
+        pendingStartRef.current = true;
+        armStartWatchdog(instance);
       } catch {
         // Instance may already be running
       }
     },
-    [ensureInstance],
+    [armStartWatchdog, ensureInstance],
   );
 
   const stop = useCallback(() => {
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
+    clearSafetyTimers();
     setIsListening(false);
-    cleanupMediaRecorder();
+    setInterimTranscript('');
     try {
       recognitionRef.current?.stop();
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer, cleanupMediaRecorder]);
+  }, [clearRestartTimer, clearSafetyTimers]);
 
   const abort = useCallback(() => {
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
+    clearSafetyTimers();
     setIsListening(false);
-    cleanupMediaRecorder();
+    setInterimTranscript('');
     try {
       recognitionRef.current?.abort();
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer, cleanupMediaRecorder]);
+  }, [clearRestartTimer, clearSafetyTimers]);
 
   useEffect(() => {
     return () => {
+      const instance = recognitionRef.current;
       shouldRunRef.current = false;
       intentionalStopRef.current = true;
       clearRestartTimer();
-      cleanupMediaRecorder();
+      clearSafetyTimers();
       try {
-        recognitionRef.current?.abort();
+        instance?.abort();
       } catch {
         // Ignore cleanup errors
       }
     };
-  }, [clearRestartTimer, cleanupMediaRecorder]);
+  }, [clearRestartTimer, clearSafetyTimers]);
 
   return useMemo(
     () => ({

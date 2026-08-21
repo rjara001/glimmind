@@ -110,6 +110,7 @@ src/
 │   │   ├── useAudioRecorder.ts
 │   │   └── stt/
 │   │       ├── useBrowserSTT.ts
+│   │       ├── useVoskSTT.ts
 │   │       └── useChipTTSTT.ts
 │   ├── game/                  # Game logic hooks
 │   │   ├── useGameLogic.ts

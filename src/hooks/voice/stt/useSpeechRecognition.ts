@@ -9,7 +9,6 @@ export interface UseSpeechRecognitionOptions {
   expectedWords?: string[];
   commandWords?: string[];
   minCommandConfidence?: number;
-  onAudioChunk?: (blob: Blob) => void;
 }
 
 export function useSpeechRecognition({
@@ -20,7 +19,6 @@ export function useSpeechRecognition({
   onFinal,
   onInterim,
   onError,
-  onAudioChunk,
 }: UseSpeechRecognitionOptions) {
   return useSTT({
     provider,
@@ -30,6 +28,5 @@ export function useSpeechRecognition({
     onFinal,
     onInterim,
     onError,
-    onAudioChunk,
   });
 }
