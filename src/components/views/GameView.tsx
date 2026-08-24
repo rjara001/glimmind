@@ -15,6 +15,8 @@ import { useGameVoice } from '../../hooks/voice/useGameVoice';
 import { useSpeechSynthesis } from '../../hooks/voice/tts/useSpeechSynthesis';
 import { VoiceCommandId } from '../../types';
 import { COMMAND_TOAST_MS } from '../../constants/voice';
+import { REVEAL_AUTO_NEXT_SECONDS } from '../../constants/app';
+import { CountdownTimer } from '../layout/CountdownTimer';
 
 interface GameViewProps {
   list: AssociationList;
@@ -39,6 +41,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const { showToast } = useToast();
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
   const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<VoiceCommandId | undefined>();
+  const [isCountdownRunning, setIsCountdownRunning] = useState(false);
   const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const { 
     gameView, 
@@ -73,11 +76,27 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       actions.reveal();
       void voiceRef.current?.speakAnswer();
     } else if (command === 'pass') {
+      voiceRef.current?.queuePassAcknowledgement();
       actions.handlePass();
     } else if (command === 'stop') {
-      setIsVoiceActive(false);
+      void voiceRef.current?.announceStop().then(() => {
+        setIsVoiceActive(false);
+      });
     }
   }, [actions, setDetectedVoiceCommand]);
+
+  const handleCountdownComplete = useCallback(() => {
+    setIsCountdownRunning(false);
+    if (isVoiceActive) {
+      handleVoiceCommand('pass');
+    } else {
+      actions.handlePass();
+    }
+  }, [isVoiceActive, handleVoiceCommand, actions]);
+
+  useEffect(() => {
+    setIsCountdownRunning(Boolean(currentAssociation) && isRevealed && !gameState.isFinished);
+  }, [isRevealed, gameState.isFinished, currentAssociation]);
 
   useEffect(() => {
     if (!detectedVoiceCommand) return;
@@ -91,6 +110,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     currentAssociation,
     feedback,
     evaluationCount: attempts.length,
+    similarity,
     onSubmitVoice: actions.submitVoice,
     onAdvance: actions.handleCorrect,
     commands: list.settings.voiceCommands,
@@ -328,6 +348,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             <div className="flex items-center gap-2"><span className="text-xs font-semibold text-slate-500">Correctas:</span><span className="text-sm font-bold text-emerald-600">{cycleStats.correct}</span></div>
           </div>
           <div className="w-full">
+            <div className="relative">
             <GameCard 
               displayTerm={displayTerm} 
               displayDef={displayDef} 
@@ -360,8 +381,16 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceTermLang={voiceTermLang}
                voiceDefLang={voiceDefLang}
                onSpeakAnswer={handleSpeakAnswer}
-               detectedVoiceCommand={detectedVoiceCommand}
+                detectedVoiceCommand={detectedVoiceCommand}
             />
+              <CountdownTimer
+                seconds={REVEAL_AUTO_NEXT_SECONDS}
+                isRunning={isCountdownRunning}
+                onComplete={handleCountdownComplete}
+                className="absolute bottom-14 right-4 z-40"
+                ariaLabel="Auto avance a la siguiente tarjeta"
+              />
+            </div>
              {showRevealWarning && (
                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
                  <p className="text-xs font-bold text-amber-800">Veo que no has hecho intentos.</p>

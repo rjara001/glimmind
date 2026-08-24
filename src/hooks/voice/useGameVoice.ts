@@ -14,6 +14,11 @@ import {
   getAllVoiceCommandWords,
 } from '../../services/voice/stt/commands';
 import { LISTENING_TIMEOUT_MS, FEEDBACK_DELAY_MS, RELISTEN_DELAY_MS, VOSK_MIN_COMMAND_CONFIDENCE } from '../../constants/voice';
+import {
+  buildCommandAcknowledgement,
+  buildCorrectFeedbackPhrase,
+  buildIncorrectFeedbackPhrase,
+} from '../../services/voice/spokenPhrases';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
 
@@ -23,6 +28,7 @@ export interface UseGameVoiceOptions {
   currentAssociation: Association | undefined;
   feedback: 'none' | 'correct' | 'incorrect';
   evaluationCount: number;
+  similarity?: number | null;
   onSubmitVoice: (text: string) => void;
   onAdvance: () => void;
   commands?: VoiceCommandsConfig;
@@ -37,6 +43,7 @@ export function useGameVoice({
   currentAssociation,
   feedback,
   evaluationCount,
+  similarity = null,
   onSubmitVoice,
   onAdvance,
   commands,
@@ -62,6 +69,8 @@ export function useGameVoice({
   const listeningFailedRef = useRef(false);
   const transcriptRef = useRef('');
   const lastCommandRef = useRef<VoiceCommandId | null>(null);
+  const pendingAckRef = useRef<{ phrase: string; associationId: string } | null>(null);
+  const similarityRef = useRef<number | null>(similarity);
   const sessionIdRef = useRef(crypto.randomUUID());
   const pendingBlobRef = useRef<Blob | null>(null);
 
@@ -82,6 +91,7 @@ export function useGameVoice({
   useEffect(() => { revealedRef.current = revealed; }, [revealed]);
   useEffect(() => { feedbackRef.current = feedback; }, [feedback]);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+  useEffect(() => { similarityRef.current = similarity; }, [similarity]);
 
   const setPhaseBoth = useCallback((next: GameVoicePhase) => {
     phaseRef.current = next;
@@ -113,6 +123,16 @@ const expectedWords = useMemo(() => {
         defLang: list.settings.voiceDefLang,
       }),
     [list.concept, list.settings.flipOrder, list.settings.voiceTermLang, list.settings.voiceDefLang],
+  );
+
+  // Narration language: always the first value (term side) regardless of flip order.
+  const narrationLang = useMemo(
+    () =>
+      resolveVoiceLanguages(list.concept, 'normal', {
+        termLang: list.settings.voiceTermLang,
+        defLang: list.settings.voiceDefLang,
+      }).ttsLang,
+    [list.concept, list.settings.voiceTermLang, list.settings.voiceDefLang],
   );
 
   const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
@@ -227,6 +247,21 @@ const expectedWords = useMemo(() => {
     lastCommandRef.current = null;
     setPhaseBoth('speaking');
 
+    const pendingAck = pendingAckRef.current?.associationId === current.id
+      ? pendingAckRef.current.phrase
+      : null;
+    pendingAckRef.current = null;
+    if (pendingAck) {
+      await ttsRef.current.speak(
+        pendingAck,
+        narrationLang,
+        list.settings.voiceTermId,
+        list.settings.voiceRate,
+        list.settings.voicePitch
+      );
+      if (!shouldRunRef.current) return;
+    }
+
     const spoke = await ttsRef.current.speak(
       word, 
       languages.ttsLang, 
@@ -244,7 +279,7 @@ const expectedWords = useMemo(() => {
     answerHandledRef.current = false;
     listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, languages.ttsLang, narrationLang, setPhaseBoth]);
 
   const speakAnswer = useCallback(async () => {
     if (!shouldRunRef.current) return;
@@ -253,32 +288,58 @@ const expectedWords = useMemo(() => {
 
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
-    const word = isReversed ? current.term : current.definition;
-    const lang = languages.sttLang;
+    const expectedAnswer = isReversed ? current.term : current.definition;
+    const phrase = buildCommandAcknowledgement('reveal', expectedAnswer);
     setError(null);
     setTranscript('');
     transcriptRef.current = '';
     lastCommandRef.current = null;
     setPhaseBoth('speaking');
 
-    const spoke = await ttsRef.current.speak(
-      word, 
-      lang, 
-      isReversed ? list.settings.voiceTermId : list.settings.voiceDefId, 
-      list.settings.voiceRate, 
-      list.settings.voicePitch
-    );
+    if (phrase) {
+      const spoke = await ttsRef.current.speak(
+        phrase,
+        narrationLang,
+        list.settings.voiceTermId,
+        list.settings.voiceRate,
+        list.settings.voicePitch
+      );
 
-    if (!shouldRunRef.current) return;
-    if (!spoke.ok) {
-      console.warn('[Voice] TTS failed:', word);
+      if (!shouldRunRef.current) return;
+      if (!spoke.ok) {
+        console.warn('[Voice] TTS failed:', phrase);
+      }
     }
 
     setPhaseBoth('listening');
     answerHandledRef.current = false;
     listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, narrationLang, setPhaseBoth]);
+
+  const announceStop = useCallback(async () => {
+    sttRef.current.abort();
+    clearFeedbackTimer();
+    pendingAckRef.current = null;
+    const phrase = buildCommandAcknowledgement('stop');
+    if (!phrase) return;
+    setPhaseBoth('speaking');
+    await ttsRef.current.speak(
+      phrase,
+      narrationLang,
+      list.settings.voiceTermId,
+      list.settings.voiceRate,
+      list.settings.voicePitch
+    );
+  }, [clearFeedbackTimer, setPhaseBoth, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch, narrationLang]);
+
+  const queuePassAcknowledgement = useCallback(() => {
+    const current = currentAssociationRef.current;
+    if (!current) return;
+    const phrase = buildCommandAcknowledgement('pass');
+    if (!phrase) return;
+    pendingAckRef.current = { phrase, associationId: current.id };
+  }, []);
 
   useEffect(() => {
     if (enabled) {
@@ -288,6 +349,7 @@ const expectedWords = useMemo(() => {
       clearFeedbackTimer();
       sttRef.current.abort();
       ttsRef.current.cancel();
+      pendingAckRef.current = null;
       setPhaseBoth('idle');
       setTranscript('');
       setError(null);
@@ -297,6 +359,7 @@ const expectedWords = useMemo(() => {
       clearFeedbackTimer();
       sttRef.current.abort();
       ttsRef.current.cancel();
+      pendingAckRef.current = null;
     };
   }, [enabled, clearFeedbackTimer, setPhaseBoth]);
 
@@ -317,11 +380,19 @@ const expectedWords = useMemo(() => {
     if (feedback === 'correct') {
       clearFeedbackTimer();
       setPhaseBoth('feedback');
+      pendingAckRef.current = null;
       void (async () => {
-        const spoke = await ttsRef.current.speak('Correcto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
+        const current = currentAssociationRef.current;
+        const isReversed = list.settings.flipOrder === 'reversed';
+        const expectedAnswer = current
+          ? (isReversed ? current.term : current.definition)
+          : '';
+         const similarityPercent = Math.round(similarityRef.current ?? 100);
+         const phrase = buildCorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100);
+        const spoke = await ttsRef.current.speak(phrase, narrationLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         if (!spoke.ok) {
-          console.warn('[Voice] TTS feedback failed:', 'Correcto');
+          console.warn('[Voice] TTS feedback failed:', phrase);
         }
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -331,11 +402,19 @@ const expectedWords = useMemo(() => {
     } else if (feedback === 'incorrect') {
       clearFeedbackTimer();
       setPhaseBoth('feedback');
+      pendingAckRef.current = null;
       void (async () => {
-        const spoke = await ttsRef.current.speak('Incorrecto', languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
+        const current = currentAssociationRef.current;
+        const isReversed = list.settings.flipOrder === 'reversed';
+        const expectedAnswer = current
+          ? (isReversed ? current.term : current.definition)
+          : '';
+         const similarityPercent = Math.round(similarityRef.current ?? 0);
+         const phrase = buildIncorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100);
+        const spoke = await ttsRef.current.speak(phrase, narrationLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         if (!spoke.ok) {
-          console.warn('[Voice] TTS feedback failed:', 'Incorrecto');
+          console.warn('[Voice] TTS feedback failed:', phrase);
         }
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
@@ -345,7 +424,7 @@ const expectedWords = useMemo(() => {
     } else if (feedback === 'none') {
       void speakCurrentWord();
     }
-  }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, languages.ttsLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
+   }, [feedback, evaluationCount, enabled, clearFeedbackTimer, setPhaseBoth, speakCurrentWord, currentAssociation?.id, narrationLang, list.settings.flipOrder, list.settings.threshold, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch]);
 
   useEffect(() => {
     if (feedback === 'correct' || feedback === 'incorrect') {
@@ -409,6 +488,7 @@ const expectedWords = useMemo(() => {
     clearFeedbackTimer();
     sttRef.current.abort();
     ttsRef.current.cancel();
+    pendingAckRef.current = null;
     setPhaseBoth('idle');
     setTranscript('');
     setError(null);
@@ -424,6 +504,8 @@ const expectedWords = useMemo(() => {
     supported: stt.supported,
     repeat,
     speakAnswer,
+    announceStop,
+    queuePassAcknowledgement,
     stop,
   };
 }
