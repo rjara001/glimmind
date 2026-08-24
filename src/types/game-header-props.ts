@@ -13,4 +13,8 @@ export interface GameHeaderProps {
   voiceEnabled?: boolean;
   onVoiceToggle?: () => void;
   isVoiceProcessing?: boolean;
+  isPremium?: boolean;
+  isRecording?: boolean;
+  onRecordToggle?: () => void;
+  onViewRecordings?: () => void;
 }

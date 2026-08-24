@@ -9,15 +9,19 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, 
-  collection, 
-  query, 
-  where, 
+  collection,
+  query,
+  where,
   doc, 
   setDoc, 
   deleteDoc, 
   updateDoc, 
   getDocs, 
   getDoc,
+  orderBy,
+  limit,
+  addDoc,
+  serverTimestamp,
   connectFirestoreEmulator 
 } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
@@ -99,5 +103,9 @@ export {
   deleteDoc,
   updateDoc,
   getDocs,
-  getDoc
+  getDoc,
+  orderBy,
+  limit,
+  addDoc,
+  serverTimestamp,
 };

@@ -17,6 +17,8 @@ import { VoiceCommandId } from '../../types';
 import { COMMAND_TOAST_MS } from '../../constants/voice';
 import { REVEAL_AUTO_NEXT_SECONDS } from '../../constants/app';
 import { CountdownTimer } from '../layout/CountdownTimer';
+import { VoiceRecordingsModal } from '../../components/modals/VoiceRecordingsModal';
+import { useVoiceRecordings } from '../../hooks/voice/useVoiceRecordings';
 
 interface GameViewProps {
   list: AssociationList;
@@ -37,9 +39,25 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const [showSettings, setShowSettings] = useState(false);
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [showRevealWarning, setShowRevealWarning] = useState(false);
+  const [showVoiceRecordings, setShowVoiceRecordings] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const userId = useGameStore(state => state.user?.uid);
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
+
+  const {
+    recordings,
+    isLoading,
+    error,
+    deleteRecording,
+    downloadRecording,
+    refresh,
+  } = useVoiceRecordings({
+    userId: userId || '',
+    listId: list.id,
+    enabled: isRecording,
+  });
   const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<VoiceCommandId | undefined>();
   const [isCountdownRunning, setIsCountdownRunning] = useState(false);
   const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
@@ -60,6 +78,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const goalProgress = useGameStore(state => state.progress?.goalProgress ?? 0);
   const goalTarget = useGameStore(state => state.progress?.goalTarget ?? 0);
+  const quota = useGameStore(state => state.quota);
+  const isPremium = quota?.tier === 'premium';
 
   const immersive = useImmersiveHeader();
 
@@ -313,7 +333,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
             marginBottom: immersive.isVisible ? '12px' : '0px',
           }}
         >
-          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+          <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isPremium={isPremium} isRecording={isRecording} onRecordToggle={() => setIsRecording((prev) => !prev)} onViewRecordings={() => setShowVoiceRecordings(true)} />
         </div>
         {!immersive.isVisible && (
           <div className="flex justify-center mb-2">
@@ -322,7 +342,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         )}
       </div>
       <div className="hidden sm:block">
-        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} />
+        <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isPremium={isPremium} isRecording={isRecording} onRecordToggle={() => setIsRecording((prev) => !prev)} onViewRecordings={() => setShowVoiceRecordings(true)} />
       </div>
       {!immersive.isVisible && (
         <div className="sm:hidden flex justify-between items-center mb-2 px-1">
@@ -437,6 +457,18 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         }} 
         onClose={() => setShowSettings(false)} 
       />}
+      {showVoiceRecordings && userId && (
+        <VoiceRecordingsModal
+          isOpen={showVoiceRecordings}
+          onClose={() => setShowVoiceRecordings(false)}
+          recordings={recordings}
+          isLoading={isLoading}
+          error={error}
+          onDelete={deleteRecording}
+          onDownload={downloadRecording}
+          onRefresh={refresh}
+        />
+      )}
     </div>
   );
 };

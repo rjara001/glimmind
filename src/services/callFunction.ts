@@ -28,8 +28,11 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   const override = SECOND_GEN_FUNCTIONS[functionName];
   const base = (override || FUNCTIONS_BASE).replace(/\/$/, '');
   const payload = JSON.stringify(data);
-  
-  const response = await fetch(`${base}/${functionName}`, {
+  const url = `${base}/${functionName}`;
+
+  console.log('[callFunction]', functionName, 'url=', url, 'base=', base, 'isUsingEmulators=', isUsingEmulators);
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
