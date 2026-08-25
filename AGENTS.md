@@ -521,3 +521,20 @@ All state updates affecting game flow (card progression, cycle updates, score up
 Timeouts for advancing cards belong in parent components, never children.
 
 Children may show validation feedback, but any logic triggering progression MUST call a parent callback only, not directly manipulate parent state.
+
+29. Version Bumping
+
+Required
+
+Every time changes are committed to main, the version MUST be bumped in BOTH files:
+
+src/constants/version.ts → APP_VERSION = 'x.y.z'
+package.json → "version": "x.y.z"
+
+Rules
+
+Patch (z) for bug fixes and small changes.
+Minor (y) for new features.
+Major (x) for breaking changes.
+NEVER deploy without bumping the version first.
+NEVER use the same version number for two different deploys.
