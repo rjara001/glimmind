@@ -62,12 +62,11 @@ const AppContent: React.FC = () => {
   const handleLogout = useCallback(async () => {
     try {
       await auth?.signOut();
-      setUser(null);
-      navigate('dashboard');
+      // onAuthStateChanged will call setUser(null) → isLoaded=false → Auth screen renders
     } catch {
       showToast('Failed to sign out. Please try again.', 'error');
     }
-  }, [setUser, navigate, showToast]);
+  }, [showToast]);
 
   if (!isLoaded) {
     return (

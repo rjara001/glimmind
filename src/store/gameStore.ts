@@ -379,12 +379,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   // User actions
   setUser: (user) => {
+    const prevUser = get().user;
+    const isSwitch = prevUser?.uid !== user?.uid;
+
     set({ user });
+
     // Persist only genuine local guests; real users are restored by Firebase Auth.
     if (user && user.uid === GUEST_UID) {
       localStorage.setItem('glimmind_guest_user', JSON.stringify(user));
     } else if (!user) {
       localStorage.removeItem('glimmind_guest_user');
+    }
+
+    // When the user changes, reset all user-dependent state so the new
+    // user starts from a clean slate instead of seeing stale data.
+    if (isSwitch) {
+      set({
+        lists: [],
+        currentListId: null,
+        currentList: null,
+        progress: null,
+        quota: null,
+        activity: [],
+        activityNextCursor: undefined,
+        sessions: [],
+        isLoaded: false,
+        isLoading: false,
+      });
     }
   },
   
@@ -616,6 +637,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { user } = get();
     const requestId = ++syncRequestSequence;
     set({ isLoading: true });
+
+    // Clear stale lists from the previous user before loading new data.
+    set({ lists: [] });
 
     ensureCacheMatchesEnvironment();
     
