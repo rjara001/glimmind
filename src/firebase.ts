@@ -3,7 +3,9 @@ import { initializeApp, getApps } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  signInWithPopup, 
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged, 
   connectAuthEmulator 
 } from 'firebase/auth';
@@ -93,7 +95,9 @@ export {
   functions,
   storage,
   googleProvider, 
-  signInWithPopup, 
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   collection,
   query,

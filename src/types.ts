@@ -80,6 +80,13 @@ export interface Attempt {
   associationId: string;
 }
 
+export interface AppUser {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
 export interface GameState {
   listId: string;
   globalCycle: GameCycle;

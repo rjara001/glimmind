@@ -1,9 +1,11 @@
 import React from 'react';
 import { APP_VERSION } from '../../constants/version';
+import { UserMenu } from './UserMenu';
+import type { AppUser } from '../../types';
 
 interface AppHeaderProps {
   view: string;
-  user: { photoURL?: string; displayName?: string } | null;
+  user: AppUser | null;
   onShowQuickAdd: () => void;
   onSync: () => void;
   isSyncing: boolean;
@@ -30,16 +32,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onShowQuickAdd}
-            aria-label="Agregar valor"
+            aria-label="Add value"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            <span className="hidden sm:inline">Agregar</span>
+            <span className="hidden sm:inline">Add</span>
           </button>
-          {user?.photoURL && (
-            <img src={user.photoURL} alt={user.displayName || 'User'} className="w-8 h-8 rounded-full" />
+          {user && (
+            <UserMenu user={user} onNavigate={onNavigate} onLogout={onLogout} />
           )}
         </div>
       </div>
@@ -68,21 +70,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
         <button
           onClick={() => onNavigate('settings')}
-          aria-label="Configuración"
+          aria-label="Settings"
           className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 whitespace-nowrap"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-        <button
-          onClick={onLogout}
-          className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 whitespace-nowrap"
-          aria-label="Cerrar sesión"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
           </svg>
         </button>
         <span className="text-[10px] text-slate-400 ml-1 whitespace-nowrap">v{APP_VERSION}</span>

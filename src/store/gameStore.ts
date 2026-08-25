@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AssociationList, Association } from '../types';
+import { AssociationList, Association, AppUser } from '../types';
 import { listService } from '../services/firestoreService';
 import { progressService } from '../services/progressService';
 import { quotaService } from '../services/quotaService';
@@ -23,12 +23,12 @@ import {
   LIST_CACHE_TTL_MS,
   LAST_CLOUD_FETCH_KEY,
 } from '../constants/limits';
+import { GUEST_UID } from '../constants/app';
 import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
 
 const LOCAL_STORAGE_KEY = 'glimmind_lists';
 const LOCAL_STORAGE_BACKUP_KEY = 'glimmind_lists_backup';
 const LOCAL_PROGRESS_KEY = 'glimmind_progress';
-const GUEST_UID = 'dev-user-local';
 const CACHE_ENV_KEY = 'glimmind_cache_env';
 const LOCAL_LAST_PLAYED_KEY = 'glimmind_last_played';
 
@@ -295,7 +295,7 @@ function mergeCloudWithLocal(
 
 interface GameStore {
   // State
-  user: any | null;
+  user: AppUser | null;
   lists: AssociationList[];
   currentListId: string | null;
   currentList: AssociationList | null;
@@ -316,7 +316,7 @@ interface GameStore {
   getCurrentList: () => AssociationList | null;
   
   // Actions - User
-  setUser: (user: any | null) => void;
+  setUser: (user: AppUser | null) => void;
   
   // Actions - Lists
   setLists: (lists: AssociationList[]) => void;

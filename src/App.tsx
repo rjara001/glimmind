@@ -10,17 +10,20 @@ import { Auth } from './components/Auth';
 import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { AppHeader } from './components/layout/AppHeader';
+import { GuestBanner } from './components/layout/GuestBanner';
 import { useGameStore } from './store/gameStore';
 import { auth } from './firebase';
 import { VoskModelProvider } from './context/VoskModelContext';
 import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useAppActions } from './hooks/app/useAppActions';
-import { GUEST_ID } from './constants/app';
+import { GUEST_UID } from './constants/app';
+import type { AppUser } from './types';
 import type { AppView } from './types/app';
 
-const MOCK_USER = {
-  uid: GUEST_ID,
+const MOCK_USER: AppUser = {
+  uid: GUEST_UID,
   displayName: 'Local Guest',
+  email: null,
   photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff',
 };
 
@@ -56,11 +59,27 @@ const AppContent: React.FC = () => {
     handleCreateMultipleLists,
   } = useAppActions({ navigate, showToast, setLastPlayedId });
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await auth?.signOut();
+      setUser(null);
+      navigate('dashboard');
+    } catch {
+      showToast('Failed to sign out. Please try again.', 'error');
+    }
+  }, [setUser, navigate, showToast]);
+
   if (!isLoaded) {
     return (
       <ToastProvider>
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <div className="text-slate-400 font-medium">Loading...</div>
+          <div className="flex flex-col items-center gap-3">
+            <svg className="w-8 h-8 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span className="text-sm font-medium text-slate-400">Loading...</span>
+          </div>
         </div>
       </ToastProvider>
     );
@@ -78,6 +97,8 @@ const AppContent: React.FC = () => {
     );
   }
 
+  const isGuest = user?.uid === GUEST_UID;
+
   return (
     <ToastProvider>
       <div className="min-h-screen bg-slate-50">
@@ -88,12 +109,9 @@ const AppContent: React.FC = () => {
           onSync={handleSyncFromCloud}
           isSyncing={isSyncing}
           onNavigate={navigate}
-          onLogout={() => {
-            auth?.signOut();
-            setUser(null);
-            navigate('dashboard');
-          }}
+          onLogout={handleLogout}
         />
+        {isGuest && <GuestBanner onDismiss={() => {}} />}
 
         <main className="max-w-7xl mx-auto px-4 py-6">
           {view === 'dashboard' && (
