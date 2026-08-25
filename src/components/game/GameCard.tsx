@@ -6,7 +6,6 @@ import { CardBadges } from './CardBadges';
 import { CardToolbar } from './CardToolbar';
 import { CardVoiceIndicator } from './CardVoiceIndicator';
 import { CardFeedback } from './CardFeedback';
-import { CardEditForm } from './CardEditForm';
 import { CardContent } from './CardContent';
 import { CommandToast } from './CommandToast';
 
@@ -26,10 +25,7 @@ interface GameCardProps {
   showHints?: boolean;
   currentCycle: number;
   associationId?: string;
-  onEditCard?: (term: string, definition: string) => void;
-  isEditing?: boolean;
   onStartEdit?: () => void;
-  onCancelEdit?: () => void;
   attemptCount?: number;
   inputRef?: React.Ref<HTMLInputElement>;
   voiceMode?: boolean;
@@ -62,10 +58,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   showHints = true,
   currentCycle = 1,
   associationId,
-  onEditCard,
-  isEditing = false,
   onStartEdit,
-  onCancelEdit,
   attemptCount,
   inputRef,
   voiceMode,
@@ -93,7 +86,7 @@ export const GameCard: React.FC<GameCardProps> = ({
 
   const shakeClass = isShaking ? 'animate-shake' : '';
 
-  const showEditButton = associationId && onEditCard && !isEditing && revealed;
+  const showEditButton = Boolean(associationId && onStartEdit && revealed);
 
   const renderLabel = (label: string, lang: string | undefined) => {
     if (!voiceEnabled) return label;
@@ -104,10 +97,6 @@ export const GameCard: React.FC<GameCardProps> = ({
         <span>{label}</span>
       </span>
     );
-  };
-
-  const handleCancelEdit = () => {
-    onCancelEdit?.();
   };
 
   return (
@@ -138,57 +127,42 @@ export const GameCard: React.FC<GameCardProps> = ({
       />
 
       <CommandToast command={detectedVoiceCommand ?? null} />
-      
-      {isEditing ? (
-        <CardEditForm
-          labelTerm={labelTerm}
-          labelDef={labelDef}
-          initialTerm={displayTerm || ''}
-          initialDef={displayDef || ''}
-          onSave={onEditCard!}
-          onCancel={handleCancelEdit}
-          voiceTermLang={voiceTermLang}
-          voiceDefLang={voiceDefLang}
-        />
-      ) : (
-        <>
-          <CardContent
-            displayTerm={displayTerm}
-            displayDef={displayDef}
-            labelTerm={labelTerm}
-            labelDef={labelDef}
-            isPracticeMode={isPracticeMode}
-            revealed={revealed}
-            userInput={userInput}
-            onUserInput={onUserInput}
-            feedback={feedback}
-            showHints={showHints}
-            currentCycle={currentCycle}
-            attemptCount={attemptCount}
-            inputRef={inputRef}
-            voiceEnabled={voiceEnabled}
-            voiceTermLang={voiceTermLang}
-            voiceDefLang={voiceDefLang}
-            shakeClass={shakeClass}
-          />
-          <CardFeedback
-            feedback={feedback}
-            similarity={similarity}
-            lastAttempt={lastAttempt}
-            isShaking={isShaking}
-          />
-          <CardVoiceIndicator
-            voiceMode={voiceMode}
-            voicePhase={voicePhase}
-            voiceTranscript={voiceTranscript}
-            voiceInterim={voiceInterim}
-            isVoiceListening={isVoiceListening}
-            voiceError={voiceError}
-            feedback={feedback}
-            similarity={similarity}
-          />
-        </>
-      )}
+
+      <CardContent
+        displayTerm={displayTerm}
+        displayDef={displayDef}
+        labelTerm={labelTerm}
+        labelDef={labelDef}
+        isPracticeMode={isPracticeMode}
+        revealed={revealed}
+        userInput={userInput}
+        onUserInput={onUserInput}
+        feedback={feedback}
+        showHints={showHints}
+        currentCycle={currentCycle}
+        attemptCount={attemptCount}
+        inputRef={inputRef}
+        voiceEnabled={voiceEnabled}
+        voiceTermLang={voiceTermLang}
+        voiceDefLang={voiceDefLang}
+        shakeClass={shakeClass}
+      />
+      <CardFeedback
+        feedback={feedback}
+        similarity={similarity}
+        lastAttempt={lastAttempt}
+        isShaking={isShaking}
+      />
+      <CardVoiceIndicator
+        voiceMode={voiceMode}
+        voicePhase={voicePhase}
+        voiceTranscript={voiceTranscript}
+        voiceInterim={voiceInterim}
+        isVoiceListening={isVoiceListening}
+        voiceError={voiceError}
+        feedback={feedback}
+        similarity={similarity}
+      />
     </div>
   );
 };

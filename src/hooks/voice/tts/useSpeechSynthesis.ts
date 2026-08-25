@@ -13,8 +13,29 @@ const SPEAK_AFTER_CANCEL_DELAY_MS = 50;
 
 export interface SpeakResult {
   ok: boolean;
+  /** Which engine actually produced the audio ('chirp' or the browser fallback). */
+  engine: 'chirp' | 'browser';
   voiceName: string | null;
   voicesCount: number;
+  error?: string;
+}
+
+/**
+ * Divide textos largos en fragmentos naturales (puntuación/saltos de línea)
+ * para evitar el congelamiento nativo de Chrome (~15s) y mejorar la respuesta del watchdog.
+ */
+function splitTextIntoChunks(text: string): string[] {
+  const rawChunks = text.split(/(?<=[.,?!;\n])\s+/);
+  const chunks: string[] = [];
+
+  for (const chunk of rawChunks) {
+    const trimmed = chunk.trim();
+    if (trimmed.length > 0) {
+      chunks.push(trimmed);
+    }
+  }
+
+  return chunks.length > 0 ? chunks : [text];
 }
 
 export function useSpeechSynthesis(
@@ -120,19 +141,12 @@ export function useSpeechSynthesis(
         if (!supported || !text) {
           return {
             ok: true,
+            engine: 'browser',
             voiceName: null,
             voicesCount: 0,
           };
         }
 
-        /*
-         * IMPORTANT:
-         * Chirp must never receive a Browser voice ID.
-         *
-         * If the persisted voiceId belongs to Browser,
-         * or is missing, resolve a valid Chirp voice from
-         * the selected language.
-         */
         const resolvedChirpVoiceId =
           provider === 'chirp'
             ? isChirpVoiceId(voiceId)
@@ -142,231 +156,219 @@ export function useSpeechSynthesis(
                 )
             : undefined;
 
-        if (provider === 'chirp' && resolvedChirpVoiceId) {
-          const chirpResult =
-            await chirp.speak(
-              text,
-              resolvedChirpVoiceId,
-              rate,
-              pitch
-            );
+        if (provider === 'chirp') {
+          if (resolvedChirpVoiceId) {
+            const chirpResult =
+              await chirp.speak(
+                text,
+                resolvedChirpVoiceId,
+                rate,
+                pitch
+              );
 
-          if (chirpResult.ok) {
-            return chirpResult;
+            if (chirpResult.ok) {
+              return chirpResult;
+            }
+
+            console.warn('[TTS][FALLBACK_TO_BROWSER]', {
+              reason: chirpResult.error ?? 'unknown',
+              textLength: text.length,
+              voiceId: resolvedChirpVoiceId,
+            });
+          } else {
+            console.warn('[TTS][FALLBACK_TO_BROWSER]', {
+              reason: 'no-chirp-voice-resolved',
+              lang,
+              voiceId: voiceId ?? null,
+            });
           }
         }
 
-        const synth =
-          window.speechSynthesis;
-
-        const availableVoices =
-          await ensureVoices();
+        const synth = window.speechSynthesis;
+        const availableVoices = await ensureVoices();
 
         const speakOnce =
           (): Promise<SpeakResult> =>
-            new Promise((resolve) => {
+            new Promise(async (resolve) => {
+              const t0 = performance.now();
+
+              console.log('[TTS][CLEAR_QUEUE]');
               synth.cancel();
               synth.resume();
 
-              const utterance =
-                new SpeechSynthesisUtterance(
-                  text
-                );
+              let voice: SpeechSynthesisVoice | undefined;
 
-              let voice:
-                | SpeechSynthesisVoice
-                | undefined;
-
-              /*
-               * Browser fallback keeps its existing
-               * voice resolution behavior.
-               */
               if (voiceId) {
-                const candidate =
-                  availableVoices.find(
-                    (v) =>
-                      v.voiceURI === voiceId
-                  );
+                const candidate = availableVoices.find(
+                  (v) => v.voiceURI === voiceId
+                );
 
                 if (
                   candidate &&
                   (!lang ||
                     candidate.lang
                       .toLowerCase()
-                      .startsWith(
-                        String(
-                          lang
-                        ).toLowerCase()
-                      ))
+                      .startsWith(String(lang).toLowerCase()))
                 ) {
                   voice = candidate;
                 }
               }
 
               if (!voice) {
-                voice =
-                  resolveVoiceForLang(
-                    lang,
-                    availableVoices
-                  );
+                voice = resolveVoiceForLang(lang, availableVoices);
               }
 
-              if (voice) {
-                utterance.voice = voice;
-                utterance.lang =
-                  voice.lang;
-              } else if (lang) {
-                utterance.lang = lang;
-              }
-
-              if (
-                typeof rate === 'number'
-              ) {
-                utterance.rate = rate;
-              }
-
-              if (
-                typeof pitch === 'number'
-              ) {
-                utterance.pitch = pitch;
-              }
-
-              let settled = false;
-
-              let watchdogTimer:
-                | ReturnType<
-                    typeof setTimeout
-                  >
-                | null = null;
-
-              const settle = (
-                result: boolean
-              ) => {
-                if (settled) return;
-
-                settled = true;
-
-                if (watchdogTimer) {
-                  clearTimeout(
-                    watchdogTimer
-                  );
-                  watchdogTimer = null;
-                }
-
-                utterance.removeEventListener(
-                  'end',
-                  onDone
-                );
-
-                utterance.removeEventListener(
-                  'error',
-                  onError
-                );
-
-                setIsSpeaking(false);
-
-                resolve({
-                  ok: result,
-                  voiceName:
-                    voice?.name ?? null,
-                  voicesCount:
-                    availableVoices.length,
-                });
-              };
-
-              const onDone = () => {
-                settle(true);
-              };
-
-              const onError = (
-                event: Event
-              ) => {
-                settle(false);
-              };
-
-              utterance.addEventListener(
-                'end',
-                onDone
-              );
-
-              utterance.addEventListener(
-                'error',
-                onError
-              );
+              const chunks = splitTextIntoChunks(text);
+              const adjustedRate = typeof rate === 'number' && rate > 0 ? rate : 1;
 
               setIsSpeaking(true);
 
-              window.setTimeout(() => {
-                synth.speak(
-                  utterance
-                );
-              }, SPEAK_AFTER_CANCEL_DELAY_MS);
+              // Función para reproducir un fragmento individual
+              const speakChunk = (chunkText: string): Promise<boolean> => {
+                return new Promise((resolveChunk) => {
+                  const utterance = new SpeechSynthesisUtterance(chunkText);
 
-              const estimatedMs =
-                Math.max(
-                  8000,
-                  Math.min(
-                    20000,
-                    text.split(/\s+/)
-                        .length *
-                      1200 +
-                      2000
-                  )
-                );
+                  if (voice) {
+                    utterance.voice = voice;
+                    utterance.lang = voice.lang;
+                  } else if (lang) {
+                    utterance.lang = lang;
+                  }
 
-              watchdogTimer =
-                setTimeout(() => {
-                  synth.cancel();
-                  settle(false);
-                }, estimatedMs);
+                  if (typeof rate === 'number') utterance.rate = rate;
+                  if (typeof pitch === 'number') utterance.pitch = pitch;
+
+                  let settled = false;
+                  let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+
+                  const settleChunk = (result: boolean) => {
+                    if (settled) return;
+                    settled = true;
+
+                    if (watchdogTimer) {
+                      clearTimeout(watchdogTimer);
+                      watchdogTimer = null;
+                    }
+
+                    utterance.removeEventListener('end', onDone);
+                    utterance.removeEventListener('error', onError);
+                    resolveChunk(result);
+                  };
+
+                  const onDone = () => {
+                    console.log('[TTS][CHUNK_END]', {
+                      elapsedMs: Math.round(performance.now() - t0),
+                      chunkText,
+                    });
+                    settleChunk(true);
+                  };
+
+                  const onError = (event: Event) => {
+                    console.log('[TTS][ERROR]', {
+                      elapsedMs: Math.round(performance.now() - t0),
+                      eventType: event.type,
+                      error: (event as any)?.error,
+                      voiceName: voice?.name ?? null,
+                    });
+                    settleChunk(false);
+                  };
+
+                  utterance.addEventListener('end', onDone);
+                  utterance.addEventListener('error', onError);
+
+                  // Watchdog holgado individual por fragmento (Mínimo 15s por frase corta)
+                  const wordCount = chunkText.split(/\s+/).length;
+                  const estimatedChunkMs = Math.max(
+                    15000,
+                    (wordCount * 1500 + 4000) / adjustedRate
+                  );
+
+                  watchdogTimer = setTimeout(() => {
+                    console.warn('[TTS][WATCHDOG] Chunk timed out', {
+                      chunkText,
+                      estimatedChunkMs,
+                    });
+                    synth.cancel();
+                    settleChunk(false);
+                  }, estimatedChunkMs);
+
+                  window.setTimeout(() => {
+                    synth.speak(utterance);
+                  }, SPEAK_AFTER_CANCEL_DELAY_MS);
+                });
+              };
+
+              console.log('[TTS][START]', {
+                provider,
+                text,
+                chunksCount: chunks.length,
+                rate,
+                pitch,
+                voiceId,
+              });
+
+              // Reproduce secuencialmente cada fragmento
+              let allOk = true;
+              for (const chunk of chunks) {
+                const chunkOk = await speakChunk(chunk);
+                if (!chunkOk) {
+                  allOk = false;
+                  break;
+                }
+              }
+
+              setIsSpeaking(false);
+
+              resolve({
+                ok: allOk,
+                engine: 'browser',
+                voiceName: voice?.name ?? null,
+                voicesCount: availableVoices.length,
+              });
             });
 
-        const first =
-          await speakOnce();
+        const first = await speakOnce();
 
         if (first.ok) {
           return first;
         }
 
-        await new Promise(
-          (resolve) =>
-            setTimeout(
-              resolve,
-              WATCHDOG_RETRY_DELAY_MS
-            )
+        console.warn('[TTS][RETRY]', {
+          provider,
+          text,
+          voiceId,
+          rate,
+          pitch,
+          firstResult: first,
+        });
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, WATCHDOG_RETRY_DELAY_MS)
         );
 
-        const second =
-          await speakOnce();
+        const second = await speakOnce();
 
-        const result = second;
+        console.warn('[TTS][DIAG] speak', {
+          provider,
+          text,
+          voiceId,
+          rate,
+          pitch,
+          result: second,
+        });
 
-        console.warn(
-          '[TTS][DIAG] speak',
-          {
-            provider,
-            text,
-            voiceId,
-            rate,
-            pitch,
-            result,
-          }
-        );
-
-        return result;
+        return second;
       })();
     },
-    [
-      supported,
-      ensureVoices,
-      provider,
-      chirp,
-    ]
+    [supported, ensureVoices, provider, chirp]
   );
 
   const cancel = useCallback(() => {
     if (!supported) return;
 
+    console.log('[TTS][CANCEL]', {
+      speaking: window.speechSynthesis.speaking,
+    });
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
     chirp.cancel();
@@ -381,13 +383,6 @@ export function useSpeechSynthesis(
       cancel,
       unlock,
     }),
-    [
-      supported,
-      voices,
-      isSpeaking,
-      speak,
-      cancel,
-      unlock,
-    ]
+    [supported, voices, isSpeaking, speak, cancel, unlock]
   );
 }

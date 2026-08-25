@@ -6,6 +6,7 @@ import type { AppView } from '../../types/app';
 import { computeQuotaStatus, countCards } from '../../utils/quota';
 import { createActivityEvent, buildListDiffEvents } from '../../utils/activity';
 import { GUEST_ID, LAST_PLAYED_KEY } from '../../constants/app';
+import { normalizeVoiceLanguageSettings } from '../../services/voice/languages';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -21,6 +22,8 @@ const DEFAULT_LIST_SETTINGS = {
   threshold: 0.95,
   ignoreArticles: true,
   showHints: true,
+  autoRevealAfterSeconds: 15,
+  autoAdvanceAfterAttempts: 3,
 };
 
 export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppActionsParams) {
@@ -115,7 +118,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     }
   }, [setLists, user, showToast]);
 
-  const handleCreateList = useCallback(async (name: string, concept: string, initialAssocs: Association[]) => {
+  const createListCore = useCallback(async (name: string, concept: string, initialAssocs: Association[]): Promise<string | null> => {
     const { lists, quota } = useGameStore.getState();
     useGameStore.getState().setActivityRecordingEnabled(false);
 
@@ -134,14 +137,14 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       if (!refreshedPremium && refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
         showToast(`Llegaste a tu límite de ${refreshedQuota.cardQuota} tarjetas.`, 'error');
         useGameStore.getState().setActivityRecordingEnabled(true);
-        return;
+        return null;
       }
     }
 
     if (!currentQuota) {
       showToast('No se pudo cargar la cuota. Reintentá en un momento.', 'error');
       useGameStore.getState().setActivityRecordingEnabled(true);
-      return;
+      return null;
     }
 
     const newListData: Omit<AssociationList, 'id'> = {
@@ -150,7 +153,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       concept,
       associations: initialAssocs,
       isArchived: false,
-      settings: { ...DEFAULT_LIST_SETTINGS },
+      settings: normalizeVoiceLanguageSettings(concept, { ...DEFAULT_LIST_SETTINGS }),
     };
 
     const tempId = `temp_${Date.now()}`;
@@ -158,14 +161,17 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
 
     setLists([...lists, newList]);
 
+    let finalId = tempId;
+
     if (user && user.uid !== GUEST_ID) {
       try {
         const newId = await listService.createList(newListData);
         const updatedList = { ...newList, id: newId };
-        const { lists } = useGameStore.getState();
-        setLists(lists.map((l) => (l.id === tempId ? updatedList : l)));
+        const { lists: currentLists } = useGameStore.getState();
+        setLists(currentLists.map((l) => (l.id === tempId ? updatedList : l)));
         useGameStore.getState().setCurrentList(newId);
         useGameStore.getState().loadQuota();
+        finalId = newId;
         const createdEvents = initialAssocs.map((association: Association) => createActivityEvent({
           userId: user.uid,
           listId: newId,
@@ -177,6 +183,8 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       } catch (error) {
         showToast(error instanceof Error ? error.message : 'Error al crear la lista', 'error');
         useGameStore.getState().loadQuota();
+        useGameStore.getState().setActivityRecordingEnabled(true);
+        return null;
       }
     } else {
       useGameStore.getState().setCurrentList(tempId);
@@ -189,9 +197,21 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       }));
       useGameStore.getState().recordActivity(createdEvents);
     }
-    navigate('editor');
+
     useGameStore.getState().setActivityRecordingEnabled(true);
-  }, [user, setLists, showToast, navigate]);
+    return finalId;
+  }, [user, setLists, showToast]);
+
+  const handleCreateList = useCallback(async (name: string, concept: string, initialAssocs: Association[]) => {
+    const listId = await createListCore(name, concept, initialAssocs);
+    if (listId) {
+      navigate('editor');
+    }
+  }, [createListCore, navigate]);
+
+  const handleCreateListQuick = useCallback(async (name: string, concept: string): Promise<string | null> => {
+    return createListCore(name, concept, []);
+  }, [createListCore]);
 
   const handleDeleteList = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar esta lista?')) return;
@@ -233,7 +253,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       concept: currentList.concept,
       associations: g.associations,
       isArchived: false,
-      settings: { ...DEFAULT_LIST_SETTINGS },
+      settings: normalizeVoiceLanguageSettings(currentList.concept, { ...DEFAULT_LIST_SETTINGS }),
     }));
 
     const emitMovedEvents = (targets: { id: string; associations: Association[] }[]) => {
@@ -285,6 +305,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     handleQuickAdd,
     handleUpdateList,
     handleCreateList,
+    handleCreateListQuick,
     handleDeleteList,
     handleCreateMultipleLists,
   };

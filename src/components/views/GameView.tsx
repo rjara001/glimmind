@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Association, AssociationList, GameCycle } from '../../types';
+import { Association, AssociationList, Attempt, GameCycle } from '../../types';
 import { useGameLogic } from '../../hooks/game/useGameLogic';
 import { useGameStore } from '../../store/gameStore';
 import { useToast } from '../layout/Toast';
 import { GameHeader } from '../game/GameHeader';
 import { GameCard } from '../game/GameCard';
 import { GameControls } from '../game/GameControls';
+import { VoiceControls } from '../game/VoiceControls';
 import { CycleProgress } from '../game/CycleProgress';
 import { FinishedScreen } from '../game/FinishedScreen';
 import { SettingsModal } from '../../components/modals/SettingsModal';
+import { EditCardModal } from '../../components/modals/EditCardModal';
 import { AttemptList } from '../game/AttemptList';
+import { AttemptAnalysisModal } from '../modals/AttemptAnalysisModal';
 import { useImmersiveHeader } from '../../hooks/ui/useImmersiveHeader';
 import { useGameVoice } from '../../hooks/voice/useGameVoice';
 import { useSpeechSynthesis } from '../../hooks/voice/tts/useSpeechSynthesis';
@@ -41,10 +44,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const [showRevealWarning, setShowRevealWarning] = useState(false);
   const [showVoiceRecordings, setShowVoiceRecordings] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
   const userId = useGameStore(state => state.user?.uid);
-  const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode || list.settings.voiceEnabled === true);
+  const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode === true);
+  const [isVoiceMode, setIsVoiceMode] = useState(() => voiceMode === true);
 
   const {
     recordings,
@@ -60,6 +67,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   });
   const [detectedVoiceCommand, setDetectedVoiceCommand] = useState<VoiceCommandId | undefined>();
   const [isCountdownRunning, setIsCountdownRunning] = useState(false);
+  const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(null);
   const { supported: speechSupported, speak: speakAnswer } = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
   const { 
     gameView, 
@@ -101,6 +109,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     } else if (command === 'stop') {
       void voiceRef.current?.announceStop().then(() => {
         setIsVoiceActive(false);
+        setIsVoiceMode(false);
       });
     }
   }, [actions, setDetectedVoiceCommand]);
@@ -115,8 +124,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   }, [isVoiceActive, handleVoiceCommand, actions]);
 
   useEffect(() => {
-    setIsCountdownRunning(Boolean(currentAssociation) && isRevealed && !gameState.isFinished);
-  }, [isRevealed, gameState.isFinished, currentAssociation]);
+    setIsCountdownRunning(Boolean(currentAssociation) && isRevealed && !gameState.isFinished && !isEditingCard);
+  }, [isRevealed, gameState.isFinished, currentAssociation, isEditingCard]);
 
   useEffect(() => {
     if (!detectedVoiceCommand) return;
@@ -126,7 +135,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const voice = useGameVoice({
     list,
-    enabled: isVoiceActive,
+    enabled: isVoiceActive && !isEditingCard,
     currentAssociation,
     feedback,
     evaluationCount: attempts.length,
@@ -140,6 +149,16 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   });
 
   voiceRef.current = voice;
+
+  const handleToggleListening = useCallback(() => {
+    setIsVoiceActive(prev => !prev);
+  }, []);
+
+  const handleStopVoice = useCallback(() => {
+    voice.stop();
+    setIsVoiceActive(false);
+    setIsVoiceMode(false);
+  }, [voice]);
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -172,11 +191,33 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     setIsEditingCard(true);
   }, []);
 
-  const handleCancelEdit = useCallback(() => {
+  const handleStartEditName = useCallback(() => {
+    setEditingName(list.name);
+    setIsEditingName(true);
+    requestAnimationFrame(() => {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    });
+  }, [list.name]);
+
+  const handleSaveName = useCallback(async () => {
+    const trimmed = editingName.trim();
+    if (trimmed && trimmed !== list.name && onUpdateList) {
+      await onUpdateList({ ...list, name: trimmed });
+    }
+    setIsEditingName(false);
+  }, [editingName, list, onUpdateList]);
+
+  const handleCancelEditName = useCallback(() => {
+    setIsEditingName(false);
+    setEditingName('');
+  }, []);
+
+  const handleCloseEdit = useCallback(() => {
     setIsEditingCard(false);
   }, []);
 
-  const handleEditCard = useCallback(async (term: string, definition: string) => {
+  const handleSaveEdit = useCallback(async (term: string, definition: string) => {
     const updatedAssociations = gameState.associations.map(a => {
       if (a.id === currentAssociation?.id) {
         return { ...a, term: term.trim(), definition: definition.trim(), updatedAt: Date.now() };
@@ -188,9 +229,17 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     setIsEditingCard(false);
   }, [currentAssociation?.id, gameState.associations, onUpdateAssociations]);
 
+  const handleDeleteCurrentCard = useCallback(() => {
+    const associationId = currentAssociation?.id;
+    if (!associationId) return;
+    if (!confirm('¿Eliminar esta tarjeta de la lista?')) return;
+    actions.deleteAssociation(associationId);
+    setIsEditingCard(false);
+  }, [currentAssociation?.id, actions]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showSettings || gameState.isFinished || !currentAssociation) return;
+      if (showSettings || isEditingCard || gameState.isFinished || !currentAssociation) return;
 
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
@@ -231,7 +280,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput]);
+  }, [showSettings, isEditingCard, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput]);
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
@@ -280,6 +329,24 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     }
   };
 
+  const handleSelectAttempt = useCallback((attempt: Attempt) => {
+    setSelectedAttempt(attempt);
+  }, []);
+
+  const handleCloseAttemptModal = useCallback(() => {
+    setSelectedAttempt(null);
+  }, []);
+
+  const handleUpdateExpectedAnswer = useCallback(async (associationId: string, field: 'term' | 'definition', value: string) => {
+    const updatedAssociations = gameState.associations.map((a) => {
+      if (a.id === associationId) {
+        return { ...a, [field]: value, updatedAt: Date.now() };
+      }
+      return a;
+    });
+    await onUpdateAssociations(updatedAssociations);
+  }, [gameState.associations, onUpdateAssociations]);
+
   const isReversed = list.settings.flipOrder === 'reversed';
   const isTransitioning = feedback === 'correct';
 
@@ -319,12 +386,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
-      <div
-        className="sm:hidden"
-        onTouchStart={immersive.handleTouchStart}
-        onTouchMove={immersive.handleTouchMove}
-        onTouchEnd={immersive.handleTouchEnd}
-      >
+      <div className="sm:hidden">
         <div
           className="transition-all duration-300 ease-out overflow-hidden"
           style={{
@@ -335,24 +397,66 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
         >
           <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isPremium={isPremium} isRecording={isRecording} onRecordToggle={() => setIsRecording((prev) => !prev)} onViewRecordings={() => setShowVoiceRecordings(true)} />
         </div>
-        {!immersive.isVisible && (
-          <div className="flex justify-center mb-2">
-            <div className="w-12 h-1 bg-slate-300 rounded-full" />
-          </div>
-        )}
+        <div className="flex justify-center mb-2 px-1">
+          {isEditingName ? (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-xl border border-indigo-200 shadow-sm">
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') handleCancelEditName();
+                }}
+                onBlur={handleSaveName}
+                className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none w-[140px] truncate"
+                maxLength={50}
+              />
+              <button
+                onClick={handleSaveName}
+                className="p-1 text-indigo-600 hover:text-indigo-700"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button
+                onClick={handleCancelEditName}
+                className="p-1 text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                if (e.detail === 2) {
+                  handleStartEditName();
+                } else {
+                  immersive.toggle();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl border border-slate-100 shadow-sm active:bg-slate-50 transition-colors"
+            >
+              <span className="text-xs font-bold text-slate-500 truncate max-w-[180px]">{list.name}</span>
+              <svg
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${immersive.isVisible ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <div className="hidden sm:block">
         <GameHeader listName={list.name} currentIndex={gameState.currentIndex} queueLength={gameState.activeQueue.length} cycle4Count={cycle4Count} gameMode={list.settings.mode} goalProgress={goalProgress} goalTarget={goalTarget} sessionRepasos={sessionRepasos} onBack={onBack} onSettingsClick={() => setShowSettings(true)} onRestart={handleHeaderRestart} voiceEnabled={isVoiceActive} onVoiceToggle={() => setIsVoiceActive((prev) => !prev)} isPremium={isPremium} isRecording={isRecording} onRecordToggle={() => setIsRecording((prev) => !prev)} onViewRecordings={() => setShowVoiceRecordings(true)} />
       </div>
-      {!immersive.isVisible && (
-        <div className="sm:hidden flex justify-between items-center mb-2 px-1">
-          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 transition-all p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <span className="text-xs font-bold text-slate-500 truncate mx-2">{list.name}</span>
-          <div className="w-9"></div>
-        </div>
-      )}
       {isVoiceActive && useGameStore.getState().settings.audioRecordingEnabled && (
         <div className="w-full max-w-2xl mb-3 px-4">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2">
@@ -385,10 +489,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               showHints={list.settings.showHints !== false}
               currentCycle={currentAssociation?.currentCycle ?? 1}
               associationId={currentAssociation?.id}
-              onEditCard={handleEditCard}
-              isEditing={isEditingCard}
               onStartEdit={handleStartEdit}
-              onCancelEdit={handleCancelEdit}
                attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined}
                inputRef={inputRef}
                voiceMode={isVoiceActive}
@@ -438,12 +539,36 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                  </div>
                </div>
              )}
-            <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
-            <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} />
+            {isVoiceMode ? (
+              <VoiceControls
+                phase={voice.phase}
+                isVoiceActive={isVoiceActive}
+                onStop={handleStopVoice}
+                onRepeat={voice.repeat}
+                onToggleListening={handleToggleListening}
+              />
+            ) : (
+              <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
+            )}
+             <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} selectedAttemptId={selectedAttempt?.timestamp} onSelectAttempt={handleSelectAttempt} />
+             <AttemptAnalysisModal isOpen={selectedAttempt !== null} onClose={handleCloseAttemptModal} attempt={selectedAttempt!} list={list} onUpdateExpectedAnswer={handleUpdateExpectedAnswer} />
           </div>
         </div>
         <CycleProgress gameState={gameState} cycleColorName={cycleColorName} />
       </div>
+      {isEditingCard && currentAssociation && (
+        <EditCardModal
+          labelTerm={labelTerm}
+          labelDef={labelDef}
+          initialTerm={displayTerm || ''}
+          initialDef={displayDef || ''}
+          voiceTermLang={voiceTermLang}
+          voiceDefLang={voiceDefLang}
+          onSave={handleSaveEdit}
+          onDelete={handleDeleteCurrentCard}
+          onClose={handleCloseEdit}
+        />
+      )}
       {showSettings && <SettingsModal 
         list={list} 
         onUpdateList={async (updatedList) => {

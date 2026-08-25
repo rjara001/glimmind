@@ -6,9 +6,11 @@ interface AttemptListProps {
   attempts: Attempt[];
   revealedAssociations: string[];
   associations: Association[];
+  selectedAttemptId?: number | null;
+  onSelectAttempt?: (attempt: Attempt) => void;
 }
 
-export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAssociations, associations }) => {
+export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAssociations, associations, selectedAttemptId, onSelectAttempt }) => {
   if (attempts.length === 0) {
     return null;
   }
@@ -23,11 +25,16 @@ export const AttemptList: React.FC<AttemptListProps> = ({ attempts, revealedAsso
           const showExpected = revealedAssociations.includes(attempt.associationId);
           const association = associations.find(a => a.id === attempt.associationId);
           const hintMode = association ? getAutoHintMode(association.currentCycle) : 'masked';
+          const isClickable = attempt.similarity < 99 && showExpected && onSelectAttempt !== undefined;
+          const isSelected = selectedAttemptId === attempt.timestamp;
           
           return (
-          <div 
-            key={attempt.timestamp} 
-            className="bg-white/60 rounded-xl p-3 border border-slate-100 shadow-sm"
+          <div
+            key={attempt.timestamp}
+            onClick={() => { if (isClickable) onSelectAttempt(attempt); }}
+            className={`bg-white/60 rounded-xl p-3 border border-slate-100 shadow-sm transition ${
+              isClickable ? 'cursor-pointer hover:bg-white/80 hover:border-indigo-200 active:scale-[0.98]' : ''
+            } ${isSelected ? 'ring-2 ring-indigo-400 bg-white/90' : ''}`}
           >
             <div className="flex justify-between items-start gap-2">
               <div className="flex-1 min-w-0">

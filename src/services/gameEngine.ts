@@ -204,6 +204,39 @@ export class GlimmindGame {
     }, this.trackingEnabled);
   }
 
+  /**
+   * Removes an association from the game: drops it from both the associations
+   * and the active queue, adjusts currentIndex when needed and resets the
+   * transient answer state so the next card starts clean. If the queue is
+   * exhausted afterwards, advances to the next cycle or ends the game.
+   */
+  public removeAssociation(associationId: string): GlimmindGame {
+    if (this.state.isFinished) return this;
+    const target = this.state.associations.find((a) => a.id === associationId);
+    if (!target) return this;
+
+    const removedQueueIndex = this.state.activeQueue.indexOf(associationId);
+    const associations = this.state.associations.filter((a) => a.id !== associationId);
+    const activeQueue = this.state.activeQueue.filter((id) => id !== associationId);
+    const currentIndex =
+      removedQueueIndex >= 0 && removedQueueIndex < this.state.currentIndex
+        ? this.state.currentIndex - 1
+        : this.state.currentIndex;
+
+    const nextState: GameState = {
+      ...this.state,
+      associations,
+      activeQueue,
+      currentIndex,
+      revealed: false,
+      userInput: "",
+      feedback: "none",
+      similarity: null,
+      lastAttempt: "",
+    };
+    return new GlimmindGame(this.initialList, nextState, this.trackingEnabled)._checkForNextCycle();
+  }
+
   public checkAnswer(): GlimmindGame {
     const current = this.currentAssociation;
     if (!current || this.state.revealed) return this;

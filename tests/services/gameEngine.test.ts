@@ -135,6 +135,67 @@ describe('GlimmindGame', () => {
         });
     });
 
+    describe('removeAssociation', () => {
+        it('removes the current association and shows the next card', () => {
+            const list = createMockList(createMockAssociations(3));
+            const game = GlimmindGame.create(list);
+
+            const removedId = game.currentAssociation!.id;
+            const expectedNextId = game.state.activeQueue[game.state.currentIndex + 1];
+            const result = game.removeAssociation(removedId);
+
+            expect(result.state.associations.find(a => a.id === removedId)).toBeUndefined();
+            expect(result.state.activeQueue).not.toContain(removedId);
+            expect(result.currentAssociation?.id).toBe(expectedNextId);
+        });
+
+        it('resets transient answer state after removal', () => {
+            const list = createMockList(createMockAssociations(2));
+            const game = GlimmindGame.create(list).reveal().setUserInput('partial answer');
+
+            const result = game.removeAssociation(game.currentAssociation!.id);
+
+            expect(result.state.revealed).toBe(false);
+            expect(result.state.userInput).toBe('');
+            expect(result.state.feedback).toBe('none');
+            expect(result.state.lastAttempt).toBe('');
+        });
+
+        it('keeps the current card when removing an earlier one', () => {
+            const list = createMockList(createMockAssociations(4));
+            let game = GlimmindGame.create(list);
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+
+            const removedId = game.state.activeQueue[0];
+            const currentBeforeRemoval = game.currentAssociation!.id;
+            const result = game.removeAssociation(removedId);
+
+            expect(result.state.currentIndex).toBe(game.state.currentIndex - 1);
+            expect(result.currentAssociation?.id).toBe(currentBeforeRemoval);
+        });
+
+        it('ends the game when removing the last remaining card', () => {
+            const list = createMockList(createMockAssociations(1));
+            const game = GlimmindGame.create(list);
+
+            const result = game.removeAssociation(game.currentAssociation!.id);
+
+            expect(result.state.isFinished).toBe(true);
+            expect(result.currentAssociation).toBeUndefined();
+        });
+
+        it('returns the same instance for an unknown id or finished game', () => {
+            const list = createMockList(createMockAssociations(1));
+            const game = GlimmindGame.create(list);
+
+            expect(game.removeAssociation('unknown-id')).toBe(game);
+
+            const finished = game.removeAssociation(game.currentAssociation!.id);
+            expect(finished.removeAssociation('any-id')).toBe(finished);
+        });
+    });
+
     describe('game progression', () => {
         it('passes through cycles 1 to 3 and finishes', () => {
             const associations = createMockAssociations(1);

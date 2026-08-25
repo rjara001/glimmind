@@ -1,4 +1,5 @@
 import { normalizeText } from '../../utils/text';
+import { AssociationList } from '../../types';
 
 const DEFAULT_VOICE_LANGUAGE = 'es';
 
@@ -102,4 +103,23 @@ export function resolveLanguages(
   flipOrder: 'normal' | 'reversed',
 ): VoiceLanguages {
   return resolveVoiceLanguages(concept, flipOrder);
+}
+
+export function normalizeVoiceLanguageSettings(
+  concept: string,
+  settings: AssociationList['settings'],
+): AssociationList['settings'] {
+  if (settings.voiceTermLang && settings.voiceDefLang) {
+    return settings;
+  }
+  const parts = concept.split('/').map((part) => part.trim());
+  const detectedTerm = detectLanguage(parts[0] || '');
+  const detectedDef = detectLanguage(parts[1] || '');
+  return {
+    ...settings,
+    voiceTermLang:
+      settings.voiceTermLang ?? detectedTerm ?? detectedDef ?? DEFAULT_VOICE_LANGUAGE,
+    voiceDefLang:
+      settings.voiceDefLang ?? detectedDef ?? detectedTerm ?? DEFAULT_VOICE_LANGUAGE,
+  };
 }

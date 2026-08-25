@@ -7,6 +7,7 @@ import { recommendListsFor } from '../../utils/recommendList';
 interface QuickAddModalProps {
   lists: AssociationList[];
   onAdd: (listId: string, term: string, definition: string) => void;
+  onCreateList: (name: string, concept: string) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -21,11 +22,15 @@ interface ExistingMatch {
   list: AssociationList;
 }
 
-export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onClose }) => {
+export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCreateList, onClose }) => {
   const [query, setQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingList, setIsCreatingList] = useState(false);
   const [newTerm, setNewTerm] = useState('');
   const [newDefinition, setNewDefinition] = useState('');
+  const [newListName, setNewListName] = useState('');
+  const [newListConcept, setNewListConcept] = useState('');
+  const [isCreatingListLoading, setIsCreatingListLoading] = useState(false);
   const [existingMatch, setExistingMatch] = useState<ExistingMatch | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
@@ -80,6 +85,26 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
     if (!newTerm.trim() || !newDefinition.trim() || !selectedListId) return;
     onAdd(selectedListId, newTerm.trim(), newDefinition.trim());
     onClose();
+  };
+
+  const handleCreateListAndAdd = async () => {
+    if (!newListName.trim() || isCreatingListLoading) return;
+    setIsCreatingListLoading(true);
+    try {
+      const listId = await onCreateList(newListName.trim(), newListConcept.trim());
+      if (listId) {
+        onAdd(listId, newTerm.trim(), newDefinition.trim());
+        onClose();
+      }
+    } finally {
+      setIsCreatingListLoading(false);
+    }
+  };
+
+  const handleCancelCreateList = () => {
+    setIsCreatingList(false);
+    setNewListName('');
+    setNewListConcept('');
   };
 
   const maxScore = recommendations.length > 0 ? recommendations[0].score : 1;
@@ -186,52 +211,117 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCl
                 </div>
               </div>
 
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lista sugerida</p>
-              {recommendations.length === 0 && (
-                <p className="text-sm text-slate-400 mb-4">No hay listas disponibles para sugerir.</p>
-              )}
-              <ul className="space-y-3 mb-6">
-                {recommendations.slice(0, 3).map(({ list, score, reasons }) => (
-                  <li key={list.id}>
-                    <button
-                      onClick={() => setSelectedListId(list.id)}
-                      className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
-                        selectedListId === list.id
-                          ? 'border-indigo-600 bg-white shadow-md'
-                          : 'border-slate-200 bg-white opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-black text-slate-800">{list.name}</span>
-                        <span className="text-xs font-bold text-slate-400">{list.concept}</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-                        <div
-                          className="h-full bg-indigo-500 rounded-full transition-all"
-                          style={{ width: `${Math.max(4, (score / maxScore) * 100)}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-slate-500">{reasons.join(' · ') || 'Sin coincidencias, distribuido por carga'}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              {!isCreatingList ? (
+                <>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lista sugerida</p>
+                  {recommendations.length === 0 && (
+                    <p className="text-sm text-slate-400 mb-4">No hay listas disponibles para sugerir.</p>
+                  )}
+                  <ul className="space-y-3 mb-6">
+                    {recommendations.slice(0, 3).map(({ list, score, reasons }) => (
+                      <li key={list.id}>
+                        <button
+                          onClick={() => setSelectedListId(list.id)}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
+                            selectedListId === list.id
+                              ? 'border-indigo-600 bg-white shadow-md'
+                              : 'border-slate-200 bg-white opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-black text-slate-800">{list.name}</span>
+                            <span className="text-xs font-bold text-slate-400">{list.concept}</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+                            <div
+                              className="h-full bg-indigo-500 rounded-full transition-all"
+                              style={{ width: `${Math.max(4, (score / maxScore) * 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500">{reasons.join(' · ') || 'Sin coincidencias, distribuido por carga'}</p>
+                        </button>
+                      </li>
+                    ))}
+                    <li>
+                      <button
+                        onClick={() => setIsCreatingList(true)}
+                        className="w-full text-left p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-white opacity-70 hover:opacity-100 transition flex items-center gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="font-black text-slate-800 block">Crear nueva lista</span>
+                          <span className="text-xs text-slate-500">Guardar este valor en una lista nueva</span>
+                        </div>
+                      </button>
+                    </li>
+                  </ul>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleSubmit}
-                  disabled={!newTerm.trim() || !newDefinition.trim() || !selectedListId}
-                  className="flex-[2] bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
-                >
-                  Agregar valor
-                </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition"
-                >
-                  Cancelar
-                </button>
-              </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!newTerm.trim() || !newDefinition.trim() || !selectedListId}
+                      className="flex-[2] bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
+                    >
+                      Agregar valor
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="flex-1 py-3 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Nueva lista</p>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6 space-y-4">
+                    <div>
+                      <label htmlFor="quick-add-list-name" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nombre de la lista</label>
+                      <input
+                        id="quick-add-list-name"
+                        type="text"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        placeholder="ej: Verbos irregulares"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 outline-none transition"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="quick-add-list-concept" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Concepto / tema</label>
+                      <input
+                        id="quick-add-list-concept"
+                        type="text"
+                        value={newListConcept}
+                        onChange={(e) => setNewListConcept(e.target.value)}
+                        placeholder="ej: Inglés"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-base font-medium text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleCreateListAndAdd}
+                      disabled={!newListName.trim() || isCreatingListLoading}
+                      className="flex-[2] bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
+                    >
+                      {isCreatingListLoading ? 'Creando...' : 'Crear lista y agregar valor'}
+                    </button>
+                    <button
+                      onClick={handleCancelCreateList}
+                      disabled={isCreatingListLoading}
+                      className="flex-1 py-3 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

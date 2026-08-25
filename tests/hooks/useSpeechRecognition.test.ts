@@ -73,7 +73,8 @@ describe('useSpeechRecognition', () => {
     expect(onFinal).not.toHaveBeenCalled();
   });
 
-  it('calls onFinal with final transcript', async () => {
+   it('calls onFinal with final transcript', async () => {
+    vi.useFakeTimers();
     const onFinal = vi.fn();
     const { result } = renderHook(() => useSpeechRecognition({ onFinal }));
 
@@ -88,6 +89,101 @@ describe('useSpeechRecognition', () => {
       ],
     });
 
+    // onFinal is debounced — not emitted immediately
+    expect(onFinal).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(onFinal).toHaveBeenCalledWith('hello world');
+  });
+
+  it('accumulates multi-word final results (mobile) before emitting onFinal once', async () => {
+    vi.useFakeTimers();
+    const onFinal = vi.fn();
+    const { result } = renderHook(() => useSpeechRecognition({ onFinal }));
+
+    await act(async () => {
+      result.current.start('en');
+    });
+
+    // Mobile: first word arrives already marked isFinal
+    mockInstance.onresult?.({
+      resultIndex: 0,
+      results: [
+        { isFinal: true, length: 1, 0: { transcript: 'hola', confidence: 0.9 } },
+      ],
+    });
+
+    expect(onFinal).not.toHaveBeenCalled();
+
+    // Second event with both words final
+    mockInstance.onresult?.({
+      resultIndex: 0,
+      results: [
+        { isFinal: true, length: 1, 0: { transcript: 'hola', confidence: 0.9 } },
+        { isFinal: true, length: 1, 0: { transcript: ' mundo', confidence: 0.9 } },
+      ],
+    });
+
+    expect(onFinal).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(onFinal).toHaveBeenCalledTimes(1);
+    expect(onFinal).toHaveBeenCalledWith('hola mundo');
+  });
+
+  it('emits accumulated final on onend when debounce has not fired', async () => {
+    vi.useFakeTimers();
+    const onFinal = vi.fn();
+    const { result } = renderHook(() => useSpeechRecognition({ onFinal }));
+
+    await act(async () => {
+      result.current.start('en');
+    });
+
+    mockInstance.onresult?.({
+      resultIndex: 0,
+      results: [
+        { isFinal: true, length: 1, 0: { transcript: 'hello world', confidence: 0.9 } },
+      ],
+    });
+
+    // Fire onend without advancing the debounce timer
+    mockInstance.onend?.();
+
+    expect(onFinal).toHaveBeenCalledWith('hello world');
+  });
+
+  it('does not emit onFinal twice when debounce and onend both fire', async () => {
+    vi.useFakeTimers();
+    const onFinal = vi.fn();
+    const { result } = renderHook(() => useSpeechRecognition({ onFinal }));
+
+    await act(async () => {
+      result.current.start('en');
+    });
+
+    mockInstance.onresult?.({
+      resultIndex: 0,
+      results: [
+        { isFinal: true, length: 1, 0: { transcript: 'hello world', confidence: 0.9 } },
+      ],
+    });
+
+    // Debounce fires first
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Then onend fires — buffer is already empty, should not emit again
+    mockInstance.onend?.();
+
+    expect(onFinal).toHaveBeenCalledTimes(1);
     expect(onFinal).toHaveBeenCalledWith('hello world');
   });
 

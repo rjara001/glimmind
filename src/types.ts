@@ -50,13 +50,15 @@ export interface AssociationList {
     ttsProvider?: VoiceProvider;
     sttProvider?: SttProviderType;
     voiceSttFallback?: boolean;
-    voiceTermLang?: VoiceLanguage;
-    voiceDefLang?: VoiceLanguage;
+    voiceTermLang?: string;
+    voiceDefLang?: string;
     voiceTermId?: string;
     voiceDefId?: string;
     voiceRate?: number;
     voicePitch?: number;
     voiceCommands?: VoiceCommandsConfig;
+    autoRevealAfterSeconds?: number;
+    autoAdvanceAfterAttempts?: number;
   };
   createdAt?: any;
   updatedAt?: any;

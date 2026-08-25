@@ -51,6 +51,7 @@ const AppContent: React.FC = () => {
     handleQuickAdd,
     handleUpdateList,
     handleCreateList,
+    handleCreateListQuick,
     handleDeleteList,
     handleCreateMultipleLists,
   } = useAppActions({ navigate, showToast, setLastPlayedId });
@@ -139,6 +140,7 @@ const AppContent: React.FC = () => {
           <QuickAddModal
             lists={lists}
             onAdd={handleQuickAdd}
+            onCreateList={handleCreateListQuick}
             onClose={() => setShowQuickAdd(false)}
           />
         )}

@@ -23,6 +23,7 @@ import {
   LIST_CACHE_TTL_MS,
   LAST_CLOUD_FETCH_KEY,
 } from '../constants/limits';
+import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
 
 const LOCAL_STORAGE_KEY = 'glimmind_lists';
 const LOCAL_STORAGE_BACKUP_KEY = 'glimmind_lists_backup';
@@ -191,11 +192,20 @@ function mergeSettings(older: AssociationList['settings'], newer: AssociationLis
     voiceCommands: newer.voiceCommands ?? older.voiceCommands,
     ttsProvider: newer.ttsProvider ?? older.ttsProvider,
     sttProvider: newer.sttProvider ?? older.sttProvider,
+    autoRevealAfterSeconds: newer.autoRevealAfterSeconds ?? older.autoRevealAfterSeconds,
+    autoAdvanceAfterAttempts: newer.autoAdvanceAfterAttempts ?? older.autoAdvanceAfterAttempts,
   };
 }
 
 function trackingScore(association: { hits?: number; misses?: number; timesPlayed?: number }): number {
   return (association.hits ?? 0) + (association.misses ?? 0) + (association.timesPlayed ?? 0);
+}
+
+function withNormalizedVoiceLanguages(lists: AssociationList[]): AssociationList[] {
+  return lists.map((list) => ({
+    ...list,
+    settings: normalizeVoiceLanguageSettings(list.concept || '', list.settings),
+  }));
 }
 
 export function mergeAssociations(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
@@ -380,9 +390,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   // Lists actions
   setLists: (lists) => {
-    set({ lists });
+    // Normalize legacy lists missing voice languages so flags/narration never fall back to the globe.
+    const normalizedLists = withNormalizedVoiceLanguages(lists);
+    set({ lists: normalizedLists });
     // Persist to localStorage
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(lists));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedLists));
   },
   
   updateAssociations: (listId, associations) => {
@@ -613,9 +625,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       try {
         const parsed = JSON.parse(savedLists);
         const { lists: flattenedParsed } = applyFlattening(parsed);
-        set({ lists: flattenedParsed });
+        const normalizedParsed = withNormalizedVoiceLanguages(flattenedParsed);
+        set({ lists: normalizedParsed });
         if (flattenedParsed !== parsed) {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flattenedParsed));
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedParsed));
         }
       } catch (e) {
         console.error('Error loading from localStorage:', e);
@@ -642,9 +655,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
             const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
             const currentLocalLists = get().lists;
             const merged = mergeCloudWithLocal(flattenedCloud, currentLocalLists, user.uid);
+            const normalizedMerged = withNormalizedVoiceLanguages(merged);
             console.log('[STORE] Merged lists count=', merged.length, 'changedIds=', changedIds.length);
-            set({ lists: merged });
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+            set({ lists: normalizedMerged });
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
             if (changedIds.length > 0) {
               changedIds.forEach((listId) => get().syncToCloud(listId));
             }
@@ -656,8 +670,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           console.error('Error loading from cloud:', error);
           const restored = restoreLocalListsFromBackup();
           if (restored && restored.length > 0) {
-            set({ lists: restored });
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(restored));
+            const normalizedRestored = withNormalizedVoiceLanguages(restored);
+            set({ lists: normalizedRestored });
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedRestored));
           }
         }
       }
@@ -685,8 +700,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
       const localLists = get().lists;
       const merged = mergeCloudWithLocal(flattenedCloud, localLists, user.uid);
-      set({ lists: merged });
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+      const normalizedMerged = withNormalizedVoiceLanguages(merged);
+      set({ lists: normalizedMerged });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
       if (changedIds.length > 0) {
         changedIds.forEach((listId) => get().syncToCloud(listId));
       }
@@ -697,8 +713,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       console.error('Error syncing from cloud:', error);
       const restored = restoreLocalListsFromBackup();
       if (restored && restored.length > 0) {
-        set({ lists: restored });
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(restored));
+        const normalizedRestored = withNormalizedVoiceLanguages(restored);
+        set({ lists: normalizedRestored });
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedRestored));
       }
     }
     set({ isLoading: false });

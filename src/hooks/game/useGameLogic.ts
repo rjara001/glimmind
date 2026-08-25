@@ -7,6 +7,9 @@ import { CardActivityEvent, GameSessionSummary } from '../../types/activity';
 import { createActivityEvent, levelOf } from '../../utils/activity';
 import { computeStateBreakdown } from '../../utils/progress';
 
+const DEFAULT_AUTO_REVEAL_SECONDS = 15;
+const DEFAULT_AUTO_ADVANCE_ATTEMPTS = 3;
+
 export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const trackingEnabled = useGameStore((state) => state.settings.activityHistoryEnabled);
   const [game, setGame] = useState(() => GlimmindGame.create(list, { trackingEnabled }));
@@ -19,6 +22,9 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const sessionCardsPlayedRef = useRef(0);
   const sessionCorrectRef = useRef(0);
   const sessionIncorrectRef = useRef(0);
+  const autoRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentAssociationIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!sessionIdRef.current) {
@@ -34,6 +40,26 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
   useEffect(() => {
     setGame(prev => prev.updateList(list));
   }, [list]);
+
+  const gameState = game.state;
+  const currentAssociation = game.currentAssociation;
+
+  const autoRevealSeconds = list.settings.autoRevealAfterSeconds ?? DEFAULT_AUTO_REVEAL_SECONDS;
+  const autoAdvanceAttempts = list.settings.autoAdvanceAfterAttempts ?? DEFAULT_AUTO_ADVANCE_ATTEMPTS;
+
+  const clearAutoRevealTimer = useCallback(() => {
+    if (autoRevealTimerRef.current) {
+      clearTimeout(autoRevealTimerRef.current);
+      autoRevealTimerRef.current = null;
+    }
+  }, []);
+
+  const clearAutoAdvanceTimer = useCallback(() => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, []);
 
   const play = useCallback((association: Association | undefined) => {
     if (!association) return;
@@ -100,8 +126,56 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     useGameStore.getState().recordActivity(events);
   }, []);
 
+  useEffect(() => {
+    clearAutoRevealTimer();
+    clearAutoAdvanceTimer();
+    currentAssociationIdRef.current = currentAssociation?.id;
+  }, [currentAssociation?.id, clearAutoRevealTimer, clearAutoAdvanceTimer]);
+
+  useEffect(() => {
+    if (gameState.isFinished || gameState.revealed || gameState.feedback !== 'incorrect') {
+      clearAutoRevealTimer();
+      return;
+    }
+    if (autoRevealSeconds <= 0) return;
+    autoRevealTimerRef.current = setTimeout(() => {
+      autoRevealTimerRef.current = null;
+      const before = gameRef.current;
+      if (!before.state.revealed && before.state.feedback === 'incorrect') {
+        emitRevealEvent(before);
+        setGame(prev => prev.reveal());
+      }
+    }, autoRevealSeconds * 1000);
+    return () => clearAutoRevealTimer();
+  }, [gameState.feedback, gameState.revealed, gameState.isFinished, autoRevealSeconds, clearAutoRevealTimer, emitRevealEvent]);
+
+  useEffect(() => {
+    if (gameState.isFinished || gameState.revealed || gameState.feedback !== 'incorrect') {
+      clearAutoAdvanceTimer();
+      return;
+    }
+    if (autoAdvanceAttempts <= 0) return;
+    const currentAssocId = currentAssociation?.id;
+    if (!currentAssocId) return;
+    const attemptsForCard = gameState.attempts.filter((a) => a.associationId === currentAssocId);
+    if (attemptsForCard.length >= autoAdvanceAttempts) {
+      autoAdvanceTimerRef.current = setTimeout(() => {
+        autoAdvanceTimerRef.current = null;
+        const before = gameRef.current;
+        if (!before.state.revealed && before.state.feedback !== 'correct') {
+          const after = before.processAction({ type: 'PASS' });
+          emitAnswerEvents(before, after, false);
+          setGame(after);
+        }
+      }, 1000);
+    }
+    return () => clearAutoAdvanceTimer();
+  }, [gameState.attempts, gameState.feedback, gameState.revealed, gameState.isFinished, currentAssociation?.id, autoAdvanceAttempts, clearAutoAdvanceTimer, emitAnswerEvents]);
+
   const actions = useMemo(() => ({
     restart: (overrideList?: AssociationList) => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
       sessionIdRef.current = crypto.randomUUID();
       sessionStartedAtRef.current = Date.now();
       sessionCardsPlayedRef.current = 0;
@@ -112,6 +186,8 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
       setGame(prev => prev.restart(overrideList));
     },
     reveal: () => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       emitRevealEvent(before);
@@ -126,6 +202,8 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     },
     setUserInput: (input: string) => setGame(prev => prev.setUserInput(input)),
     handlePass: () => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       const after = before.processAction({ type: 'PASS' });
@@ -133,6 +211,8 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
       setGame(after);
     },
     handleCorrect: () => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       const after = before.processAction({ type: 'CORRECT' });
@@ -150,10 +230,10 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
       const after = gameRef.current.updateCurrentAssociation(term, definition);
       setGame(after);
     },
-  }), [play, emitRevealEvent, emitAnswerEvents]);
-
-  const gameState = game.state;
-  const currentAssociation = game.currentAssociation;
+    deleteAssociation: (associationId: string) => {
+      setGame(prev => prev.removeAssociation(associationId));
+    },
+  }), [play, emitRevealEvent, emitAnswerEvents, clearAutoRevealTimer, clearAutoAdvanceTimer]);
 
   const gameView = useMemo(() => {
     if (gameState.isFinished) return 'summary';
@@ -197,5 +277,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     sessionRepasos,
     actions,
     submitVoice: actions.submitVoice,
+    autoRevealAfterSeconds: autoRevealSeconds,
+    autoAdvanceAfterAttempts: autoAdvanceAttempts,
   };
 };

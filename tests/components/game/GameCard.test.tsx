@@ -16,9 +16,7 @@ const defaultProps = {
   lastAttempt: '',
   currentCycle: 1,
   associationId: 'test-id',
-  onEditCard: vi.fn(),
   onStartEdit: vi.fn(),
-  onCancelEdit: vi.fn(),
 };
 
 describe('GameCard - hints', () => {
@@ -85,75 +83,13 @@ describe('GameCard - editing', () => {
     expect(screen.getByLabelText('Edit card')).toBeInTheDocument();
   });
 
-  it('enters edit mode when edit button is clicked', () => {
+  it('calls onStartEdit when the edit button is clicked', () => {
     const onStartEdit = vi.fn();
-    const { rerender } = render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} isEditing={false} />);
+    render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} />);
 
     fireEvent.click(screen.getByLabelText('Edit card'));
-    expect(onStartEdit).toHaveBeenCalled();
 
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} isEditing={true} />);
-    expect(screen.getByDisplayValue('Word')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('it pays')).toBeInTheDocument();
-    expect(screen.getByText('Guardar')).toBeInTheDocument();
-    expect(screen.getByText('Cancelar')).toBeInTheDocument();
-  });
-
-  it('calls onEditCard and exits edit mode on Enter', () => {
-    const onStartEdit = vi.fn();
-    const onEditCard = vi.fn();
-    const { rerender } = render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onEditCard={onEditCard} isEditing={false} />);
-
-    fireEvent.click(screen.getByLabelText('Edit card'));
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onEditCard={onEditCard} isEditing={true} />);
-
-    const termInput = screen.getByDisplayValue('Word');
-    fireEvent.keyDown(termInput, { key: 'Enter' });
-
-    expect(onEditCard).toHaveBeenCalledWith('Word', 'it pays');
-  });
-
-  it('restores original values and exits edit mode on Escape', () => {
-    const onStartEdit = vi.fn();
-    const onCancelEdit = vi.fn();
-    const { rerender } = render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onCancelEdit={onCancelEdit} isEditing={false} />);
-
-    fireEvent.click(screen.getByLabelText('Edit card'));
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onCancelEdit={onCancelEdit} isEditing={true} />);
-
-    const termInput = screen.getByDisplayValue('Word');
-    fireEvent.change(termInput, { target: { value: 'Changed' } });
-    fireEvent.keyDown(termInput, { key: 'Escape' });
-
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onCancelEdit={onCancelEdit} isEditing={false} />);
-    expect(screen.getByText('Word')).toBeInTheDocument();
-    expect(onCancelEdit).toHaveBeenCalled();
-  });
-
-  it('calls onEditCard when Guardar button is clicked', () => {
-    const onStartEdit = vi.fn();
-    const onEditCard = vi.fn();
-    const { rerender } = render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onEditCard={onEditCard} isEditing={false} />);
-
-    fireEvent.click(screen.getByLabelText('Edit card'));
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onEditCard={onEditCard} isEditing={true} />);
-
-    fireEvent.click(screen.getByText('Guardar'));
-
-    expect(onEditCard).toHaveBeenCalledWith('Word', 'it pays');
-  });
-
-  it('calls onCancelEdit when Cancelar button is clicked', () => {
-    const onStartEdit = vi.fn();
-    const onCancelEdit = vi.fn();
-    const { rerender } = render(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onCancelEdit={onCancelEdit} isEditing={false} />);
-
-    fireEvent.click(screen.getByLabelText('Edit card'));
-    rerender(<GameCard {...defaultProps} revealed onStartEdit={onStartEdit} onCancelEdit={onCancelEdit} isEditing={true} />);
-
-    fireEvent.click(screen.getByText('Cancelar'));
-
-    expect(onCancelEdit).toHaveBeenCalled();
+    expect(onStartEdit).toHaveBeenCalledTimes(1);
   });
 
   it('does not show edit button when not revealed', () => {
@@ -168,8 +104,8 @@ describe('GameCard - editing', () => {
     expect(screen.queryByLabelText('Edit card')).not.toBeInTheDocument();
   });
 
-  it('does not show edit button when onEditCard is missing', () => {
-    render(<GameCard {...defaultProps} onEditCard={undefined} />);
+  it('does not show edit button when onStartEdit is missing', () => {
+    render(<GameCard {...defaultProps} onStartEdit={undefined} />);
 
     expect(screen.queryByLabelText('Edit card')).not.toBeInTheDocument();
   });

@@ -18,6 +18,7 @@ import {
   buildCommandAcknowledgement,
   buildCorrectFeedbackPhrase,
   buildIncorrectFeedbackPhrase,
+  getRevealAckPrefix,
 } from '../../services/voice/spokenPhrases';
 
 export type GameVoicePhase = 'idle' | 'speaking' | 'listening' | 'evaluating' | 'feedback';
@@ -289,39 +290,51 @@ const expectedWords = useMemo(() => {
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
     const expectedAnswer = isReversed ? current.term : current.definition;
-    const phrase = buildCommandAcknowledgement('reveal', expectedAnswer);
+    const answerVoiceId = isReversed ? list.settings.voiceTermId : list.settings.voiceDefId;
     setError(null);
     setTranscript('');
     transcriptRef.current = '';
     lastCommandRef.current = null;
     setPhaseBoth('speaking');
 
-    if (phrase) {
-      const spoke = await ttsRef.current.speak(
-        phrase,
-        narrationLang,
-        list.settings.voiceTermId,
-        list.settings.voiceRate,
-        list.settings.voicePitch
-      );
+    const prefix = getRevealAckPrefix(narrationLang);
+    const spokePrefix = await ttsRef.current.speak(
+      prefix,
+      narrationLang,
+      list.settings.voiceTermId,
+      list.settings.voiceRate,
+      list.settings.voicePitch
+    );
 
-      if (!shouldRunRef.current) return;
-      if (!spoke.ok) {
-        console.warn('[Voice] TTS failed:', phrase);
-      }
+    if (!shouldRunRef.current) return;
+    if (!spokePrefix.ok) {
+      console.warn('[Voice] TTS failed:', prefix);
+    }
+
+    const spoke = await ttsRef.current.speak(
+      expectedAnswer,
+      languages.sttLang,
+      answerVoiceId,
+      list.settings.voiceRate,
+      list.settings.voicePitch
+    );
+
+    if (!shouldRunRef.current) return;
+    if (!spoke.ok) {
+      console.warn('[Voice] TTS failed:', expectedAnswer);
     }
 
     setPhaseBoth('listening');
     answerHandledRef.current = false;
     listeningFailedRef.current = false;
     sttRef.current.start(languages.sttLang);
-  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, narrationLang, setPhaseBoth]);
+  }, [list.settings.flipOrder, list.settings.voiceTermId, list.settings.voiceDefId, list.settings.voiceRate, list.settings.voicePitch, languages.sttLang, narrationLang, setPhaseBoth]);
 
   const announceStop = useCallback(async () => {
     sttRef.current.abort();
     clearFeedbackTimer();
     pendingAckRef.current = null;
-    const phrase = buildCommandAcknowledgement('stop');
+    const phrase = buildCommandAcknowledgement('stop', narrationLang);
     if (!phrase) return;
     setPhaseBoth('speaking');
     await ttsRef.current.speak(
@@ -336,10 +349,10 @@ const expectedWords = useMemo(() => {
   const queuePassAcknowledgement = useCallback(() => {
     const current = currentAssociationRef.current;
     if (!current) return;
-    const phrase = buildCommandAcknowledgement('pass');
+    const phrase = buildCommandAcknowledgement('pass', narrationLang);
     if (!phrase) return;
     pendingAckRef.current = { phrase, associationId: current.id };
-  }, []);
+  }, [narrationLang]);
 
   useEffect(() => {
     if (enabled) {
@@ -388,7 +401,7 @@ const expectedWords = useMemo(() => {
           ? (isReversed ? current.term : current.definition)
           : '';
          const similarityPercent = Math.round(similarityRef.current ?? 100);
-         const phrase = buildCorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100);
+         const phrase = buildCorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100, narrationLang);
         const spoke = await ttsRef.current.speak(phrase, narrationLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         if (!spoke.ok) {
@@ -410,7 +423,7 @@ const expectedWords = useMemo(() => {
           ? (isReversed ? current.term : current.definition)
           : '';
          const similarityPercent = Math.round(similarityRef.current ?? 0);
-         const phrase = buildIncorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100);
+         const phrase = buildIncorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100, narrationLang);
         const spoke = await ttsRef.current.speak(phrase, narrationLang, list.settings.voiceTermId, list.settings.voiceRate, list.settings.voicePitch);
         if (!shouldRunRef.current) return;
         if (!spoke.ok) {

@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { detectLanguage, resolveLanguages, resolveVoiceLanguages } from '@/services/voice/languages';
+import { detectLanguage, resolveLanguages, resolveVoiceLanguages, normalizeVoiceLanguageSettings } from '@/services/voice/languages';
+import { AssociationList } from '@/types';
+
+type ListSettings = AssociationList['settings'];
+
+const baseSettings: ListSettings = {
+  mode: 'training',
+  flipOrder: 'normal',
+  threshold: 0.95,
+};
 
 describe('detectLanguage', () => {
   it('detects English labels', () => {
@@ -108,5 +117,58 @@ describe('resolveVoiceLanguages', () => {
     expect(resolveVoiceLanguages('Inglés / Español', 'reversed')).toEqual(
       resolveLanguages('Inglés / Español', 'reversed'),
     );
+  });
+});
+
+describe('normalizeVoiceLanguageSettings', () => {
+  it('fills missing voice languages from concept labels', () => {
+    expect(normalizeVoiceLanguageSettings('Inglés / Español', baseSettings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'en',
+      voiceDefLang: 'es',
+    });
+  });
+
+  it('falls back to Spanish for opaque concepts', () => {
+    expect(normalizeVoiceLanguageSettings('Valor 1 / Valor 2', baseSettings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'es',
+      voiceDefLang: 'es',
+    });
+  });
+
+  it('handles partially recognised concepts', () => {
+    expect(normalizeVoiceLanguageSettings('Valor 1 / Español', baseSettings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'es',
+      voiceDefLang: 'es',
+    });
+    expect(normalizeVoiceLanguageSettings('Inglés / Valor 1', baseSettings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'en',
+      voiceDefLang: 'en',
+    });
+  });
+
+  it('keeps existing settings untouched when both languages are present', () => {
+    const settings: ListSettings = { ...baseSettings, voiceTermLang: 'fr', voiceDefLang: 'it' };
+    expect(normalizeVoiceLanguageSettings('Inglés / Español', settings)).toBe(settings);
+  });
+
+  it('fills only the missing side when one language is already set', () => {
+    const settings: ListSettings = { ...baseSettings, voiceDefLang: 'pt' };
+    expect(normalizeVoiceLanguageSettings('Inglés / Español', settings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'en',
+      voiceDefLang: 'pt',
+    });
+  });
+
+  it('uses Spanish when concept is empty', () => {
+    expect(normalizeVoiceLanguageSettings('', baseSettings)).toEqual({
+      ...baseSettings,
+      voiceTermLang: 'es',
+      voiceDefLang: 'es',
+    });
   });
 });

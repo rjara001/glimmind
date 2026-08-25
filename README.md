@@ -75,7 +75,6 @@ src/
 │   │   ├── CardContent.tsx    # Term, input, hints
 │   │   ├── CardFeedback.tsx   # Correct/incorrect feedback
 │   │   ├── CardVoiceIndicator.tsx
-│   │   ├── CardEditForm.tsx
 │   │   ├── GameHeader.tsx
 │   │   ├── GameControls.tsx
 │   │   ├── CycleProgress.tsx
@@ -83,6 +82,7 @@ src/
 │   │   └── AttemptList.tsx
 │   ├── modals/                # Modal dialogs
 │   │   ├── QuickAddModal.tsx
+│   │   ├── EditCardModal.tsx
 │   │   ├── SmartGroupModal.tsx
 │   │   └── SettingsModal.tsx
 │   ├── layout/                # Shared layout primitives

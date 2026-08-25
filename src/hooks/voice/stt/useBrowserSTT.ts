@@ -43,6 +43,7 @@ interface WindowWithSpeech extends Window {
 const RESTART_DELAY_MS = 150;
 const START_TIMEOUT_MS = 4000;
 const INACTIVITY_TIMEOUT_MS = 10000;
+const FINAL_DEBOUNCE_MS = 500;
 
 function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
@@ -77,6 +78,9 @@ export function useBrowserSTT({
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingStartRef = useRef(false);
 
+  const accumulatedFinalRef = useRef<string>('');
+  const finalDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Ref sync for callbacks and dynamic data
   const onFinalRef = useRef(onFinal);
   const onInterimRef = useRef(onInterim);
@@ -105,6 +109,14 @@ export function useBrowserSTT({
     pendingStartRef.current = false;
   }, []);
 
+  const clearFinalBuffer = useCallback(() => {
+    accumulatedFinalRef.current = '';
+    if (finalDebounceRef.current) {
+      clearTimeout(finalDebounceRef.current);
+      finalDebounceRef.current = null;
+    }
+  }, []);
+
   const armStartWatchdog = useCallback((instance: SpeechRecognitionLike) => {
     if (startTimerRef.current) {
       clearTimeout(startTimerRef.current);
@@ -116,6 +128,7 @@ export function useBrowserSTT({
       pendingStartRef.current = false;
       setIsListening(false);
       setInterimTranscript('');
+      clearFinalBuffer();
       try {
         instance.abort();
       } catch {
@@ -123,7 +136,7 @@ export function useBrowserSTT({
       }
       onErrorRef.current?.('Speech recognition did not start. Check microphone availability.');
     }, START_TIMEOUT_MS);
-  }, []);
+  }, [clearFinalBuffer]);
 
   const armInactivityWatchdog = useCallback((instance: SpeechRecognitionLike) => {
     if (inactivityTimerRef.current) {
@@ -218,10 +231,22 @@ export function useBrowserSTT({
         intentionalStopRef.current = false;
         if (!shouldRunRef.current || wasIntentionalStop || recognitionRef.current !== instance) {
           clearSafetyTimers();
+          clearFinalBuffer();
           setIsListening(false);
           setInterimTranscript('');
           return;
         }
+
+        if (finalDebounceRef.current) {
+          clearTimeout(finalDebounceRef.current);
+          finalDebounceRef.current = null;
+        }
+        const pendingFinal = accumulatedFinalRef.current;
+        accumulatedFinalRef.current = '';
+        if (pendingFinal.trim()) {
+          onFinalRef.current(pendingFinal.trim());
+        }
+
         restartTimerRef.current = setTimeout(() => {
           restartTimerRef.current = null;
           if (!shouldRunRef.current || recognitionRef.current !== instance) return;
@@ -259,7 +284,19 @@ export function useBrowserSTT({
         setInterimTranscript(interim);
 
         if (final) {
-          onFinalRef.current(final.trim());
+          accumulatedFinalRef.current = final;
+
+          if (finalDebounceRef.current) {
+            clearTimeout(finalDebounceRef.current);
+          }
+          finalDebounceRef.current = setTimeout(() => {
+            finalDebounceRef.current = null;
+            const accumulated = accumulatedFinalRef.current;
+            accumulatedFinalRef.current = '';
+            if (accumulated.trim()) {
+              onFinalRef.current(accumulated.trim());
+            }
+          }, FINAL_DEBOUNCE_MS);
         }
       };
 
@@ -275,6 +312,7 @@ export function useBrowserSTT({
       shouldRunRef.current = true;
       intentionalStopRef.current = false;
       setInterimTranscript('');
+      clearFinalBuffer();
       try {
         instance.start();
         pendingStartRef.current = true;
@@ -283,7 +321,7 @@ export function useBrowserSTT({
         // Instance may already be running
       }
     },
-    [armStartWatchdog, ensureInstance],
+    [armStartWatchdog, ensureInstance, clearFinalBuffer],
   );
 
   const stop = useCallback(() => {
@@ -291,6 +329,7 @@ export function useBrowserSTT({
     shouldRunRef.current = false;
     clearRestartTimer();
     clearSafetyTimers();
+    clearFinalBuffer();
     setIsListening(false);
     setInterimTranscript('');
     try {
@@ -298,13 +337,14 @@ export function useBrowserSTT({
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer, clearSafetyTimers]);
+  }, [clearRestartTimer, clearSafetyTimers, clearFinalBuffer]);
 
   const abort = useCallback(() => {
     intentionalStopRef.current = true;
     shouldRunRef.current = false;
     clearRestartTimer();
     clearSafetyTimers();
+    clearFinalBuffer();
     setIsListening(false);
     setInterimTranscript('');
     try {
@@ -312,7 +352,7 @@ export function useBrowserSTT({
     } catch {
       // Instance may not be running
     }
-  }, [clearRestartTimer, clearSafetyTimers]);
+  }, [clearRestartTimer, clearSafetyTimers, clearFinalBuffer]);
 
   useEffect(() => {
     return () => {
@@ -321,13 +361,14 @@ export function useBrowserSTT({
       intentionalStopRef.current = true;
       clearRestartTimer();
       clearSafetyTimers();
+      clearFinalBuffer();
       try {
         instance?.abort();
       } catch {
         // Ignore cleanup errors
       }
     };
-  }, [clearRestartTimer, clearSafetyTimers]);
+  }, [clearRestartTimer, clearSafetyTimers, clearFinalBuffer]);
 
   return useMemo(
     () => ({
