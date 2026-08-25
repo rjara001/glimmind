@@ -467,20 +467,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { user } = get();
     const isGuest = !user || user.uid === GUEST_UID;
 
-    const savedLocal = localStorage.getItem(LOCAL_PROGRESS_KEY);
-    const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
-
     if (isGuest) {
+      const savedLocal = localStorage.getItem(LOCAL_PROGRESS_KEY);
+      const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
       set({ progress: localProgress || createDefaultProgress() });
       return;
     }
 
+    // For authenticated users, cloud is the source of truth.
     const cloudProgress = await progressService.fetchProgress(user.uid);
-    const mergedProgress = cloudProgress || localProgress || createDefaultProgress();
-    set({ progress: mergedProgress });
-    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(mergedProgress));
+    const progress = cloudProgress || createDefaultProgress();
+    set({ progress });
+    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
     if (cloudProgress === null) {
-      get().setGoalTarget(mergedProgress.goalTarget);
+      get().setGoalTarget(progress.goalTarget);
     }
   },
 
@@ -500,11 +500,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
+    // For authenticated users, cloud is the source of truth.
     const cloudSettings = await settingsService.fetchSettings(user.uid);
-    const localSettings = settingsService.loadLocalSettings();
-    const merged = cloudSettings || localSettings;
-    set({ settings: merged });
-    settingsService.saveLocalSettings(merged);
+    const settings = cloudSettings || { ...DEFAULT_SETTINGS, updatedAt: Date.now() };
+    set({ settings });
+    settingsService.saveLocalSettings(settings);
   },
 
   setSettings: (settings) => {
