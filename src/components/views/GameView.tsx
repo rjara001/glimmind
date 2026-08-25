@@ -98,6 +98,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   });
 
   useEffect(() => {
+    if (list.settings.mode === 'training' || isPresentationMode || !currentAssociation) return;
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [currentAssociation?.id, list.settings.mode, isPresentationMode]);
+
+  useEffect(() => {
     if (gameView === 'summary') {
       setIsPresentationMode(false);
     }
