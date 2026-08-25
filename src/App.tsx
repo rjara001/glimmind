@@ -57,6 +57,8 @@ const AppContent: React.FC = () => {
     handleCreateListQuick,
     handleDeleteList,
     handleCreateMultipleLists,
+    handleCreateListAndPlay,
+    handleAddDeck,
   } = useAppActions({ navigate, showToast, setLastPlayedId });
 
   const handleLogout = useCallback(async () => {
@@ -118,6 +120,8 @@ const AppContent: React.FC = () => {
               lists={lists}
               lastPlayedId={lastPlayedId}
               onCreate={handleCreateList}
+              onCreateAndPlay={handleCreateListAndPlay}
+              onAddDeck={handleAddDeck}
               onDelete={handleDeleteList}
               onEdit={(id) => {
                 useGameStore.getState().setCurrentList(id);

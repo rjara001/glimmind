@@ -2,7 +2,7 @@
 import React from 'react';
 import { GameHeaderProps } from '../../types/game-header-props';
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart, voiceEnabled, onVoiceToggle, isVoiceProcessing, isPremium, isRecording, onRecordToggle, onViewRecordings }) => {
+export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, queueLength, cycle4Count, gameMode, goalProgress = 0, goalTarget = 0, sessionRepasos = 0, onBack, onSettingsClick, onRestart, voiceEnabled, onVoiceToggle, isVoiceProcessing, isPremium, isRecording, onRecordToggle, onViewRecordings, isPresentationActive, onPracticeToggle }) => {
   const isPracticeMode = gameMode === 'training';
 
   return (
@@ -90,6 +90,29 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ listName, currentIndex, 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
               </svg>
               <span className="hidden sm:inline">Historial</span>
+            </button>
+          )}
+          {isPresentationActive !== undefined && onPracticeToggle && gameMode === 'training' && (
+            <button
+              onClick={onPracticeToggle}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all ${
+                isPresentationActive
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+              aria-label={isPresentationActive ? 'Detener AutoPlay' : 'Iniciar AutoPlay'}
+              title={isPresentationActive ? 'Detener AutoPlay' : 'Iniciar AutoPlay'}
+            >
+              {isPresentationActive ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 016 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.25 12h15.5M4.25 12A2.25 2.25 0 016.5 9.75v4.5A2.25 2.25 0 014.25 12zM4.25 12l3.25 3.25M4.25 12L6 9.75" />
+                </svg>
+              )}
+              <span className="hidden sm:inline">{isPresentationActive ? 'Listo' : 'AutoPlay'}</span>
             </button>
           )}
           {onRestart && (

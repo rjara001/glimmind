@@ -9,6 +9,8 @@ import { useGameStore } from '../../store/gameStore';
 import { GoalWidget } from '../layout/GoalWidget';
 import { BigListCard } from '../cards/BigListCard';
 import { useToast } from '../layout/Toast';
+import { DeckStoreOnboarding } from '../onboarding/DeckStoreOnboarding';
+import { PrebuiltDeck } from '../../types/prebuilt-deck';
 
 const BIG_LIST_THRESHOLD = 200;
 
@@ -16,12 +18,14 @@ interface DashboardProps {
   lists: AssociationList[];
   lastPlayedId?: string;
   onCreate: (name: string, concept: string, initialAssociations: Association[]) => void;
+  onCreateAndPlay: (name: string, concept: string, initialAssociations: Association[]) => void;
+  onAddDeck: (name: string, concept: string, initialAssociations: Association[]) => Promise<void>;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onDelete, onEdit, onPlay }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay }) => {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -34,6 +38,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
   const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeckStore, setShowDeckStore] = useState(false);
 
   const progress = useGameStore(state => state.progress);
   const setGoalTarget = useGameStore(state => state.setGoalTarget);
@@ -154,11 +159,62 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
     list.concept.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] => {
+    return deck.associations.map(a => ({
+      id: crypto.randomUUID(),
+      term: a.term,
+      definition: a.definition,
+      currentCycle: 1,
+      status: 'pending',
+      isLearned: false,
+      isArchived: false,
+    }));
+  };
+
   const [continuePlay, setContinuePlay] = useState(false);
 
   useMemo(() => {
     if (lastPlayedId) setContinuePlay(true);
   }, [lastPlayedId]);
+
+  const isFirstTime = useMemo(() => lists.length === 0, [lists]);
+
+  if (isFirstTime && !isCreating) {
+    return (
+      <div className="max-w-5xl mx-auto p-6">
+        <DeckStoreOnboarding
+          onAddDeck={async (deck) => {
+            await onCreateAndPlay(deck.name, deck.concept, transformDeckToAssociations(deck));
+          }}
+          onCreateCustom={() => setIsCreating(true)}
+        />
+      </div>
+    );
+  }
+
+  if (showDeckStore) {
+    return (
+      <div className="max-w-5xl mx-auto p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => setShowDeckStore(false)}
+            className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
+          >
+            ← Volver al Dashboard
+          </button>
+        </div>
+        <DeckStoreOnboarding
+          onAddDeck={async (deck) => {
+            await onAddDeck(deck.name, deck.concept, transformDeckToAssociations(deck));
+          }}
+          onCreateCustom={() => {
+            setShowDeckStore(false);
+            setIsCreating(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -254,21 +310,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           <h2 className="text-3xl font-bold text-gray-900">Tus Listas de Estudio</h2>
           <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
         </div>
-        <button 
-          onClick={() => {
-            const emptyName = 'Sin nombre';
-            const emptyConcept = 'Valor 1 / Valor 2';
-            onCreate(emptyName, emptyConcept, []);
-          }}
-          disabled={quotaStatus?.state === 'blocked' && !isPremium}
-          title={quotaStatus?.state === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.quota} tarjetas` : undefined}
-          className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nueva Lista
-        </button>
+        <div className="flex gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setShowDeckStore(true)}
+            className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l-.4-2M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.708.447 1.953.134.058.277.088.422.088h11M17 13l2.293 2.293c.63.63.184 1.708-.447 1.953-.134.058-.277.088-.422.088h-11M7 13V6a1 1 0 00-1-1H4a1 1 0 000 2h2v7z" />
+            </svg>
+            Catálogo de Barajas
+          </button>
+          <button 
+            onClick={() => {
+              const emptyName = 'Sin nombre';
+              const emptyConcept = 'Valor 1 / Valor 2';
+              onCreate(emptyName, emptyConcept, []);
+            }}
+            disabled={quotaStatus?.state === 'blocked' && !isPremium}
+            title={quotaStatus?.state === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.quota} tarjetas` : undefined}
+            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nueva Lista
+          </button>
+        </div>
       </div>
 
       {recentLists.length > 0 && (

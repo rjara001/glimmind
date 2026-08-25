@@ -17,4 +17,6 @@ export interface GameHeaderProps {
   isRecording?: boolean;
   onRecordToggle?: () => void;
   onViewRecordings?: () => void;
+  isPresentationActive?: boolean;
+  onPracticeToggle?: () => void;
 }

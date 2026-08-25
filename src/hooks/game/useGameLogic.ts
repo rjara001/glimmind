@@ -233,6 +233,15 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     deleteAssociation: (associationId: string) => {
       setGame(prev => prev.removeAssociation(associationId));
     },
+    goBack: () => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
+      const before = gameRef.current;
+      const after = before.goBack();
+      if (after !== before) {
+        setGame(after);
+      }
+    },
   }), [play, emitRevealEvent, emitAnswerEvents, clearAutoRevealTimer, clearAutoAdvanceTimer]);
 
   const gameView = useMemo(() => {

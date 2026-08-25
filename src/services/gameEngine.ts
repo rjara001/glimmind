@@ -237,6 +237,26 @@ export class GlimmindGame {
     return new GlimmindGame(this.initialList, nextState, this.trackingEnabled)._checkForNextCycle();
   }
 
+  public goBack(): GlimmindGame {
+    if (this.state.currentIndex <= 0) return this;
+    const newIndex = this.state.currentIndex - 1;
+    const previousId = this.state.activeQueue[newIndex];
+    const revealedAssociations = previousId
+      ? this.state.revealedAssociations.filter((id) => id !== previousId)
+      : this.state.revealedAssociations;
+
+    return new GlimmindGame(this.initialList, {
+      ...this.state,
+      currentIndex: newIndex,
+      revealed: false,
+      userInput: "",
+      feedback: "none",
+      similarity: null,
+      lastAttempt: "",
+      revealedAssociations,
+    }, this.trackingEnabled);
+  }
+
   public checkAnswer(): GlimmindGame {
     const current = this.currentAssociation;
     if (!current || this.state.revealed) return this;

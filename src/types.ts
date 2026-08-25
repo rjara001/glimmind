@@ -59,6 +59,7 @@ export interface AssociationList {
     voiceCommands?: VoiceCommandsConfig;
     autoRevealAfterSeconds?: number;
     autoAdvanceAfterAttempts?: number;
+    practiceRevealDelay?: number;
   };
   createdAt?: any;
   updatedAt?: any;

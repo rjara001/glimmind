@@ -209,6 +209,13 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     }
   }, [createListCore, navigate]);
 
+  const handleCreateListAndPlay = useCallback(async (name: string, concept: string, initialAssocs: Association[]) => {
+    const listId = await createListCore(name, concept, initialAssocs);
+    if (listId) {
+      handlePlayList(listId);
+    }
+  }, [createListCore, handlePlayList]);
+
   const handleCreateListQuick = useCallback(async (name: string, concept: string): Promise<string | null> => {
     return createListCore(name, concept, []);
   }, [createListCore]);
@@ -296,6 +303,10 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     useGameStore.getState().setActivityRecordingEnabled(true);
   }, [user, currentList, isPremium, setLists, showToast]);
 
+  const handleAddDeck = useCallback(async (name: string, concept: string, initialAssocs: Association[]): Promise<void> => {
+    await createListCore(name, concept, initialAssocs);
+  }, [createListCore]);
+
   return {
     isSyncing,
     currentList,
@@ -308,5 +319,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     handleCreateListQuick,
     handleDeleteList,
     handleCreateMultipleLists,
+    handleCreateListAndPlay,
+    handleAddDeck,
   };
 }

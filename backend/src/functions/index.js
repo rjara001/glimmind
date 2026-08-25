@@ -19,6 +19,7 @@ const userRoutes = require("./src/routes/userRoutes");
 const aiRoutes = require("./src/routes/aiRoutes");
 const ttsRoutes = require("./src/routes/ttsRoutes");
 const sttRoutes = require("./src/routes/sttRoutes");
+const deckRoutes = require("./src/routes/deckRoutes");
 
 function loadRoutes(routes) {
   Object.keys(routes).forEach((key) => {
@@ -34,3 +35,4 @@ loadRoutes(userRoutes);
 loadRoutes(aiRoutes);
 loadRoutes(ttsRoutes);
 loadRoutes(sttRoutes);
+loadRoutes(deckRoutes);
