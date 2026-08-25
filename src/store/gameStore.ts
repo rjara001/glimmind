@@ -642,25 +642,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ lists: [] });
 
     ensureCacheMatchesEnvironment();
-    
-    // Load from localStorage first
+
+    const isGuest = !user || user.uid === GUEST_UID;
+
+    // Load from localStorage first, but only keep lists belonging to the current user.
     const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
       try {
         const parsed = JSON.parse(savedLists);
         const { lists: flattenedParsed } = applyFlattening(parsed);
-        const normalizedParsed = withNormalizedVoiceLanguages(flattenedParsed);
+        // Filter: guests see all local lists, authenticated users see only their own.
+        const filteredLists = isGuest
+          ? flattenedParsed
+          : flattenedParsed.filter((l: AssociationList) => l.userId === user.uid);
+        const normalizedParsed = withNormalizedVoiceLanguages(filteredLists);
         set({ lists: normalizedParsed });
-        if (flattenedParsed !== parsed) {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedParsed));
-        }
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedParsed));
       } catch (e) {
         console.error('Error loading from localStorage:', e);
       }
     }
-    
+
     // Load from cloud only if NOT guest
-    const isGuest = !user || user.uid === GUEST_UID;
     if (!isGuest) {
       console.log('[STORE] Loading from cloud for user:', user.uid, 'cachedListsCount=', get().lists.length);
       if (savedLists && !shouldFetchCloudLists()) {
@@ -675,17 +678,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
           markCloudFetch();
           console.log('[STORE] Fetched cloud lists count=', cloudLists.length, 'for user=', user.uid);
-          if (cloudLists.length > 0) {
-            const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
-            const currentLocalLists = get().lists;
-            const merged = mergeCloudWithLocal(flattenedCloud, currentLocalLists, user.uid);
-            const normalizedMerged = withNormalizedVoiceLanguages(merged);
-            console.log('[STORE] Merged lists count=', merged.length, 'changedIds=', changedIds.length);
-            set({ lists: normalizedMerged });
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
-            if (changedIds.length > 0) {
-              changedIds.forEach((listId) => get().syncToCloud(listId));
-            }
+          // For authenticated users, cloud is the source of truth.
+          // Even if cloud returns empty, replace localStorage lists.
+          const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
+          const currentLocalLists = get().lists;
+          const merged = mergeCloudWithLocal(flattenedCloud, currentLocalLists, user.uid);
+          const normalizedMerged = withNormalizedVoiceLanguages(merged);
+          console.log('[STORE] Merged lists count=', merged.length, 'changedIds=', changedIds.length);
+          set({ lists: normalizedMerged });
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
+          if (changedIds.length > 0) {
+            changedIds.forEach((listId) => get().syncToCloud(listId));
           }
         } catch (error) {
           if (requestId !== syncRequestSequence) {
@@ -703,7 +706,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } else {
       console.log('[STORE] Guest mode - using localStorage only');
     }
-    
+
     set({ isLoaded: true, isLoading: false });
   },
   
