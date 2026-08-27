@@ -1,11 +1,13 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { VocabularyResult, DeckSourceType } from '../../types/youtube-deck';
+import { SourceRow } from '../../types/source-row';
 import { Association } from '../../types';
 
 export interface VocabularySourceMeta {
   sourceType?: DeckSourceType;
   sourceUrl?: string;
   rawSourceText?: string;
+  sourceRow?: SourceRow;
 }
 
 interface VocabularyPreviewProps {
@@ -36,8 +38,9 @@ export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, on
       sourceType: result.sourceType,
       sourceUrl: result.sourceUrl,
       rawSourceText: result.rawSourceText,
+      sourceRow: result.sourceRow,
     });
-  }, [result.items, result.sourceType, result.sourceUrl, result.rawSourceText, onAccept]);
+  }, [result.items, result.sourceType, result.sourceUrl, result.rawSourceText, result.sourceRow, onAccept]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -4,6 +4,7 @@ const { metaRefFor, todayKey } = require("../utils/helpers");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
 const {
   extractVideoId,
+  fetchYouTubeVideoTitle,
   resolveTier,
   buildQuotaInfo,
   isValidTargetLanguage,
@@ -113,11 +114,14 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
   const sourceType = isManualFromUrl ? 'youtube_manual_transcript' : 'raw_text';
 
   let video = null;
+  let videoId = null;
+  let videoTitle = null;
   if (isManualFromUrl) {
-    const videoId = extractVideoId(videoUrl);
+    videoId = extractVideoId(videoUrl);
+    videoTitle = videoId ? await fetchYouTubeVideoTitle(videoId) : null;
     video = {
       id: videoId || 'unknown',
-      title: `YouTube Video ${videoId || ''}`,
+      title: videoTitle || `YouTube Video ${videoId || ''}`,
       url: videoUrl.trim(),
     };
   }
@@ -128,6 +132,13 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
     sourceType,
     sourceUrl: isManualFromUrl ? videoUrl.trim() : undefined,
     rawSourceText: text.trim(),
+    sourceRow: {
+      sourceType,
+      ...(isManualFromUrl ? { sourceUrl: videoUrl.trim() } : {}),
+      ...(videoId ? { videoId } : {}),
+      ...(videoTitle ? { videoTitle } : {}),
+      rawSourceText: text.trim(),
+    },
     items: vocabularyResult.items,
     wasTruncated: vocabularyResult.wasTruncated,
   };

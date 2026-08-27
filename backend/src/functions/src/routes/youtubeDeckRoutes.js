@@ -5,6 +5,7 @@ const { YouTubeTranscriptProvider } = require("../services/transcriptProvider");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
 const {
   extractVideoId,
+  fetchYouTubeVideoTitle,
   resolveTier,
   buildQuotaInfo,
   isValidTargetLanguage,
@@ -18,7 +19,7 @@ const {
 } = require("../utils/constants");
 
 // Bump when extraction logic changes so stale cached results are ignored.
-const NLP_CACHE_VERSION = 4;
+const NLP_CACHE_VERSION = 5;
 const ALLOWED_LEVELS = new Set(["b1", "b2c1"]);
 
 const TRANSCRIPT_LANGUAGE_LABELS = {
@@ -207,16 +208,25 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
 
   const rawSourceText = transcriptResult.segments.map((s) => String(s.text || "")).join(" ");
 
+  const videoTitle = (await fetchYouTubeVideoTitle(videoId)) || `YouTube Video ${videoId}`;
+
   const responseBody = {
     video: {
       id: videoId,
-      title: `YouTube Video ${videoId}`,
+      title: videoTitle,
       url: `https://www.youtube.com/watch?v=${videoId}`,
     },
     source: 'youtube_auto',
     sourceType: 'youtube_auto',
     sourceUrl: url,
     rawSourceText,
+    sourceRow: {
+      sourceType: 'youtube_auto',
+      sourceUrl: url,
+      videoId,
+      videoTitle,
+      rawSourceText,
+    },
     items: vocabularyResult.items,
     wasTruncated: vocabularyResult.wasTruncated,
   };

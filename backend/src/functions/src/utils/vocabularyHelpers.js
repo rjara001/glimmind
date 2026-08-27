@@ -12,6 +12,22 @@ function extractVideoId(url) {
   return null;
 }
 
+async function fetchYouTubeVideoTitle(videoId) {
+  try {
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const response = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`,
+      { headers: { "User-Agent": "Glimmind/1.0" } }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return typeof data.title === "string" && data.title.trim().length > 0 ? data.title.trim() : null;
+  } catch (error) {
+    console.error("[fetchYouTubeVideoTitle] failed:", error.message);
+    return null;
+  }
+}
+
 function resolveTier(maxTerms) {
   const tierEntry = Object.values(DECK_TIERS).find((tier) => tier.maxTerms === maxTerms);
   return tierEntry || null;
@@ -53,6 +69,7 @@ function mapGeminiError(error) {
 
 module.exports = {
   extractVideoId,
+  fetchYouTubeVideoTitle,
   resolveTier,
   buildQuotaInfo,
   isValidTargetLanguage,

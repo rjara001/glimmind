@@ -31,6 +31,7 @@ const LOCAL_STORAGE_BACKUP_KEY = 'glimmind_lists_backup';
 const LOCAL_PROGRESS_KEY = 'glimmind_progress';
 const CACHE_ENV_KEY = 'glimmind_cache_env';
 const LOCAL_LAST_PLAYED_KEY = 'glimmind_last_played';
+const syncToCloudInFlight = new Map<string, Promise<void>>();
 
 function clearLocalCache(): void {
   localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -443,7 +444,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
     // Sync to cloud if logged in
     if (user && user.uid !== GUEST_UID) {
-      get().syncToCloud(listId);
+      get().syncToCloud(listId).catch((error) => {
+        console.error('[updateAssociations] syncToCloud failed:', error);
+      });
     }
   },
   
@@ -688,7 +691,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
           set({ lists: normalizedMerged });
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
           if (changedIds.length > 0) {
-            changedIds.forEach((listId) => get().syncToCloud(listId));
+            changedIds.forEach((listId) => {
+              get().syncToCloud(listId).catch((error) => {
+                console.error('[loadInitialData] syncToCloud failed:', error);
+              });
+            });
           }
         } catch (error) {
           if (requestId !== syncRequestSequence) {
@@ -731,7 +738,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ lists: normalizedMerged });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
       if (changedIds.length > 0) {
-        changedIds.forEach((listId) => get().syncToCloud(listId));
+        changedIds.forEach((listId) => {
+          get().syncToCloud(listId).catch((error) => {
+            console.error('[syncFromCloud] syncToCloud failed:', error);
+          });
+        });
       }
     } catch (error) {
       if (requestId !== syncRequestSequence) {
@@ -750,16 +761,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   // Sync single list to cloud
   syncToCloud: async (listId) => {
-    const { lists, user } = get();
-    const localList = lists.find(l => l.id === listId);
-    if (!localList || !user || user.uid === GUEST_UID) return;
-    
-    console.log('[syncToCloud] start listId=', listId, 'localAssocCount=', localList.associations?.length || 0, 'userId=', user.uid);
-    
-    try {
+    const inFlight = syncToCloudInFlight.get(listId);
+    if (inFlight) return inFlight;
+
+    const run = (async () => {
+      const { lists, user } = get();
+      const localList = lists.find(l => l.id === listId);
+      if (!localList || !user || user.uid === GUEST_UID) return;
+
+      console.log('[syncToCloud] start listId=', listId, 'localAssocCount=', localList.associations?.length || 0, 'userId=', user.uid);
+
       const cloudList = await listService.getList(listId);
       console.log('[syncToCloud] cloudList exists=', !!cloudList, 'cloudAssocCount=', cloudList?.associations?.length || 0);
-      
+
       if (!cloudList) {
         console.log('[syncToCloud] cloudList missing, creating with', localList.associations?.length || 0, 'assocs');
         const newId = await listService.createList({
@@ -772,24 +786,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
           sourceType: localList.sourceType,
           sourceUrl: localList.sourceUrl,
           rawSourceText: localList.rawSourceText,
+          sourceRow: localList.sourceRow,
         });
-        const updatedLists = lists.map(l => l.id === listId ? { ...l, id: newId } : l);
-        set({ lists: updatedLists });
+        const freshLists = get().lists;
+        const updatedLists = freshLists.map(l => l.id === listId ? { ...l, id: newId } : l);
+        set({
+          lists: updatedLists,
+          ...(get().currentListId === listId
+            ? { currentListId: newId, currentList: updatedLists.find(l => l.id === newId) ?? null }
+            : {}),
+        });
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
         return;
       }
 
       const listToSave = pickLocalOrCloudList(localList, cloudList);
       console.log('[syncToCloud] chosen list assocCount=', listToSave.associations?.length || 0, 'updatedAt=', listToSave.updatedAt, 'ttsProvider=', listToSave.settings?.ttsProvider, 'voiceTermId=', listToSave.settings?.voiceTermId);
-      
+
       await listService.updateList(listToSave.id, {
         name: listToSave.name,
         concept: listToSave.concept,
         associations: listToSave.associations,
         settings: listToSave.settings,
       });
-    } catch (error) {
-      console.error('[syncToCloud] error:', error);
-    }
+    })();
+
+    syncToCloudInFlight.set(listId, run);
+    run.then(
+      () => {
+        if (syncToCloudInFlight.get(listId) === run) syncToCloudInFlight.delete(listId);
+      },
+      (error) => {
+        if (syncToCloudInFlight.get(listId) === run) syncToCloudInFlight.delete(listId);
+        console.error('[syncToCloud] error:', error);
+      },
+    );
+    return run;
   },
 }));

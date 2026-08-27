@@ -23,7 +23,7 @@ exports.getLists = onRequest({ cors: true }, async (req, res) => {
 });
 
 exports.createList = onRequest({ cors: true }, async (req, res) => {
-  const { name, concept, associations, settings, userId, sourceType, sourceUrl, rawSourceText } = req.body;
+  const { name, concept, associations, settings, userId, sourceType, sourceUrl, rawSourceText, sourceRow } = req.body;
   if (!userId) {
     return res.status(400).json({ error: "userId is required" });
   }
@@ -40,6 +40,7 @@ exports.createList = onRequest({ cors: true }, async (req, res) => {
       sourceType,
       sourceUrl,
       rawSourceText,
+      sourceRow,
     });
     res.json(id);
   } catch (error) {

@@ -1,4 +1,5 @@
 import type { DeckSourceType } from './types/youtube-deck';
+import type { SourceRow } from './types/source-row';
 
 export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
@@ -53,6 +54,7 @@ export interface AssociationList {
   sourceType?: DeckSourceType;
   sourceUrl?: string;
   rawSourceText?: string;
+  sourceRow?: SourceRow;
   settings: {
     mode: GameMode;
     flipOrder: 'normal' | 'reversed';

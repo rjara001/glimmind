@@ -8,7 +8,7 @@ import { computeQuotaStatus } from '../utils/quota';
 import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
 import { useToast } from '../components/layout/Toast';
 import { MIN_GROUP_SIZE } from '../constants/limits';
-import { AssociationTable, ColumnKey } from '../components/list-editor/AssociationTable';
+import { AssociationTable } from '../components/list-editor/AssociationTable';
 import { BulkImport } from '../components/list-editor/BulkImport';
 import { translationService } from '../services/translationService';
 
@@ -44,7 +44,7 @@ function deduplicateAssociations(existing: Association[], incoming: Association[
 
 interface ListEditorProps {
   list: AssociationList;
-  onSave: (list: AssociationList) => void;
+  onSave: (list: AssociationList) => Promise<void> | void;
   onBack: () => void;
   onCreateMultiple?: (groups: { name: string, associations: Association[] }[]) => void;
 }
@@ -59,12 +59,12 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
-  const [columnPriority, setColumnPriority] = useState<'term' | 'definition'>('term');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
-  const [activeColumn, setActiveColumn] = useState<ColumnKey>('value1');
+  const [isSaving, setIsSaving] = useState(false);
+  const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const conceptParts = editList.concept.split('/');
   const termHeader = conceptParts[0] || 'Term';
@@ -132,9 +132,23 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
     const updatedList = { ...listToSave, associations: cleanedAssociations };
     setEditList(updatedList);
-    onSave(updatedList);
+    pendingSaveRef.current = Promise.resolve(onSave(updatedList));
     return true;
   }, [onSave]);
+
+  const handleBack = useCallback(async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const saved = cleanupAndSave(editList);
+      if (saved && pendingSaveRef.current) {
+        await pendingSaveRef.current;
+      }
+    } finally {
+      setIsSaving(false);
+    }
+    onBack();
+  }, [cleanupAndSave, editList, isSaving, onBack]);
 
   useEffect(() => {
     const initialAssociations = list.associations;
@@ -270,6 +284,24 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     });
   };
 
+  const handleUpdateTags = (id: string, tags: string[]) => {
+    setEditList(current => {
+      const updatedAssociations = current.associations.map((a) => {
+        if (a.id !== id) return a;
+        return {
+          ...a,
+          metadata: {
+            difficulty: a.metadata?.difficulty ?? 'basic',
+            frequencyRank: a.metadata?.frequencyRank ?? 0,
+            audioTimestamp: a.metadata?.audioTimestamp,
+            tags,
+          },
+        };
+      });
+      return { ...current, associations: updatedAssociations };
+    });
+  };
+
   const handleBlurRow = () => {
     cleanupAndSave(editList);
   };
@@ -385,7 +417,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-8">
         <div className="flex items-center gap-4">
-          <button onClick={() => { cleanupAndSave(editList); onBack(); }} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
+          <button onClick={handleBack} disabled={isSaving} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
           <div>
@@ -582,10 +614,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           associations={sortedActive}
           sort={activeSort}
           onSort={(newSort) => setActiveSort(nextSort(activeSort, newSort.field as SortField))}
-          columnPriority={columnPriority}
           termHeader={termHeader}
           definitionHeader={definitionHeader}
           onUpdateField={handleUpdateField}
+          onUpdateTags={handleUpdateTags}
           onBlurRow={handleBlurRow}
           onRemoveRow={handleRemoveRow}
           selectable
@@ -601,8 +633,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               return next;
             });
           }}
-          activeColumn={activeColumn}
-          onColumnChange={setActiveColumn}
         />
 
         {archivedAssociations.length > 0 && (
@@ -615,16 +645,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               associations={sortedArchived}
               sort={archivedSort}
               onSort={(newSort) => setArchivedSort(nextSort(archivedSort, newSort.field as SortField))}
-              columnPriority={columnPriority}
               termHeader={termHeader}
               definitionHeader={definitionHeader}
               onUpdateField={handleUpdateField}
+              onUpdateTags={handleUpdateTags}
               onBlurRow={handleBlurRow}
               onRemoveRow={handleRemoveRow}
               onRestoreRow={handleRestoreRow}
               isArchived
-              activeColumn={activeColumn}
-              onColumnChange={setActiveColumn}
             />
           </div>
         )}

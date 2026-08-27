@@ -22,6 +22,7 @@ export const listService = {
       sourceType: list.sourceType,
       sourceUrl: list.sourceUrl,
       rawSourceText: list.rawSourceText,
+      sourceRow: list.sourceRow,
     });
     return result.id;
   },

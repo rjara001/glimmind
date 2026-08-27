@@ -1,3 +1,5 @@
+import type { SourceRow } from './source-row';
+
 export interface YouTubeVideoInfo {
   id: string;
   title: string;
@@ -48,6 +50,7 @@ export interface VocabularyResult {
   quota?: DeckQuotaInfo;
   rawSourceText?: string;
   sourceUrl?: string;
+  sourceRow?: SourceRow;
 }
 
 export interface VideoSource {

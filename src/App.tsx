@@ -189,6 +189,7 @@ const AppContent: React.FC = () => {
               onUpdateAssociations={handleUpdateAssociations}
               onUpdateList={handleUpdateList}
               onBack={() => navigate('dashboard')}
+              onViewList={() => navigate('editor')}
             />
           )}
           {view === 'settings' && (

@@ -4,7 +4,7 @@ const { FieldValue } = require("../../utils/firebase");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST, DEFAULT_CARD_QUOTA } = require("../../utils/constants");
 const { validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
-function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText }) {
+function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
   return {
     userId,
     name,
@@ -14,6 +14,7 @@ function buildListDocumentData({ userId, name, concept, associations, settings, 
     ...(sourceType !== undefined ? { sourceType } : {}),
     ...(sourceUrl !== undefined ? { sourceUrl } : {}),
     ...(rawSourceText !== undefined ? { rawSourceText } : {}),
+    ...(sourceRow !== undefined ? { sourceRow } : {}),
     isArchived: false,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
@@ -64,7 +65,7 @@ async function fetchListByIdForUser(db, listId, uid) {
   return { id: doc.id, ...doc.data() };
 }
 
-async function persistNewListWithAssociations(db, userId, { name, concept, associations, settings, sourceType, sourceUrl, rawSourceText }) {
+async function persistNewListWithAssociations(db, userId, { name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
   const meta = await loadUserMetaForCardQuota(db, userId);
   const maxAllowed = meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST;
   const count = validateListDoesNotExceedCardLimit(associations, maxAllowed);
@@ -81,7 +82,7 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
       throw new QuotaExceededError(`Llegaste a tu límite de ${Math.max(currentMeta.cardQuota || 0, DEFAULT_CARD_QUOTA)} tarjetas. Elimina o archiva tarjetas para añadir más.`);
     }
 
-    tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText }));
+    tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }));
     
     if (metaSnap.exists) {
       tx.update(metaRefFor(db, userId), {
@@ -206,6 +207,7 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
         ...(original.sourceType !== undefined ? { sourceType: original.sourceType } : {}),
         ...(original.sourceUrl !== undefined ? { sourceUrl: original.sourceUrl } : {}),
         ...(original.rawSourceText !== undefined ? { rawSourceText: original.rawSourceText } : {}),
+        ...(original.sourceRow !== undefined ? { sourceRow: original.sourceRow } : {}),
         isArchived: false,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
