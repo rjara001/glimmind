@@ -78,8 +78,13 @@ const AppContent: React.FC = () => {
       await auth?.signOut();
     } catch {
       showToast('Failed to sign out. Please try again.', 'error');
+    } finally {
+      // Clear local user state explicitly. On mobile (Capacitor webview),
+      // onAuthStateChanged does not reliably fire with null after signOut,
+      // so we cannot depend on it to reset the UI.
+      setUser(null);
     }
-  }, [showToast]);
+  }, [setUser, showToast]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
