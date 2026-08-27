@@ -23,7 +23,7 @@ export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, on
     const associations: Association[] = result.items.map((item) => ({
       id: crypto.randomUUID(),
       term: item.term,
-      definition: '',
+      definition: item.translation || item.example || '',
       context: item.context || '',
       translation: item.translation || undefined,
       metadata: item.metadata,
