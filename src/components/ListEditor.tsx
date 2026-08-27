@@ -8,8 +8,9 @@ import { computeQuotaStatus } from '../utils/quota';
 import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
 import { useToast } from '../components/layout/Toast';
 import { MIN_GROUP_SIZE } from '../constants/limits';
-import { AssociationTable } from '../components/list-editor/AssociationTable';
+import { AssociationTable, ColumnKey } from '../components/list-editor/AssociationTable';
 import { BulkImport } from '../components/list-editor/BulkImport';
+import { translationService } from '../services/translationService';
 
 type SortField = 'term' | 'definition';
 
@@ -59,6 +60,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
   const [columnPriority, setColumnPriority] = useState<'term' | 'definition'>('term');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateLang, setTranslateLang] = useState('es');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [activeColumn, setActiveColumn] = useState<ColumnKey>('value1');
 
   const conceptParts = editList.concept.split('/');
   const termHeader = conceptParts[0] || 'Term';
@@ -68,6 +74,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
   const isPremium = quota?.tier === 'premium';
+
+  const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
+  const translationLimit = quota?.translationCharLimit ?? 20000;
+  const translationPercentage = Math.min(100, (translationUsed / translationLimit) * 100);
+  const translationState = translationPercentage >= 100 ? 'blocked' : translationPercentage >= 70 ? 'warning' : 'ok';
+
+  useEffect(() => {
+    setTranslationUsed(quota?.translationCharsUsed ?? 0);
+  }, [quota?.translationCharsUsed]);
 
   const projectedTotal = useMemo(() => {
     const otherTotal = lists
@@ -262,7 +277,69 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const handleRemoveRow = (id: string) => {
     const updated = { ...editList, associations: editList.associations.filter(a => a.id !== id) };
     cleanupAndSave(updated);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
+
+  const handleTranslateSelected = useCallback(async () => {
+    const selectedAssociations = editList.associations.filter(a => selectedIds.has(a.id));
+    if (selectedAssociations.length === 0) return;
+
+    const user = useGameStore.getState().user;
+    if (!user) {
+      showToast('Debes iniciar sesión para traducir.', 'error');
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const cards = selectedAssociations.map(a => ({ term: a.term, context: a.context }));
+      const response = await translationService.translateBatch(user.uid, cards, translateLang);
+
+      const updatedAssociations = editList.associations.map(a => {
+        if (!selectedIds.has(a.id)) return a;
+        const translation = response.translations.find(t => t.original === a.term);
+        return {
+          ...a,
+          translation: translation ? translation.translated : a.translation,
+        };
+      });
+
+      const updatedList = { ...editList, associations: updatedAssociations };
+      setEditList(updatedList);
+      onSave(updatedList);
+
+      if (response.quotaExceeded) {
+        showToast('Se agotó la cuota de traducción.', 'error');
+      } else {
+        setTranslationUsed(prev => prev + response.consumedChars);
+        const remaining = response.userRemainingChars;
+        showToast(`Traducidas ${response.translations.length} tarjetas. Quedan ${remaining} caracteres.`, 'success');
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Error al traducir.', 'error');
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [editList, selectedIds, onSave, showToast, translateLang]);
+
+  const handleExportSelected = useCallback(() => {
+    const selectedAssociations = editList.associations.filter(a => selectedIds.has(a.id));
+    if (selectedAssociations.length === 0) return;
+    const fileName = `${editList.name.replace(/[^a-zA-Z0-9]/g, '_')}_export.csv`;
+    downloadAssociationsCsv(selectedAssociations, fileName, csvHeader);
+    showToast(`Exportadas ${selectedAssociations.length} tarjetas`, 'success');
+  }, [editList, selectedIds, csvHeader, showToast]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const updated = { ...editList, associations: editList.associations.filter(a => !selectedIds.has(a.id)) };
+    cleanupAndSave(updated);
+    setSelectedIds(new Set());
+  }, [editList, selectedIds, cleanupAndSave]);
 
   const handleRestoreRow = (id: string) => {
     const updatedAssociations = editList.associations.map(a => a.id === id ? { ...a, isArchived: false } : a);
@@ -272,10 +349,20 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const activeAssociations = editList.associations.filter(a => !a.isArchived);
   const archivedAssociations = editList.associations.filter(a => a.isArchived);
 
-  const filteredActive = activeAssociations.filter(assoc =>
-    assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    assoc.definition.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    activeAssociations.forEach(a => {
+      a.metadata?.tags?.forEach(t => tagSet.add(t));
+    });
+    return Array.from(tagSet).sort();
+  }, [activeAssociations]);
+
+  const filteredActive = activeAssociations.filter(assoc => {
+    const matchesSearch = assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assoc.definition.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTag = !activeTagFilter || assoc.metadata?.tags?.includes(activeTagFilter);
+    return matchesSearch && matchesTag;
+  });
 
   const filteredArchived = archivedAssociations.filter(assoc =>
     assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -370,33 +457,91 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               className="block w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition outline-none shadow-sm"
             />
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => downloadAssociationsCsv(editList.associations, `${editList.name}.csv`, csvHeader)}
-              className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm"
-              title="Descargar tarjetas en CSV"
-              aria-label="Descargar tarjetas en CSV"
-            >
-              <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              <span className="hidden sm:inline">Export</span>
-            </button>
-            <button
-              onClick={() => setShowBulk(!showBulk)}
-              className="px-3 sm:px-4 py-2 sm:py-3 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition"
-            >
-              <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-              <span className="hidden sm:inline">Import</span>
-            </button>
-            <button
-              onClick={handleAddRow}
-              disabled={!isPremium && quotaStatus?.state === 'blocked'}
-              className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              <span className="hidden sm:inline">Add Row</span>
-            </button>
-          </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          {selectedIds.size > 0 && (
+            <>
+              <select
+                value={translateLang}
+                onChange={(e) => setTranslateLang(e.target.value)}
+                className="bg-white border border-indigo-200 text-indigo-700 px-2 sm:px-3 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+              >
+                <option value="es">🇪🇸 ES</option>
+                <option value="fr">🇫🇷 FR</option>
+                <option value="de">🇩🇪 DE</option>
+                <option value="pt">🇧🇷 PT</option>
+              </select>
+              <button
+                onClick={handleTranslateSelected}
+                disabled={isTranslating}
+                title="Traducir seleccionados"
+                className="bg-white border border-indigo-200 text-indigo-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50"
+              >
+                {isTranslating ? 'Traduciendo...' : 'Traducir'}
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                title="Eliminar seleccionados"
+                className="bg-white border border-rose-200 text-rose-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-rose-600 hover:text-rose-600 transition flex-1 sm:flex-none shadow-sm"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={handleExportSelected}
+                title="Exportar seleccionados a CSV"
+                className="bg-white border border-emerald-200 text-emerald-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-emerald-600 hover:text-emerald-600 transition flex-1 sm:flex-none shadow-sm"
+              >
+                Exportar
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setShowBulk(!showBulk)}
+            className="px-3 sm:px-4 py-2 sm:py-3 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest hover:bg-white rounded-xl transition"
+          >
+            <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            <span className="hidden sm:inline">Import</span>
+          </button>
+          <button
+            onClick={handleAddRow}
+            disabled={!isPremium && quotaStatus?.state === 'blocked'}
+            className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            <span className="hidden sm:inline">Add Row</span>
+          </button>
         </div>
+        </div>
+
+        {uniqueTags.length > 0 && (
+          <div className="px-4 sm:px-6 py-2 border-b bg-slate-50/30 flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setActiveTagFilter(null)}
+              className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full transition ${
+                activeTagFilter === null
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              Todos ({activeAssociations.length})
+            </button>
+            {uniqueTags.map(tag => {
+              const count = activeAssociations.filter(a => a.metadata?.tags?.includes(tag)).length;
+              return (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+                  className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full transition ${
+                    activeTagFilter === tag
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  {tag} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {showBulk && (
           <BulkImport
@@ -409,6 +554,28 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           />
         )}
 
+        {selectedIds.size > 0 && (
+          <div className="px-4 sm:px-6 py-2 border-b bg-slate-50/30">
+            <div className="flex items-center gap-3 text-[10px]">
+              <span className={`font-bold uppercase tracking-wider ${
+                translationState === 'blocked' ? 'text-rose-600' :
+                translationState === 'warning' ? 'text-amber-600' : 'text-slate-500'
+              }`}>
+                Traducción: {translationUsed.toLocaleString()} / {translationLimit.toLocaleString()} chars
+              </span>
+              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    translationState === 'blocked' ? 'bg-rose-500' :
+                    translationState === 'warning' ? 'bg-amber-500' : 'bg-indigo-400'
+                  }`}
+                  style={{ width: `${translationPercentage}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <AssociationTable
           associations={sortedActive}
           sort={activeSort}
@@ -419,6 +586,21 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           onUpdateField={handleUpdateField}
           onBlurRow={handleBlurRow}
           onRemoveRow={handleRemoveRow}
+          selectable
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => {
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) {
+                next.delete(id);
+              } else {
+                next.add(id);
+              }
+              return next;
+            });
+          }}
+          activeColumn={activeColumn}
+          onColumnChange={setActiveColumn}
         />
 
         {archivedAssociations.length > 0 && (
@@ -439,6 +621,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               onRemoveRow={handleRemoveRow}
               onRestoreRow={handleRestoreRow}
               isArchived
+              activeColumn={activeColumn}
+              onColumnChange={setActiveColumn}
             />
           </div>
         )}

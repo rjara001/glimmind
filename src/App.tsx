@@ -6,6 +6,7 @@ import { QuickAddModal } from './components/modals/QuickAddModal';
 import { SettingsView } from './components/views/SettingsView';
 import { HistoryView } from './components/views/HistoryView';
 import { ReportsView } from './components/views/ReportsView';
+import { AdminUsageView } from './components/views/AdminUsageView';
 import { Auth } from './components/Auth';
 import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
@@ -19,6 +20,11 @@ import { useAppActions } from './hooks/app/useAppActions';
 import { GUEST_UID } from './constants/app';
 import type { AppUser } from './types';
 import type { AppView } from './types/app';
+import type { VocabularyResult } from './types/youtube-deck';
+import type { Association, AssociationList } from './types';
+import { VocabularyPreview } from './components/modals/VocabularyPreview';
+import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
+import type { VocabularySourceMeta } from './components/modals/VocabularyPreview';
 
 const MOCK_USER: AppUser = {
   uid: GUEST_UID,
@@ -31,6 +37,9 @@ const AppContent: React.FC = () => {
   const { showToast } = useToast();
   const [view, setView] = useState<AppView>('dashboard');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
+  const [youtubePreviewResult, setYoutubePreviewResult] = useState<VocabularyResult | null>(null);
+  const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
 
   const navigate = useCallback((nextView: string) => {
     setView(nextView as AppView);
@@ -40,6 +49,7 @@ const AppContent: React.FC = () => {
   const setUser = useGameStore((state) => state.setUser);
   const isLoaded = useGameStore((state) => state.isLoaded);
   const lists = useGameStore((state) => state.lists);
+  const currentListId = useGameStore((state) => state.currentListId);
   const celebration = useGameStore((state) => state.celebration);
   const clearCelebration = useGameStore((state) => state.clearCelebration);
 
@@ -64,11 +74,38 @@ const AppContent: React.FC = () => {
   const handleLogout = useCallback(async () => {
     try {
       await auth?.signOut();
-      // onAuthStateChanged will call setUser(null) → isLoaded=false → Auth screen renders
     } catch {
       showToast('Failed to sign out. Please try again.', 'error');
     }
   }, [showToast]);
+
+  React.useEffect(() => {
+    if (view === 'editor' && pendingYouTube && !currentListId) {
+      const tempList: AssociationList = {
+        id: `temp_${Date.now()}`,
+        userId: user?.uid || GUEST_UID,
+        name: `YouTube - ${youtubePreviewResult?.video?.title || youtubePreviewResult?.sourceUrl || 'Deck'}`,
+        concept: 'value1 / value2',
+        associations: pendingYouTube.associations,
+        isArchived: false,
+        sourceType: pendingYouTube.sourceMeta.sourceType,
+        sourceUrl: pendingYouTube.sourceMeta.sourceUrl,
+        rawSourceText: pendingYouTube.sourceMeta.rawSourceText,
+        settings: {
+          mode: 'training',
+          flipOrder: 'normal',
+          threshold: 0.95,
+          ignoreArticles: true,
+          showHints: true,
+          autoRevealAfterSeconds: 15,
+          autoAdvanceAfterAttempts: 3,
+        },
+      };
+      useGameStore.getState().setCurrentList(tempList.id);
+      useGameStore.getState().setLists([...lists, tempList]);
+      setPendingYouTube(null);
+    }
+  }, [view, pendingYouTube, currentListId, user, lists, youtubePreviewResult]);
 
   if (!isLoaded) {
     return (
@@ -128,13 +165,17 @@ const AppContent: React.FC = () => {
                 navigate('editor');
               }}
               onPlay={handlePlayList}
+              onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
             />
           )}
           {view === 'editor' && currentList && (
             <ListEditor
               list={currentList}
               onSave={handleUpdateList}
-              onBack={() => navigate('dashboard')}
+              onBack={() => {
+                useGameStore.getState().setCurrentList(null);
+                navigate('dashboard');
+              }}
               onCreateMultiple={handleCreateMultipleLists}
             />
           )}
@@ -155,6 +196,9 @@ const AppContent: React.FC = () => {
           {view === 'reports' && (
             <ReportsView onBack={() => navigate('dashboard')} onGoToSettings={() => navigate('settings')} />
           )}
+          {view === 'admin' && (
+            <AdminUsageView onBack={() => navigate('dashboard')} />
+          )}
         </main>
 
         {showQuickAdd && (
@@ -163,6 +207,28 @@ const AppContent: React.FC = () => {
             onAdd={handleQuickAdd}
             onCreateList={handleCreateListQuick}
             onClose={() => setShowQuickAdd(false)}
+          />
+        )}
+        {youtubePreviewResult && (
+          <VocabularyPreview
+            result={youtubePreviewResult}
+            onClose={() => {
+              setYoutubePreviewResult(null);
+            }}
+            onAccept={(associations, sourceMeta) => {
+              setYoutubePreviewResult(null);
+              setPendingYouTube({ associations, sourceMeta });
+              navigate('editor');
+            }}
+          />
+        )}
+        {showYouTubeModal && (
+          <CreateYouTubeDeckModal
+            onClose={() => setShowYouTubeModal(false)}
+            onSuccess={(result) => {
+              setShowYouTubeModal(false);
+              setYoutubePreviewResult(result);
+            }}
           />
         )}
         {celebration && (

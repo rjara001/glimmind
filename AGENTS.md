@@ -538,3 +538,19 @@ Minor (y) for new features.
 Major (x) for breaking changes.
 NEVER deploy without bumping the version first.
 NEVER use the same version number for two different deploys.
+
+30. Firebase Emulator Persistence
+
+Always start the Firebase emulators with the persistent script:
+
+npm run emulators
+
+This runs: firebase emulators:start --only auth,functions,firestore --import .emulator-data --export-on-exit .emulator-data
+
+Rules
+
+NEVER run firebase emulators:start without --import/--export-on-exit. Without persistence, a restart wipes all auth users AND all Firestore data.
+
+If the emulator data is wiped (or after the first empty boot): every authenticated app request returns 401 Unauthorized because the stored ID token points to a uid that no longer exists. The user MUST sign out and sign in again.
+
+The .emulator-data directory MUST stay in .gitignore.

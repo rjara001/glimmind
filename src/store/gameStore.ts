@@ -769,6 +769,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           settings: localList.settings,
           userId: user.uid,
           isArchived: false,
+          sourceType: localList.sourceType,
+          sourceUrl: localList.sourceUrl,
+          rawSourceText: localList.rawSourceText,
         });
         const updatedLists = lists.map(l => l.id === listId ? { ...l, id: newId } : l);
         set({ lists: updatedLists });

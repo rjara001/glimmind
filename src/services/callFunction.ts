@@ -22,6 +22,12 @@ async function getToken(): Promise<string | null> {
   }
 }
 
+export interface FunctionCallError extends Error {
+  code?: string;
+  detail?: string;
+  fallbackAvailable?: boolean;
+}
+
 export async function callFunction<T>(functionName: string, data: any): Promise<T> {
   const token = await getToken();
 
@@ -45,13 +51,23 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
 
   if (!response.ok) {
     let errorMessage = `HTTP ${response.status}`;
+    let errorCode: string | undefined;
+    let detail: string | undefined;
+    let fallbackAvailable: boolean | undefined;
     try {
       const errorJson = JSON.parse(text);
-      errorMessage = errorJson.error || errorJson.detail || errorMessage;
+      errorCode = errorJson.code;
+      detail = errorJson.detail;
+      fallbackAvailable = errorJson.fallbackAvailable;
+      errorMessage = errorJson.message || errorJson.error || errorMessage;
     } catch {
       if (text) errorMessage = text.slice(0, 200);
     }
-    throw new Error(errorMessage);
+    const error: FunctionCallError = new Error(errorMessage);
+    error.code = errorCode;
+    error.detail = detail;
+    error.fallbackAvailable = fallbackAvailable;
+    throw error;
   }
 
   try {

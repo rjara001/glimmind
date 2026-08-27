@@ -11,6 +11,7 @@ import { BigListCard } from '../cards/BigListCard';
 import { useToast } from '../layout/Toast';
 import { DeckStoreOnboarding } from '../onboarding/DeckStoreOnboarding';
 import { PrebuiltDeck } from '../../types/prebuilt-deck';
+import { CreateYouTubeDeckModal } from '../modals/CreateYouTubeDeckModal';
 
 const BIG_LIST_THRESHOLD = 200;
 
@@ -23,9 +24,10 @@ interface DashboardProps {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
+  onYouTubeSuccess?: (result: import('../../types/youtube-deck').VocabularyResult) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay, onYouTubeSuccess }) => {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -39,6 +41,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeckStore, setShowDeckStore] = useState(false);
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
 
   const progress = useGameStore(state => state.progress);
   const setGoalTarget = useGameStore(state => state.setGoalTarget);
@@ -187,6 +190,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
             await onCreateAndPlay(deck.name, deck.concept, transformDeckToAssociations(deck));
           }}
           onCreateCustom={() => setIsCreating(true)}
+          onYouTube={() => setShowYouTubeModal(true)}
         />
       </div>
     );
@@ -211,6 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
             setShowDeckStore(false);
             setIsCreating(true);
           }}
+          onYouTube={() => setShowYouTubeModal(true)}
         />
       </div>
     );
@@ -311,6 +316,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setShowYouTubeModal(true)}
+            className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Desde YouTube
+          </button>
           <button
             onClick={() => setShowDeckStore(true)}
             className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
@@ -572,6 +586,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
             );
           })}
         </div>
+      )}
+      {showYouTubeModal && (
+        <CreateYouTubeDeckModal
+          onClose={() => setShowYouTubeModal(false)}
+          onSuccess={(result) => {
+            setShowYouTubeModal(false);
+            onYouTubeSuccess?.(result);
+          }}
+        />
       )}
     </div>
   );

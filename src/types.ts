@@ -1,3 +1,4 @@
+import type { DeckSourceType } from './types/youtube-deck';
 
 export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
@@ -16,10 +17,20 @@ export interface ChirpVoice {
   lang: VoiceLanguage;
 }
 
+export interface FlashcardMetadata {
+  difficulty: 'basic' | 'intermediate' | 'advanced';
+  frequencyRank: number;
+  audioTimestamp?: number;
+  tags: string[];
+}
+
 export interface Association {
   id: string;
   term: string;
   definition: string;
+  translation?: string;
+  context?: string;
+  metadata?: FlashcardMetadata;
   currentCycle: number;
   status: 'pending' | 'correct';
   isLearned: boolean;
@@ -39,6 +50,9 @@ export interface AssociationList {
   concept: string;
   associations: Association[];
   isArchived: boolean;
+  sourceType?: DeckSourceType;
+  sourceUrl?: string;
+  rawSourceText?: string;
   settings: {
     mode: GameMode;
     flipOrder: 'normal' | 'reversed';

@@ -3,6 +3,8 @@ import { APP_VERSION } from '../../constants/version';
 import { UserMenu } from './UserMenu';
 import type { AppUser } from '../../types';
 
+const ADMIN_EMAILS = ['rjara001@gmail.com', 'peptio@gmail.com'];
+
 interface AppHeaderProps {
   view: string;
   user: AppUser | null;
@@ -22,6 +24,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onNavigate,
   onLogout,
 }) => {
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+
   return (
     <header className={`bg-white border-b border-slate-200 px-4 py-3 ${view === 'game' ? 'hidden sm:block' : ''}`}>
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -68,6 +72,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         >
           Reports
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => onNavigate('admin')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'admin' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
+          >
+            Admin
+          </button>
+        )}
         <button
           onClick={() => onNavigate('settings')}
           aria-label="Settings"

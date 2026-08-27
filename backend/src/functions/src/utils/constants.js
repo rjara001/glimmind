@@ -7,8 +7,24 @@ const PREMIUM_AI_DAILY_QUOTA = 10;
 const GLOBAL_AI_DAILY_CAP = 200;
 const MAX_CARDS_PER_LIST = 5000;
 const MAX_CARDS_PER_AI_REQUEST = 2000;
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
 const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+
+const VOCABULARY_GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+const VOCABULARY_MAX_OUTPUT_TOKENS = 32768;
+const VIDEO_MAX_SECONDS = 3600;
+const VOCABULARY_TERMS_THRESHOLD_COMPACT_CONTEXT = 100;
+const VOCABULARY_TARGET_LANGUAGES = ["es", "de", "fr", "it", "pt", "en"];
+
+const DECK_TIERS = {
+  express: { maxTerms: 20, costPercent: 15 },
+  standard: { maxTerms: 40, costPercent: 30 },
+  extended: { maxTerms: 80, costPercent: 60 },
+  massive: { maxTerms: 150, costPercent: 100 },
+};
+
+const YT_AI_DAILY_LIMIT_FREE = 100;
+const YT_AI_DAILY_LIMIT_PREMIUM = 200;
 
 const MAX_EVENTS_PER_BATCH = 400;
 const MAX_ACTIVITY_PAGE = 200;
@@ -29,7 +45,11 @@ const CHIPTT_STT_USER_LIMIT = 3000;
 const CHIPTT_STT_PREMIUM_USER_LIMIT = 72000;
 const CHIPTT_STT_CALL_TIMEOUT_MS = 30000;
 
-const GCP_PROJECT_ID = "fladycard-22a3e";
+const TRANSLATION_GLOBAL_MONTHLY_CHARS = 400000;
+const TRANSLATION_USER_MONTHLY_CHARS = 20000;
+const TRANSLATION_PREMIUM_USER_MONTHLY_CHARS = 100000;
+
+const GCP_PROJECT_ID = "ema-test";
 const GCP_REGION = "us-central1";
 
 
@@ -38,6 +58,8 @@ const GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize";
 const GOOGLE_STT_RECOGNIZE_URL = `https://eu-speech.googleapis.com/v2/projects/${GCP_PROJECT_ID}/locations/eu/recognizers/_:recognize`;
 const GOOGLE_VOICES_URL = "https://texttospeech.googleapis.com/v1/voices";
 const GOOGLE_METADATA_TOKEN_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+const GOOGLE_TRANSLATE_URL = `https://translation.googleapis.com/v3/projects/${GCP_PROJECT_ID}/locations/global:translateText`;
+const DEEPL_FREE_URL = "https://api-free.deepl.com/v2/translate";
 
 module.exports = {
   COLLECTION_NAME,
@@ -49,6 +71,14 @@ module.exports = {
   MAX_CARDS_PER_LIST,
   MAX_CARDS_PER_AI_REQUEST,
   GEMINI_MODELS,
+  VOCABULARY_GEMINI_MODELS,
+  VOCABULARY_MAX_OUTPUT_TOKENS,
+  VIDEO_MAX_SECONDS,
+  VOCABULARY_TERMS_THRESHOLD_COMPACT_CONTEXT,
+  VOCABULARY_TARGET_LANGUAGES,
+  DECK_TIERS,
+  YT_AI_DAILY_LIMIT_FREE,
+  YT_AI_DAILY_LIMIT_PREMIUM,
   MAX_EVENTS_PER_BATCH,
   MAX_ACTIVITY_PAGE,
   MAX_SESSIONS_PAGE,
@@ -64,6 +94,9 @@ module.exports = {
   CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,
   CHIPTT_STT_CALL_TIMEOUT_MS,
+  TRANSLATION_GLOBAL_MONTHLY_CHARS,
+  TRANSLATION_USER_MONTHLY_CHARS,
+  TRANSLATION_PREMIUM_USER_MONTHLY_CHARS,
   GCP_PROJECT_ID,
   GCP_REGION,
   GOOGLE_TTS_URL,
@@ -71,4 +104,6 @@ module.exports = {
   GOOGLE_STT_RECOGNIZE_URL,
   GOOGLE_VOICES_URL,
   GOOGLE_METADATA_TOKEN_URL,
+  GOOGLE_TRANSLATE_URL,
+  DEEPL_FREE_URL,
 };

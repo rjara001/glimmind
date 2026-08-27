@@ -33,11 +33,11 @@ async function fetchSttQuotaDocuments(db, uid, monthKey) {
 
   const globalData = globalSnap.exists
     ? globalSnap.data()
-    : { monthKey: monthKey, audioSecondsUsed: 0 };
+    : { monthKey: monthKey, audioSecondsUsed: 0, totalCalls: 0 };
 
   const userData = userSnap.exists
     ? userSnap.data()
-    : { monthKey: monthKey, audioSecondsUsed: 0 };
+    : { monthKey: monthKey, audioSecondsUsed: 0, callCount: 0 };
 
   return { globalRef, userRef, globalData, userData };
 }
@@ -96,6 +96,7 @@ async function persistSttQuotaUsage(db, globalRef, userRef, globalData, userData
     {
       monthKey: monthKey,
       audioSecondsUsed: globalData.audioSecondsUsed + audioSeconds,
+      totalCalls: (globalData.totalCalls || 0) + 1,
     },
     { merge: true }
   );
@@ -105,6 +106,7 @@ async function persistSttQuotaUsage(db, globalRef, userRef, globalData, userData
     {
       monthKey: monthKey,
       audioSecondsUsed: userData.audioSecondsUsed + audioSeconds,
+      callCount: (userData.callCount || 0) + 1,
     },
     { merge: true }
   );

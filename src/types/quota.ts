@@ -6,6 +6,10 @@ export interface UserQuota {
   cardQuota: number;
   aiQuotaDaily: number;
   aiUsedToday: number;
+  ytAiUsedToday: number;
+  ytAiDailyLimit: number;
+  translationCharsUsed: number;
+  translationCharLimit: number;
 }
 
 export type QuotaState = 'ok' | 'warning' | 'blocked';

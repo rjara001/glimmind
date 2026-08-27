@@ -33,11 +33,11 @@ async function fetchTtsQuotaDocuments(db, uid, monthKey) {
 
   const globalData = globalSnap.exists
     ? globalSnap.data()
-    : { monthKey: monthKey, charsUsed: 0 };
+    : { monthKey: monthKey, charsUsed: 0, totalCalls: 0 };
 
   const userData = userSnap.exists
     ? userSnap.data()
-    : { monthKey: monthKey, charsUsed: 0 };
+    : { monthKey: monthKey, charsUsed: 0, callCount: 0 };
 
   return { globalRef, userRef, globalData, userData };
 }
@@ -75,6 +75,7 @@ async function persistTtsQuotaUsage(db, globalRef, userRef, globalData, userData
     {
       monthKey: monthKey,
       charsUsed: globalData.charsUsed + charCount,
+      totalCalls: (globalData.totalCalls || 0) + 1,
     },
     { merge: true }
   );
@@ -84,6 +85,7 @@ async function persistTtsQuotaUsage(db, globalRef, userRef, globalData, userData
     {
       monthKey: monthKey,
       charsUsed: userData.charsUsed + charCount,
+      callCount: (userData.callCount || 0) + 1,
     },
     { merge: true }
   );

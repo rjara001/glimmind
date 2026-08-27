@@ -18,7 +18,10 @@ export const listService = {
       concept: list.concept,
       associations: list.associations,
       settings: list.settings,
-      userId: list.userId
+      userId: list.userId,
+      sourceType: list.sourceType,
+      sourceUrl: list.sourceUrl,
+      rawSourceText: list.rawSourceText,
     });
     return result.id;
   },

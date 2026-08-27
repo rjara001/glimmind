@@ -26,6 +26,8 @@ function metaDefaults() {
     aiQuotaDaily: DEFAULT_AI_DAILY_QUOTA,
     aiUsedToday: 0,
     aiDateKey: todayKey(),
+    ytAiUsedToday: 0,
+    ytAiDateKey: todayKey(),
     updatedAt: require("./firebase").FieldValue.serverTimestamp(),
   };
 }
@@ -50,6 +52,8 @@ async function getOrCreateMeta(db, userId) {
     aiQuotaDaily: DEFAULT_AI_DAILY_QUOTA,
     aiUsedToday: 0,
     aiDateKey: todayKey(),
+    ytAiUsedToday: 0,
+    ytAiDateKey: todayKey(),
     updatedAt: FieldValue.serverTimestamp(),
   };
   await metaRef.set(data);

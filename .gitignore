@@ -34,3 +34,6 @@ dist-ssr
 /src/public/transformers.web.min.js
 
 .opencode/
+
+# Firebase emulator persisted data (auth, firestore, storage)
+/.emulator-data/

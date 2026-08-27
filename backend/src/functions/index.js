@@ -20,6 +20,9 @@ const aiRoutes = require("./src/routes/aiRoutes");
 const ttsRoutes = require("./src/routes/ttsRoutes");
 const sttRoutes = require("./src/routes/sttRoutes");
 const deckRoutes = require("./src/routes/deckRoutes");
+const youtubeDeckRoutes = require("./src/routes/youtubeDeckRoutes");
+const createDeckFromTextRoutes = require("./src/routes/createDeckFromText");
+const translateVocabularyRoutes = require("./src/routes/translateVocabulary");
 
 function loadRoutes(routes) {
   Object.keys(routes).forEach((key) => {
@@ -36,3 +39,6 @@ loadRoutes(aiRoutes);
 loadRoutes(ttsRoutes);
 loadRoutes(sttRoutes);
 loadRoutes(deckRoutes);
+loadRoutes(youtubeDeckRoutes);
+loadRoutes(createDeckFromTextRoutes);
+loadRoutes(translateVocabularyRoutes);
