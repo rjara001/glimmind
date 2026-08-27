@@ -104,13 +104,13 @@ if (typeof window !== 'undefined') {
   });
 }
 
-function shouldFetchCloudLists(): boolean {
-  const last = Number(localStorage.getItem(LAST_CLOUD_FETCH_KEY) || 0);
+function shouldFetchCloudLists(uid: string): boolean {
+  const last = Number(localStorage.getItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`) || 0);
   return Date.now() - last > LIST_CACHE_TTL_MS;
 }
 
-function markCloudFetch() {
-  localStorage.setItem(LAST_CLOUD_FETCH_KEY, String(Date.now()));
+function markCloudFetch(uid: string) {
+  localStorage.setItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`, String(Date.now()));
 }
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
   if (!list.associations || list.associations.length === 0) {
@@ -669,7 +669,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Load from cloud only if NOT guest
     if (!isGuest) {
       console.log('[STORE] Loading from cloud for user:', user.uid, 'cachedListsCount=', get().lists.length);
-      if (savedLists && !shouldFetchCloudLists()) {
+      if (savedLists && !shouldFetchCloudLists(user.uid)) {
         console.log('[STORE] Using cached lists (within TTL)');
       } else {
         try {
@@ -679,7 +679,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           if (requestId !== syncRequestSequence) {
             return;
           }
-          markCloudFetch();
+          markCloudFetch(user.uid);
           console.log('[STORE] Fetched cloud lists count=', cloudLists.length, 'for user=', user.uid);
           // For authenticated users, cloud is the source of truth.
           // Even if cloud returns empty, replace localStorage lists.
@@ -730,7 +730,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (requestId !== syncRequestSequence) {
         return;
       }
-      markCloudFetch();
+      markCloudFetch(user.uid);
       const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
       const localLists = get().lists;
       const merged = mergeCloudWithLocal(flattenedCloud, localLists, user.uid);
