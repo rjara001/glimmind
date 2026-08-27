@@ -42,6 +42,9 @@ const AppContent: React.FC = () => {
   const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
 
   const navigate = useCallback((nextView: string) => {
+    if (nextView === 'dashboard') {
+      useGameStore.getState().setCurrentList(null);
+    }
     setView(nextView as AppView);
   }, []);
 
@@ -49,7 +52,6 @@ const AppContent: React.FC = () => {
   const setUser = useGameStore((state) => state.setUser);
   const isLoaded = useGameStore((state) => state.isLoaded);
   const lists = useGameStore((state) => state.lists);
-  const currentListId = useGameStore((state) => state.currentListId);
   const celebration = useGameStore((state) => state.celebration);
   const clearCelebration = useGameStore((state) => state.clearCelebration);
 
@@ -80,17 +82,19 @@ const AppContent: React.FC = () => {
   }, [showToast]);
 
   React.useEffect(() => {
-    if (view === 'editor' && pendingYouTube && !currentListId) {
+    if (view === 'editor' && pendingYouTube) {
+      const { sourceRow, sourceUrl } = pendingYouTube.sourceMeta;
       const tempList: AssociationList = {
         id: `temp_${Date.now()}`,
         userId: user?.uid || GUEST_UID,
-        name: `YouTube - ${youtubePreviewResult?.video?.title || youtubePreviewResult?.sourceUrl || 'Deck'}`,
+        name: `YouTube - ${sourceRow?.videoTitle || sourceUrl || 'Deck'}`,
         concept: 'value1 / value2',
         associations: pendingYouTube.associations,
         isArchived: false,
         sourceType: pendingYouTube.sourceMeta.sourceType,
         sourceUrl: pendingYouTube.sourceMeta.sourceUrl,
         rawSourceText: pendingYouTube.sourceMeta.rawSourceText,
+        sourceRow: pendingYouTube.sourceMeta.sourceRow,
         settings: {
           mode: 'training',
           flipOrder: 'normal',
@@ -105,7 +109,7 @@ const AppContent: React.FC = () => {
       useGameStore.getState().setLists([...lists, tempList]);
       setPendingYouTube(null);
     }
-  }, [view, pendingYouTube, currentListId, user, lists, youtubePreviewResult]);
+  }, [view, pendingYouTube, user, lists]);
 
   if (!isLoaded) {
     return (
