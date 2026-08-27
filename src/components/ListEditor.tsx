@@ -302,9 +302,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       const updatedAssociations = editList.associations.map(a => {
         if (!selectedIds.has(a.id)) return a;
         const translation = response.translations.find(t => t.original === a.term);
+        const translatedText = translation ? translation.translated : a.translation;
         return {
           ...a,
-          translation: translation ? translation.translated : a.translation,
+          definition: translatedText ?? a.definition,
+          translation: translatedText,
         };
       });
 
