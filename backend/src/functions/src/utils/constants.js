@@ -1,11 +1,13 @@
+const { getMaxCards, getAiDailyLimit, QUOTA_CONFIG } = require("./quotaConfig");
+
 const COLLECTION_NAME = "lists";
 
-const DEFAULT_CARD_QUOTA = 5000;
-const PREMIUM_CARD_QUOTA = 5000;
-const DEFAULT_AI_DAILY_QUOTA = 3;
-const PREMIUM_AI_DAILY_QUOTA = 10;
+const DEFAULT_CARD_QUOTA = getMaxCards('free');
+const PREMIUM_CARD_QUOTA = getMaxCards('premium');
+const DEFAULT_AI_DAILY_QUOTA = getAiDailyLimit('free');
+const PREMIUM_AI_DAILY_QUOTA = getAiDailyLimit('premium');
 const GLOBAL_AI_DAILY_CAP = 200;
-const MAX_CARDS_PER_LIST = 5000;
+const MAX_CARDS_PER_LIST = QUOTA_CONFIG.maxCardsPerList;
 const MAX_CARDS_PER_AI_REQUEST = 2000;
 const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
 const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";

@@ -1,7 +1,8 @@
 const { getDb } = require("../../utils/firebase");
 const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../../utils/helpers");
 const { FieldValue } = require("../../utils/firebase");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST, DEFAULT_CARD_QUOTA } = require("../../utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../../utils/constants");
+const { QuotaService } = require("../quotaService");
 const { validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
 function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
@@ -76,10 +77,11 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
     const metaSnap = await tx.get(metaRefFor(db, userId));
     const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     const currentCardCount = currentMeta.cardCount || 0;
-    const currentIsPremium = currentMeta.tier === "premium";
-    
-    if (!currentIsPremium && count > 0 && currentCardCount + count > Math.max(currentMeta.cardQuota || 0, DEFAULT_CARD_QUOTA)) {
-      throw new QuotaExceededError(`Llegaste a tu límite de ${Math.max(currentMeta.cardQuota || 0, DEFAULT_CARD_QUOTA)} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    const currentTier = currentMeta.tier || "free";
+
+    if (!QuotaService.canAddCards(currentCardCount, count, currentTier)) {
+      const effectiveQuota = QuotaService.getEffectiveQuota(currentCardCount, currentTier);
+      throw new QuotaExceededError(`Llegaste a tu límite de ${effectiveQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
     }
 
     tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }));

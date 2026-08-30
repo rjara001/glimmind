@@ -3,9 +3,10 @@ import React from 'react';
 interface CustomCreationSectionProps {
   onCreateCustom: () => void;
   onYouTube: () => void;
+  onTextImport: () => void;
 }
 
-export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ onCreateCustom, onYouTube }) => {
+export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ onCreateCustom, onYouTube, onTextImport }) => {
   return (
     <div className="border-2 border-dashed border-indigo-200 bg-slate-50 rounded-2xl p-8">
       <h3 className="text-xl font-bold text-gray-900 mb-1">🛠️ ¿Preferís cargar tu propio material?</h3>
@@ -37,6 +38,11 @@ export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ on
           <span className="text-2xl mb-2 block">📺</span>
           <p className="font-bold text-sm text-gray-900">Desde YouTube</p>
           <p className="text-xs text-gray-500 mt-1">Pegá una URL y generamos vocabulario automáticamente</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-gray-100 cursor-pointer hover:shadow-md transition" onClick={onTextImport}>
+          <span className="text-2xl mb-2 block">📝</span>
+          <p className="font-bold text-sm text-gray-900">Texto Libre</p>
+          <p className="text-xs text-gray-500 mt-1">Pegá un artículo, transcripción o texto y generamos vocabulario automáticamente</p>
         </div>
       </div>
 

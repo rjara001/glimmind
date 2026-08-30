@@ -1,5 +1,6 @@
 const { getOrCreateMeta, metaDefaults } = require("../utils/helpers");
-const { DEFAULT_CARD_QUOTA, DEFAULT_AI_DAILY_QUOTA, PREMIUM_CARD_QUOTA, PREMIUM_AI_DAILY_QUOTA, TRANSLATION_USER_MONTHLY_CHARS, TRANSLATION_PREMIUM_USER_MONTHLY_CHARS, YT_AI_DAILY_LIMIT_FREE, YT_AI_DAILY_LIMIT_PREMIUM } = require("../utils/constants");
+const { QuotaService } = require("./quotaService");
+const { TRANSLATION_USER_MONTHLY_CHARS, TRANSLATION_PREMIUM_USER_MONTHLY_CHARS } = require("../utils/constants");
 
 async function getQuota(db, userId) {
   const { data } = await getOrCreateMeta(db, userId);
@@ -13,9 +14,7 @@ async function getQuota(db, userId) {
     ? TRANSLATION_PREMIUM_USER_MONTHLY_CHARS
     : TRANSLATION_USER_MONTHLY_CHARS;
 
-  const ytAiDailyLimit = data.tier === "premium"
-    ? YT_AI_DAILY_LIMIT_PREMIUM
-    : YT_AI_DAILY_LIMIT_FREE;
+  const ytAiDailyLimit = QuotaService.getAiDailyLimit(data.tier);
 
   return {
     tier: data.tier,
@@ -31,8 +30,8 @@ async function getQuota(db, userId) {
 }
 
 async function setUserQuota(db, adminUid, uid, tier) {
-  const cardQuota = tier === "premium" ? PREMIUM_CARD_QUOTA : DEFAULT_CARD_QUOTA;
-  const aiQuotaDaily = tier === "premium" ? PREMIUM_AI_DAILY_QUOTA : DEFAULT_AI_DAILY_QUOTA;
+  const cardQuota = QuotaService.getMaxCards(tier);
+  const aiQuotaDaily = QuotaService.getAiDailyLimit(tier);
 
   const { ref } = await getOrCreateMeta(db, uid);
   await ref.update({
@@ -45,14 +44,17 @@ async function setUserQuota(db, adminUid, uid, tier) {
 }
 
 async function setUserPremium(db, uid) {
+  const cardQuota = QuotaService.getMaxCards('premium');
+  const aiQuotaDaily = QuotaService.getAiDailyLimit('premium');
+
   const { ref } = await getOrCreateMeta(db, uid);
   await ref.update({
     tier: "premium",
-    cardQuota: PREMIUM_CARD_QUOTA,
-    aiQuotaDaily: PREMIUM_AI_DAILY_QUOTA,
+    cardQuota,
+    aiQuotaDaily,
     updatedAt: require("../utils/firebase").FieldValue.serverTimestamp(),
   });
-  return { success: true, tier: "premium", cardQuota: PREMIUM_CARD_QUOTA, aiQuotaDaily: PREMIUM_AI_DAILY_QUOTA };
+  return { success: true, tier: "premium", cardQuota, aiQuotaDaily };
 }
 
 module.exports = {

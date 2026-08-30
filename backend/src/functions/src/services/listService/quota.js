@@ -1,9 +1,9 @@
-const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../../utils/helpers");
-const { DEFAULT_CARD_QUOTA, PREMIUM_CARD_QUOTA, MAX_CARDS_PER_LIST } = require("../../utils/constants");
+const { QuotaService } = require("../quotaService");
+const { QUOTA_CONFIG } = require("../../utils/quotaConfig");
 
-function resolveListCardLimit(userTier) {
-  const isPremium = userTier === "premium";
-  const maxAllowed = isPremium ? PREMIUM_CARD_QUOTA : MAX_CARDS_PER_LIST;
+function resolveListCardLimit(tier) {
+  const isPremium = tier === "premium";
+  const maxAllowed = isPremium ? Infinity : QUOTA_CONFIG.maxCardsPerList;
   return { isPremium, maxAllowed };
 }
 
@@ -16,22 +16,23 @@ function validateListDoesNotExceedCardLimit(associations, maxAllowed) {
 }
 
 async function loadUserMetaForCardQuota(db, userId) {
+  const { getOrCreateMeta, metaRefFor } = require("../../utils/helpers");
   await getOrCreateMeta(db, userId);
   const metaSnap = await metaRefFor(db, userId).get();
-  const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+  const meta = metaSnap.exists ? metaSnap.data() : { tier: "free" };
   return meta;
 }
 
 function validateUserCardQuotaNotExceeded(meta, newCardsCount) {
-  const storedQuota = meta.cardQuota || 0;
-  const cardQuota = Math.max(storedQuota, DEFAULT_CARD_QUOTA);
+  const tier = meta.tier || "free";
+  const effectiveQuota = QuotaService.getEffectiveQuota(meta.cardCount || 0, tier);
   const cardCount = meta.cardCount || 0;
-  const { isPremium } = resolveListCardLimit(meta.tier);
-  
-  if (!isPremium && newCardsCount > 0 && cardCount + newCardsCount > cardQuota) {
-    throw new QuotaExceededError(`Llegaste a tu límite de ${cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+  const isPremium = tier === "premium";
+
+  if (!isPremium && newCardsCount > 0 && cardCount + newCardsCount > effectiveQuota) {
+    throw new QuotaExceededError(`Llegaste a tu límite de ${effectiveQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
   }
-  return { cardQuota, cardCount, isPremium };
+  return { cardQuota: effectiveQuota, cardCount, isPremium };
 }
 
 module.exports = {

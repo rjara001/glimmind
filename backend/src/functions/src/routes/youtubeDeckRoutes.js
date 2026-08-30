@@ -3,6 +3,7 @@ const { getDb, getAuth, FieldValue } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
 const { YouTubeTranscriptProvider } = require("../services/transcriptProvider");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
+const { QuotaService } = require("../services/quotaService");
 const {
   extractVideoId,
   fetchYouTubeVideoTitle,
@@ -19,7 +20,7 @@ const {
 } = require("../utils/constants");
 
 // Bump when extraction logic changes so stale cached results are ignored.
-const NLP_CACHE_VERSION = 5;
+const NLP_CACHE_VERSION = 6;
 const ALLOWED_LEVELS = new Set(["b1", "b2c1"]);
 
 const TRANSCRIPT_LANGUAGE_LABELS = {
@@ -124,7 +125,7 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
   const metaRef = metaRefFor(db, uid);
   const metaSnap = await metaRef.get();
   const meta = metaSnap.exists ? metaSnap.data() : {};
-  const ytAiDailyLimit = meta.tier === 'premium' ? YT_AI_DAILY_LIMIT_PREMIUM : YT_AI_DAILY_LIMIT_FREE;
+  const ytAiDailyLimit = QuotaService.getAiDailyLimit(meta.tier);
   const usedToday = meta.ytAiDateKey === today ? (meta.ytAiUsedToday || 0) : 0;
   const quotaInfo = buildQuotaInfo(usedToday, ytAiDailyLimit);
 
@@ -220,6 +221,7 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
     sourceType: 'youtube_auto',
     sourceUrl: url,
     rawSourceText,
+    title: vocabularyResult.title,
     sourceRow: {
       sourceType: 'youtube_auto',
       sourceUrl: url,

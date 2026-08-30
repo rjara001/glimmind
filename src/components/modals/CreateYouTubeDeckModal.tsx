@@ -3,6 +3,8 @@ import { VocabularyResult, DeckSizeOption, VocabularyLevel } from '../../types/y
 import { youtubeDeckService } from '../../services/youtubeDeckService';
 import { useGameStore } from '../../store/gameStore';
 import { FunctionCallError } from '../../services/callFunction';
+import { QuotaService } from '../../services/quotaService';
+import { useToast } from '../layout/Toast';
 
 const DECK_SIZE_OPTIONS: DeckSizeOption[] = [
   { tier: 'express', label: 'Express', description: 'Rápido', terms: 20, costPercent: 15 },
@@ -48,6 +50,7 @@ interface CreateYouTubeDeckModalProps {
 }
 
 export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ onClose, onSuccess }) => {
+  const { showToast } = useToast();
   const quota = useGameStore((state) => state.quota);
   const [url, setUrl] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('es');
@@ -114,6 +117,21 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       setError('Ingresa una URL de YouTube válida');
       return;
     }
+
+    const quota = useGameStore.getState().quota;
+    const tier = quota?.tier || 'free';
+    const currentCards = useGameStore.getState().lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    const status = QuotaService.getStatus(currentCards, tier);
+
+    if (status.isAiBlocked) {
+      const message = status.level === 'blocked'
+        ? `Llegaste al límite de tarjetas (${status.currentCards}/${status.maxCards}). Liberá espacio para usar IA.`
+        : `Te quedan pocas tarjetas disponibles (${status.remainingCards}). Liberá espacio para usar IA.`;
+      setError(message);
+      showToast(message, 'error');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
     try {

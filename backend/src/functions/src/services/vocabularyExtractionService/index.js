@@ -110,7 +110,9 @@ async function extractVocabulary({ apiKey, segments, maxTerms, targetLanguage, l
     cleanedSegments,
   });
 
-  return { items, wasTruncated };
+  const title = String(parsed.title || "").trim().slice(0, 80);
+
+  return { items, wasTruncated, title };
 }
 
 module.exports = { extractVocabulary, parseVocabularyJson };

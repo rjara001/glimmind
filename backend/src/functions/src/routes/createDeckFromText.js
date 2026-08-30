@@ -2,6 +2,7 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { getDb, getAuth, FieldValue } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
+const { QuotaService } = require("../services/quotaService");
 const {
   extractVideoId,
   fetchYouTubeVideoTitle,
@@ -67,7 +68,7 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
   const metaRef = metaRefFor(db, uid);
   const metaSnap = await metaRef.get();
   const meta = metaSnap.exists ? metaSnap.data() : {};
-  const ytAiDailyLimit = meta.tier === 'premium' ? YT_AI_DAILY_LIMIT_PREMIUM : YT_AI_DAILY_LIMIT_FREE;
+  const ytAiDailyLimit = QuotaService.getAiDailyLimit(meta.tier);
   const usedToday = meta.ytAiDateKey === today ? (meta.ytAiUsedToday || 0) : 0;
   const quotaInfo = buildQuotaInfo(usedToday, ytAiDailyLimit);
 
@@ -132,6 +133,7 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
     sourceType,
     sourceUrl: isManualFromUrl ? videoUrl.trim() : undefined,
     rawSourceText: text.trim(),
+    title: vocabularyResult.title,
     sourceRow: {
       sourceType,
       ...(isManualFromUrl ? { sourceUrl: videoUrl.trim() } : {}),

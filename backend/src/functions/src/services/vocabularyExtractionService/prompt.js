@@ -44,6 +44,7 @@ SELECTION RULES:
 OUTPUT FORMAT:
 Return ONLY valid JSON with this exact structure:
 {
+  "title": "a concise, catchy deck name (3-8 words) summarizing the TOPIC of this content, in ${targetLanguageName}",
   "items": [
     {
       "term": "the term or phrase (as it appears verbatim in the transcript)",
@@ -61,6 +62,7 @@ Return ONLY valid JSON with this exact structure:
 RULES:
 - The "example" and the "term" must appear verbatim in the transcript, so the timestamp can be aligned.
 - Return between ${Math.max(5, Math.floor(maxTerms * 0.7))} and ${maxTerms} items.
+- Return exactly one "title". Make it specific to this content's topic (not generic), short and memorable.
 - No markdown, no comments, no extra keys.`;
 }
 

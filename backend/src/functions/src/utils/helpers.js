@@ -18,12 +18,14 @@ function metaRefFor(db, userId) {
 }
 
 function metaDefaults() {
-  const { DEFAULT_CARD_QUOTA, DEFAULT_AI_DAILY_QUOTA } = require("./constants");
+  const { getMaxCards, getAiDailyLimit } = require("./quotaConfig");
+  const freeMaxCards = getMaxCards('free');
+  const freeAiDailyLimit = getAiDailyLimit('free');
   return {
     tier: "free",
-    cardQuota: DEFAULT_CARD_QUOTA,
+    cardQuota: freeMaxCards,
     cardCount: 0,
-    aiQuotaDaily: DEFAULT_AI_DAILY_QUOTA,
+    aiQuotaDaily: freeAiDailyLimit,
     aiUsedToday: 0,
     aiDateKey: todayKey(),
     ytAiUsedToday: 0,
@@ -33,7 +35,7 @@ function metaDefaults() {
 }
 
 async function getOrCreateMeta(db, userId) {
-  const { DEFAULT_CARD_QUOTA, DEFAULT_AI_DAILY_QUOTA } = require("./constants");
+  const { getMaxCards, getAiDailyLimit } = require("./quotaConfig");
   const { FieldValue } = require("./firebase");
   const metaRef = metaRefFor(db, userId);
   const snap = await metaRef.get();
@@ -45,11 +47,14 @@ async function getOrCreateMeta(db, userId) {
     const associations = doc.data().associations;
     return sum + (Array.isArray(associations) ? associations.length : 0);
   }, 0);
+  const freeMaxCards = getMaxCards('free');
+  const freeAiDailyLimit = getAiDailyLimit('free');
+  const cardQuota = cardCount > freeMaxCards ? Math.max(freeMaxCards, cardCount) : freeMaxCards;
   const data = {
     tier: "free",
-    cardQuota: DEFAULT_CARD_QUOTA,
+    cardQuota,
     cardCount,
-    aiQuotaDaily: DEFAULT_AI_DAILY_QUOTA,
+    aiQuotaDaily: freeAiDailyLimit,
     aiUsedToday: 0,
     aiDateKey: todayKey(),
     ytAiUsedToday: 0,

@@ -4,9 +4,10 @@ import { aiService, AIGroupSuggestion } from '../services/aiService';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { SmartGroupModal } from '../components/modals/SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
-import { computeQuotaStatus } from '../utils/quota';
+import { QuotaService } from '../services/quotaService';
 import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
 import { useToast } from '../components/layout/Toast';
+import { QuotaAlert } from '../components/layout/QuotaAlert';
 import { MIN_GROUP_SIZE } from '../constants/limits';
 import { AssociationTable } from '../components/list-editor/AssociationTable';
 import { BulkImport } from '../components/list-editor/BulkImport';
@@ -52,10 +53,10 @@ interface ListEditorProps {
 export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, onCreateMultiple }) => {
   const { showToast } = useToast();
   const [showBulk, setShowBulk] = useState(false);
+  const [bulkText, setBulkText] = useState('');
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [editList, setEditList] = useState<AssociationList>(list);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
@@ -64,6 +65,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const [translateLang, setTranslateLang] = useState('es');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const conceptParts = editList.concept.split('/');
@@ -93,7 +95,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const quotaStatus = useMemo(() => {
     if (!quota) return null;
-    return computeQuotaStatus(projectedTotal, quota.cardQuota);
+    return QuotaService.getStatus(projectedTotal, quota.tier);
   }, [quota, projectedTotal]);
 
   const cleanupAndSave = useCallback((listToSave: AssociationList): boolean => {
@@ -113,20 +115,30 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       .filter(assoc => assoc.term !== '' || assoc.definition !== '');
 
     const { quota, lists } = useGameStore.getState();
-    const isPremium = quota?.tier === 'premium';
-    if (!isPremium && quota) {
-      const storedList = lists.find(l => l.id === listToSave.id);
-      const storedCount = storedList?.associations?.length ?? listToSave.associations.length;
-      const growing = cleanedAssociations.length > storedCount;
-      if (growing) {
-        const otherTotal = lists
-          .filter(l => l.id !== listToSave.id)
-          .reduce((sum, l) => sum + (l.associations?.length || 0), 0);
-        const projected = otherTotal + cleanedAssociations.length;
-        if (computeQuotaStatus(projected, quota.cardQuota).state === 'blocked') {
-          alert(`Llegaste a tu límite de ${quota.cardQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
-          return false;
-        }
+    const tier = quota?.tier || 'free';
+    const currentCards = lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    const status = QuotaService.getStatus(currentCards, tier);
+    
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
+      return false;
+    }
+
+    const storedList = lists.find(l => l.id === listToSave.id);
+    const storedCount = storedList?.associations?.length ?? listToSave.associations.length;
+    const growing = cleanedAssociations.length > storedCount;
+    if (growing) {
+      const otherTotal = lists
+        .filter(l => l.id !== listToSave.id)
+        .reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+      const projected = otherTotal + cleanedAssociations.length;
+      const projectedStatus = QuotaService.getStatus(projected, tier);
+      if (projectedStatus.level === 'blocked') {
+        showToast(`Llegaste a tu límite de ${projectedStatus.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
+        return false;
+      }
+      if (projectedStatus.level === 'danger') {
+        showToast(`Te quedan solo ${projectedStatus.remainingCards} tarjetas disponibles`, 'error');
       }
     }
 
@@ -168,8 +180,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
-    if (!isPremium && quotaStatus?.state === 'blocked') {
-      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    const { quota } = useGameStore.getState();
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0), tier);
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       return;
     }
     const pairs = parseCsvPairs(bulkText);
@@ -198,11 +213,13 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!isPremium && quotaStatus?.state === 'blocked') {
-      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    const { quota } = useGameStore.getState();
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0), tier);
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       return;
     }
-    setSelectedFileName(file.name);
     setIsReadingFile(true);
     try {
       const content = await file.text();
@@ -260,9 +277,20 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     }
   };
 
+  const handleRename = useCallback((value: string) => {
+    setEditList((current) => ({ ...current, name: value }));
+  }, []);
+
+  const handleRenameBlur = useCallback(() => {
+    cleanupAndSave(editList);
+  }, [cleanupAndSave, editList]);
+
   const handleAddRow = () => {
-    if (!isPremium && quotaStatus?.state === 'blocked') {
-      alert(`Llegaste a tu límite de ${quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
+    const { quota } = useGameStore.getState();
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0), tier);
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       return;
     }
     const newAssociation: Association = {
@@ -415,70 +443,44 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={handleBack} disabled={isSaving} className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editList.name}</h2>
-            <p className="text-sm text-gray-500">{activeAssociations.length} tarjetas activas • {archivedAssociations.length} archivadas</p>
-          </div>
-        </div>
+      <QuotaAlert status={quotaStatus} />
 
-        <div className="flex gap-2">
+      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+        <div className="px-6 pt-6 pb-0 flex items-start gap-3">
           <button
-            onClick={handleSmartSplit}
-            disabled={isAnalyzing || activeAssociations.length < MIN_GROUP_SIZE}
-            title={activeAssociations.length < MIN_GROUP_SIZE ? `Añade al menos ${MIN_GROUP_SIZE} tarjetas para usar esta función` : "Organizar tarjetas en grupos lógicos"}
-            className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
+            type="button"
+            onClick={handleBack}
+            title="Volver al dashboard"
+            className="mt-1 flex-shrink-0 p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition bg-white"
           >
-            {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>}
-            <span className="hidden sm:inline">{isAnalyzing ? 'Procesando...' : 'Organizar'}</span>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
-        </div>
-      </div>
-
-      {quota && quotaStatus && !isPremium && (
-        <div className={`mb-6 rounded-xl border px-4 py-3 ${quotaStatus.state === 'blocked'
-          ? 'bg-rose-50 border-rose-200'
-          : quotaStatus.state === 'warning'
-            ? 'bg-amber-50 border-amber-200'
-            : 'bg-slate-50 border-slate-200'}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={`text-xs font-black uppercase tracking-wider ${quotaStatus.state === 'blocked'
-              ? 'text-rose-700'
-              : quotaStatus.state === 'warning'
-                ? 'text-amber-700'
-                : 'text-slate-600'}`}>
-              Tarjetas: {quotaStatus.used} / {quotaStatus.quota}
-            </p>
-          </div>
-          {quotaStatus.state === 'blocked' && (
-            <p className="mt-1 text-xs font-medium text-rose-700">
-              Llegaste a tu límite de {quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.
-            </p>
-          )}
-          {quotaStatus.state === 'warning' && (
-            <p className="mt-1 text-xs font-medium text-amber-700">
-              Te quedan {quotaStatus.remaining} tarjetas de tu límite de {quotaStatus.quota}.
-            </p>
-          )}
-          <div className="mt-2 h-1.5 bg-white rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${quotaStatus.state === 'blocked'
-                ? 'bg-rose-500'
-                : quotaStatus.state === 'warning'
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'}`}
-              style={{ width: `${Math.min(100, quotaStatus.percentage)}%` }}
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <label htmlFor="list-name" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Nombre del mazo
+              </label>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
+              >
+                Volver al dashboard →
+              </button>
+            </div>
+            <input
+              id="list-name"
+              type="text"
+              value={editList.name}
+              onChange={(e) => handleRename(e.target.value)}
+              onBlur={handleRenameBlur}
+              className="w-full text-xl font-bold text-slate-800 bg-transparent border border-dashed border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition hover:border-slate-300"
             />
           </div>
         </div>
-      )}
-
-      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="p-4 sm:p-6 border-b bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
           <div className="relative flex-1 w-full sm:w-72">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
               <svg className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -537,7 +539,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           </button>
           <button
             onClick={handleAddRow}
-            disabled={!isPremium && quotaStatus?.state === 'blocked'}
+            disabled={!isPremium && quotaStatus?.level === 'blocked'}
             className="bg-white border border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition flex-1 sm:flex-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>

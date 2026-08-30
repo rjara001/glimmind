@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { VocabularyResult, DeckSourceType } from '../../types/youtube-deck';
 import { SourceRow } from '../../types/source-row';
 import { Association } from '../../types';
@@ -8,6 +8,7 @@ export interface VocabularySourceMeta {
   sourceUrl?: string;
   rawSourceText?: string;
   sourceRow?: SourceRow;
+  title?: string;
 }
 
 interface VocabularyPreviewProps {
@@ -17,9 +18,8 @@ interface VocabularyPreviewProps {
 }
 
 export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, onClose, onAccept }) => {
-  const phrases = useMemo(() => result.items.filter((item) => item.type === 'phrase'), [result.items]);
-  const words = useMemo(() => result.items.filter((item) => item.type === 'word'), [result.items]);
   const [expandedContext, setExpandedContext] = useState<number | null>(null);
+  const [deckTitle, setDeckTitle] = useState(result.title || '');
 
   const handleAccept = useCallback(() => {
     const associations: Association[] = result.items.map((item) => ({
@@ -39,8 +39,9 @@ export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, on
       sourceUrl: result.sourceUrl,
       rawSourceText: result.rawSourceText,
       sourceRow: result.sourceRow,
+      title: deckTitle.trim() || undefined,
     });
-  }, [result.items, result.sourceType, result.sourceUrl, result.rawSourceText, result.sourceRow, onAccept]);
+  }, [result.items, result.sourceType, result.sourceUrl, result.rawSourceText, result.sourceRow, deckTitle, onAccept]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -63,8 +64,20 @@ export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, on
             </button>
           </div>
           <div className="flex gap-4 mt-3 text-sm">
-            <span className="text-indigo-700 font-medium">{phrases.length} frases</span>
-            <span className="text-gray-600 font-medium">{words.length} palabras</span>
+            <span className="text-indigo-700 font-medium">✓ Se encontraron {result.items.length} términos</span>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <label htmlFor="deck-title" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+              Nombre del mazo:
+            </label>
+            <input
+              id="deck-title"
+              type="text"
+              value={deckTitle}
+              onChange={(e) => setDeckTitle(e.target.value)}
+              placeholder="Nombre del mazo"
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
         </div>
 

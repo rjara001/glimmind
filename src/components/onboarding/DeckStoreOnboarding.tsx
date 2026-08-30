@@ -10,9 +10,10 @@ interface DeckStoreOnboardingProps {
   onAddDeck: (deck: PrebuiltDeck) => Promise<void>;
   onCreateCustom: () => void;
   onYouTube: () => void;
+  onTextImport: () => void;
 }
 
-export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddDeck, onCreateCustom, onYouTube }) => {
+export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddDeck, onCreateCustom, onYouTube, onTextImport }) => {
   const { showToast } = useToast();
   const [decks, setDecks] = useState<PrebuiltDeck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +78,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddD
         </div>
       )}
 
-      <CustomCreationSection onCreateCustom={onCreateCustom} onYouTube={onYouTube} />
+      <CustomCreationSection onCreateCustom={onCreateCustom} onYouTube={onYouTube} onTextImport={onTextImport} />
 
       <DeckPreviewModal
         deck={previewDeck}

@@ -12,12 +12,17 @@ export interface UserQuota {
   translationCharLimit: number;
 }
 
-export type QuotaState = 'ok' | 'warning' | 'blocked';
+export type QuotaLevel = 'ok' | 'warning' | 'danger' | 'blocked';
+
+export type QuotaState = QuotaLevel;
 
 export interface QuotaStatus {
-  state: QuotaState;
-  used: number;
-  quota: number;
-  remaining: number;
+  currentCards: number;
+  maxCards: number;
+  usageRatio: number;
   percentage: number;
+  level: QuotaLevel;
+  isAiBlocked: boolean;
+  isManualBlocked: boolean;
+  remainingCards: number;
 }

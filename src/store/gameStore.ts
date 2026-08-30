@@ -3,7 +3,7 @@ import { AssociationList, Association, AppUser } from '../types';
 import { listService } from '../services/firestoreService';
 import { progressService } from '../services/progressService';
 import { quotaService } from '../services/quotaService';
-import { isUsingEmulators } from '../firebase';
+import { isUsingEmulators, auth } from '../firebase';
 import { flattenAssociations } from '../utils/flattenAssociations';
 import { backfillAssociationStats, buildListDiffEvents } from '../utils/activity';
 import {
@@ -490,6 +490,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   loadQuota: async () => {
     const { user } = get();
     if (!user || user.uid === GUEST_UID) return;
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    if (!token) return;
     const quota = await quotaService.fetchQuota(user.uid);
     set({ quota });
   },

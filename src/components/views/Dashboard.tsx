@@ -3,15 +3,17 @@ import React, { useState, useMemo, useRef } from 'react';
 import { AssociationList, Association } from '../../types';
 import { flattenAssociations } from '../../utils/flattenAssociations';
 import { computeStateBreakdown } from '../../utils/progress';
-import { computeQuotaStatus, countCards } from '../../utils/quota';
+import { countCards } from '../../utils/quota';
 import { parseCsvPairs, isHeaderPair } from '../../utils/csv';
 import { useGameStore } from '../../store/gameStore';
 import { GoalWidget } from '../layout/GoalWidget';
 import { BigListCard } from '../cards/BigListCard';
 import { useToast } from '../layout/Toast';
+import { QuotaAlert } from '../layout/QuotaAlert';
 import { DeckStoreOnboarding } from '../onboarding/DeckStoreOnboarding';
 import { PrebuiltDeck } from '../../types/prebuilt-deck';
 import { CreateYouTubeDeckModal } from '../modals/CreateYouTubeDeckModal';
+import { QuotaService } from '../../services/quotaService';
 
 const BIG_LIST_THRESHOLD = 200;
 
@@ -25,9 +27,10 @@ interface DashboardProps {
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
   onYouTubeSuccess?: (result: import('../../types/youtube-deck').VocabularyResult) => void;
+  onTextImport?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay, onYouTubeSuccess }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay, onYouTubeSuccess, onTextImport }) => {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -50,7 +53,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
 
   const quotaStatus = useMemo(() => {
     if (!quota) return null;
-    return computeQuotaStatus(countCards(lists), quota.cardQuota);
+    return QuotaService.getStatus(countCards(lists), quota.tier);
   }, [lists, quota]);
 
   const stats = useMemo(() => {
@@ -191,6 +194,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           }}
           onCreateCustom={() => setIsCreating(true)}
           onYouTube={() => setShowYouTubeModal(true)}
+          onTextImport={onTextImport ?? (() => {})}
         />
       </div>
     );
@@ -216,6 +220,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
             setIsCreating(true);
           }}
           onYouTube={() => setShowYouTubeModal(true)}
+          onTextImport={onTextImport ?? (() => {})}
         />
       </div>
     );
@@ -257,43 +262,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
         </div>
       )}
 
-      {quotaStatus && (
-        <div className={`mb-8 rounded-2xl border p-4 ${quotaStatus.state === 'blocked'
-          ? 'bg-rose-50 border-rose-200'
-          : quotaStatus.state === 'warning'
-            ? 'bg-amber-50 border-amber-200'
-            : 'bg-slate-50 border-slate-200'}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <p className={`text-sm font-black uppercase tracking-wider ${quotaStatus.state === 'blocked'
-              ? 'text-rose-700'
-              : quotaStatus.state === 'warning'
-                ? 'text-amber-700'
-                : 'text-slate-600'}`}>
-              Tarjetas: {quotaStatus.used} / {quotaStatus.quota}
-            </p>
-            {quotaStatus.state === 'blocked' && (
-              <p className="text-sm font-medium text-rose-700">
-                Llegaste a tu límite de {quotaStatus.quota} tarjetas. Elimina o archiva tarjetas para añadir más.
-              </p>
-            )}
-            {quotaStatus.state === 'warning' && (
-              <p className="text-sm font-medium text-amber-700">
-                Te quedan {quotaStatus.remaining} tarjetas de tu límite de {quotaStatus.quota}.
-              </p>
-            )}
-          </div>
-          <div className="mt-3 h-2 bg-white rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${quotaStatus.state === 'blocked'
-                ? 'bg-rose-500'
-                : quotaStatus.state === 'warning'
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'}`}
-              style={{ width: `${Math.min(100, quotaStatus.percentage)}%` }}
-            />
-          </div>
-        </div>
-      )}
+      <QuotaAlert status={quotaStatus} />
 
       {lastPlayedId && continuePlay && currentList && (
         <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
@@ -340,8 +309,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
               const emptyConcept = 'Valor 1 / Valor 2';
               onCreate(emptyName, emptyConcept, []);
             }}
-            disabled={quotaStatus?.state === 'blocked' && !isPremium}
-            title={quotaStatus?.state === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.quota} tarjetas` : undefined}
+            disabled={quotaStatus?.level === 'blocked' && !isPremium}
+            title={quotaStatus?.level === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.maxCards} tarjetas` : undefined}
             className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

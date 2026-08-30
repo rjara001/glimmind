@@ -51,6 +51,7 @@ export interface VocabularyResult {
   rawSourceText?: string;
   sourceUrl?: string;
   sourceRow?: SourceRow;
+  title?: string;
 }
 
 export interface VideoSource {

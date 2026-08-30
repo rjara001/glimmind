@@ -2,7 +2,7 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { getDb } = require("./src/utils/firebase");
 const { requireAuth } = require("./src/utils/helpers");
 const { QuotaExceededError } = require("./src/utils/helpers");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA } = require("./src/utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("./src/utils/constants");
 
 const listService = require("./src/services/listService");
 const progressService = require("./src/services/progressService");

@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import { listService } from '../../services/firestoreService';
 import { Association, AssociationList } from '../../types';
 import type { AppView } from '../../types/app';
-import { computeQuotaStatus, countCards } from '../../utils/quota';
+import { QuotaService } from '../../services/quotaService';
 import { createActivityEvent, buildListDiffEvents } from '../../utils/activity';
 import { GUEST_ID, LAST_PLAYED_KEY } from '../../constants/app';
 import { normalizeVoiceLanguageSettings } from '../../services/voice/languages';
@@ -73,9 +73,19 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     const targetList = lists.find((l) => l.id === listId);
     if (!targetList) return;
 
-    if (!isPremium && quota && computeQuotaStatus(countCards(lists) + 1, quota.cardQuota).state === 'blocked') {
-      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+    const currentCards = lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(currentCards, tier);
+
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       return;
+    }
+
+    if (status.level === 'danger') {
+      showToast(`Te quedan solo ${status.remainingCards} tarjetas disponibles`, 'error');
+    } else if (status.level === 'warning') {
+      showToast(`Estás acercándote al límite de tarjetas (${status.currentCards}/${status.maxCards})`, 'info');
     }
 
     const newAssociation: Association = {
@@ -89,7 +99,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     };
     useGameStore.getState().updateAssociations(listId, [...targetList.associations, newAssociation]);
     showToast(`Agregado a "${targetList.name}"`, 'success');
-  }, [showToast, isPremium]);
+  }, [showToast]);
 
   const handleUpdateList = useCallback(async (updatedList: AssociationList) => {
     const { lists } = useGameStore.getState();
@@ -122,29 +132,24 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     const { lists, quota } = useGameStore.getState();
     useGameStore.getState().setActivityRecordingEnabled(false);
 
-    if (!quota) {
-      await useGameStore.getState().loadQuota();
-    }
+    const currentCards = lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(currentCards, tier);
 
-    const currentQuota = useGameStore.getState().quota;
-    const isPremiumNow = currentQuota?.tier === 'premium';
-    const isBlocked = !isPremiumNow && currentQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, currentQuota.cardQuota).state === 'blocked';
-
-    if (isBlocked) {
-      await useGameStore.getState().loadQuota();
-      const refreshedQuota = useGameStore.getState().quota;
-      const refreshedPremium = refreshedQuota?.tier === 'premium';
-      if (!refreshedPremium && refreshedQuota && computeQuotaStatus(countCards(lists) + initialAssocs.length, refreshedQuota.cardQuota).state === 'blocked') {
-        showToast(`Llegaste a tu límite de ${refreshedQuota.cardQuota} tarjetas.`, 'error');
-        useGameStore.getState().setActivityRecordingEnabled(true);
-        return null;
-      }
-    }
-
-    if (!currentQuota) {
-      showToast('No se pudo cargar la cuota. Reintentá en un momento.', 'error');
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       useGameStore.getState().setActivityRecordingEnabled(true);
       return null;
+    }
+
+    if (status.level === 'danger') {
+      showToast(`Te quedan solo ${status.remainingCards} tarjetas disponibles`, 'error');
+    } else if (status.level === 'warning') {
+      showToast(`Estás acercándote al límite de tarjetas (${status.currentCards}/${status.maxCards})`, 'info');
+    }
+
+    if (!quota) {
+      await useGameStore.getState().loadQuota();
     }
 
     const newListData: Omit<AssociationList, 'id'> = {
@@ -245,10 +250,20 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     const originalCardCount = currentList.associations?.length || 0;
     const isGuest = user.uid === GUEST_ID;
 
-    if (!isPremium && totalNewCards > originalCardCount && quota && computeQuotaStatus(countCards(lists) - originalCardCount + totalNewCards, quota.cardQuota).state === 'blocked') {
-      showToast(`Llegaste a tu límite de ${quota.cardQuota} tarjetas.`, 'error');
+    const currentCards = lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0);
+    const tier = quota?.tier || 'free';
+    const status = QuotaService.getStatus(currentCards, tier);
+
+    if (status.level === 'blocked') {
+      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       useGameStore.getState().setActivityRecordingEnabled(true);
       return;
+    }
+
+    if (status.level === 'danger') {
+      showToast(`Te quedan solo ${status.remainingCards} tarjetas disponibles`, 'error');
+    } else if (status.level === 'warning') {
+      showToast(`Estás acercándote al límite de tarjetas (${status.currentCards}/${status.maxCards})`, 'info');
     }
 
     const originalListId = currentList.id;

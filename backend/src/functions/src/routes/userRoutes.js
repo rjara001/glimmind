@@ -15,9 +15,8 @@ const {
   CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,
   GLOBAL_AI_DAILY_CAP,
-  DEFAULT_AI_DAILY_QUOTA,
-  PREMIUM_AI_DAILY_QUOTA,
 } = require("../utils/constants");
+const { QuotaService } = require("../services/quotaService");
 
 exports.getQuota = onRequest({ cors: true }, async (req, res) => {
   const { userId } = req.body;
@@ -237,7 +236,7 @@ async function enrichUsersWithUsage(db, users, monthKey) {
       ai: {
         used: meta.aiUsedToday || 0,
         calls: meta.aiUsedToday || 0,
-        limit: tier === "premium" ? PREMIUM_AI_DAILY_QUOTA : DEFAULT_AI_DAILY_QUOTA,
+        limit: QuotaService.getAiDailyLimit(tier),
       },
     });
   }

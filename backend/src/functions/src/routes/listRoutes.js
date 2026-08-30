@@ -2,7 +2,7 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { getDb } = require("../utils/firebase");
 const { requireAuth } = require("../utils/helpers");
 const { QuotaExceededError } = require("../utils/helpers");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST, PREMIUM_CARD_QUOTA } = require("../utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../utils/constants");
 const listService = require("../services/listService");
 
 exports.getLists = onRequest({ cors: true }, async (req, res) => {

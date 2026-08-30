@@ -24,6 +24,7 @@ import type { VocabularyResult } from './types/youtube-deck';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
+import { TextImporter } from './components/views/TextImporter';
 import type { VocabularySourceMeta } from './components/modals/VocabularyPreview';
 
 const MOCK_USER: AppUser = {
@@ -40,6 +41,7 @@ const AppContent: React.FC = () => {
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const [youtubePreviewResult, setYoutubePreviewResult] = useState<VocabularyResult | null>(null);
   const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingTextImport, setPendingTextImport] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
 
   const navigate = useCallback((nextView: string) => {
     if (nextView === 'dashboard') {
@@ -92,7 +94,7 @@ const AppContent: React.FC = () => {
       const tempList: AssociationList = {
         id: `temp_${Date.now()}`,
         userId: user?.uid || GUEST_UID,
-        name: `YouTube - ${sourceRow?.videoTitle || sourceUrl || 'Deck'}`,
+        name: pendingYouTube.sourceMeta.title || `YouTube - ${sourceRow?.videoTitle || sourceUrl || 'Deck'}`,
         concept: 'value1 / value2',
         associations: pendingYouTube.associations,
         isArchived: false,
@@ -115,6 +117,35 @@ const AppContent: React.FC = () => {
       setPendingYouTube(null);
     }
   }, [view, pendingYouTube, user, lists]);
+
+  React.useEffect(() => {
+    if (view === 'editor' && pendingTextImport) {
+      const tempList: AssociationList = {
+        id: `temp_${Date.now()}`,
+        userId: user?.uid || GUEST_UID,
+        name: pendingTextImport.sourceMeta.title || `Texto Libre - ${(pendingTextImport.sourceMeta.rawSourceText || '').slice(0, 40) || 'Deck'}`,
+        concept: 'value1 / value2',
+        associations: pendingTextImport.associations,
+        isArchived: false,
+        sourceType: 'raw_text',
+        sourceUrl: undefined,
+        rawSourceText: pendingTextImport.sourceMeta.rawSourceText,
+        sourceRow: undefined,
+        settings: {
+          mode: 'training',
+          flipOrder: 'normal',
+          threshold: 0.95,
+          ignoreArticles: true,
+          showHints: true,
+          autoRevealAfterSeconds: 15,
+          autoAdvanceAfterAttempts: 3,
+        },
+      };
+      useGameStore.getState().setCurrentList(tempList.id);
+      useGameStore.getState().setLists([...lists, tempList]);
+      setPendingTextImport(null);
+    }
+  }, [view, pendingTextImport, user, lists]);
 
   if (!isLoaded) {
     return (
@@ -175,6 +206,7 @@ const AppContent: React.FC = () => {
               }}
               onPlay={handlePlayList}
               onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
+              onTextImport={() => navigate('text-importer')}
             />
           )}
           {view === 'editor' && currentList && (
@@ -208,6 +240,15 @@ const AppContent: React.FC = () => {
           )}
           {view === 'admin' && (
             <AdminUsageView onBack={() => navigate('dashboard')} />
+          )}
+          {view === 'text-importer' && (
+            <TextImporter
+              onSave={(associations, sourceMeta) => {
+                setPendingTextImport({ associations, sourceMeta });
+                navigate('editor');
+              }}
+              onBack={() => navigate('dashboard')}
+            />
           )}
         </main>
 
