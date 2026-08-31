@@ -601,4 +601,100 @@ describe('GlimmindGame', () => {
             expect(game.state.associations[0].status).toBe('correct');
         });
     });
+
+    describe('restore', () => {
+        it('restores game progress by association id', () => {
+            const associations = createMockAssociations(3);
+            const list = createMockList(associations);
+            const game = GlimmindGame.create(list);
+
+            // Simulate some progress: pass on card 1, reveal card 2
+            let progressed = game.processAction({ type: 'PASS' });
+            progressed = progressed.reveal();
+
+            const restored = GlimmindGame.restore(list, progressed.state);
+            expect(restored.state.activeQueue).toEqual(progressed.state.activeQueue);
+            expect(restored.state.currentIndex).toBe(progressed.state.currentIndex);
+            expect(restored.state.associations[0].currentCycle).toBe(progressed.state.associations[0].currentCycle);
+        });
+
+        it('re-hydrates edited term/definition values from the list', () => {
+            const editedList = createMockList(
+                createMockAssociations(1).map((a) => ({ ...a, term: 'Edited Term', definition: ['Edited Def'] })),
+            );
+
+            // Snapshot taken BEFORE the edit (old values)
+            const originalList = createMockList(createMockAssociations(1));
+            const snapshot = GlimmindGame.create(originalList).state;
+
+            const restored = GlimmindGame.restore(editedList, snapshot);
+            expect(restored.state.associations[0].term).toBe('Edited Term');
+            expect(restored.state.associations[0].definition).toEqual(['Edited Def']);
+        });
+
+        it('carries over progress counters while using edited values', () => {
+            const originalAssoc = createMockAssociations(1);
+            originalAssoc[0].hits = 4;
+            originalAssoc[0].timesPlayed = 7;
+            const originalList = createMockList(originalAssoc);
+
+            let game = GlimmindGame.create(originalList);
+            game = game.processAction({ type: 'CORRECT' });
+
+            const editedList = createMockList(
+                createMockAssociations(1).map((a) => ({ ...a, term: 'Renamed' })),
+            );
+
+            const restored = GlimmindGame.restore(editedList, game.state);
+            expect(restored.state.associations[0].term).toBe('Renamed');
+            expect(restored.state.associations[0].hits).toBe(5);
+        });
+
+        it('filters removed cards out of the active queue', () => {
+            const snapshot = GlimmindGame.create(createMockList(createMockAssociations(3))).state;
+            // Edited list drops card '2'
+            const editedList = createMockList(createMockAssociations(3).filter((a) => a.id !== '2'));
+
+            const restored = GlimmindGame.restore(editedList, snapshot);
+            expect(restored.state.activeQueue).not.toContain('2');
+            expect(restored.state.associations.map((a) => a.id)).not.toContain('2');
+        });
+
+        it('excludes archived cards from the active queue', () => {
+            const associations = createMockAssociations(3);
+            const snapshot = GlimmindGame.create(createMockList(associations)).state;
+            const editedList = createMockList(
+                associations.map((a) => (a.id === '2' ? { ...a, isArchived: true } : a)),
+            );
+
+            const restored = GlimmindGame.restore(editedList, snapshot);
+            expect(restored.state.activeQueue).not.toContain('2');
+            expect(restored.state.associations.find((a) => a.id === '2')?.isArchived).toBe(true);
+        });
+
+        it('resets currentIndex to 0 when the active card no longer exists', () => {
+            const associations = createMockAssociations(3);
+            const game = GlimmindGame.create(createMockList(associations));
+            // Advance so the active card is the second one in the shuffled queue
+            const advanced = game.processAction({ type: 'PASS' });
+            const activeId = advanced.state.activeQueue[advanced.state.currentIndex];
+            expect(activeId).toBeDefined();
+
+            const editedList = createMockList(associations.filter((a) => a.id !== activeId));
+            const restored = GlimmindGame.restore(editedList, advanced.state);
+            expect(restored.state.currentIndex).toBe(0);
+            expect(restored.currentAssociation).toBeDefined();
+        });
+
+        it('keeps the currentIndex when the active card still exists', () => {
+            const associations = createMockAssociations(3);
+            const game = GlimmindGame.create(createMockList(associations));
+            // Advance to the second card in the shuffled queue
+            const advanced = game.processAction({ type: 'PASS' });
+            const indexBefore = advanced.state.currentIndex;
+
+            const restored = GlimmindGame.restore(createMockList(associations), advanced.state);
+            expect(restored.state.currentIndex).toBe(indexBefore);
+        });
+    });
 });

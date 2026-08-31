@@ -90,6 +90,74 @@ export class GlimmindGame {
     return new GlimmindGame(list, initialState, trackingEnabled);
   }
 
+  /**
+   * Rebuilds a game from a previously saved snapshot while keeping it
+   * consistent with the (possibly edited) list.
+   *
+   * Associations are re-hydrated from `list` so cards reflect the latest
+   * term/definition values, but game progress (cycles, hits, misses,
+   * status) is preserved by id. The active queue is filtered against the
+   * current list and currentIndex is adjusted if the active card vanished.
+   */
+  public static restore(list: AssociationList, savedState: GameState, options: GameOptions = {}): GlimmindGame {
+    const trackingEnabled = options.trackingEnabled !== false;
+
+    const listById = new Map(list.associations.map((a) => [a.id, a]));
+    const progressById = new Map(savedState.associations.map((a) => [a.id, a]));
+
+    const associations = list.associations.map((current) => {
+      const prev = progressById.get(current.id);
+      if (!prev) return current;
+      return {
+        ...current,
+        currentCycle: prev.currentCycle,
+        status: prev.status,
+        isLearned: prev.isLearned,
+        hits: prev.hits ?? 0,
+        misses: prev.misses ?? 0,
+        timesPlayed: prev.timesPlayed ?? 0,
+        lastPlayedAt: prev.lastPlayedAt,
+      } as Association;
+    });
+
+    const validQueue = savedState.activeQueue.filter((id) => {
+      const assoc = listById.get(id);
+      return (
+        assoc !== undefined &&
+        !assoc.isArchived &&
+        assoc.currentCycle < 4 &&
+        assoc.status !== "correct"
+      );
+    });
+
+    const currentId = savedState.activeQueue[savedState.currentIndex];
+    const normalizedIndex = validQueue.indexOf(currentId);
+    const currentIndex = normalizedIndex === -1 ? 0 : normalizedIndex;
+
+    const associationIds = new Set(associations.map((a) => a.id));
+    const revealedAssociations = savedState.revealedAssociations.filter((id) => associationIds.has(id));
+    const attempts = savedState.attempts.filter((a) => associationIds.has(a.associationId));
+
+    const refreshedState: GameState = {
+      listId: list.id,
+      globalCycle: savedState.globalCycle,
+      associations,
+      activeQueue: validQueue,
+      currentIndex,
+      isFinished: savedState.isFinished,
+      summary: savedState.summary,
+      revealed: savedState.revealed,
+      userInput: savedState.userInput,
+      feedback: savedState.feedback,
+      similarity: savedState.similarity,
+      lastAttempt: savedState.lastAttempt,
+      attempts,
+      revealedAssociations,
+    };
+
+    return new GlimmindGame(list, refreshedState, trackingEnabled);
+  }
+
   public get currentAssociation(): Association | undefined {
     if (
       this.state.isFinished ||

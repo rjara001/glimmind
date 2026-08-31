@@ -12,8 +12,19 @@ const DEFAULT_AUTO_ADVANCE_ATTEMPTS = 3;
 
 export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const trackingEnabled = useGameStore((state) => state.settings.activityHistoryEnabled);
-  const [game, setGame] = useState(() => GlimmindGame.create(list, { trackingEnabled }));
-  const [sessionRepasos, setSessionRepasos] = useState(0);
+  const [game, setGame] = useState(() => {
+    const snapshot = useGameStore.getState().resumeState[list.id];
+    if (snapshot) {
+      const restored = GlimmindGame.restore(list, snapshot.state, { trackingEnabled });
+      useGameStore.getState().clearResumeState(list.id);
+      return restored;
+    }
+    return GlimmindGame.create(list, { trackingEnabled });
+  });
+  const [sessionRepasos, setSessionRepasos] = useState(() => {
+    const snapshot = useGameStore.getState().resumeState[list.id];
+    return snapshot?.sessionRepasos ?? 0;
+  });
   const prevViewRef = useRef<'card' | 'summary'>('card');
   const gameRef = useRef(game);
   const sessionPlayedIds = useRef<Set<string>>(new Set());

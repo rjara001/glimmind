@@ -631,7 +631,13 @@ onSpeakAnswer={handleSpeakAnswer}
               )}
               {onViewList && (
                 <button
-                  onClick={() => onViewList(currentAssociation?.id)}
+                  onClick={() => {
+                    useGameStore.getState().saveResumeState(list.id, {
+                      state: gameState,
+                      sessionRepasos,
+                    });
+                    onViewList(currentAssociation?.id);
+                  }}
                   className="absolute top-3 left-3 z-40 flex items-center justify-center w-9 h-9 bg-white text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-slate-200 shadow-sm transition-all"
                   aria-label="Edit deck"
                   title="Edit deck"

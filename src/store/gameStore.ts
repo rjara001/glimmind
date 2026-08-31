@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AssociationList, Association, AppUser } from '../types';
+import { AssociationList, Association, AppUser, GameState } from '../types';
 import { listService } from '../services/firestoreService';
 import { progressService } from '../services/progressService';
 import { quotaService } from '../services/quotaService';
@@ -294,6 +294,11 @@ function mergeCloudWithLocal(
   return merged;
 }
 
+interface ResumeSnapshot {
+  state: GameState;
+  sessionRepasos: number;
+}
+
 interface GameStore {
   // State
   user: AppUser | null;
@@ -312,6 +317,7 @@ interface GameStore {
   sessions: GameSessionSummary[];
   sessionsLoading: boolean;
   activityRecordingEnabled: boolean;
+  resumeState: Record<string, ResumeSnapshot>;
   
   // Computed (via getters)
   getCurrentList: () => AssociationList | null;
@@ -326,6 +332,9 @@ interface GameStore {
   // Actions - Current List
   setCurrentList: (listId: string | null) => void;
   setCurrentListData: (list: AssociationList) => void;
+  saveResumeState: (listId: string, snapshot: ResumeSnapshot) => void;
+  clearResumeState: (listId: string) => void;
+  clearAllResumeState: () => void;
   
   // Actions - Progress
   loadProgress: () => Promise<void>;
@@ -371,6 +380,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   sessions: [],
   sessionsLoading: false,
   activityRecordingEnabled: true,
+  resumeState: {},
   
   // Computed
   getCurrentList: () => {
@@ -452,6 +462,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   setCurrentList: (listId) => {
     set({ currentListId: listId });
+  },
+  
+  saveResumeState: (listId, snapshot) => {
+    set((current) => ({
+      resumeState: { ...current.resumeState, [listId]: snapshot },
+    }));
+  },
+
+  clearResumeState: (listId) => {
+    set((current) => {
+      if (!current.resumeState[listId]) return current;
+      const next = { ...current.resumeState };
+      delete next[listId];
+      return { resumeState: next };
+    });
+  },
+
+  clearAllResumeState: () => {
+    set({ resumeState: {} });
   },
   
   setCurrentListData: (list) => {

@@ -49,10 +49,11 @@ interface ListEditorProps {
   onInitialEditConsumed?: () => void;
   onSave: (list: AssociationList) => Promise<void> | void;
   onBack: () => void;
+  onBackLabel?: string;
   onCreateMultiple?: (groups: { name: string, associations: Association[] }[]) => void;
 }
 
-export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onInitialEditConsumed, onSave, onBack, onCreateMultiple }) => {
+export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onInitialEditConsumed, onSave, onBack, onBackLabel = 'Volver al dashboard', onCreateMultiple }) => {
   const { showToast } = useToast();
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -460,7 +461,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
           <button
             type="button"
             onClick={handleBack}
-            title="Volver al dashboard"
+            title={onBackLabel}
             className="mt-1 flex-shrink-0 p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition bg-white"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -477,7 +478,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
                 onClick={handleBack}
                 className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
               >
-                Volver al dashboard →
+                {onBackLabel} →
               </button>
             </div>
             <input

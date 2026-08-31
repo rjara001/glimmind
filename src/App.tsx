@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
 import { ListEditor } from './components/ListEditor';
@@ -43,13 +43,34 @@ const AppContent: React.FC = () => {
   const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
   const [pendingTextImport, setPendingTextImport] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
+  const historyRef = useRef<AppView[]>([]);
+
+  const clearListContext = useCallback(() => {
+    useGameStore.getState().setCurrentList(null);
+    useGameStore.getState().clearAllResumeState();
+  }, []);
 
   const navigate = useCallback((nextView: string) => {
     if (nextView === 'dashboard') {
-      useGameStore.getState().setCurrentList(null);
+      clearListContext();
+      historyRef.current = [];
+    } else {
+      historyRef.current = [...historyRef.current, view];
     }
     setView(nextView as AppView);
-  }, []);
+  }, [view, clearListContext]);
+
+  const goBack = useCallback(() => {
+    const prev = historyRef.current[historyRef.current.length - 1];
+    historyRef.current = historyRef.current.slice(0, -1);
+    const target = prev ?? 'dashboard';
+    if (target === 'dashboard') {
+      clearListContext();
+    }
+    setView(target as AppView);
+  }, [clearListContext]);
+
+  const isReturningToGame = historyRef.current[historyRef.current.length - 1] === 'game';
 
   const user = useGameStore((state) => state.user);
   const setUser = useGameStore((state) => state.setUser);
@@ -216,11 +237,8 @@ const AppContent: React.FC = () => {
               initialEditId={pendingEditId}
               onInitialEditConsumed={() => setPendingEditId(null)}
               onSave={handleUpdateList}
-              onBack={() => {
-                useGameStore.getState().setCurrentList(null);
-                setPendingEditId(null);
-                navigate('dashboard');
-              }}
+              onBack={goBack}
+              onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
               onCreateMultiple={handleCreateMultipleLists}
             />
           )}
@@ -229,7 +247,7 @@ const AppContent: React.FC = () => {
               list={currentList}
               onUpdateAssociations={handleUpdateAssociations}
               onUpdateList={handleUpdateList}
-              onBack={() => navigate('dashboard')}
+              onBack={goBack}
               onViewList={(id) => {
                 setPendingEditId(id ?? null);
                 navigate('editor');
@@ -237,16 +255,16 @@ const AppContent: React.FC = () => {
             />
           )}
           {view === 'settings' && (
-            <SettingsView onBack={() => navigate('dashboard')} />
+            <SettingsView onBack={goBack} />
           )}
           {view === 'activity' && (
-            <HistoryView onBack={() => navigate('dashboard')} onGoToSettings={() => navigate('settings')} />
+            <HistoryView onBack={goBack} onGoToSettings={() => navigate('settings')} />
           )}
           {view === 'reports' && (
-            <ReportsView onBack={() => navigate('dashboard')} onGoToSettings={() => navigate('settings')} />
+            <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
           )}
           {view === 'admin' && (
-            <AdminUsageView onBack={() => navigate('dashboard')} />
+            <AdminUsageView onBack={goBack} />
           )}
           {view === 'text-importer' && (
             <TextImporter
@@ -254,7 +272,7 @@ const AppContent: React.FC = () => {
                 setPendingTextImport({ associations, sourceMeta });
                 navigate('editor');
               }}
-              onBack={() => navigate('dashboard')}
+              onBack={goBack}
             />
           )}
         </main>
