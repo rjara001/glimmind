@@ -192,17 +192,17 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const isReversed = list.settings.flipOrder === 'reversed';
   const remainingCount = gameState.remainingCount ?? 0;
-  const isTransitioning = feedback === 'correct' && remainingCount <= 0;
+  const isTransitioning = feedback === 'correct' && remainingCount <= 0 && !isEditingCard;
 
   const handleCheckAnswer = useCallback(() => {
     actions.checkAnswer();
   }, [actions]);
 
   useEffect(() => {
-    if (feedback !== 'correct' || remainingCount > 0 || gameState.isFinished || isVoiceActive) return;
+    if (feedback !== 'correct' || remainingCount > 0 || gameState.isFinished || isVoiceActive || isEditingCard) return;
     const timer = setTimeout(() => actions.handleCorrect(), 600);
     return () => clearTimeout(timer);
-  }, [feedback, remainingCount, gameState.isFinished, isVoiceActive, actions]);
+  }, [feedback, remainingCount, gameState.isFinished, isVoiceActive, isEditingCard, actions]);
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -668,7 +668,7 @@ onSpeakAnswer={handleSpeakAnswer}
                  onToggleListening={handleToggleListening}
                />
              ) : (
-               <GameControls onNext={actions.handlePass} onCheckAnswer={handleCheckAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
+               <GameControls onNext={actions.handlePass} onPrev={actions.goBack} canGoBack={gameState.currentIndex > 0} onCheckAnswer={handleCheckAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
              )}
              <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} selectedAttemptId={selectedAttempt?.timestamp} onSelectAttempt={handleSelectAttempt} />
              <AttemptAnalysisModal isOpen={selectedAttempt !== null} onClose={handleCloseAttemptModal} attempt={selectedAttempt!} list={list} onUpdateExpectedAnswer={handleUpdateExpectedAnswer} />

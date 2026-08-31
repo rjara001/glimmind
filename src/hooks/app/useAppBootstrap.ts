@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { auth, onAuthStateChanged } from '../../firebase';
 import type { User } from 'firebase/auth';
@@ -13,6 +13,7 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
     return localStorage.getItem(LAST_PLAYED_KEY) || undefined;
   });
+  const didAutoNavigate = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
@@ -49,13 +50,14 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   }, [user]);
 
   useEffect(() => {
-    if (!isLoaded || !user || !lastPlayedId) return;
+    if (!isLoaded || !user || !lastPlayedId || didAutoNavigate.current) return;
 
     const { lists } = useGameStore.getState();
     const lastList = lists.find((l) => l.id === lastPlayedId);
 
     if (lastList) {
       useGameStore.getState().setCurrentList(lastPlayedId);
+      didAutoNavigate.current = true;
       navigate('game');
     }
   }, [isLoaded, user, lastPlayedId, navigate]);

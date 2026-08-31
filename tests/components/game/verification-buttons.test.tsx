@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameControls } from '@/components/game/GameControls';
-import { GameMode } from '@//types';
+import { GameMode } from '@/types';
 
 describe('Buttons Display - Modo Examen (real)', () => {
   const renderControls = (props: {
@@ -30,6 +30,8 @@ describe('Buttons Display - Modo Examen (real)', () => {
           gameMode={props.gameMode ?? 'real'}
           isTransitioning={props.isTransitioning ?? false}
           onNext={mock.onNext}
+          onPrev={vi.fn()}
+          canGoBack={false}
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={mock.onCorrect}
@@ -38,9 +40,9 @@ describe('Buttons Display - Modo Examen (real)', () => {
     };
   };
 
-  it('should show "Pasar" button', () => {
+  it('should show "Siguiente" button', () => {
     renderControls();
-    expect(screen.getByRole('button', { name: /pasar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /siguiente/i })).toBeInTheDocument();
   });
 
   it('should show "Validar" button when card is not revealed', () => {
@@ -54,9 +56,9 @@ describe('Buttons Display - Modo Examen (real)', () => {
     expect(onCheckAnswer).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onNext when Pasar is clicked', () => {
+  it('should call onNext when Siguiente is clicked', () => {
     const { onNext } = renderControls();
-    fireEvent.click(screen.getByRole('button', { name: /pasar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /siguiente/i }));
     expect(onNext).toHaveBeenCalledTimes(1);
   });
 
@@ -78,13 +80,14 @@ describe('Buttons Display - Modo Examen (real)', () => {
     expect(validarButton).toBeDisabled();
   });
 
-  it('should show exactly 3 buttons in real mode: Pasar, Validar, Revelar', () => {
+  it('should show exactly 4 buttons in real mode: Atrás, Siguiente, Validar, Revelar', () => {
     renderControls({ revealed: true, gameMode: 'real' });
-    
+
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(3);
-    
-    expect(screen.getByRole('button', { name: /pasar/i })).toBeInTheDocument();
+    expect(buttons).toHaveLength(4);
+
+    expect(screen.getByRole('button', { name: /atrás/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /siguiente/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /validar/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /revelar/i })).toBeInTheDocument();
   });
@@ -118,6 +121,8 @@ describe('Buttons Display - Modo Entrenamiento (training)', () => {
           gameMode={props.gameMode ?? 'training'}
           isTransitioning={props.isTransitioning ?? false}
           onNext={mock.onNext}
+          onPrev={vi.fn()}
+          canGoBack={false}
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={mock.onCorrect}
@@ -126,9 +131,9 @@ describe('Buttons Display - Modo Entrenamiento (training)', () => {
     };
   };
 
-  it('should show "Pasar" button', () => {
+  it('should show "Siguiente" button', () => {
     renderControls({ gameMode: 'training' });
-    expect(screen.getByRole('button', { name: /pasar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /siguiente/i })).toBeInTheDocument();
   });
 
   it('should show "Revelar" button in training mode', () => {
@@ -182,6 +187,8 @@ describe('Keyboard Shortcuts', () => {
           gameMode={props.gameMode ?? 'real'}
           isTransitioning={false}
           onNext={mock.onNext}
+          onPrev={vi.fn()}
+          canGoBack={false}
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={vi.fn()}
@@ -233,6 +240,8 @@ describe('Feedback - Training Mode (No Messages)', () => {
         gameMode="training"
         isTransitioning={false}
         onNext={vi.fn()}
+        onPrev={vi.fn()}
+        canGoBack={false}
         onCheckAnswer={vi.fn()}
         onReveal={vi.fn()}
         onCorrect={mockOnCorrect}

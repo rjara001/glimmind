@@ -554,3 +554,21 @@ NEVER run firebase emulators:start without --import/--export-on-exit. Without pe
 If the emulator data is wiped (or after the first empty boot): every authenticated app request returns 401 Unauthorized because the stored ID token points to a uid that no longer exists. The user MUST sign out and sign in again.
 
 The .emulator-data directory MUST stay in .gitignore.
+
+31. Git Inspection & Refactoring Rules
+
+Inspection First
+
+Before modifying existing code or diagnosing bugs, agents MUST inspect past commit history (using `git log -S "<feature>"`, `git diff`, or `@modelcontextprotocol/server-git` tools) to understand the original intent and avoid regressions.
+
+No Silent Removals
+
+Agents MUST NOT remove, disable, or bypass existing features, feedback mechanisms (such as Levenshtein distance calculations or similarity percentage toasts), or validation logic unless explicitly mandated in an approved plan under `docs/plans/`.
+
+No Parallel Engines or Flags
+
+Agents MUST NOT introduce dual engines, temporary transition modes, or boolean toggles (e.g., `isEngineActive`) that create parallel validation paths. All refactors MUST unify logic in-place within the primary authoritative engine.
+
+Pre-Commit Verification
+
+Agents MUST inspect their own `git diff` before declaring any task completed to ensure no stray code, broken imports, or unintended side effects were introduced.
