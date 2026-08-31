@@ -24,8 +24,6 @@ import { VoiceRecordingsModal } from '../../components/modals/VoiceRecordingsMod
 import { useVoiceRecordings } from '../../hooks/voice/useVoiceRecordings';
 import { PracticeModeControls } from '../game/PracticeModeControls';
 import { usePracticePlayer } from '../../hooks/game/usePracticePlayer';
-import { useEngineController } from '../../hooks/game/useEngineController';
-import { EngineMode } from '../../types/engine';
 import { joinDefinitions, parseDefinitions } from '../../utils/normalizeAssociation';
 
 interface GameViewProps {
@@ -171,11 +169,6 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     evaluationCount: attempts.length,
     similarity,
     onSubmitVoice: (text: string) => {
-      if (isEngineActive) {
-        actions.setUserInput(text);
-        engineController.evaluate(text);
-        return;
-      }
       actions.submitVoice(text);
     },
     onAdvance: actions.handleCorrect,
@@ -198,61 +191,31 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   }, [voice]);
 
   const isReversed = list.settings.flipOrder === 'reversed';
-  const isTransitioning = feedback === 'correct';
-  const engineMode: EngineMode = isReversed ? 'INVERSE' : 'DIRECT';
-  const engineCardDefinition = currentAssociation?.definition ?? [];
-  const engineController = useEngineController({
-    active: engineCardDefinition.length > 0,
-    cardId: currentAssociation?.id,
-    key: currentAssociation?.term ?? '',
-    definition: engineCardDefinition,
-    mode: engineMode,
-  });
-  const isEngineActive = engineController.isActive;
-  const effectiveFeedback = isEngineActive ? engineController.feedback : feedback;
-  const effectiveSimilarity = isEngineActive ? null : similarity;
-  const effectiveLastAttempt = isEngineActive ? engineController.lastInput : lastAttempt;
+  const remainingCount = gameState.remainingCount ?? 0;
+  const isTransitioning = feedback === 'correct' && remainingCount <= 0;
 
   const handleCheckAnswer = useCallback(() => {
-    if (isEngineActive) {
-      engineController.evaluate(userInput);
-      return;
-    }
     actions.checkAnswer();
-  }, [isEngineActive, engineController, userInput, actions]);
+  }, [actions]);
 
   useEffect(() => {
-    if (!isEngineActive || !engineController.isCompleted || gameState.isFinished) return;
+    if (feedback !== 'correct' || remainingCount > 0 || gameState.isFinished || isVoiceActive) return;
     const timer = setTimeout(() => actions.handleCorrect(), 600);
     return () => clearTimeout(timer);
-  }, [isEngineActive, engineController.isCompleted, gameState.isFinished, actions]);
-
-  useEffect(() => {
-    if (!isEngineActive || !engineController.evaluated || !engineController.turn) return;
-    const turn = engineController.turn;
-    if (turn.is_correct) {
-      showToast(turn.system_message, 'success');
-    } else {
-      showToast(turn.system_message, 'error');
-    }
-  }, [isEngineActive, engineController.evaluated, engineController.turn, showToast]);
+  }, [feedback, remainingCount, gameState.isFinished, isVoiceActive, actions]);
 
   useEffect(() => {
     if (!currentAssociation) return;
-    const isReversed = list.settings.flipOrder === 'reversed';
-    const expectedAnswer = isReversed ? currentAssociation.term : joinDefinitions(currentAssociation.definition);
-    
+    const thresholdPercent = Math.round(list.settings.threshold * 100);
+    const lastAttemptObj = attempts[attempts.length - 1];
+    const expectedAnswer = lastAttemptObj?.expectedAnswer ?? (isReversed ? currentAssociation.term : joinDefinitions(currentAssociation.definition));
+
     if (feedback === 'correct') {
-      const thresholdPercent = Math.round(list.settings.threshold * 100);
-      showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (100% similarity, needed ${thresholdPercent}%)`, 'success');
-      if (!isVoiceActive) {
-        actions.handleCorrect();
-      }
+      showToast(`Correct! ${lastAttempt} → ${expectedAnswer} (${similarity}% similarity, needed ${thresholdPercent}%)`, 'success');
     } else if (feedback === 'incorrect') {
-      const thresholdPercent = Math.round(list.settings.threshold * 100);
       showToast(`Incorrect. You wrote: "${lastAttempt}" | Similarity: ${similarity}% | Needed: ${thresholdPercent}%`, 'error');
     }
-  }, [feedback, currentAssociation, showToast, list.settings.threshold, lastAttempt, similarity, list.settings.flipOrder, actions]);
+  }, [feedback, currentAssociation, showToast, list.settings.threshold, list.settings.flipOrder, lastAttempt, similarity, attempts, isReversed]);
   
   // Sync game state to parent when associations change
   useEffect(() => {
@@ -336,7 +299,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       const isTyping = isInput;
 
       if (feedback !== 'none') {
-        if (e.key === 'Enter' && feedback === 'correct') {
+        if (e.key === 'Enter' && feedback === 'correct' && remainingCount <= 0) {
           e.preventDefault();
           actions.handleCorrect();
         }
@@ -370,7 +333,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, isEditingCard, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput, handleCheckAnswer]);
+  }, [showSettings, isEditingCard, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput, handleCheckAnswer, remainingCount]);
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
@@ -463,6 +426,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const cycleColorClass = cycleColorName === 'sky' ? 'text-sky-600' : cycleColorName === 'yellow' ? 'text-yellow-600' : cycleColorName === 'rose' ? 'text-rose-600' : cycleColorName === 'emerald' ? 'text-emerald-600' : 'text-slate-600';
   const cycle4Count = gameState.associations.filter(a => a.currentCycle === 4).length;
   const attemptCount = attempts.filter(a => a.associationId === currentAssociation?.id).length;
+
+  const foundAnswers = gameState.foundAnswers ?? [];
+  const expectedCount = gameState.expectedCount ?? 0;
+  const engineDisclaimer =
+    expectedCount > 0
+      ? `${foundAnswers.length} / ${expectedCount} expected answers`
+      : undefined;
+  const engineFoundAnswers = foundAnswers.length > 0 ? foundAnswers : undefined;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">
@@ -596,9 +567,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               isPracticeMode={list.settings.mode === 'training'} 
               userInput={userInput} 
               onUserInput={actions.setUserInput} 
-              feedback={effectiveFeedback} 
-              similarity={effectiveSimilarity}
-              lastAttempt={effectiveLastAttempt}
+              feedback={feedback} 
+              similarity={similarity}
+              lastAttempt={lastAttempt}
               cycleColorName={cycleColorName}
                showHints={list.settings.showHints !== false && !isPresentationMode}
               currentCycle={currentAssociation?.currentCycle ?? 1}
@@ -617,8 +588,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceDefLang={voiceDefLang}
 onSpeakAnswer={handleSpeakAnswer}
                  detectedVoiceCommand={detectedVoiceCommand}
-                 engineDisclaimer={isEngineActive ? engineController.disclaimer : undefined}
-                 engineFoundAnswers={isEngineActive ? engineController.turn?.found_answers : undefined}
+                 engineDisclaimer={engineDisclaimer}
+                 engineFoundAnswers={engineFoundAnswers}
             />
               {!isPresentationMode && (
                 <CountdownTimer

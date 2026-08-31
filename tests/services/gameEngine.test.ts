@@ -697,4 +697,80 @@ describe('GlimmindGame', () => {
             expect(restored.state.currentIndex).toBe(indexBefore);
         });
     });
+
+    describe('MultiValue engine (Levenshtein against all renderings)', () => {
+        const multiList = (definition: string[], flipOrder: 'normal' | 'reversed' = 'normal'): AssociationList => ({
+            ...createMockList([
+                { id: '1', term: "I'm down", definition, status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            ]),
+            settings: { ...createMockList([]).settings, flipOrder },
+        });
+
+        it('DIRECT: finds the first rendering, does not complete the card yet', () => {
+            const game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
+            const after = game.setUserInput('Estoy de acuerdo').checkAnswer();
+
+            expect(after.state.feedback).toBe('correct');
+            expect(after.state.similarity).toBe(100);
+            expect(after.state.foundAnswers).toEqual(['Estoy de acuerdo']);
+            expect(after.state.remainingCount).toBe(1);
+            expect(after.state.revealed).toBe(false);
+        });
+
+        it('DIRECT: completes the card when the last rendering is found', () => {
+            let game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
+            game = game.setUserInput('Estoy de acuerdo').checkAnswer();
+            const after = game.setUserInput('Me copa').checkAnswer();
+
+            expect(after.state.feedback).toBe('correct');
+            expect(after.state.remainingCount).toBe(0);
+            expect(after.state.revealed).toBe(true);
+            expect(after.state.foundAnswers).toContain('Me copa');
+        });
+
+        it('DIRECT: rejects a wrong answer and keeps counters unchanged', () => {
+            const game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
+            const after = game.setUserInput('No sé').checkAnswer();
+
+            expect(after.state.feedback).toBe('incorrect');
+            expect(after.state.remainingCount).toBe(2);
+            expect(after.state.foundAnswers).toEqual([]);
+        });
+
+        it('DIRECT: does not double count a repeated rendering', () => {
+            let game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
+            game = game.setUserInput('Estoy de acuerdo').checkAnswer();
+            const after = game.setUserInput('estoy de acuerdo').checkAnswer();
+
+            expect(after.state.feedback).toBe('correct');
+            expect(after.state.remainingCount).toBe(1);
+            expect(after.state.foundAnswers).toEqual(['Estoy de acuerdo']);
+        });
+
+        it('DIRECT: picks the closest rendering as the expected answer', () => {
+            const game = GlimmindGame.create(multiList(['apple', 'banana']));
+            const after = game.setUserInput('appel').checkAnswer();
+
+            expect(after.state.attempts[0].expectedAnswer).toBe('apple');
+            expect(after.state.attempts[0].similarity).toBeLessThan(90);
+        });
+
+        it('INVERSE: the Key is the single expected answer and completes in one hit', () => {
+            const game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa'], 'reversed'));
+            const after = game.setUserInput("I'm down").checkAnswer();
+
+            expect(after.state.feedback).toBe('correct');
+            expect(after.state.remainingCount).toBe(0);
+            expect(after.state.revealed).toBe(true);
+            expect(after.state.foundAnswers).toEqual(["I'm down"]);
+        });
+
+        it('INVERSE: rejects a wrong Key and keeps remaining at 1', () => {
+            const game = GlimmindGame.create(multiList(['Me copa'], 'reversed'));
+            const after = game.setUserInput('I am down').checkAnswer();
+
+            expect(after.state.feedback).toBe('incorrect');
+            expect(after.state.remainingCount).toBe(1);
+        });
+    });
 });

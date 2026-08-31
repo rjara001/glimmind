@@ -4,6 +4,7 @@ import {
   GameState,
   GameCycle,
   GameSummary,
+  EngineMode,
 } from "../types";
 import { normalizeAnswer } from "../utils/textNormalization";
 
@@ -271,6 +272,11 @@ export class GlimmindGame {
       feedback: "none",
       similarity: null,
       lastAttempt: "",
+      mode: undefined,
+      expectedAnswers: undefined,
+      expectedCount: undefined,
+      foundAnswers: undefined,
+      remainingCount: undefined,
     };
     return new GlimmindGame(this.initialList, nextState, this.trackingEnabled)._checkForNextCycle();
   }
@@ -292,6 +298,11 @@ export class GlimmindGame {
       similarity: null,
       lastAttempt: "",
       revealedAssociations,
+      mode: undefined,
+      expectedAnswers: undefined,
+      expectedCount: undefined,
+      foundAnswers: undefined,
+      remainingCount: undefined,
     }, this.trackingEnabled);
   }
 
@@ -301,21 +312,34 @@ export class GlimmindGame {
 
     const userAnswer = this.state.userInput.trim();
     const isReversed = this.initialList.settings.flipOrder === "reversed";
-    const correctAnswer = isReversed
-      ? current.term.trim()
-      : current.definition[0]?.trim() ?? '';
+    const mode: EngineMode = isReversed ? 'INVERSE' : 'DIRECT';
+    const expectedAnswers = isReversed
+      ? [current.term.trim()]
+      : current.definition.map((d) => d.trim());
     const ignoreArticles = this.initialList.settings.ignoreArticles === true;
-    const similarity = calculateSimilarity(userAnswer, correctAnswer, ignoreArticles);
+
+    let bestSimilarity = 0;
+    let bestAnswer = expectedAnswers[0] ?? '';
+    for (const expected of expectedAnswers) {
+      const similarity = calculateSimilarity(userAnswer, expected, ignoreArticles);
+      if (similarity > bestSimilarity) {
+        bestSimilarity = similarity;
+        bestAnswer = expected;
+      }
+    }
+
     const threshold = this.initialList.settings.threshold * 100;
-    const isCorrect =
-      userAnswer.toLowerCase() === correctAnswer.toLowerCase() ||
-      similarity >= threshold;
+    const isCorrect = bestSimilarity >= threshold;
+
+    const foundAnswers = this.state.foundAnswers ?? [];
+    const expectedCount = expectedAnswers.length;
+    const remainingBefore = expectedCount - foundAnswers.length;
 
     const newAttempt = {
       userInput: userAnswer,
-      similarity,
+      similarity: bestSimilarity,
       threshold,
-      expectedAnswer: correctAnswer,
+      expectedAnswer: bestAnswer,
       timestamp: Date.now(),
       associationId: current.id,
     };
@@ -323,18 +347,30 @@ export class GlimmindGame {
     const updatedAttempts = [...this.state.attempts, newAttempt];
 
     if (isCorrect) {
-      const revealedAssociations = !this.state.revealedAssociations.includes(current.id)
-        ? [...this.state.revealedAssociations, current.id]
-        : this.state.revealedAssociations;
+      const alreadyFound = foundAnswers.some(
+        (answer) => normalizeAnswer(answer) === normalizeAnswer(bestAnswer),
+      );
+      const nextFoundAnswers = alreadyFound ? foundAnswers : [...foundAnswers, bestAnswer];
+      const nextRemaining = expectedCount - nextFoundAnswers.length;
+      const isCardComplete = nextRemaining <= 0;
+      const revealedAssociations =
+        isCardComplete && !this.state.revealedAssociations.includes(current.id)
+          ? [...this.state.revealedAssociations, current.id]
+          : this.state.revealedAssociations;
 
       const correctState: GameState = {
         ...this.state,
-        revealed: true,
+        revealed: isCardComplete,
         feedback: "correct",
-        similarity: 100,
+        similarity: Math.round(bestSimilarity),
         lastAttempt: userAnswer,
         attempts: updatedAttempts,
         revealedAssociations,
+        mode,
+        expectedAnswers,
+        expectedCount,
+        foundAnswers: nextFoundAnswers,
+        remainingCount: Math.max(0, nextRemaining),
       };
       return new GlimmindGame(this.initialList, correctState, this.trackingEnabled);
     } else {
@@ -355,9 +391,14 @@ export class GlimmindGame {
         associations,
         feedback: "incorrect",
         userInput: "",
-        similarity,
+        similarity: Math.round(bestSimilarity),
         lastAttempt: userAnswer,
         attempts: updatedAttempts,
+        mode,
+        expectedAnswers,
+        expectedCount,
+        foundAnswers,
+        remainingCount: remainingBefore,
       };
       return new GlimmindGame(this.initialList, incorrectState, this.trackingEnabled);
     }
@@ -405,6 +446,11 @@ export class GlimmindGame {
       similarity: null,
       lastAttempt: "",
       revealedAssociations,
+      mode: undefined,
+      expectedAnswers: undefined,
+      expectedCount: undefined,
+      foundAnswers: undefined,
+      remainingCount: undefined,
     };
     const nextGame = new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
     return nextGame._checkForNextCycle();

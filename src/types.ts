@@ -4,6 +4,7 @@ import type { SourceRow } from './types/source-row';
 export type GameMode = 'training' | 'real';
 export type GameCycle = 1 | 2 | 3 | 4;
 export type GameFeedback = 'none' | 'correct' | 'incorrect';
+export type EngineMode = 'DIRECT' | 'INVERSE';
 export type HintMode = 'masked' | 'firstLetter' | 'firstLast' | 'firstLast2';
 export type VoiceLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt';
 export type VoiceProvider = 'browser' | 'chirp';
@@ -119,4 +120,9 @@ export interface GameState {
   lastAttempt: string;
   attempts: Attempt[];
   revealedAssociations: string[];
+  mode?: EngineMode;
+  expectedAnswers?: string[];
+  expectedCount?: number;
+  foundAnswers?: string[];
+  remainingCount?: number;
 }
