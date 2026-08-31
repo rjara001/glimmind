@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Association } from '../../types';
+import { joinDefinitions } from '../../utils/normalizeAssociation';
+import { DictionaryShortcuts } from './DictionaryShortcuts';
 
 interface SortIndicatorProps {
   sort: { field: string; direction: 'asc' | 'desc' } | null;
@@ -41,6 +43,7 @@ interface AssociationTableProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  autoOpenId?: string | null;
 }
 
 interface TagEditorProps {
@@ -161,9 +164,11 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
               disabled={isArchived}
               onChange={(e) => onUpdateField(assoc.id, 'term', e.target.value)}
               onBlur={onBlurRow}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60"
-            />
-          </div>
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60"
+              />
+            </div>
+
+          <DictionaryShortcuts term={assoc.term} />
 
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -171,7 +176,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
             </label>
             <input
               type="text"
-              value={assoc.definition}
+              value={joinDefinitions(assoc.definition)}
               disabled={isArchived}
               onChange={(e) => onUpdateField(assoc.id, 'definition', e.target.value)}
               onBlur={onBlurRow}
@@ -256,8 +261,15 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
   selectable = false,
   selectedIds,
   onToggleSelect,
+  autoOpenId,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (autoOpenId) {
+      setExpandedId(autoOpenId);
+    }
+  }, [autoOpenId]);
 
   const expandedAssoc = expandedId
     ? associations.find((a) => a.id === expandedId)
@@ -404,7 +416,7 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
                 <div className="px-4 sm:px-6 py-2 sm:py-4 flex items-center cell-truncate">
                   <input
                     type="text"
-                    value={assoc.definition}
+                    value={joinDefinitions(assoc.definition)}
                     onBlur={handleBlurRow}
                     onChange={(e) => onUpdateField(assoc.id, 'definition', e.target.value)}
                     className="w-full bg-transparent border-none focus:ring-0 text-indigo-600 placeholder-slate-300 disabled:opacity-60"

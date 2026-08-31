@@ -6,7 +6,7 @@ const createMockAssociations = (count: number): Association[] => {
     return Array.from({ length: count }, (_, i) => ({
         id: `${i + 1}`,
         term: `Term ${i + 1}`,
-        definition: `Def ${i + 1}`,
+        definition: [`Def ${i + 1}`],
         status: 'pending' as const,
         currentCycle: 1 as const,
         isLearned: false,
@@ -271,9 +271,9 @@ describe('GlimmindGame', () => {
     describe('archived associations', () => {
         it('filters out archived associations from active queue but preserves them in state', () => {
             const associations: Association[] = [
-                { id: '1', term: 'Term 1', definition: 'Def 1', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-                { id: '2', term: 'Term 2', definition: 'Def 2', status: 'pending', currentCycle: 1, isLearned: false, isArchived: true },
-                { id: '3', term: 'Term 3', definition: 'Def 3', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+                { id: '1', term: 'Term 1', definition: ['Def 1'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+                { id: '2', term: 'Term 2', definition: ['Def 2'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: true },
+                { id: '3', term: 'Term 3', definition: ['Def 3'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
             ];
             const list = createMockList(associations);
             
@@ -287,7 +287,7 @@ describe('GlimmindGame', () => {
     describe('checkAnswer (Validación de Intentos)', () => {
         it('handles Intento Incorrecto correctly', () => {
             const list = createMockList([
-                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+                { id: '1', term: 'Term 1', definition: ['Correct Answer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
             ]);
             let game = GlimmindGame.create(list);
             
@@ -304,7 +304,7 @@ describe('GlimmindGame', () => {
 
         it('handles Intento Correcto correctly', () => {
             const list = createMockList([
-                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+                { id: '1', term: 'Term 1', definition: ['Correct Answer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
             ]);
             let game = GlimmindGame.create(list);
             
@@ -326,16 +326,16 @@ describe('GlimmindGame', () => {
 
     describe('Similarity Algorithm Tests', () => {
         const associations: Association[] = [
-            { id: '1', term: 'Circle back', definition: 'Volver', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '2', term: 'Get down to', definition: 'Ponerse a', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '3', term: 'Look up to', definition: 'Admirar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '4', term: 'Give up', definition: 'Rendirse', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '5', term: 'Take off', definition: 'Despegar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '6', term: 'Run into', definition: 'Encontrarse con', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '7', term: 'Put off', definition: 'Posponer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '8', term: 'Call off', definition: 'Cancelar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '9', term: 'Break down', definition: 'Desglosar', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
-            { id: '10', term: 'Figure out', definition: 'Descubrir', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '1', term: 'Circle back', definition: ['Volver'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '2', term: 'Get down to', definition: ['Ponerse a'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '3', term: 'Look up to', definition: ['Admirar'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '4', term: 'Give up', definition: ['Rendirse'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '5', term: 'Take off', definition: ['Despegar'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '6', term: 'Run into', definition: ['Encontrarse con'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '7', term: 'Put off', definition: ['Posponer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '8', term: 'Call off', definition: ['Cancelar'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '9', term: 'Break down', definition: ['Desglosar'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+            { id: '10', term: 'Figure out', definition: ['Descubrir'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
         ];
         const list = createMockList(associations);
 
@@ -401,7 +401,7 @@ describe('GlimmindGame', () => {
                 let game = GlimmindGame.create(list);
                 
                 // Find the card with this definition in the shuffled queue
-                const cardId = associations.find(a => a.definition === expectedDef)?.id;
+                const cardId = associations.find(a => a.definition[0] === expectedDef)?.id;
                 if (!cardId) {
                     throw new Error(`Card with definition "${expectedDef}" not found`);
                 }
@@ -440,7 +440,7 @@ describe('GlimmindGame', () => {
                 const currentCardId = game.state.activeQueue[game.state.currentIndex];
                 const card = game.state.associations.find(a => a.id === currentCardId)!;
                 
-                game = game.setUserInput(card.definition);
+                game = game.setUserInput(card.definition[0]);
                 game = game.checkAnswer();
                 expect(game.state.feedback).toBe('correct');
                 
@@ -461,7 +461,7 @@ describe('GlimmindGame', () => {
             for (let i = 0; i < 5; i++) {
                 const currentCardId = game.state.activeQueue[game.state.currentIndex];
                 const card = game.state.associations.find(a => a.id === currentCardId)!;
-                game = game.setUserInput(card.definition);
+                game = game.setUserInput(card.definition[0]);
                 game = game.checkAnswer();
                 game = game.processAction({ type: 'CORRECT' });
             }
@@ -487,7 +487,7 @@ describe('GlimmindGame', () => {
             for (let i = 0; i < 5; i++) {
                 const currentCardId = game.state.activeQueue[game.state.currentIndex];
                 const card = game.state.associations.find(a => a.id === currentCardId)!;
-                game = game.setUserInput(card.definition);
+                game = game.setUserInput(card.definition[0]);
                 game = game.checkAnswer();
                 game = game.processAction({ type: 'CORRECT' });
             }
@@ -502,7 +502,7 @@ describe('GlimmindGame', () => {
     describe('activity counters', () => {
         it('increments misses on an incorrect checkAnswer', () => {
             const list = createMockList([
-                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+                { id: '1', term: 'Term 1', definition: ['Correct Answer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
             ]);
             let game = GlimmindGame.create(list);
             game = game.setUserInput('Wrong Answer');
@@ -535,7 +535,7 @@ describe('GlimmindGame', () => {
 
         it('counts a correct real-mode answer exactly once', () => {
             const list = createMockList([
-                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+                { id: '1', term: 'Term 1', definition: ['Correct Answer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
             ]);
             let game = GlimmindGame.create(list);
             game = game.setUserInput('Correct Answer');
@@ -578,7 +578,7 @@ describe('GlimmindGame', () => {
 
         it('stamps updatedAt on an incorrect checkAnswer', () => {
             const list = createMockList([
-                { id: '1', term: 'Term 1', definition: 'Correct Answer', status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
+                { id: '1', term: 'Term 1', definition: ['Correct Answer'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false }
             ]);
             let game = GlimmindGame.create(list);
             game = game.setUserInput('Wrong Answer');

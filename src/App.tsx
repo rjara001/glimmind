@@ -42,6 +42,7 @@ const AppContent: React.FC = () => {
   const [youtubePreviewResult, setYoutubePreviewResult] = useState<VocabularyResult | null>(null);
   const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
   const [pendingTextImport, setPendingTextImport] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
 
   const navigate = useCallback((nextView: string) => {
     if (nextView === 'dashboard') {
@@ -212,9 +213,12 @@ const AppContent: React.FC = () => {
           {view === 'editor' && currentList && (
             <ListEditor
               list={currentList}
+              initialEditId={pendingEditId}
+              onInitialEditConsumed={() => setPendingEditId(null)}
               onSave={handleUpdateList}
               onBack={() => {
                 useGameStore.getState().setCurrentList(null);
+                setPendingEditId(null);
                 navigate('dashboard');
               }}
               onCreateMultiple={handleCreateMultipleLists}
@@ -226,7 +230,10 @@ const AppContent: React.FC = () => {
               onUpdateAssociations={handleUpdateAssociations}
               onUpdateList={handleUpdateList}
               onBack={() => navigate('dashboard')}
-              onViewList={() => navigate('editor')}
+              onViewList={(id) => {
+                setPendingEditId(id ?? null);
+                navigate('editor');
+              }}
             />
           )}
           {view === 'settings' && (

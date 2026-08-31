@@ -4,7 +4,7 @@ import { listService } from '../services/firestoreService';
 import { progressService } from '../services/progressService';
 import { quotaService } from '../services/quotaService';
 import { isUsingEmulators, auth } from '../firebase';
-import { flattenAssociations } from '../utils/flattenAssociations';
+import { normalizeAssociations } from '../utils/normalizeAssociation';
 import { backfillAssociationStats, buildListDiffEvents } from '../utils/activity';
 import {
   applyRepaso,
@@ -120,7 +120,7 @@ function flattenList(list: AssociationList): { list: AssociationList; changed: b
     ? new Date(list.updatedAt as string | number).getTime()
     : undefined;
   const associations = backfillAssociationStats(
-    flattenAssociations(list.associations),
+    normalizeAssociations(list.associations),
     fallbackTimestamp,
   );
   if (associations === list.associations) {

@@ -1,4 +1,5 @@
 import { Association } from '../types';
+import { joinDefinitions } from '../utils/normalizeAssociation';
 import { MIN_GROUP_SIZE, MIN_GROUP_SIZE_ABSOLUTE, MIN_GROUP_SIZE_RATIO } from '../constants/limits';
 import { semanticGrouping } from './grouping/semanticGrouping';
 import { tfidfGrouping } from './grouping/tfidfGrouping';
@@ -16,7 +17,7 @@ export const aiService = {
       return [];
     }
 
-    const items = activeAssociations.map((a) => `${a.term} ${a.definition}`.trim());
+    const items = activeAssociations.map((a) => `${a.term} ${joinDefinitions(a.definition)}`.trim());
     const minGroupSize = computeMinGroupSize(activeAssociations.length);
 
     const semanticSuggestions = await semanticGrouping(items, minGroupSize);

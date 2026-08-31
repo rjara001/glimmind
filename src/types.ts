@@ -28,7 +28,7 @@ export interface FlashcardMetadata {
 export interface Association {
   id: string;
   term: string;
-  definition: string;
+  definition: string[];
   translation?: string;
   context?: string;
   metadata?: FlashcardMetadata;

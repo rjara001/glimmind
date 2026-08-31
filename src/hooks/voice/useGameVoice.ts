@@ -110,7 +110,7 @@ const expectedWords = useMemo(() => {
   // If flipOrder is 'reversed', the definition is shown -> the hidden answer is the 'term'.
   // If flipOrder is 'normal', the term is shown -> the hidden answer is the 'definition'.
   const isReversed = list.settings.flipOrder === 'reversed';
-  const hiddenAnswer = isReversed ? currentAssociation.term : currentAssociation.definition;
+  const hiddenAnswer = isReversed ? currentAssociation.term : currentAssociation.definition[0] ?? '';
 
   // Voice commands are added as expected words so Vosk's constrained grammar
   // recognizes them during listening.
@@ -148,7 +148,7 @@ const expectedWords = useMemo(() => {
       if (!current || phaseRef.current !== 'listening' || revealedRef.current) return;
 
       const isReversed = list.settings.flipOrder === 'reversed';
-      const expected = isReversed ? current.definition : current.term;
+      const expected = isReversed ? current.definition[0] ?? '' : current.term;
 
       if (isExactExpectedAnswer(text, expected)) {
         answerHandledRef.current = true;
@@ -241,7 +241,7 @@ const expectedWords = useMemo(() => {
 
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
-    const word = isReversed ? current.definition : current.term;
+    const word = isReversed ? current.definition[0] ?? '' : current.term;
     setError(null);
     setTranscript('');
     transcriptRef.current = '';
@@ -289,7 +289,7 @@ const expectedWords = useMemo(() => {
 
     sttRef.current.abort();
     const isReversed = list.settings.flipOrder === 'reversed';
-    const expectedAnswer = isReversed ? current.term : current.definition;
+    const expectedAnswer = isReversed ? current.term : current.definition[0] ?? '';
     const answerVoiceId = isReversed ? list.settings.voiceTermId : list.settings.voiceDefId;
     setError(null);
     setTranscript('');
@@ -398,7 +398,7 @@ const expectedWords = useMemo(() => {
         const current = currentAssociationRef.current;
         const isReversed = list.settings.flipOrder === 'reversed';
         const expectedAnswer = current
-          ? (isReversed ? current.term : current.definition)
+          ? (isReversed ? current.term : current.definition[0] ?? '')
           : '';
          const similarityPercent = Math.round(similarityRef.current ?? 100);
          const phrase = buildCorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100, narrationLang);
@@ -420,7 +420,7 @@ const expectedWords = useMemo(() => {
         const current = currentAssociationRef.current;
         const isReversed = list.settings.flipOrder === 'reversed';
         const expectedAnswer = current
-          ? (isReversed ? current.term : current.definition)
+          ? (isReversed ? current.term : current.definition[0] ?? '')
           : '';
          const similarityPercent = Math.round(similarityRef.current ?? 0);
          const phrase = buildIncorrectFeedbackPhrase(expectedAnswer, similarityPercent, list.settings.threshold * 100, narrationLang);
@@ -445,7 +445,7 @@ const expectedWords = useMemo(() => {
       if (!blob || !currentAssociation) return;
       const userId = useGameStore.getState().user?.uid || '';
       const isReversed = list.settings.flipOrder === 'reversed';
-      const term = isReversed ? currentAssociation.definition : currentAssociation.term;
+      const term = isReversed ? currentAssociation.definition[0] ?? '' : currentAssociation.term;
       const transcript = transcriptRef.current;
       void uploadAudioRecording(blob, {
         userId,

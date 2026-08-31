@@ -24,13 +24,16 @@ import { VoiceRecordingsModal } from '../../components/modals/VoiceRecordingsMod
 import { useVoiceRecordings } from '../../hooks/voice/useVoiceRecordings';
 import { PracticeModeControls } from '../game/PracticeModeControls';
 import { usePracticePlayer } from '../../hooks/game/usePracticePlayer';
+import { useEngineController } from '../../hooks/game/useEngineController';
+import { EngineMode } from '../../types/engine';
+import { joinDefinitions, parseDefinitions } from '../../utils/normalizeAssociation';
 
 interface GameViewProps {
   list: AssociationList;
   onBack: (updatedAssociations?: Association[]) => void;
   onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
   onUpdateList?: (updatedList: AssociationList) => Promise<void>;
-  onViewList?: () => void;
+  onViewList?: (associationId?: string) => void;
   voiceMode?: boolean;
 }
 
@@ -167,7 +170,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     feedback,
     evaluationCount: attempts.length,
     similarity,
-    onSubmitVoice: actions.submitVoice,
+    onSubmitVoice: (text: string) => {
+      if (isEngineActive) {
+        actions.setUserInput(text);
+        engineController.evaluate(text);
+        return;
+      }
+      actions.submitVoice(text);
+    },
     onAdvance: actions.handleCorrect,
     commands: list.settings.voiceCommands,
     onCommand: handleVoiceCommand,
@@ -187,10 +197,50 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     setIsVoiceMode(false);
   }, [voice]);
 
+  const isReversed = list.settings.flipOrder === 'reversed';
+  const isTransitioning = feedback === 'correct';
+  const engineMode: EngineMode = isReversed ? 'INVERSE' : 'DIRECT';
+  const engineCardDefinition = currentAssociation?.definition ?? [];
+  const engineController = useEngineController({
+    active: engineCardDefinition.length > 0,
+    cardId: currentAssociation?.id,
+    key: currentAssociation?.term ?? '',
+    definition: engineCardDefinition,
+    mode: engineMode,
+  });
+  const isEngineActive = engineController.isActive;
+  const effectiveFeedback = isEngineActive ? engineController.feedback : feedback;
+  const effectiveSimilarity = isEngineActive ? null : similarity;
+  const effectiveLastAttempt = isEngineActive ? engineController.lastInput : lastAttempt;
+
+  const handleCheckAnswer = useCallback(() => {
+    if (isEngineActive) {
+      engineController.evaluate(userInput);
+      return;
+    }
+    actions.checkAnswer();
+  }, [isEngineActive, engineController, userInput, actions]);
+
+  useEffect(() => {
+    if (!isEngineActive || !engineController.isCompleted || gameState.isFinished) return;
+    const timer = setTimeout(() => actions.handleCorrect(), 600);
+    return () => clearTimeout(timer);
+  }, [isEngineActive, engineController.isCompleted, gameState.isFinished, actions]);
+
+  useEffect(() => {
+    if (!isEngineActive || !engineController.evaluated || !engineController.turn) return;
+    const turn = engineController.turn;
+    if (turn.is_correct) {
+      showToast(turn.system_message, 'success');
+    } else {
+      showToast(turn.system_message, 'error');
+    }
+  }, [isEngineActive, engineController.evaluated, engineController.turn, showToast]);
+
   useEffect(() => {
     if (!currentAssociation) return;
     const isReversed = list.settings.flipOrder === 'reversed';
-    const expectedAnswer = isReversed ? currentAssociation.term : currentAssociation.definition;
+    const expectedAnswer = isReversed ? currentAssociation.term : joinDefinitions(currentAssociation.definition);
     
     if (feedback === 'correct') {
       const thresholdPercent = Math.round(list.settings.threshold * 100);
@@ -252,16 +302,14 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
   const handleSaveEdit = useCallback(async (term: string, definition: string) => {
     const trimmedTerm = term.trim();
-    const trimmedDef = definition.trim();
-
     const updatedAssociations = gameState.associations.map(a =>
       a.id === currentAssociation?.id
-        ? { ...a, term: trimmedTerm, definition: trimmedDef, updatedAt: Date.now() }
+        ? { ...a, term: trimmedTerm, definition: [definition.trim()], updatedAt: Date.now() }
         : a
     );
 
     await onUpdateAssociations(updatedAssociations);
-    actions.updateCurrentAssociation(trimmedTerm, trimmedDef);
+    actions.updateCurrentAssociation(trimmedTerm, [definition.trim()]);
     setIsEditingCard(false);
     if (isPresentationMode) {
       practicePlayer.resume();
@@ -310,7 +358,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
       if (isTyping) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          actions.checkAnswer();
+          handleCheckAnswer();
         }
       } else {
         if (e.key === ' ' && isRevealed) {
@@ -322,7 +370,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, isEditingCard, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput]);
+  }, [showSettings, isEditingCard, gameState.isFinished, currentAssociation, feedback, list.settings.mode, isRevealed, actions, userInput, handleCheckAnswer]);
 
   const handleArchiveLearnedCards = async () => {
     if (!summary || summary.learned === 0) {
@@ -380,17 +428,15 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   }, []);
 
   const handleUpdateExpectedAnswer = useCallback(async (associationId: string, field: 'term' | 'definition', value: string) => {
+    const nextValue = field === 'definition' ? parseDefinitions(value) : value;
     const updatedAssociations = gameState.associations.map((a) => {
       if (a.id === associationId) {
-        return { ...a, [field]: value, updatedAt: Date.now() };
+        return { ...a, [field]: nextValue, updatedAt: Date.now() };
       }
       return a;
     });
     await onUpdateAssociations(updatedAssociations);
   }, [gameState.associations, onUpdateAssociations]);
-
-  const isReversed = list.settings.flipOrder === 'reversed';
-  const isTransitioning = feedback === 'correct';
 
   if (gameView === 'summary') {
     const restartAction = (gameState.associations.length === 0) ? handleFullRestart : () => actions.restart(list);
@@ -401,8 +447,8 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     return <div className="w-full h-full flex items-center justify-center"><div className="text-slate-500">Loading...</div></div>;
   }
 
-  const displayTerm = isReversed ? currentAssociation.definition : currentAssociation.term;
-  const displayDef = isReversed ? currentAssociation.term : currentAssociation.definition;
+  const displayTerm = isReversed ? joinDefinitions(currentAssociation.definition) : currentAssociation.term;
+  const displayDef = isReversed ? currentAssociation.term : joinDefinitions(currentAssociation.definition);
   const conceptParts = list.concept.split('/');
   const labelTerm = isReversed ? (conceptParts[1] || 'Definición') : (conceptParts[0] || 'Término');
   const labelDef = isReversed ? (conceptParts[0] || 'Término') : (conceptParts[1] || 'Definición');
@@ -550,9 +596,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               isPracticeMode={list.settings.mode === 'training'} 
               userInput={userInput} 
               onUserInput={actions.setUserInput} 
-              feedback={feedback} 
-              similarity={similarity}
-              lastAttempt={lastAttempt}
+              feedback={effectiveFeedback} 
+              similarity={effectiveSimilarity}
+              lastAttempt={effectiveLastAttempt}
               cycleColorName={cycleColorName}
                showHints={list.settings.showHints !== false && !isPresentationMode}
               currentCycle={currentAssociation?.currentCycle ?? 1}
@@ -569,8 +615,10 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceEnabled={list.settings.voiceEnabled === true}
                voiceTermLang={voiceTermLang}
                voiceDefLang={voiceDefLang}
-               onSpeakAnswer={handleSpeakAnswer}
-                detectedVoiceCommand={detectedVoiceCommand}
+onSpeakAnswer={handleSpeakAnswer}
+                 detectedVoiceCommand={detectedVoiceCommand}
+                 engineDisclaimer={isEngineActive ? engineController.disclaimer : undefined}
+                 engineFoundAnswers={isEngineActive ? engineController.turn?.found_answers : undefined}
             />
               {!isPresentationMode && (
                 <CountdownTimer
@@ -583,7 +631,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
               )}
               {onViewList && (
                 <button
-                  onClick={onViewList}
+                  onClick={() => onViewList(currentAssociation?.id)}
                   className="absolute top-3 left-3 z-40 flex items-center justify-center w-9 h-9 bg-white text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-slate-200 shadow-sm transition-all"
                   aria-label="Edit deck"
                   title="Edit deck"
@@ -643,7 +691,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                  onToggleListening={handleToggleListening}
                />
              ) : (
-               <GameControls onNext={actions.handlePass} onCheckAnswer={actions.checkAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
+               <GameControls onNext={actions.handlePass} onCheckAnswer={handleCheckAnswer} onReveal={actions.reveal} onCorrect={actions.handleCorrect} revealed={isRevealed} wasRevealed={isRevealed} gameMode={list.settings.mode} isTransitioning={isTransitioning} attemptCount={list.settings.mode !== 'training' ? attemptCount : undefined} showRevealWarning={showRevealWarning} onTryAttempt={() => setShowRevealWarning(true)} onConfirmReveal={() => { setShowRevealWarning(false); actions.reveal(); }} />
              )}
              <AttemptList attempts={attempts} revealedAssociations={gameState.revealedAssociations} associations={gameState.associations} selectedAttemptId={selectedAttempt?.timestamp} onSelectAttempt={handleSelectAttempt} />
              <AttemptAnalysisModal isOpen={selectedAttempt !== null} onClose={handleCloseAttemptModal} attempt={selectedAttempt!} list={list} onUpdateExpectedAnswer={handleUpdateExpectedAnswer} />

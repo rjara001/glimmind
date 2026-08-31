@@ -53,7 +53,7 @@ export function recommendListsFor(
   const listScores = activeLists.map((list) => {
     const conceptTokens = uniqueTokens([list.concept]);
     const contentTokens = uniqueTokens(
-      activeAssociations(list).flatMap((a) => [a.term, a.definition]),
+      activeAssociations(list).flatMap((a) => [a.term, ...a.definition]),
     );
 
     const totalTokens = newTokens.size;

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { AssociationList, Association } from '../../types';
-import { flattenAssociations } from '../../utils/flattenAssociations';
+import { normalizeAssociations, AssociationLike } from '../../utils/normalizeAssociation';
 import { computeStateBreakdown } from '../../utils/progress';
 import { countCards } from '../../utils/quota';
 import { parseCsvPairs, isHeaderPair } from '../../utils/csv';
@@ -88,7 +88,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
 
   const parseBulkData = (text: string): Association[] => {
     const pairs = parseCsvPairs(text);
-    const associations: Association[] = pairs.map(pair => ({
+    const associations: AssociationLike[] = pairs.map(pair => ({
       id: crypto.randomUUID(),
       term: pair.term,
       definition: pair.definition,
@@ -97,7 +97,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
       isLearned: false,
       isArchived: false,
     }));
-    return flattenAssociations(associations);
+    return normalizeAssociations(associations);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +118,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
         return;
       }
 
-      const associations: Association[] = flattenAssociations(dataPairs.map(pair => ({
+      const associations: Association[] = normalizeAssociations(dataPairs.map<AssociationLike>(pair => ({
         id: crypto.randomUUID(),
         term: pair.term,
         definition: pair.definition,
@@ -166,7 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
   );
 
   const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] => {
-    return deck.associations.map(a => ({
+    return normalizeAssociations(deck.associations.map<AssociationLike>(a => ({
       id: crypto.randomUUID(),
       term: a.term,
       definition: a.definition,
@@ -174,7 +174,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
       status: 'pending',
       isLearned: false,
       isArchived: false,
-    }));
+    })));
   };
 
   const [continuePlay, setContinuePlay] = useState(false);

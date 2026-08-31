@@ -29,12 +29,19 @@ function cloneAssociation(association: Association, term: string, definition: st
  *
  * Associations with multiple slash-separated values on both sides with different
  * counts are left untouched. Associations without slashes are returned unchanged.
+ * Associations already carrying `multivalues` are never flattened.
  */
 export function flattenAssociations(associations: Association[]): Association[] {
   let changed = false;
   const flattened: Association[] = [];
 
   for (const association of associations) {
+    const hasMultivalues = (association.multivalues?.length ?? 0) > 0;
+    if (hasMultivalues) {
+      flattened.push(association);
+      continue;
+    }
+
     const terms = splitParts(association.term);
     const definitions = splitParts(association.definition);
 

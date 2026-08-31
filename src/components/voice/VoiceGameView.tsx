@@ -45,8 +45,8 @@ export const VoiceGameView: React.FC<VoiceGameViewProps> = ({ list, onBack, onUp
   }
 
   const isReversed = list.settings.flipOrder === 'reversed';
-  const displayWord = isReversed ? session.currentAssociation.definition : session.currentAssociation.term;
-  const expectedAnswer = isReversed ? session.currentAssociation.term : session.currentAssociation.definition;
+  const displayWord = isReversed ? session.currentAssociation.definition[0] ?? '' : session.currentAssociation.term;
+  const expectedAnswer = isReversed ? session.currentAssociation.term : session.currentAssociation.definition[0] ?? '';
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-80px)]">

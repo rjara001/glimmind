@@ -91,7 +91,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     const newAssociation: Association = {
       id: crypto.randomUUID(),
       term,
-      definition,
+      definition: [definition],
       currentCycle: 1,
       status: 'pending',
       isLearned: false,

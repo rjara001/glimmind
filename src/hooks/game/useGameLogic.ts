@@ -226,7 +226,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
       emitAnswerEvents(withInput, after, after.state.feedback === 'correct');
       setGame(after);
     },
-    updateCurrentAssociation: (term: string, definition: string) => {
+    updateCurrentAssociation: (term: string, definition: string[]) => {
       const after = gameRef.current.updateCurrentAssociation(term, definition);
       setGame(after);
     },

@@ -16,7 +16,7 @@ const createTestList = (associations: { term: string; definition: string }[] = [
   associations: associations.map((a, i) => ({
     id: `assoc-${i}`,
     term: a.term,
-    definition: a.definition,
+    definition: [a.definition],
     currentCycle: 1,
     status: 'pending' as const,
     isLearned: false,

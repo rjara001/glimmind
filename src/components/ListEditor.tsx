@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AssociationList, Association } from '../types';
 import { aiService, AIGroupSuggestion } from '../services/aiService';
-import { flattenAssociations } from '../utils/flattenAssociations';
+import { normalizeAssociations, AssociationLike, parseDefinitions } from '../utils/normalizeAssociation';
 import { SmartGroupModal } from '../components/modals/SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { QuotaService } from '../services/quotaService';
@@ -31,26 +31,28 @@ function sortAssociations(associations: Association[], tableSort: TableSort | nu
   if (!tableSort) return associations;
   const { field, direction } = tableSort;
   return [...associations].sort((a, b) => {
-    const aValue = a[field].toLowerCase();
-    const bValue = b[field].toLowerCase();
+    const aValue = (field === 'definition' ? a.definition.join('|') : a.term).toLowerCase();
+    const bValue = (field === 'definition' ? b.definition.join('|') : b.term).toLowerCase();
     const comparison = aValue.localeCompare(bValue);
     return direction === 'asc' ? comparison : -comparison;
   });
 }
 
 function deduplicateAssociations(existing: Association[], incoming: Association[]): Association[] {
-  const existingKeys = new Set(existing.map(a => `${a.term}|||${a.definition}`));
-  return incoming.filter(a => !existingKeys.has(`${a.term}|||${a.definition}`));
+  const existingKeys = new Set(existing.map(a => `${a.term}|||${a.definition.join('|')}`));
+  return incoming.filter(a => !existingKeys.has(`${a.term}|||${a.definition.join('|')}`));
 }
 
 interface ListEditorProps {
   list: AssociationList;
+  initialEditId?: string | null;
+  onInitialEditConsumed?: () => void;
   onSave: (list: AssociationList) => Promise<void> | void;
   onBack: () => void;
   onCreateMultiple?: (groups: { name: string, associations: Association[] }[]) => void;
 }
 
-export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, onCreateMultiple }) => {
+export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onInitialEditConsumed, onSave, onBack, onCreateMultiple }) => {
   const { showToast } = useToast();
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -100,19 +102,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const cleanupAndSave = useCallback((listToSave: AssociationList): boolean => {
     const seenIds = new Set<string>();
-    const flattenedAssociations = flattenAssociations(listToSave.associations);
-    const cleanedAssociations = flattenedAssociations
+    const cleanedAssociations = normalizeAssociations(listToSave.associations)
       .map(assoc => {
         const term = assoc.term.trim();
-        const definition = assoc.definition.trim();
-        let id = assoc.id;
-        if (!id || seenIds.has(id)) {
-          id = crypto.randomUUID();
-        }
+        const id = !assoc.id || seenIds.has(assoc.id) ? crypto.randomUUID() : assoc.id;
         seenIds.add(id);
-        return { ...assoc, id, term, definition };
+        return { ...assoc, id, term };
       })
-      .filter(assoc => assoc.term !== '' || assoc.definition !== '');
+      .filter(assoc => assoc.term.trim() !== '' || assoc.definition.some((d) => d.trim() !== ''));
 
     const { quota, lists } = useGameStore.getState();
     const tier = quota?.tier || 'free';
@@ -145,6 +142,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     const updatedList = { ...listToSave, associations: cleanedAssociations };
     setEditList(updatedList);
     pendingSaveRef.current = Promise.resolve(onSave(updatedList));
+    showToast('Lista guardada', 'success');
     return true;
   }, [onSave]);
 
@@ -167,7 +165,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     let needsCleanup = false;
     const seenIds = new Set<string>();
     for (const assoc of initialAssociations) {
-      if (!assoc.id || seenIds.has(assoc.id) || assoc.term.trim() !== assoc.term || assoc.definition.trim() !== assoc.definition || (assoc.term.trim() === '' && assoc.definition.trim() === '')) {
+      const definitionClean = assoc.definition.length > 0 && assoc.definition.every((d) => d.trim() === d);
+      const emptyCard = assoc.term.trim() === '' && assoc.definition.every((d) => d.trim() === '');
+      if (!assoc.id || seenIds.has(assoc.id) || assoc.term.trim() !== assoc.term || !definitionClean || emptyCard) {
         needsCleanup = true;
         break;
       }
@@ -188,7 +188,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       return;
     }
     const pairs = parseCsvPairs(bulkText);
-    const newAssocs: Association[] = pairs.map(pair => ({
+    const newAssocs: Association[] = normalizeAssociations(pairs.map<AssociationLike>(pair => ({
       id: crypto.randomUUID(),
       term: pair.term,
       definition: pair.definition,
@@ -196,7 +196,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
       status: 'pending' as const,
       isLearned: false,
       isArchived: false,
-    }));
+    })));
     const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
     const skippedCount = newAssocs.length - uniqueNewAssocs.length;
     const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
@@ -230,7 +230,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         alert('El archivo no contiene tarjetas válidas.');
         return;
       }
-      const newAssocs: Association[] = dataPairs.map(pair => ({
+      const newAssocs: Association[] = normalizeAssociations(dataPairs.map<AssociationLike>(pair => ({
         id: crypto.randomUUID(),
         term: pair.term,
         definition: pair.definition,
@@ -238,7 +238,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         status: 'pending' as const,
         isLearned: false,
         isArchived: false,
-      }));
+      })));
       const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
       const skippedCount = newAssocs.length - uniqueNewAssocs.length;
       const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
@@ -296,7 +296,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     const newAssociation: Association = {
       id: crypto.randomUUID(),
       term: '',
-      definition: '',
+      definition: [],
       currentCycle: 1,
       status: 'pending',
       isLearned: false,
@@ -307,7 +307,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const handleUpdateField = (id: string, field: keyof Association, value: string) => {
     setEditList(current => {
-      const updatedAssociations = current.associations.map(a => a.id === id ? { ...a, [field]: value } : a);
+      const nextValue = field === 'definition' ? parseDefinitions(value) : value;
+      const updatedAssociations = current.associations.map(a => a.id === id ? { ...a, [field]: nextValue } : a);
       return { ...current, associations: updatedAssociations };
     });
   };
@@ -365,7 +366,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
         const translatedText = translation ? translation.translated : a.translation;
         return {
           ...a,
-          definition: translatedText ?? a.definition,
+          definition: translatedText ? [translatedText] : a.definition,
           translation: translatedText,
         };
       });
@@ -421,14 +422,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
 
   const filteredActive = activeAssociations.filter(assoc => {
     const matchesSearch = assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assoc.definition.toLowerCase().includes(searchTerm.toLowerCase());
+      assoc.definition.join('|').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTag = !activeTagFilter || assoc.metadata?.tags?.includes(activeTagFilter);
     return matchesSearch && matchesTag;
   });
 
   const filteredArchived = archivedAssociations.filter(assoc =>
     assoc.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    assoc.definition.toLowerCase().includes(searchTerm.toLowerCase())
+    assoc.definition.join('|').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const sortedActive = useMemo(
@@ -440,6 +441,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
     () => sortAssociations(filteredArchived, archivedSort),
     [filteredArchived, archivedSort]
   );
+
+  const autoOpenActiveId = initialEditId && activeAssociations.some(a => a.id === initialEditId) ? initialEditId : null;
+  const autoOpenArchivedId = initialEditId && archivedAssociations.some(a => a.id === initialEditId) ? initialEditId : null;
+
+  useEffect(() => {
+    if (initialEditId) {
+      onInitialEditConsumed?.();
+    }
+  }, [initialEditId, onInitialEditConsumed]);
 
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
@@ -623,6 +633,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
           onBlurRow={handleBlurRow}
           onRemoveRow={handleRemoveRow}
           selectable
+          autoOpenId={autoOpenActiveId}
           selectedIds={selectedIds}
           onToggleSelect={(id) => {
             setSelectedIds((prev) => {
@@ -655,6 +666,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, onSave, onBack, on
               onRemoveRow={handleRemoveRow}
               onRestoreRow={handleRestoreRow}
               isArchived
+              autoOpenId={autoOpenArchivedId}
             />
           </div>
         )}

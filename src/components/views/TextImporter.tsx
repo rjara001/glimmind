@@ -209,7 +209,7 @@ export const TextImporter: React.FC<TextImporterProps> = ({ onSave, onBack }) =>
     const associations: Association[] = vocabularyItems.map((item) => ({
       id: crypto.randomUUID(),
       term: item.term,
-      definition: item.translation || item.example || '',
+      definition: [item.translation || item.example || ''],
       translation: item.translation || undefined,
       context: item.context || '',
       metadata: item.metadata,

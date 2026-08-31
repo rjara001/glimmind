@@ -1,5 +1,6 @@
 import { Association } from '../types';
 import { normalizeText } from './text';
+import { joinDefinitions } from './normalizeAssociation';
 
 const COMMA = ',';
 const NEWLINE = '\n';
@@ -106,7 +107,7 @@ export function buildAssociationsCsv(
 ): string {
   const rows = associations.map((association) => [
     escapeCell(association.term),
-    escapeCell(association.definition),
+    escapeCell(joinDefinitions(association.definition)),
   ]);
   const lines = [
     `${escapeCell(header[0])}${COMMA}${escapeCell(header[1])}`,

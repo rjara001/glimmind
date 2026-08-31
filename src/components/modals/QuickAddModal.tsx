@@ -3,6 +3,7 @@ import { AssociationList, Association } from '../../types';
 import { ListRecommendation } from '../../types/recommendation';
 import { normalizeText } from '../../utils/text';
 import { recommendListsFor } from '../../utils/recommendList';
+import { joinDefinitions } from '../../utils/normalizeAssociation';
 
 interface QuickAddModalProps {
   lists: AssociationList[];
@@ -44,7 +45,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCr
           .filter(
             (a) =>
               normalizeText(a.term).includes(normalizedQuery) ||
-              normalizeText(a.definition).includes(normalizedQuery),
+              normalizeText(joinDefinitions(a.definition)).includes(normalizedQuery),
           )
           .map((association) => ({ association, list }));
       })
@@ -67,11 +68,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCr
     setQuery('');
     setExistingMatch({
       term: match.association.term,
-      definition: match.association.definition,
+      definition: joinDefinitions(match.association.definition),
       list: match.list,
     });
     setNewTerm(match.association.term);
-    setNewDefinition(match.association.definition);
+    setNewDefinition(joinDefinitions(match.association.definition));
     setSelectedListId(match.list.id);
     setIsCreating(true);
   };
@@ -148,7 +149,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ lists, onAdd, onCr
                       >
                         <div className="min-w-0">
                           <p className="font-bold text-slate-800 truncate">{association.term}</p>
-                          <p className="text-sm text-slate-500 truncate">{association.definition}</p>
+                          <p className="text-sm text-slate-500 truncate">{joinDefinitions(association.definition)}</p>
                         </div>
                         <span className="shrink-0 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg">{list.name}</span>
                       </button>

@@ -1,6 +1,7 @@
 import { Association } from '../types';
 import { stateOf } from './progress';
 import { CardActivityEvent, CardLevel } from '../types/activity';
+import { joinDefinitions } from './normalizeAssociation';
 
 export const LEVEL_ORDER: CardLevel[] = [
   'nuevas',
@@ -148,7 +149,7 @@ export function buildListDiffEvents(options: ListDiffOptions): CardActivityEvent
         }),
       );
     }
-    if (prev.definition !== current.definition) {
+    if (joinDefinitions(prev.definition) !== joinDefinitions(current.definition)) {
       events.push(
         createActivityEvent({
           userId,
@@ -157,8 +158,8 @@ export function buildListDiffEvents(options: ListDiffOptions): CardActivityEvent
           cardTerm: current.term,
           type: 'card_updated',
           field: 'definition',
-          before: prev.definition,
-          after: current.definition,
+          before: joinDefinitions(prev.definition),
+          after: joinDefinitions(current.definition),
         }),
       );
     }

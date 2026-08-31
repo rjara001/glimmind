@@ -40,6 +40,8 @@ interface GameCardProps {
   onSpeakAnswer?: (text: string, lang: string) => void;
   detectedVoiceCommand?: VoiceCommandId;
   isFallbackActive?: boolean;
+  engineDisclaimer?: string;
+  engineFoundAnswers?: string[];
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ 
@@ -73,6 +75,8 @@ export const GameCard: React.FC<GameCardProps> = ({
   onSpeakAnswer,
   detectedVoiceCommand,
   isFallbackActive,
+  engineDisclaimer,
+  engineFoundAnswers,
 }) => {
   const [isShaking, setIsShaking] = useState(false);
 
@@ -120,6 +124,26 @@ export const GameCard: React.FC<GameCardProps> = ({
         displayDef={displayDef}
         voiceDefLang={voiceDefLang}
       />
+      {engineDisclaimer && (
+        <div className="mb-2 inline-flex items-center gap-1.5 self-center px-3 py-1 rounded-full bg-white/70 border border-rose-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-700">
+            {engineDisclaimer}
+          </span>
+        </div>
+      )}
+      {engineFoundAnswers && engineFoundAnswers.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center justify-center gap-1 self-center">
+          {engineFoundAnswers.map((answer, index) => (
+            <span
+              key={`${answer}-${index}`}
+              className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold"
+            >
+              {answer}
+            </span>
+          ))}
+        </div>
+      )}
       <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
 
       <CardBadges

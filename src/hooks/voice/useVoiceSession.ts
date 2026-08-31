@@ -142,7 +142,7 @@ export function useVoiceSession(list: AssociationList) {
     if (phaseRef.current !== 'listening_for_answer') return;
 
     const isReversed = list.settings.flipOrder === 'reversed';
-    const expected = isReversed ? current.definition : current.term;
+    const expected = isReversed ? current.definition[0] ?? '' : current.term;
 
     if (isExactExpectedAnswer(text, expected)) {
       answerHandledRef.current = true;
@@ -155,7 +155,7 @@ export function useVoiceSession(list: AssociationList) {
 
   const expectedWords = gameRef.current?.currentAssociation
     ? [list.settings.flipOrder === 'reversed'
-        ? gameRef.current.currentAssociation.definition
+        ? gameRef.current.currentAssociation.definition[0] ?? ''
         : gameRef.current.currentAssociation.term]
     : undefined;
 
@@ -173,7 +173,7 @@ export function useVoiceSession(list: AssociationList) {
       if (!current) return;
 
       const isReversed = list.settings.flipOrder === 'reversed';
-      const expected = isReversed ? current.definition : current.term;
+      const expected = isReversed ? current.definition[0] ?? '' : current.term;
 
       setTranscript(trimmed);
       transcriptRef.current = trimmed;
@@ -243,7 +243,7 @@ export function useVoiceSession(list: AssociationList) {
 
     stopSTTRef.current?.();
     const isReversed = list.settings.flipOrder === 'reversed';
-    const word = isReversed ? current.definition : current.term;
+    const word = isReversed ? current.definition[0] ?? '' : current.term;
 
     browserAttemptCountRef.current = 0;
 
