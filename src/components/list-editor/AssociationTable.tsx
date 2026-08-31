@@ -163,7 +163,6 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
               value={assoc.term}
               disabled={isArchived}
               onChange={(e) => onUpdateField(assoc.id, 'term', e.target.value)}
-              onBlur={onBlurRow}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60"
               />
             </div>
@@ -179,7 +178,6 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
               value={joinDefinitions(assoc.definition)}
               disabled={isArchived}
               onChange={(e) => onUpdateField(assoc.id, 'definition', e.target.value)}
-              onBlur={onBlurRow}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-60"
             />
           </div>
@@ -192,7 +190,6 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
               value={assoc.context || ''}
               disabled={isArchived}
               onChange={(e) => onUpdateField(assoc.id, 'context', e.target.value)}
-              onBlur={onBlurRow}
               rows={3}
               placeholder="Add context..."
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 placeholder-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none disabled:opacity-60"
@@ -218,10 +215,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
             ) : (
               <TagEditor
                 tags={assoc.metadata?.tags || []}
-                onChange={(tags) => {
-                  onUpdateTags?.(assoc.id, tags);
-                  onBlurRow();
-                }}
+                onChange={(tags) => onUpdateTags?.(assoc.id, tags)}
               />
             )}
           </div>
@@ -234,7 +228,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
               }}
               className="w-full bg-indigo-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl px-4 py-2.5 hover:bg-indigo-700 transition"
             >
-              Cerrar
+              Guardar y cerrar
             </button>
           </div>
         </div>
