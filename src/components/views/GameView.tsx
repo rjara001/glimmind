@@ -168,6 +168,7 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     feedback,
     evaluationCount: attempts.length,
     similarity,
+    advanceDelay: gameState.isNearComplete ? 10000 : undefined,
     onSubmitVoice: (text: string) => {
       actions.submitVoice(text);
     },
@@ -193,6 +194,9 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
   const isReversed = list.settings.flipOrder === 'reversed';
   const remainingCount = gameState.remainingCount ?? 0;
   const isTransitioning = feedback === 'correct' && remainingCount <= 0 && !isEditingCard;
+  const nearCompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isNearComplete = gameState.isNearComplete === true && !gameState.isFinished && !isPracticeMode;
 
   const handleCheckAnswer = useCallback(() => {
     actions.checkAnswer();
@@ -203,6 +207,28 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
     const timer = setTimeout(() => actions.handleCorrect(), 600);
     return () => clearTimeout(timer);
   }, [feedback, remainingCount, gameState.isFinished, isVoiceActive, isEditingCard, actions]);
+
+  useEffect(() => {
+    if (!gameState.isNearComplete || gameState.isFinished || isEditingCard) {
+      if (nearCompleteTimerRef.current) {
+        clearTimeout(nearCompleteTimerRef.current);
+        nearCompleteTimerRef.current = null;
+      }
+      return;
+    }
+    nearCompleteTimerRef.current = setTimeout(() => {
+      nearCompleteTimerRef.current = null;
+      if (!gameState.isFinished && !isEditingCard) {
+        actions.handleCorrect();
+      }
+    }, 10000);
+    return () => {
+      if (nearCompleteTimerRef.current) {
+        clearTimeout(nearCompleteTimerRef.current);
+        nearCompleteTimerRef.current = null;
+      }
+    };
+  }, [gameState.isNearComplete, gameState.isFinished, isEditingCard, actions]);
 
   useEffect(() => {
     if (!currentAssociation) return;
@@ -558,12 +584,13 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
           </div>
           <div className="w-full">
             <div className="relative">
-            <GameCard 
+          <GameCard 
               displayTerm={displayTerm} 
               displayDef={displayDef} 
               labelTerm={labelTerm} 
               labelDef={labelDef} 
               revealed={isRevealed} 
+              isNearComplete={isNearComplete}
               isPracticeMode={list.settings.mode === 'training'} 
               userInput={userInput} 
               onUserInput={actions.setUserInput} 
@@ -586,12 +613,12 @@ export const GameView: React.FC<GameViewProps> = ({ list, onBack, onUpdateAssoci
                voiceEnabled={list.settings.voiceEnabled === true}
                voiceTermLang={voiceTermLang}
                voiceDefLang={voiceDefLang}
-onSpeakAnswer={handleSpeakAnswer}
-                 detectedVoiceCommand={detectedVoiceCommand}
-                 engineDisclaimer={engineDisclaimer}
-                 engineFoundAnswers={engineFoundAnswers}
-            />
-              {!isPresentationMode && (
+ onSpeakAnswer={handleSpeakAnswer}
+                  detectedVoiceCommand={detectedVoiceCommand}
+                  engineDisclaimer={engineDisclaimer}
+                  engineFoundAnswers={engineFoundAnswers}
+             />
+              {!isPresentationMode && !gameState.isNearComplete && (
                 <CountdownTimer
                   seconds={REVEAL_AUTO_NEXT_SECONDS}
                   isRunning={isCountdownRunning}

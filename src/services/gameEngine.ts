@@ -277,6 +277,7 @@ export class GlimmindGame {
       expectedCount: undefined,
       foundAnswers: undefined,
       remainingCount: undefined,
+      isNearComplete: undefined,
     };
     return new GlimmindGame(this.initialList, nextState, this.trackingEnabled)._checkForNextCycle();
   }
@@ -303,6 +304,7 @@ export class GlimmindGame {
       expectedCount: undefined,
       foundAnswers: undefined,
       remainingCount: undefined,
+      isNearComplete: undefined,
     }, this.trackingEnabled);
   }
 
@@ -353,6 +355,7 @@ export class GlimmindGame {
       const nextFoundAnswers = alreadyFound ? foundAnswers : [...foundAnswers, bestAnswer];
       const nextRemaining = expectedCount - nextFoundAnswers.length;
       const isCardComplete = nextRemaining <= 0;
+      const isNearComplete = nextRemaining === 1;
       const revealedAssociations =
         isCardComplete && !this.state.revealedAssociations.includes(current.id)
           ? [...this.state.revealedAssociations, current.id]
@@ -371,6 +374,7 @@ export class GlimmindGame {
         expectedCount,
         foundAnswers: nextFoundAnswers,
         remainingCount: Math.max(0, nextRemaining),
+        isNearComplete,
       };
       return new GlimmindGame(this.initialList, correctState, this.trackingEnabled);
     } else {
@@ -451,6 +455,7 @@ export class GlimmindGame {
       expectedCount: undefined,
       foundAnswers: undefined,
       remainingCount: undefined,
+      isNearComplete: undefined,
     };
     const nextGame = new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
     return nextGame._checkForNextCycle();

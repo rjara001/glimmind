@@ -15,6 +15,7 @@ interface GameCardProps {
   labelTerm: string;
   labelDef: string;
   revealed: boolean;
+  isNearComplete?: boolean;
   isPracticeMode: boolean;
   userInput: string;
   onUserInput: (value: string) => void;
@@ -50,6 +51,7 @@ export const GameCard: React.FC<GameCardProps> = ({
   labelTerm, 
   labelDef, 
   revealed, 
+  isNearComplete,
   isPracticeMode, 
   userInput, 
   onUserInput, 
@@ -159,6 +161,7 @@ export const GameCard: React.FC<GameCardProps> = ({
         labelDef={labelDef}
         isPracticeMode={isPracticeMode}
         revealed={revealed}
+        isNearComplete={isNearComplete}
         userInput={userInput}
         onUserInput={onUserInput}
         feedback={feedback}

@@ -125,4 +125,5 @@ export interface GameState {
   expectedCount?: number;
   foundAnswers?: string[];
   remainingCount?: number;
+  isNearComplete?: boolean;
 }

@@ -30,6 +30,7 @@ export interface UseGameVoiceOptions {
   feedback: 'none' | 'correct' | 'incorrect';
   evaluationCount: number;
   similarity?: number | null;
+  advanceDelay?: number;
   onSubmitVoice: (text: string) => void;
   onAdvance: () => void;
   commands?: VoiceCommandsConfig;
@@ -45,6 +46,7 @@ export function useGameVoice({
   feedback,
   evaluationCount,
   similarity = null,
+  advanceDelay,
   onSubmitVoice,
   onAdvance,
   commands,
@@ -59,6 +61,7 @@ export function useGameVoice({
   const shouldRunRef = useRef(false);
   const phaseRef = useRef<GameVoicePhase>('idle');
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanceDelayRef = useRef(advanceDelay);
   const currentAssociationRef = useRef(currentAssociation);
   const onSubmitVoiceRef = useRef(onSubmitVoice);
   const onAdvanceRef = useRef(onAdvance);
@@ -93,6 +96,7 @@ export function useGameVoice({
   useEffect(() => { feedbackRef.current = feedback; }, [feedback]);
   useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
   useEffect(() => { similarityRef.current = similarity; }, [similarity]);
+  useEffect(() => { advanceDelayRef.current = advanceDelay; }, [advanceDelay]);
 
   const setPhaseBoth = useCallback((next: GameVoicePhase) => {
     phaseRef.current = next;
@@ -410,7 +414,7 @@ const expectedWords = useMemo(() => {
         feedbackTimerRef.current = setTimeout(() => {
           feedbackTimerRef.current = null;
           if (shouldRunRef.current) onAdvanceRef.current();
-        }, FEEDBACK_DELAY_MS);
+        }, advanceDelayRef.current ?? FEEDBACK_DELAY_MS);
       })();
     } else if (feedback === 'incorrect') {
       clearFeedbackTimer();

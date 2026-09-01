@@ -9,6 +9,7 @@ interface CardContentProps {
   labelDef: string;
   isPracticeMode: boolean;
   revealed: boolean;
+  isNearComplete?: boolean;
   userInput: string;
   onUserInput: (value: string) => void;
   feedback: 'none' | 'correct' | 'incorrect';
@@ -29,6 +30,7 @@ export const CardContent: React.FC<CardContentProps> = ({
   labelDef,
   isPracticeMode,
   revealed,
+  isNearComplete,
   userInput,
   onUserInput,
   feedback,
@@ -42,6 +44,7 @@ export const CardContent: React.FC<CardContentProps> = ({
   shakeClass = '',
 }) => {
   const isDefinitionHidden = isPracticeMode && !revealed && !showHints;
+  const showDefinitions = revealed || isNearComplete;
   const effectiveHintMode = showHints ? getAutoHintMode(currentCycle) : false;
   const showAttemptCounter = typeof attemptCount === 'number' && !isPracticeMode;
 
@@ -61,7 +64,7 @@ export const CardContent: React.FC<CardContentProps> = ({
       <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 mb-3 break-words leading-tight tracking-tight">{displayTerm}</h2>
 
       <div className="min-h-[100px] flex flex-col items-center justify-center gap-2">
-        {!isPracticeMode && !revealed ? (
+        {!isPracticeMode && !showDefinitions ? (
           <div className="w-full max-w-sm">
             <input
               ref={inputRef}
@@ -71,7 +74,7 @@ export const CardContent: React.FC<CardContentProps> = ({
               onChange={(e) => onUserInput(e.target.value)}
               className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-2 text-base font-bold text-slate-800 placeholder-slate-300 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-center disabled:opacity-50 ${shakeClass}`}
             />
-             {showHints && !revealed && (
+             {showHints && !showDefinitions && (
                 <div className="mt-1 text-center">
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">{renderLabel(labelDef, voiceDefLang)}</span>
                  <p className="text-base font-medium text-slate-300 bg-slate-50/50 px-3 py-1 rounded-xl border border-slate-100/50 inline-block break-words">
@@ -82,17 +85,17 @@ export const CardContent: React.FC<CardContentProps> = ({
                  )}
                </div>
              )}
-           </div>
-        ) : (
+            </div>
+          ) : (
           <div className="text-center">
             {!isDefinitionHidden && (
                <>
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{renderLabel(labelDef, voiceDefLang)}</span>
-                 <p className={`text-xl sm:text-2xl md:text-3xl font-black break-words ${revealed || !isPracticeMode ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-300 bg-slate-50/50'} px-4 py-2 rounded-2xl border-2 ${revealed || !isPracticeMode ? 'border-indigo-100/50' : 'border-slate-100/50'} inline-block shadow-sm`}>
-                   {revealed || !isPracticeMode ? displayDef : maskHint(displayDef, effectiveHintMode)}
+                 <p className={`text-xl sm:text-2xl md:text-3xl font-black break-words ${showDefinitions ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-300 bg-slate-50/50'} px-4 py-2 rounded-2xl border-2 ${showDefinitions ? 'border-indigo-100/50' : 'border-slate-100/50'} inline-block shadow-sm`}>
+                   {showDefinitions ? displayDef : maskHint(displayDef, effectiveHintMode)}
                  </p>
                </>
-            )}
+             )}
           </div>
         )}
       </div>

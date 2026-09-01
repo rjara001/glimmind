@@ -728,6 +728,17 @@ describe('GlimmindGame', () => {
             expect(after.state.foundAnswers).toContain('Me copa');
         });
 
+        it('DIRECT: reveals the card when n-1 definitions are found', () => {
+            const game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
+            const after = game.setUserInput('Estoy de acuerdo').checkAnswer();
+
+            expect(after.state.feedback).toBe('correct');
+            expect(after.state.remainingCount).toBe(1);
+            expect(after.state.revealed).toBe(false);
+            expect(after.state.isNearComplete).toBe(true);
+            expect(after.state.foundAnswers).toEqual(['Estoy de acuerdo']);
+        });
+
         it('DIRECT: rejects a wrong answer and keeps counters unchanged', () => {
             const game = GlimmindGame.create(multiList(['Estoy de acuerdo', 'Me copa']));
             const after = game.setUserInput('No sé').checkAnswer();
