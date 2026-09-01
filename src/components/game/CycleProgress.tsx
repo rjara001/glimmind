@@ -1,89 +1,326 @@
-
-import React, { useMemo } from 'react';
-import { GameState, GameCycle } from '../../types';
+import React, { useState, useMemo } from 'react';
+import { GameState } from '../../types';
+import { computeStateBreakdown } from '../../utils/progress';
 
 interface CycleProgressProps {
   gameState: GameState;
   cycleColorName?: string;
 }
 
-interface CycleInfo {
-  id: GameCycle;
+interface LevelBox {
+  key: string;
   label: string;
+  level: string;
   count: number;
+  colorGroup: 'nueva' | 'vista' | 'reconocida' | 'conocida' | 'aprendida';
+  isActive: boolean;
 }
 
-export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState, cycleColorName = 'indigo' }) => {
-  const cycleDistribution = useMemo(() => {
-    const distribution = new Map<GameCycle, number>([
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-    ]);
-    for (const assoc of gameState.associations) {
-      if (assoc.currentCycle >= 1 && assoc.currentCycle <= 4) {
-         distribution.set(assoc.currentCycle as GameCycle, (distribution.get(assoc.currentCycle as GameCycle) || 0) + 1);
-      }
-    }
-    return distribution;
-  }, [gameState.associations]);
-  
-  const cycles: CycleInfo[] = [
-    { id: 1, label: 'Nueva', count: cycleDistribution.get(1) || 0 },
-    { id: 2, label: 'Vista', count: cycleDistribution.get(2) || 0 },
-    { id: 3, label: 'Reconocida', count: cycleDistribution.get(3) || 0 },
-    { id: 4, label: 'Conocida', count: cycleDistribution.get(4) || 0 },
+const STATE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+  nueva: {
+    bg: 'bg-[#f0f4fe]',
+    border: 'border-[#c7d9f0]',
+    text: 'text-[#1a2b3c]',
+    badge: 'bg-[#eef2f6] text-[#1a2634]',
+  },
+  vista: {
+    bg: 'bg-[#fef7e6]',
+    border: 'border-[#f0e0b8]',
+    text: 'text-[#1a2b3c]',
+    badge: 'bg-[#eef2f6] text-[#1a2634]',
+  },
+  reconocida: {
+    bg: 'bg-[#fce8e8]',
+    border: 'border-[#f0c8c8]',
+    text: 'text-[#1a2b3c]',
+    badge: 'bg-[#eef2f6] text-[#1a2634]',
+  },
+  conocida: {
+    bg: 'bg-[#f0eaf8]',
+    border: 'border-[#d8cce8]',
+    text: 'text-[#1a2b3c]',
+    badge: 'bg-[#eef2f6] text-[#1a2634]',
+  },
+  aprendida: {
+    bg: 'bg-[#e3f3e3]',
+    border: 'border-[#b8d9b8]',
+    text: 'text-[#1a4a1a]',
+    badge: 'bg-[#e3f3e3] text-[#1a4a1a]',
+  },
+};
+
+const CYCLE_LABELS: Record<number, string> = {
+  1: 'NUEVA',
+  2: 'VISTA',
+  3: 'RECONOCIDA',
+  4: 'CONOCIDA',
+};
+
+export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+
+  const breakdown = useMemo(
+    () => computeStateBreakdown(gameState.associations),
+    [gameState.associations]
+  );
+
+  const totalAssociations = gameState.associations.filter(a => !a.isArchived).length;
+  const activeCycle = gameState.globalCycle;
+  const cyclePendientes = breakdown[
+    activeCycle === 1 ? 'nuevas' :
+    activeCycle === 2 ? 'vistas' :
+    activeCycle === 3 ? 'reconocidas' : 'conocidas'
   ];
 
-  const totalAssociations = gameState.associations.length;
-  const learnedCount = gameState.associations.filter(a => a.isLearned || a.status === 'correct').length;
-  const totalProgress = totalAssociations > 0 ? (learnedCount / totalAssociations) * 100 : 0;
+  const levelBoxes: LevelBox[] = [
+    {
+      key: 'nueva',
+      label: 'NUEVA',
+      level: 'niv 0',
+      count: breakdown.nuevas,
+      colorGroup: 'nueva',
+      isActive: activeCycle === 1,
+    },
+    {
+      key: 'vista',
+      label: 'VISTA',
+      level: 'niv 1',
+      count: breakdown.vistas,
+      colorGroup: 'vista',
+      isActive: activeCycle === 2,
+    },
+    {
+      key: 'reconocida',
+      label: 'RECONOCIDA',
+      level: 'niv 2',
+      count: breakdown.reconocidas,
+      colorGroup: 'reconocida',
+      isActive: activeCycle === 3,
+    },
+    {
+      key: 'conocida',
+      label: 'CONOCIDA',
+      level: 'niv 3+',
+      count: breakdown.conocidas,
+      colorGroup: 'conocida',
+      isActive: activeCycle === 4,
+    },
+  ];
 
-  const cycleColorMap: Record<GameCycle, string> = {
-    1: 'sky',
-    2: 'yellow',
-    3: 'rose',
-    4: 'emerald',
-  };
+  const totalAssociationsCount = totalAssociations + breakdown.aprendidas;
+  const learnedInFirstCycle = breakdown.aprendidas;
 
   return (
-    <div className="w-full lg:w-48 bg-white/40 rounded-[2rem] p-5 border border-white flex flex-col gap-3">
-      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 text-center lg:text-left">PROGRESO</h3>
-      
-      <div className="flex lg:flex-col justify-start gap-3 lg:gap-4 overflow-x-auto pb-2 sm:pb-0 snap-x snap-mandatory flex-nowrap" style={{ scrollbarWidth: 'none' }}>
-        {cycles.map((cycle) => {
-          const isActive = gameState.globalCycle === cycle.id;
-          const colorName = cycleColorMap[cycle.id as GameCycle] || 'slate';
+    <div
+      className="flex items-stretch transition-all duration-300 rounded-[2rem] shadow-xl border border-black/[0.02] overflow-hidden min-h-[320px] max-w-[900px]"
+      style={{ direction: 'rtl' }}
+    >
+      <div
+        className={`overflow-hidden transition-all duration-400 ease-in-out bg-white ${
+          isExpanded ? 'max-w-[700px] opacity-100 p-5 pr-6' : 'max-w-0 opacity-0 p-0'
+        }`}
+        style={{ direction: 'ltr' }}
+      >
+        <div className="min-w-[280px]">
+          <div className="inline-flex items-center gap-2.5 bg-[#eef2f6] px-4 py-1.5 rounded-full text-sm font-medium text-[#1a2634] mb-3">
+            <span>🔄</span>
+            <span>Ciclo {activeCycle} · {CYCLE_LABELS[activeCycle]}</span>
+            <span className="bg-[#1a2634] text-white rounded-full px-3 text-xs font-semibold leading-[22px]">
+              {cyclePendientes} pendientes
+            </span>
+          </div>
 
-          const ballClasses = isActive
-              ? `bg-${colorName}-500/10 border-${colorName}-600 text-${colorName}-600 ring-4 ring-${colorName}-500/10 shadow-${colorName}-100`
-              : `bg-${colorName}-500/10 border-transparent text-${colorName}-600`;
+          <div className="bg-[#fafcff] rounded-2xl p-4 border border-[#e9edf2]">
+            <div className="flex items-center justify-center flex-wrap gap-1">
+              {levelBoxes.map((box, index) => {
+                const colors = STATE_COLORS[box.colorGroup];
+                return (
+                  <React.Fragment key={box.key}>
+                    <div
+                      className={`rounded-2xl px-2.5 pt-2 pb-1.5 min-w-[70px] text-center border ${colors.bg} ${
+                        box.isActive ? `border-2 border-[#2563eb] shadow-[0_4px_10px_-4px_rgba(37,99,235,0.15)]` : `border ${colors.border}`
+                      }`}
+                    >
+                      <div className="font-semibold text-xs text-[#1a2b3c]">{box.label}</div>
+                      <div className="text-[0.55rem] font-normal text-[#64748b] bg-white/50 inline-block px-2 rounded-full mt-0.5">
+                        {box.level}
+                      </div>
+                      <div className="text-xl font-bold text-[#0b1a26] leading-tight mt-1">
+                        {box.count}
+                        {box.isActive && <span className="text-base ml-1 text-[#2563eb]">▲</span>}
+                      </div>
+                    </div>
+                    {index < levelBoxes.length - 1 && (
+                      <span className="text-base text-[#94a3b8] font-light px-0.5 select-none">➜</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
 
-          return (
-            <div key={cycle.id} className={`flex items-center gap-3 transition-all duration-300 min-w-max snap-start`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all shadow-sm ${ballClasses}`}>
-                <span className="text-sm font-bold">{cycle.count}</span>
-              </div>
-              <div className="flex flex-col items-start">
-                <span className={`text-[10px] font-bold uppercase tracking-wider text-${colorName}-600`}>
-                  {cycle.label}
-                </span>
+            <div className="flex justify-center mt-2.5">
+              <div className="bg-[#e3f3e3] border border-[#b8d9b8] rounded-full px-4 py-1 inline-flex items-center gap-1.5 font-medium text-[#1a4a1a] text-sm">
+                <span>✅</span>
+                <span>APRENDIDAS</span>
+                <span className="font-bold text-base">{breakdown.aprendidas}</span>
               </div>
             </div>
-          );
-        })}
+
+            <div className="flex justify-center gap-6 flex-wrap mt-2.5 text-[0.7rem] text-[#4a617a]">
+              <span className="bg-[#f1f5f9] px-3 py-0.5 rounded-full inline-flex items-center gap-1">
+                ⬇ Acierto 1er ciclo → APRENDIDAS
+              </span>
+              <span className="bg-[#f1f5f9] px-3 py-0.5 rounded-full inline-flex items-center gap-1">
+                ❌ Falla → siguiente nivel
+              </span>
+              <span className="bg-[#f1f5f9] px-3 py-0.5 rounded-full inline-flex items-center gap-1">
+                ✅ Acierto → permanece
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-between items-center gap-2.5 bg-[#f8faff] rounded-2xl px-4 py-2.5 mt-3 border border-[#e9edf2]">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-[#1e2f3f]">
+              <span>📌</span>
+              <span className="text-[#2c4d6b]">{learnedInFirstCycle} items aprendidos en 1er ciclo</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-medium text-[#1e2f3f]">
+              <span>🔁</span>
+              <span className="bg-[#eef2f6] rounded-full px-2.5 text-[0.65rem] font-semibold text-[#1f3a4b] leading-5">
+                {CYCLE_LABELS[activeCycle]}: acierto → se queda
+              </span>
+              <span className="bg-[#fce8e8] rounded-full px-2.5 text-[0.65rem] font-semibold text-[#8b3a3a] leading-5">
+                falla → {activeCycle < 4 ? CYCLE_LABELS[activeCycle + 1] : 'permanece'}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2.5 border-t border-[#edf2f7] pt-2.5 flex justify-between flex-wrap gap-1 text-[0.7rem] text-[#4f6a84]">
+            <span>
+              📦 Total: {totalAssociationsCount} · NUEVA {breakdown.nuevas} · VISTA {breakdown.vistas} · RECONOCIDA {breakdown.reconocidas} · CONOCIDA {breakdown.conocidas}
+            </span>
+            <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 ciclo {activeCycle} de 4</span>
+          </div>
+
+          <div className="mt-3.5 border-t border-[#edf2f7] pt-3">
+            <button
+              onClick={() => setHowItWorksOpen(!howItWorksOpen)}
+              className="flex justify-between items-center w-full cursor-none select-none py-1 hover:opacity-70 transition-opacity"
+            >
+              <span className="text-sm font-medium text-[#2c4a66] flex items-center gap-1.5">
+                <span>🧠</span>
+                ¿Cómo funciona?
+              </span>
+              <span
+                className={`text-base text-[#6b85a0] transition-transform duration-200 ${
+                  howItWorksOpen ? 'rotate-180' : ''
+                }`}
+              >
+                ▼
+              </span>
+            </button>
+
+            <div
+              className={`overflow-hidden transition-all duration-350 ease-in-out ${
+                howItWorksOpen ? 'max-h-[550px] opacity-100 mt-2.5' : 'max-h-0 opacity-0 mt-0'
+              }`}
+            >
+              <div className="bg-[#f8faff] rounded-2xl p-3.5 border border-[#e9edf2] text-[0.82rem] leading-relaxed text-[#1f3347]">
+                <p className="mb-2">
+                  Este sistema te ayuda a memorizar mediante{' '}
+                  <span className="font-semibold text-[#0b1a26]">ciclos de exposición progresiva</span>. Cada item pasa
+                  por diferentes etapas según tu capacidad para recordarlo.
+                </p>
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className="bg-[#eef2f6] rounded-full px-2 text-[0.65rem] font-bold text-[#2c4a66] leading-5 whitespace-nowrap mt-0.5">
+                    1
+                  </span>
+                  <span>
+                    <span className="font-semibold text-[#0b1a26]">NUEVA</span> — Si aciertas →{' '}
+                    <strong>APRENDIDAS</strong> ✅. Si fallas → <strong>VISTA</strong>.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className="bg-[#eef2f6] rounded-full px-2 text-[0.65rem] font-bold text-[#2c4a66] leading-5 whitespace-nowrap mt-0.5">
+                    2
+                  </span>
+                  <span>
+                    <span className="font-semibold text-[#0b1a26]">VISTA</span> — Si aciertas → se queda. Si fallas →{' '}
+                    <strong>RECONOCIDA</strong>.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className="bg-[#eef2f6] rounded-full px-2 text-[0.65rem] font-bold text-[#2c4a66] leading-5 whitespace-nowrap mt-0.5">
+                    3
+                  </span>
+                  <span>
+                    <span className="font-semibold text-[#0b1a26]">RECONOCIDA</span> — Si aciertas → se queda. Si fallas
+                    → <strong>CONOCIDA</strong>.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 mb-1.5">
+                  <span className="bg-[#eef2f6] rounded-full px-2 text-[0.65rem] font-bold text-[#2c4a66] leading-5 whitespace-nowrap mt-0.5">
+                    4
+                  </span>
+                  <span>
+                    <span className="font-semibold text-[#0b1a26]">CONOCIDA</span> — No hay castigo: acierto o fallo, se
+                    queda. Exposición repetida hasta retener.
+                  </span>
+                </div>
+                <p className="mt-2 italic text-[#4f6a84]">
+                  ⚡ <strong>APRENDIDAS</strong> = acierto en el <strong>primer ciclo</strong>. Ya no aparecen.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-2 pt-3 border-t border-slate-200">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total</span>
-            <span className={`text-xs font-bold text-${cycleColorName}-600`}>{Math.round(totalProgress)}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-            <div className={`h-full bg-${cycleColorName}-500 transition-all duration-1000`} style={{ width: `${totalProgress}%` }}></div>
-          </div>
+      <div
+        className="bg-[#fafcff] p-5 flex flex-col items-center gap-3 min-w-[100px] border-l border-[#e9edf2] flex-shrink-0 transition-all duration-300"
+        style={{ direction: 'ltr' }}
+      >
+        <span className="bg-[#1a2634] text-white rounded-full px-3.5 py-1 text-xs font-semibold tracking-wide whitespace-nowrap">
+          📦 {totalAssociationsCount}
+        </span>
+
+        <div className="flex flex-col gap-2 w-full">
+          {levelBoxes.map((box) => {
+            const colors = STATE_COLORS[box.colorGroup];
+            return (
+              <div
+                key={box.key}
+                className={`rounded-xl py-2 px-2.5 text-center border ${colors.bg} ${
+                  box.isActive ? 'border-2 border-[#2563eb]' : `border ${colors.border}`
+                } transition-all duration-200 relative`}
+              >
+                <div className="text-2xl font-bold text-[#0b1a26] leading-tight">{box.count}</div>
+                <div className="text-[0.55rem] font-medium text-[#64748b] uppercase tracking-wider">
+                  {box.label}
+                </div>
+                <span className="block text-[0.6rem] text-[#94a3b8] mt-0.5 animate-bounce">
+                  ▼
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-1 flex items-center gap-1.5 bg-[#e3f3e3] border border-[#b8d9b8] rounded-full px-3.5 py-1 text-sm font-medium text-[#1a4a1a]">
+          <span>✅</span>
+          <span className="font-bold text-base">{breakdown.aprendidas}</span>
+          <span className="text-xs">aprendidas</span>
+        </div>
+
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="bg-none border-none cursor-none text-xl text-[#6b85a0] px-2 py-1 rounded-full hover:bg-[#eef2f6] transition-colors mt-1"
+          aria-label={isExpanded ? 'Colapsar' : 'Expandir'}
+        >
+          {isExpanded ? '▶' : '◀'}
+        </button>
       </div>
     </div>
-  )
-}
+  );
+};
