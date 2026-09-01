@@ -11,11 +11,12 @@ interface LevelBox {
   key: string;
   label: string;
   level: string;
-  count: number;
-  colorGroup: 'nueva' | 'vista' | 'reconocida' | 'conocida' | 'aprendida';
+  count: number;  
+  colorGroup: 'nueva' | 'vista' | 'reconocida' | 'frecuente' | 'aprendida';
   isActive: boolean;
 }
 
+// ===== PALETA DE COLORES SUAVES =====
 const STATE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
   nueva: {
     bg: 'bg-[#f0f4fe]',
@@ -35,7 +36,7 @@ const STATE_COLORS: Record<string, { bg: string; border: string; text: string; b
     text: 'text-[#1a2b3c]',
     badge: 'bg-[#eef2f6] text-[#1a2634]',
   },
-  conocida: {
+  frecuente: {
     bg: 'bg-[#f0eaf8]',
     border: 'border-[#d8cce8]',
     text: 'text-[#1a2b3c]',
@@ -49,11 +50,12 @@ const STATE_COLORS: Record<string, { bg: string; border: string; text: string; b
   },
 };
 
+// ===== ETIQUETAS DE CICLOS (renombradas visualmente) =====
 const CYCLE_LABELS: Record<number, string> = {
   1: 'NUEVA',
   2: 'VISTA',
   3: 'RECONOCIDA',
-  4: 'CONOCIDA',
+  4: 'FRECUENTE', // ← antes "CONOCIDA"
 };
 
 export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
@@ -73,6 +75,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
     activeCycle === 3 ? 'reconocidas' : 'conocidas'
   ];
 
+  // ===== CONFIGURACIÓN DE LAS 4 BOLSAS =====
   const levelBoxes: LevelBox[] = [
     {
       key: 'nueva',
@@ -99,11 +102,11 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
       isActive: activeCycle === 3,
     },
     {
-      key: 'conocida',
-      label: 'CONOCIDA',
+      key: 'frecuente',
+      label: 'FRECUENTE', // ← antes "CONOCIDA"
       level: 'niv 3+',
       count: breakdown.conocidas,
-      colorGroup: 'conocida',
+      colorGroup: 'frecuente',
       isActive: activeCycle === 4,
     },
   ];
@@ -111,11 +114,17 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
   const totalAssociationsCount = totalAssociations + breakdown.aprendidas;
   const learnedInFirstCycle = breakdown.aprendidas;
 
+  // ===== BARRA DE PROGRESO =====
+  const progressPercentage = totalAssociationsCount > 0
+    ? Math.round((breakdown.aprendidas / totalAssociationsCount) * 100)
+    : 0;
+
   return (
     <div
       className="flex items-stretch transition-all duration-300 rounded-[2rem] shadow-xl border border-black/[0.02] overflow-hidden min-h-[320px] max-w-[900px]"
       style={{ direction: 'rtl' }}
     >
+      {/* ===== PANEL EXPANDIDO (se despliega desde la derecha) ===== */}
       <div
         className={`overflow-hidden transition-all duration-400 ease-in-out bg-white ${
           isExpanded ? 'max-w-[700px] opacity-100 p-5 pr-6' : 'max-w-0 opacity-0 p-0'
@@ -123,6 +132,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
         style={{ direction: 'ltr' }}
       >
         <div className="min-w-[280px]">
+          {/* ===== CICLO BADGE ===== */}
           <div className="inline-flex items-center gap-2.5 bg-[#eef2f6] px-4 py-1.5 rounded-full text-sm font-medium text-[#1a2634] mb-3">
             <span>🔄</span>
             <span>Ciclo {activeCycle} · {CYCLE_LABELS[activeCycle]}</span>
@@ -131,6 +141,21 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
             </span>
           </div>
 
+          {/* ===== BARRA DE PROGRESO ===== */}
+          <div className="mb-3">
+            <div className="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Progreso total</span>
+              <span className="font-bold text-blue-600">{progressPercentage}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* ===== DIAGRAMA DE FLUJO ===== */}
           <div className="bg-[#fafcff] rounded-2xl p-4 border border-[#e9edf2]">
             <div className="flex items-center justify-center flex-wrap gap-1">
               {levelBoxes.map((box, index) => {
@@ -159,6 +184,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
               })}
             </div>
 
+            {/* ===== APRENDIDAS ===== */}
             <div className="flex justify-center mt-2.5">
               <div className="bg-[#e3f3e3] border border-[#b8d9b8] rounded-full px-4 py-1 inline-flex items-center gap-1.5 font-medium text-[#1a4a1a] text-sm">
                 <span>✅</span>
@@ -167,6 +193,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
               </div>
             </div>
 
+            {/* ===== LEYENDA DE FLUJO ===== */}
             <div className="flex justify-center gap-6 flex-wrap mt-2.5 text-[0.7rem] text-[#4a617a]">
               <span className="bg-[#f1f5f9] px-3 py-0.5 rounded-full inline-flex items-center gap-1">
                 ⬇ Acierto 1er ciclo → APRENDIDAS
@@ -180,6 +207,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
             </div>
           </div>
 
+          {/* ===== ACCIONES ===== */}
           <div className="flex flex-wrap justify-between items-center gap-2.5 bg-[#f8faff] rounded-2xl px-4 py-2.5 mt-3 border border-[#e9edf2]">
             <div className="flex items-center gap-1.5 text-xs font-medium text-[#1e2f3f]">
               <span>📌</span>
@@ -196,17 +224,19 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
             </div>
           </div>
 
+          {/* ===== FOOTER STATS ===== */}
           <div className="mt-2.5 border-t border-[#edf2f7] pt-2.5 flex justify-between flex-wrap gap-1 text-[0.7rem] text-[#4f6a84]">
             <span>
-              📦 Total: {totalAssociationsCount} · NUEVA {breakdown.nuevas} · VISTA {breakdown.vistas} · RECONOCIDA {breakdown.reconocidas} · CONOCIDA {breakdown.conocidas}
+              📦 Total: {totalAssociationsCount} · NUEVA {breakdown.nuevas} · VISTA {breakdown.vistas} · RECONOCIDA {breakdown.reconocidas} · FRECUENTE {breakdown.conocidas}
             </span>
             <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 ciclo {activeCycle} de 4</span>
           </div>
 
+          {/* ===== ACORDEÓN "CÓMO FUNCIONA" ===== */}
           <div className="mt-3.5 border-t border-[#edf2f7] pt-3">
             <button
               onClick={() => setHowItWorksOpen(!howItWorksOpen)}
-              className="flex justify-between items-center w-full cursor-none select-none py-1 hover:opacity-70 transition-opacity"
+              className="flex justify-between items-center w-full cursor-pointer select-none py-1 hover:opacity-70 transition-opacity"
             >
               <span className="text-sm font-medium text-[#2c4a66] flex items-center gap-1.5">
                 <span>🧠</span>
@@ -256,7 +286,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
                   </span>
                   <span>
                     <span className="font-semibold text-[#0b1a26]">RECONOCIDA</span> — Si aciertas → se queda. Si fallas
-                    → <strong>CONOCIDA</strong>.
+                    → <strong>FRECUENTE</strong>.
                   </span>
                 </div>
                 <div className="flex items-start gap-2 mb-1.5">
@@ -264,7 +294,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
                     4
                   </span>
                   <span>
-                    <span className="font-semibold text-[#0b1a26]">CONOCIDA</span> — No hay castigo: acierto o fallo, se
+                    <span className="font-semibold text-[#0b1a26]">FRECUENTE</span> — No hay castigo: acierto o fallo, se
                     queda. Exposición repetida hasta retener.
                   </span>
                 </div>
@@ -277,14 +307,17 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
         </div>
       </div>
 
+      {/* ===== SIDEBAR (contraído, siempre visible) ===== */}
       <div
         className="bg-[#fafcff] p-5 flex flex-col items-center gap-3 min-w-[100px] border-l border-[#e9edf2] flex-shrink-0 transition-all duration-300"
         style={{ direction: 'ltr' }}
       >
+        {/* ===== TOTAL ===== */}
         <span className="bg-[#1a2634] text-white rounded-full px-3.5 py-1 text-xs font-semibold tracking-wide whitespace-nowrap">
           📦 {totalAssociationsCount}
         </span>
 
+        {/* ===== 4 CAJONCITOS ===== */}
         <div className="flex flex-col gap-2 w-full">
           {levelBoxes.map((box) => {
             const colors = STATE_COLORS[box.colorGroup];
@@ -299,6 +332,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
                 <div className="text-[0.55rem] font-medium text-[#64748b] uppercase tracking-wider">
                   {box.label}
                 </div>
+                {/* ===== FLECHA HACIA ABAJO ===== */}
                 <span className="block text-[0.6rem] text-[#94a3b8] mt-0.5 animate-bounce">
                   ▼
                 </span>
@@ -307,15 +341,17 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({ gameState }) => {
           })}
         </div>
 
+        {/* ===== APRENDIDAS ===== */}
         <div className="mt-1 flex items-center gap-1.5 bg-[#e3f3e3] border border-[#b8d9b8] rounded-full px-3.5 py-1 text-sm font-medium text-[#1a4a1a]">
           <span>✅</span>
           <span className="font-bold text-base">{breakdown.aprendidas}</span>
           <span className="text-xs">aprendidas</span>
         </div>
 
+        {/* ===== BOTÓN TOGGLE ===== */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="bg-none border-none cursor-none text-xl text-[#6b85a0] px-2 py-1 rounded-full hover:bg-[#eef2f6] transition-colors mt-1"
+          className="bg-none border-none cursor-pointer text-xl text-[#6b85a0] px-2 py-1 rounded-full hover:bg-[#eef2f6] transition-colors mt-1"
           aria-label={isExpanded ? 'Colapsar' : 'Expandir'}
         >
           {isExpanded ? '▶' : '◀'}
