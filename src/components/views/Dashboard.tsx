@@ -60,13 +60,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
     let totalWords = 0;
     let totalLearned = 0;
     lists.forEach(list => {
-      const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
-      totalWords += activeAssociations.length;
-      totalLearned += activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+      const allAssociations = list.associations || [];
+      totalWords += allAssociations.length;
+      totalLearned += allAssociations.filter((a: any) => a.isArchived).length;
     });
     return {
       totalWords,
       totalLearned,
+      remaining: totalWords - totalLearned,
       percentage: totalWords > 0 ? Math.round((totalLearned / totalWords) * 100) : 0
     };
   }, [lists]);
@@ -241,7 +242,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           </div>
           <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
             <p className="text-white/80 text-sm">Por Aprender</p>
-            <p className="text-3xl font-bold text-white">{stats.totalWords - stats.totalLearned}</p>
+            <p className="text-3xl font-bold text-white">{stats.remaining}</p>
           </div>
           <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
             <p className="text-white/80 text-sm">Completado</p>
@@ -533,8 +534,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
                     </span>
                   )}
                   {cycle4Count > 0 && (
-                    <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded font-medium">
-                      {cycle4Count} in cycle 4
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">
+                      {cycle4Count} in Cycle 4
                     </span>
                   )}
                   {pendingCount > 0 && (

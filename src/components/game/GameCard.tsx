@@ -91,9 +91,16 @@ export const GameCard: React.FC<GameCardProps> = ({
   }, [feedback]);
 
   const shakeClass = isShaking ? 'animate-shake' : '';
-
   const showEditButton = Boolean(associationId && onStartEdit && revealed);
 
+  const cycleColors: Record<string, { bg: string; border: string; text: string; stripe: string; flag: string }> = {
+    sky: { bg: 'bg-sky-50', border: 'border-sky-400/30', text: 'text-sky-600', stripe: 'bg-sky-500/10', flag: 'bg-sky-500' },
+    yellow: { bg: 'bg-yellow-50', border: 'border-yellow-400/30', text: 'text-yellow-600', stripe: 'bg-yellow-500/10', flag: 'bg-yellow-500' },
+    rose: { bg: 'bg-rose-50', border: 'border-rose-400/30', text: 'text-rose-600', stripe: 'bg-rose-500/10', flag: 'bg-rose-500' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-400/30', text: 'text-emerald-600', stripe: 'bg-emerald-500/10', flag: 'bg-emerald-500' },
+    indigo: { bg: 'bg-indigo-50', border: 'border-indigo-400/30', text: 'text-indigo-600', stripe: 'bg-indigo-500/10', flag: 'bg-indigo-500' },
+  };
+  const colors = cycleColors[cycleColorName] || cycleColors.indigo;
   const renderLabel = (label: string, lang: string | undefined) => {
     if (!voiceEnabled) return label;
     const flag = getLanguageFlag(lang);
@@ -106,8 +113,8 @@ export const GameCard: React.FC<GameCardProps> = ({
   };
 
   return (
-    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative min-h-[100px] flex flex-col justify-center transition-all duration-500 bg-rose-50 border-rose-500/20 ${feedback === 'correct' ? 'ring-8 ring-emerald-400 border-emerald-500' : feedback === 'incorrect' ? 'ring-8 ring-rose-400 border-rose-500' : ''}`}>
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-600/10 transition-colors duration-500"></div>
+    <div className={`w-full rounded-[2.5rem] shadow-[0_15px_45px_rgba(79,70,229,0.06)] border-4 p-5 md:p-6 text-center relative min-h-[100px] flex flex-col justify-center transition-all duration-500 ${colors.bg} ${colors.border} ${feedback === 'correct' ? 'ring-8 ring-emerald-400 border-emerald-500' : feedback === 'incorrect' ? 'ring-8 ring-rose-400 border-rose-500' : ''}`}>
+      <div className={`absolute top-0 left-0 w-full h-1.5 ${colors.stripe} transition-colors duration-500`}></div>
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -128,7 +135,7 @@ export const GameCard: React.FC<GameCardProps> = ({
       />
       {engineDisclaimer && (
         <div className="mb-2 inline-flex items-center gap-1.5 self-center px-3 py-1 rounded-full bg-white/70 border border-rose-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          <span className={`w-1.5 h-1.5 rounded-full ${colors.flag}`} />
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-700">
             {engineDisclaimer}
           </span>
@@ -146,7 +153,7 @@ export const GameCard: React.FC<GameCardProps> = ({
           ))}
         </div>
       )}
-      <span className="text-[9px] font-black uppercase tracking-[0.3em] block mb-1 text-rose-500">{renderLabel(labelTerm, voiceTermLang)}</span>
+      <span className={`text-[9px] font-black uppercase tracking-[0.3em] block mb-1 ${colors.text}`}>{renderLabel(labelTerm, voiceTermLang)}</span>
 
       <CardBadges
         isFallbackActive={isFallbackActive}

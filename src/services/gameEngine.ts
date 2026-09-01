@@ -126,7 +126,7 @@ export class GlimmindGame {
       return (
         assoc !== undefined &&
         !assoc.isArchived &&
-        assoc.currentCycle < 4 &&
+        !assoc.isLearned &&
         assoc.status !== "correct"
       );
     });
@@ -431,9 +431,11 @@ export class GlimmindGame {
         updatedAt: Date.now(),
       };
     } else if (action.type === "PASS") {
+      const nextCycle = Math.min(currentAssoc.currentCycle + 1, 4) as GameCycle;
       associations[assocIndex] = {
         ...currentAssoc,
-        currentCycle: (currentAssoc.currentCycle + 1) as GameCycle,
+        currentCycle: nextCycle,
+        status: nextCycle >= 4 ? "correct" : "pending",
         timesPlayed: this.trackingEnabled ? (currentAssoc.timesPlayed ?? 0) + 1 : currentAssoc.timesPlayed,
         lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
         updatedAt: Date.now(),
@@ -463,18 +465,18 @@ export class GlimmindGame {
 
   private _checkForNextCycle(): GlimmindGame {
     if (this.state.currentIndex < this.state.activeQueue.length) return this;
-    const nextGlobalCycle = this.state.globalCycle + 1;
-    if (nextGlobalCycle > 4) return this._endGame();
-
+    
     const newQueue = GlimmindGame._generateActiveQueue(
       this.state.associations,
-      nextGlobalCycle as GameCycle,
+      this.state.globalCycle,
     );
+    
     if (newQueue.length === 0) return this._endGame();
 
+    const nextGlobalCycle = Math.min(this.state.globalCycle + 1, 4) as GameCycle;
     const nextState: GameState = {
       ...this.state,
-      globalCycle: nextGlobalCycle as GameCycle,
+      globalCycle: nextGlobalCycle,
       activeQueue: newQueue,
       currentIndex: 0,
     };
@@ -557,9 +559,8 @@ export class GlimmindGame {
     associations: Association[],
     _cycle: GameCycle,
   ): string[] {
-    // Include all non-archived associations that haven't completed cycle 4 and are not already correctly answered
     return associations
-      .filter((a) => !a.isArchived && a.currentCycle < 4 && a.status !== "correct")
+      .filter((a) => !a.isArchived && !a.isLearned && a.status !== "correct")
       .map((a) => a.id);
   }
 }
