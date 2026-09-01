@@ -410,6 +410,17 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
     cleanupAndSave({ ...editList, associations: updatedAssociations });
   };
 
+  const [selectedArchivedIds, setSelectedArchivedIds] = useState<Set<string>>(new Set());
+
+  const handleRestoreSelected = useCallback(() => {
+    if (selectedArchivedIds.size === 0) return;
+    const updatedAssociations = editList.associations.map(a =>
+      selectedArchivedIds.has(a.id) ? { ...a, isArchived: false } : a
+    );
+    cleanupAndSave({ ...editList, associations: updatedAssociations });
+    setSelectedArchivedIds(new Set());
+  }, [editList, selectedArchivedIds, cleanupAndSave]);
+
   const activeAssociations = editList.associations.filter(a => !a.isArchived);
   const archivedAssociations = editList.associations.filter(a => a.isArchived);
 
@@ -652,8 +663,20 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
         {archivedAssociations.length > 0 && (
           <div className="pt-4 sm:pt-6">
             <div className="px-4 sm:px-8 pb-3 sm:pb-4">
-              <h3 className="text-base sm:text-lg font-bold text-slate-800">Tarjetas Archivadas</h3>
-              <p className="text-xs sm:text-sm text-slate-500">Estas tarjetas ya no aparecen en tus partidas. Puedes restaurarlas en cualquier momento.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-800">Tarjetas Archivadas</h3>
+                  <p className="text-xs sm:text-sm text-slate-500">Estas tarjetas ya no aparecen en tus partidas. Puedes restaurarlas en cualquier momento.</p>
+                </div>
+                {selectedArchivedIds.size > 0 && (
+                  <button
+                    onClick={handleRestoreSelected}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition shadow-sm"
+                  >
+                    Restaurar {selectedArchivedIds.size} seleccionado{selectedArchivedIds.size > 1 ? 's' : ''}
+                  </button>
+                )}
+              </div>
             </div>
             <AssociationTable
               associations={sortedArchived}
@@ -667,6 +690,19 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
               onRemoveRow={handleRemoveRow}
               onRestoreRow={handleRestoreRow}
               isArchived
+              selectable
+              selectedIds={selectedArchivedIds}
+              onToggleSelect={(id) => {
+                setSelectedArchivedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) {
+                    next.delete(id);
+                  } else {
+                    next.add(id);
+                  }
+                  return next;
+                });
+              }}
               autoOpenId={autoOpenArchivedId}
             />
           </div>
