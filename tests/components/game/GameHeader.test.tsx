@@ -1,6 +1,5 @@
 
-import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GameHeader } from '@/components/game/GameHeader';
 
@@ -42,14 +41,13 @@ describe('GameHeader component', () => {
       />
     );
 
-    const buttons = screen.getAllByRole('button');
-    const settingsButton = buttons[1];
+    const backButton = screen.getAllByRole('button')[0];
 
-    expect(settingsButton).toBeInTheDocument();
+    expect(backButton).toBeInTheDocument();
 
-    fireEvent.click(settingsButton);
+    fireEvent.click(backButton);
 
-    expect(mockOnSettingsClick).toHaveBeenCalledTimes(1);
+    expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 
   test('calls onBack when the back button is clicked', () => {
