@@ -327,8 +327,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
           <h3 className="text-lg font-bold text-gray-900 mb-4">Listas Recientes</h3>
           <div className="flex gap-4 overflow-x-auto pb-2">
             {recentLists.map(list => {
-              const activeAssociations = (list.associations || []).filter((a: any) => !a.isArchived);
-              const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
+              const allAssociations = list.associations || [];
+              const archivedCount = allAssociations.filter((a: any) => a.isArchived).length;
+              const totalCount = allAssociations.length;
+              const achievementPercent = totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
+              const isComplete = achievementPercent === 100;
               return (
                 <button
                   key={list.id}
@@ -336,7 +339,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
                   className="flex-shrink-0 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition text-left min-w-[200px]"
                 >
                   <p className="font-bold text-gray-900 truncate">{list.name}</p>
-                  <p className="text-sm text-gray-500">{learnedCount}/{activeAssociations.length} aprendidas</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-sm font-bold ${isComplete ? 'text-emerald-600' : 'text-slate-600'}`}>
+                      {archivedCount} / {totalCount}
+                    </span>
+                    <span className={`text-xs font-medium ${isComplete ? 'text-emerald-600' : 'text-slate-500'}`}>
+                      logro {achievementPercent}%
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -506,12 +516,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLists.map(list => {
-            const associations = list.associations || [];
-            const activeAssociations = associations.filter((a: any) => !a.isArchived);
-            const learnedCount = activeAssociations.filter((a: any) => a.isLearned || a.status === 'correct').length;
-            const pendingCount = activeAssociations.filter((a: any) => a.status === 'pending').length;
-            const cycle4Count = activeAssociations.filter((a: any) => a.currentCycle === 4).length;
+            const allAssociations = list.associations || [];
+            const activeAssociations = allAssociations.filter((a: any) => !a.isArchived);
+            const archivedCount = allAssociations.filter((a: any) => a.isArchived).length;
+            const totalCount = allAssociations.length;
             const canPlay = activeAssociations.length > 0;
+            const achievementPercent = totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
+            const isComplete = achievementPercent === 100;
 
             return (
               <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
@@ -524,25 +535,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
                   </button>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
-                <p className="text-gray-500 text-sm mb-2">
-                  {activeAssociations.length} pairs
-                </p>
-                <div className="flex gap-2 text-xs mb-4">
-                  {learnedCount > 0 && (
-                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">
-                      {learnedCount} learned
-                    </span>
-                  )}
-                  {cycle4Count > 0 && (
-                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">
-                      {cycle4Count} in Cycle 4
-                    </span>
-                  )}
-                  {pendingCount > 0 && (
-                    <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded font-medium">
-                      {pendingCount} pending
-                    </span>
-                  )}
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-gray-500 text-sm">
+                    {activeAssociations.length} pairs
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className={`text-sm font-bold ${isComplete ? 'text-emerald-600' : 'text-slate-600'}`}>
+                    {archivedCount} / {totalCount}
+                  </span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                    logro {achievementPercent}%
+                  </span>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
