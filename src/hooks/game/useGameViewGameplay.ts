@@ -113,12 +113,14 @@ export function useGameViewGameplay({
 
   const cycleMiniStats = useMemo(() => {
     const cycle = gameState.globalCycle as GameCycle;
-    const inCycle = gameState.associations.filter((a) => a.currentCycle === cycle);
-    const correct = inCycle.filter(
+    const inCycleAll = gameState.associations.filter(
+      (a) => a.currentCycle === cycle && !a.isArchived,
+    );
+    const correct = inCycleAll.filter(
       (a) => a.status === "correct" || a.isLearned === true,
     ).length;
-    const total = inCycle.length;
-    const pending = total - correct;
+    const pending = Math.max(0, gameState.activeQueue.length - gameState.currentIndex);
+    const total = pending + correct;
     return {
       cycle,
       pending,
@@ -126,7 +128,7 @@ export function useGameViewGameplay({
       total,
       isComplete: total > 0 && pending === 0,
     };
-  }, [gameState.associations, gameState.globalCycle]);
+  }, [gameState.associations, gameState.globalCycle, gameState.activeQueue.length, gameState.currentIndex]);
 
   const cycleColorName = CYCLE_COLOR_MAP[gameState.globalCycle as GameCycle] || "slate";
   const cycleColorClass = getCycleColorClass(cycleColorName);
