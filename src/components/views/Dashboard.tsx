@@ -1,200 +1,159 @@
+import { useCallback, useState } from "react";
+import type { Association } from "../../types";
+import type { PrebuiltDeck } from "../../types/prebuilt-deck";
+import type { DashboardProps } from "../../types/dashboard";
+import { normalizeAssociations, type AssociationLike } from "../../utils/normalizeAssociation";
+import { useGameStore } from "../../store/gameStore";
+import { useToast } from "../layout/Toast";
+import { GoalWidget } from "../layout/GoalWidget";
+import { QuotaAlert } from "../layout/QuotaAlert";
+import { DeckStoreOnboarding } from "../onboarding/DeckStoreOnboarding";
+import { CreateYouTubeDeckModal } from "../modals/CreateYouTubeDeckModal";
+import { QuotaService } from "../../services/quotaService";
+import { countCards } from "../../utils/quota";
+import { useDashboardStats } from "../../hooks/dashboard/useDashboardStats";
+import { useDashboardLists } from "../../hooks/dashboard/useDashboardLists";
+import { useDeckImporter } from "../../hooks/dashboard/useDeckImporter";
+import { DashboardProgressHero } from "./dashboard/DashboardProgressHero";
+import { DashboardContinueBanner } from "./dashboard/DashboardContinueBanner";
+import { DashboardToolbar } from "./dashboard/DashboardToolbar";
+import { RecentListsStrip } from "./dashboard/RecentListsStrip";
+import { BigListsGrid } from "./dashboard/BigListsGrid";
+import { DashboardSearchBar } from "./dashboard/DashboardSearchBar";
+import { CreateListForm } from "./dashboard/CreateListForm";
+import { DashboardEmptyState } from "./dashboard/DashboardEmptyState";
+import { ListGrid } from "./dashboard/ListGrid";
 
-import React, { useState, useMemo, useRef } from 'react';
-import { AssociationList, Association } from '../../types';
-import { normalizeAssociations, AssociationLike } from '../../utils/normalizeAssociation';
-import { computeStateBreakdown } from '../../utils/progress';
-import { countCards } from '../../utils/quota';
-import { parseCsvPairs, isHeaderPair } from '../../utils/csv';
-import { useGameStore } from '../../store/gameStore';
-import { GoalWidget } from '../layout/GoalWidget';
-import { BigListCard } from '../cards/BigListCard';
-import { useToast } from '../layout/Toast';
-import { QuotaAlert } from '../layout/QuotaAlert';
-import { DeckStoreOnboarding } from '../onboarding/DeckStoreOnboarding';
-import { PrebuiltDeck } from '../../types/prebuilt-deck';
-import { CreateYouTubeDeckModal } from '../modals/CreateYouTubeDeckModal';
-import { QuotaService } from '../../services/quotaService';
-
-const BIG_LIST_THRESHOLD = 200;
-
-interface DashboardProps {
-  lists: AssociationList[];
-  lastPlayedId?: string;
-  onCreate: (name: string, concept: string, initialAssociations: Association[]) => void;
-  onCreateAndPlay: (name: string, concept: string, initialAssociations: Association[]) => void;
-  onAddDeck: (name: string, concept: string, initialAssociations: Association[]) => Promise<void>;
-  onDelete: (id: string) => void;
-  onEdit: (id: string) => void;
-  onPlay: (id: string) => void;
-  onYouTubeSuccess?: (result: import('../../types/youtube-deck').VocabularyResult) => void;
-  onTextImport?: () => void;
-}
-
-export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCreate, onCreateAndPlay, onAddDeck, onDelete, onEdit, onPlay, onYouTubeSuccess, onTextImport }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  lists,
+  lastPlayedId,
+  onCreate,
+  onCreateAndPlay,
+  onAddDeck,
+  onDelete,
+  onEdit,
+  onPlay,
+  onYouTubeSuccess,
+  onTextImport,
+}) => {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newConcept, setNewConcept] = useState('');
-  const [bulkData, setBulkData] = useState('');
-  const [showBulk, setShowBulk] = useState(false);
-  const [importTab, setImportTab] = useState<'paste' | 'upload'>('paste');
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [isReadingFile, setIsReadingFile] = useState(false);
-  const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newName, setNewName] = useState("");
+  const [newConcept, setNewConcept] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showDeckStore, setShowDeckStore] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
 
-  const progress = useGameStore(state => state.progress);
-  const setGoalTarget = useGameStore(state => state.setGoalTarget);
-  const quota = useGameStore(state => state.quota);
-  const isPremium = quota?.tier === 'premium';
+  const progress = useGameStore((state) => state.progress);
+  const setGoalTarget = useGameStore((state) => state.setGoalTarget);
+  const quota = useGameStore((state) => state.quota);
+  const isPremium = quota?.tier === "premium";
 
-  const quotaStatus = useMemo(() => {
-    if (!quota) return null;
-    return QuotaService.getStatus(countCards(lists), quota.tier);
-  }, [lists, quota]);
-
-  const stats = useMemo(() => {
-    let totalWords = 0;
-    let totalLearned = 0;
-    lists.forEach(list => {
-      const allAssociations = list.associations || [];
-      totalWords += allAssociations.length;
-      totalLearned += allAssociations.filter((a: any) => a.isArchived).length;
-    });
-    return {
-      totalWords,
-      totalLearned,
-      remaining: totalWords - totalLearned,
-      percentage: totalWords > 0 ? Math.round((totalLearned / totalWords) * 100) : 0
-    };
-  }, [lists]);
-
-  const recentLists = useMemo(() => {
-    return [...lists].sort((a, b) => {
-      if (!a.updatedAt || !b.updatedAt) return 0;
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    }).slice(0, 3);
-  }, [lists]);
-
-  const currentList = lastPlayedId ? lists.find(l => l.id === lastPlayedId) : null;
-
-  const bigLists = useMemo(() => {
-    return lists.filter(list =>
-      (list.associations || []).filter((a: any) => !a.isArchived).length > BIG_LIST_THRESHOLD
-    );
-  }, [lists]);
-
-  const parseBulkData = (text: string): Association[] => {
-    const pairs = parseCsvPairs(text);
-    const associations: AssociationLike[] = pairs.map(pair => ({
-      id: crypto.randomUUID(),
-      term: pair.term,
-      definition: pair.definition,
-      currentCycle: 1,
-      status: 'pending',
-      isLearned: false,
-      isArchived: false,
-    }));
-    return normalizeAssociations(associations);
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFileName(file.name);
-    setIsReadingFile(true);
-    try {
-      const content = await file.text();
-      const pairs = parseCsvPairs(content);
-      const conceptParts = newConcept.split('/');
-      const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], conceptParts[0] || '', conceptParts[1] || '');
-      const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
-
-      if (dataPairs.length === 0) {
-        alert('El archivo no contiene tarjetas válidas.');
-        return;
-      }
-
-      const associations: Association[] = normalizeAssociations(dataPairs.map<AssociationLike>(pair => ({
-        id: crypto.randomUUID(),
-        term: pair.term,
-        definition: pair.definition,
-        currentCycle: 1,
-        status: 'pending',
-        isLearned: false,
-        isArchived: false,
-      })));
-
-      setFileAssociations(associations);
-      showToast(`Se importaron ${associations.length} tarjetas de "${file.name}"`, 'success');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
-      alert(`No se pudo importar el archivo: ${message}`);
-    } finally {
-      setIsReadingFile(false);
-      if (event.target) {
-        event.target.value = '';
-      }
-    }
-  };
-
-  const resetBulkInputs = () => {
-    setBulkData('');
-    setFileAssociations([]);
-    setSelectedFileName(null);
-  };
-
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName && newConcept) {
-      const initialAssocs = [...parseBulkData(bulkData), ...fileAssociations];
-      onCreate(newName, newConcept, initialAssocs);
-      setNewName('');
-      setNewConcept('');
-      resetBulkInputs();
-      setIsCreating(false);
-      setShowBulk(false);
-    }
-  };
-
-  const filteredLists = lists.filter(list => 
-    list.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    list.concept.toLowerCase().includes(searchTerm.toLowerCase())
+  const importer = useDeckImporter(
+    newConcept,
+    useCallback(
+      (message: string) => showToast(message, "success"),
+      [showToast],
+    ),
+    useCallback((message: string) => alert(message), []),
   );
 
-  const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] => {
-    return normalizeAssociations(deck.associations.map<AssociationLike>(a => ({
-      id: crypto.randomUUID(),
-      term: a.term,
-      definition: a.definition,
-      currentCycle: 1,
-      status: 'pending',
-      isLearned: false,
-      isArchived: false,
-    })));
-  };
+  const stats = useDashboardStats(lists);
+  const { recentLists, bigLists, filteredLists, currentList } = useDashboardLists(
+    lists,
+    searchTerm,
+    lastPlayedId,
+  );
 
-  const [continuePlay, setContinuePlay] = useState(false);
+  const handleCreateEmpty = useCallback(() => {
+    onCreate("Sin nombre", "Valor 1 / Valor 2", []);
+  }, [onCreate]);
 
-  useMemo(() => {
-    if (lastPlayedId) setContinuePlay(true);
-  }, [lastPlayedId]);
+  const handleSubmitCreate = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newName || !newConcept) return;
+      const initialAssocs = [...importer.parseBulkData(importer.bulkData), ...importer.fileAssociations];
+      onCreate(newName, newConcept, initialAssocs);
+      setNewName("");
+      setNewConcept("");
+      importer.resetBulkInputs();
+      setIsCreating(false);
+      importer.setShowBulk(false);
+    },
+    [newName, newConcept, importer, onCreate],
+  );
 
-  const isFirstTime = useMemo(() => lists.length === 0, [lists]);
+  const handleCancelCreate = useCallback(() => {
+    setIsCreating(false);
+    importer.resetBulkInputs();
+    importer.setShowBulk(false);
+  }, [importer]);
+
+  const handleChooseFile = useCallback(() => {
+    importer.fileInputRef.current?.click();
+  }, [importer]);
+
+  const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] =>
+    normalizeAssociations(
+      deck.associations.map<AssociationLike>((a) => ({
+        id: crypto.randomUUID(),
+        term: a.term,
+        definition: a.definition,
+        currentCycle: 1,
+        status: "pending",
+        isLearned: false,
+        isArchived: false,
+      })),
+    );
+
+  const handleOnboardingAddDeck = useCallback(
+    async (deck: PrebuiltDeck) => {
+      await onCreateAndPlay(deck.name, deck.concept, transformDeckToAssociations(deck));
+    },
+    [onCreateAndPlay],
+  );
+
+  const handleStoreAddDeck = useCallback(
+    async (deck: PrebuiltDeck) => {
+      await onAddDeck(deck.name, deck.concept, transformDeckToAssociations(deck));
+    },
+    [onAddDeck],
+  );
+
+  const handleOnboardingCreateCustom = useCallback(() => setIsCreating(true), []);
+
+  const handleStoreCreateCustom = useCallback(() => {
+    setShowDeckStore(false);
+    setIsCreating(true);
+  }, []);
+
+  const handleOpenYouTube = useCallback(() => setShowYouTubeModal(true), []);
+  const handleCloseYouTube = useCallback(() => setShowYouTubeModal(false), []);
+  const handleOpenDeckStore = useCallback(() => setShowDeckStore(true), []);
+  const handleCloseDeckStore = useCallback(() => setShowDeckStore(false), []);
+
+  const handleYouTubeSuccess = useCallback(
+    (result: import("../../types/youtube-deck").VocabularyResult) => {
+      setShowYouTubeModal(false);
+      onYouTubeSuccess?.(result);
+    },
+    [onYouTubeSuccess],
+  );
+
+  const isFirstTime = lists.length === 0;
+  const quotaStatus = quota ? QuotaService.getStatus(countCards(lists), quota.tier) : null;
+  const createDisabled = quotaStatus?.level === "blocked" && !isPremium;
+  const createTitle =
+    createDisabled && quotaStatus ? `Llegaste a tu límite de ${quotaStatus.maxCards} tarjetas` : undefined;
 
   if (isFirstTime && !isCreating) {
     return (
       <div className="max-w-5xl mx-auto p-6">
         <DeckStoreOnboarding
-          onAddDeck={async (deck) => {
-            await onCreateAndPlay(deck.name, deck.concept, transformDeckToAssociations(deck));
-          }}
-          onCreateCustom={() => setIsCreating(true)}
-          onYouTube={() => setShowYouTubeModal(true)}
+          onAddDeck={handleOnboardingAddDeck}
+          onCreateCustom={handleOnboardingCreateCustom}
+          onYouTube={handleOpenYouTube}
           onTextImport={onTextImport ?? (() => {})}
         />
       </div>
@@ -206,21 +165,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
       <div className="max-w-5xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => setShowDeckStore(false)}
+            onClick={handleCloseDeckStore}
             className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
           >
             ← Volver al Dashboard
           </button>
         </div>
         <DeckStoreOnboarding
-          onAddDeck={async (deck) => {
-            await onAddDeck(deck.name, deck.concept, transformDeckToAssociations(deck));
-          }}
-          onCreateCustom={() => {
-            setShowDeckStore(false);
-            setIsCreating(true);
-          }}
-          onYouTube={() => setShowYouTubeModal(true)}
+          onAddDeck={handleStoreAddDeck}
+          onCreateCustom={handleStoreCreateCustom}
+          onYouTube={handleOpenYouTube}
           onTextImport={onTextImport ?? (() => {})}
         />
       </div>
@@ -229,33 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 shadow-lg">
-        <h2 className="text-2xl font-bold text-white mb-4">Tu Progreso</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
-            <p className="text-white/80 text-sm">Total Palabras</p>
-            <p className="text-3xl font-bold text-white">{stats.totalWords}</p>
-          </div>
-          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
-            <p className="text-white/80 text-sm">Aprendidas</p>
-            <p className="text-3xl font-bold text-white">{stats.totalLearned}</p>
-          </div>
-          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
-            <p className="text-white/80 text-sm">Por Aprender</p>
-            <p className="text-3xl font-bold text-white">{stats.remaining}</p>
-          </div>
-          <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
-            <p className="text-white/80 text-sm">Completado</p>
-            <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
-          </div>
-        </div>
-        <div className="mt-4 h-3 bg-white/20 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-white rounded-full transition-all duration-500"
-            style={{ width: `${stats.percentage}%` }}
-          />
-        </div>
-      </div>
+      <DashboardProgressHero stats={stats} />
 
       {progress && (
         <div className="mb-8">
@@ -265,310 +193,69 @@ export const Dashboard: React.FC<DashboardProps> = ({ lists, lastPlayedId, onCre
 
       <QuotaAlert status={quotaStatus} />
 
-      {lastPlayedId && continuePlay && currentList && (
-        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-amber-700 font-medium">Continuar última sesión</p>
-            <p className="text-lg font-bold text-gray-900">{currentList.name}</p>
-          </div>
-          <button 
-            onClick={() => onPlay(lastPlayedId)}
-            className="bg-amber-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-amber-600 transition"
-          >
-            Continuar
-          </button>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Tus Listas de Estudio</h2>
-          <p className="text-gray-500 mt-1">Memoriza asociaciones de palabras rápidamente.</p>
-        </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <button
-            onClick={() => setShowYouTubeModal(true)}
-            className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Desde YouTube
-          </button>
-          <button
-            onClick={() => setShowDeckStore(true)}
-            className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l-.4-2M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.708.447 1.953.134.058.277.088.422.088h11M17 13l2.293 2.293c.63.63.184 1.708-.447 1.953-.134.058-.277.088-.422.088h-11M7 13V6a1 1 0 00-1-1H4a1 1 0 000 2h2v7z" />
-            </svg>
-            Catálogo de Barajas
-          </button>
-          <button 
-            onClick={() => {
-              const emptyName = 'Sin nombre';
-              const emptyConcept = 'Valor 1 / Valor 2';
-              onCreate(emptyName, emptyConcept, []);
-            }}
-            disabled={quotaStatus?.level === 'blocked' && !isPremium}
-            title={quotaStatus?.level === 'blocked' && !isPremium ? `Llegaste a tu límite de ${quotaStatus.maxCards} tarjetas` : undefined}
-            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 w-full md:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva Lista
-          </button>
-        </div>
-      </div>
-
-      {recentLists.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas Recientes</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {recentLists.map(list => {
-              const allAssociations = list.associations || [];
-              const archivedCount = allAssociations.filter((a: any) => a.isArchived).length;
-              const totalCount = allAssociations.length;
-              const achievementPercent = totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
-              const isComplete = achievementPercent === 100;
-              return (
-                <button
-                  key={list.id}
-                  onClick={() => onPlay(list.id)}
-                  className="flex-shrink-0 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition text-left min-w-[200px]"
-                >
-                  <p className="font-bold text-gray-900 truncate">{list.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-sm font-bold ${isComplete ? 'text-emerald-600' : 'text-slate-600'}`}>
-                      {archivedCount} / {totalCount}
-                    </span>
-                    <span className={`text-xs font-medium ${isComplete ? 'text-emerald-600' : 'text-slate-500'}`}>
-                      logro {achievementPercent}%
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {bigLists.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Listas en digestión</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {bigLists.map(list => {
-              const active = (list.associations || []).filter((a: any) => !a.isArchived);
-              const breakdown = computeStateBreakdown(active);
-              return (
-                <BigListCard
-                  key={list.id}
-                  list={list}
-                  breakdown={breakdown}
-                  milestones={progress?.milestones[list.id] || []}
-                  onPlay={onPlay}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="mb-6 relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <input
-          type="text"
-          placeholder="Buscar listas por nombre o concepto..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition shadow-sm"
+      {lastPlayedId && currentList && (
+        <DashboardContinueBanner
+          currentList={currentList}
+          lastPlayedId={lastPlayedId}
+          onPlay={onPlay}
         />
-      </div>
+      )}
+
+      <DashboardToolbar
+        onOpenYouTube={handleOpenYouTube}
+        onOpenDeckStore={handleOpenDeckStore}
+        onCreateEmpty={handleCreateEmpty}
+        createDisabled={createDisabled}
+        createTitle={createTitle}
+      />
+
+      <RecentListsStrip lists={recentLists} onPlay={onPlay} />
+
+      <BigListsGrid
+        lists={bigLists}
+        milestones={progress?.milestones ?? {}}
+        onPlay={onPlay}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+
+      <DashboardSearchBar value={searchTerm} onChange={setSearchTerm} />
 
       {isCreating && (
-        <div className="mb-8 bg-white p-6 rounded-xl border border-indigo-100 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
-          <form onSubmit={handleCreate}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la Lista</label>
-                <input 
-                  type="text" 
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="ej: Verbos Irregulares"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Concepto (Par)</label>
-                <input 
-                  type="text" 
-                  value={newConcept}
-                  onChange={(e) => setNewConcept(e.target.value)}
-                  placeholder="ej: Inglés / Español"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <button 
-                type="button"
-                onClick={() => setShowBulk(!showBulk)}
-                className="text-indigo-600 text-sm font-semibold flex items-center gap-1 hover:underline mb-2"
-              >
-                {showBulk ? '− Quitar datos masivos' : '+ Pegar lista CSV / Excel ahora'}
-              </button>
-              
-              {showBulk && (
-                <div className="animate-in fade-in zoom-in-95 duration-200">
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      type="button"
-                      onClick={() => setImportTab('paste')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'paste' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
-                    >
-                      Pegar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImportTab('upload')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${importTab === 'upload' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:text-indigo-600'}`}
-                    >
-                      Subir archivo
-                    </button>
-                  </div>
-                  {importTab === 'paste' && (
-                    <>
-                      <p className="text-xs text-gray-400 mb-2">Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".</p>
-                      <textarea 
-                        value={bulkData}
-                        onChange={(e) => setBulkData(e.target.value)}
-                        placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
-                        className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
-                      />
-                    </>
-                  )}
-                  {importTab === 'upload' && (
-                    <div className="flex flex-col items-center gap-2 py-3">
-                      <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isReadingFile}
-                        className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-wait"
-                      >
-                        {isReadingFile ? 'Leyendo archivo...' : 'Elegir archivo CSV'}
-                      </button>
-                      {selectedFileName && <p className="text-xs font-semibold text-gray-600">Archivo: {selectedFileName}</p>}
-                      {fileAssociations.length > 0 && (
-                        <div className="flex items-center gap-3">
-                          <p className="text-xs font-semibold text-emerald-600">{fileAssociations.length} tarjetas listas para crear</p>
-                          <button type="button" onClick={() => { setFileAssociations([]); setSelectedFileName(null); }} className="text-xs text-gray-500 hover:text-red-500 underline transition">Quitar</button>
-                        </div>
-                      )}
-                      <p className="text-[10px] text-gray-400">Formato .csv con "Término, Definición" por línea. El encabezado se detecta y se ignora automáticamente.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <button 
-                type="button"
-                onClick={() => { setIsCreating(false); resetBulkInputs(); setShowBulk(false); }}
-                className="px-6 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md"
-              >
-                Crear y Empezar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {filteredLists.length === 0 && !isCreating ? (
-        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-900">No hay listas aún</h3>
-          <p className="text-gray-500 mt-2">Crea tu primera lista para empezar a estudiar.</p>
-        </div>
-      ) : filteredLists.length === 0 && searchTerm ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">No se encontraron resultados</h3>
-          <p className="text-gray-500 mt-1">Prueba con términos diferentes.</p>
-          <button onClick={() => setSearchTerm('')} className="mt-4 text-indigo-600 font-bold hover:underline">Ver todas las listas</button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLists.map(list => {
-            const allAssociations = list.associations || [];
-            const activeAssociations = allAssociations.filter((a: any) => !a.isArchived);
-            const archivedCount = allAssociations.filter((a: any) => a.isArchived).length;
-            const totalCount = allAssociations.length;
-            const canPlay = activeAssociations.length > 0;
-            const achievementPercent = totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
-            const isComplete = achievementPercent === 100;
-
-            return (
-              <div key={list.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
-                    {list.concept}
-                  </span>
-                  <button onClick={() => onDelete(list.id)} className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
-                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-gray-500 text-sm">
-                    {activeAssociations.length} pairs
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className={`text-sm font-bold ${isComplete ? 'text-emerald-600' : 'text-slate-600'}`}>
-                    {archivedCount} / {totalCount}
-                  </span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                    logro {achievementPercent}%
-                  </span>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => onPlay(list.id)} disabled={!canPlay} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
-                    Study
-                  </button>
-                  <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
-                    Edit
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {showYouTubeModal && (
-        <CreateYouTubeDeckModal
-          onClose={() => setShowYouTubeModal(false)}
-          onSuccess={(result) => {
-            setShowYouTubeModal(false);
-            onYouTubeSuccess?.(result);
-          }}
+        <CreateListForm
+          newName={newName}
+          setNewName={setNewName}
+          newConcept={newConcept}
+          setNewConcept={setNewConcept}
+          showBulk={importer.showBulk}
+          setShowBulk={importer.setShowBulk}
+          importTab={importer.importTab}
+          setImportTab={importer.setImportTab}
+          bulkData={importer.bulkData}
+          setBulkData={importer.setBulkData}
+          fileInputRef={importer.fileInputRef}
+          isReadingFile={importer.isReadingFile}
+          selectedFileName={importer.selectedFileName}
+          fileAssociations={importer.fileAssociations}
+          onChooseFile={handleChooseFile}
+          onFileChange={importer.handleFileChange}
+          onRemoveUploadedFile={importer.removeUploadedFile}
+          onCancel={handleCancelCreate}
+          onSubmit={handleSubmitCreate}
         />
+      )}
+
+      {filteredLists.length === 0 ? (
+        <DashboardEmptyState
+          hasSearchTerm={Boolean(searchTerm)}
+          onClearSearch={() => setSearchTerm("")}
+        />
+      ) : (
+        <ListGrid lists={filteredLists} onPlay={onPlay} onEdit={onEdit} onDelete={onDelete} />
+      )}
+
+      {showYouTubeModal && (
+        <CreateYouTubeDeckModal onClose={handleCloseYouTube} onSuccess={handleYouTubeSuccess} />
       )}
     </div>
   );
