@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import type { PlayerPhase, PlayerStatus } from "../types/player-controls";
 import type { useGameVoice } from "../hooks/voice/useGameVoice";
+import type { CycleMiniStats } from "./cycle-mini-bar-props";
 
 export type GameVoice = ReturnType<typeof useGameVoice>;
 
@@ -80,6 +81,7 @@ export interface CardStageProps {
   cycleColorName: string;
   cycleColorClass: string;
   cycleStats: CardStageCounters;
+  cycleMiniStats: CycleMiniStats;
   currentAssociation: Association;
   currentCycle: number;
   displayTerm: string;

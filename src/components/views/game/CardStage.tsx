@@ -16,6 +16,7 @@ export function CardStage(props: CardStageProps) {
     cycleColorName,
     cycleColorClass,
     cycleStats,
+    cycleMiniStats,
     currentAssociation,
     currentCycle,
     displayTerm,
@@ -179,7 +180,7 @@ export function CardStage(props: CardStageProps) {
           />
         )}
         {isMobile && (
-          <CycleProgress gameState={gameState} cycleColorName={cycleColorName} isMobile={isMobile} />
+          <CycleProgress gameState={gameState} cycleColorName={cycleColorName} isMobile={isMobile} cycleMiniStats={cycleMiniStats} />
         )}
         <AttemptList
           attempts={attempts}

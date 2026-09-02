@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect, useRef } from "react";
 import { joinDefinitions, parseDefinitions } from "../../utils/normalizeAssociation";
 import type { Association, AssociationList, Attempt, GameCycle, GameState } from "../../types";
 import { useGameLogic } from "./useGameLogic";
+import type { EffectType } from "../../effects/types";
 
 const CYCLE_COLOR_MAP: Record<GameCycle, string> = {
   1: "sky",
@@ -35,6 +36,7 @@ export interface UseGameViewGameplayArgs {
   isPracticeMode: boolean;
   actions: ReturnType<typeof useGameLogic>["actions"];
   onUpdateAssociations: (associations: Association[]) => Promise<void>;
+  effectTrigger?: (type: EffectType, options?: any) => void;
 }
 
 export interface GameViewGameplay {
@@ -46,6 +48,7 @@ export interface GameViewGameplay {
   voiceTermLang?: string;
   voiceDefLang?: string;
   cycleStats: { pending: number; correct: number };
+  cycleMiniStats: { cycle: GameCycle; pending: number; correct: number; total: number; isComplete: boolean };
   cycleColorName: string;
   cycleColorClass: string;
   cycle4Count: number;
@@ -72,9 +75,13 @@ export function useGameViewGameplay({
   isPracticeMode,
   actions,
   onUpdateAssociations,
+  effectTrigger,
 }: UseGameViewGameplayArgs): GameViewGameplay {
   const isReversed = list.settings.flipOrder === "reversed";
   const remainingCount = gameState.remainingCount ?? 0;
+  const prevFeedbackRef = useRef<typeof feedback>('none');
+  const currentAssociationRef = useRef(currentAssociation);
+  currentAssociationRef.current = currentAssociation;
 
   const displayTerm = currentAssociation
     ? isReversed
@@ -104,6 +111,23 @@ export function useGameViewGameplay({
     correct: correctCount,
   };
 
+  const cycleMiniStats = useMemo(() => {
+    const cycle = gameState.globalCycle as GameCycle;
+    const inCycle = gameState.associations.filter((a) => a.currentCycle === cycle);
+    const correct = inCycle.filter(
+      (a) => a.status === "correct" || a.isLearned === true,
+    ).length;
+    const total = inCycle.length;
+    const pending = total - correct;
+    return {
+      cycle,
+      pending,
+      correct,
+      total,
+      isComplete: total > 0 && pending === 0,
+    };
+  }, [gameState.associations, gameState.globalCycle]);
+
   const cycleColorName = CYCLE_COLOR_MAP[gameState.globalCycle as GameCycle] || "slate";
   const cycleColorClass = getCycleColorClass(cycleColorName);
   const cycle4Count = gameState.associations.filter((a) => a.currentCycle === 4).length;
@@ -123,6 +147,27 @@ export function useGameViewGameplay({
   const handleCheckAnswer = useCallback(() => {
     actions.checkAnswer();
   }, [actions]);
+
+  useEffect(() => {
+    const prev = prevFeedbackRef.current;
+    if (prev === 'none' && feedback === 'correct' && effectTrigger) {
+      if (currentAssociationRef.current?.currentCycle === 1) {
+        effectTrigger('aprendida' as EffectType, {
+          intensity: 'intenso',
+          message: '🎉 ¡Aprendida!',
+        });
+      } else {
+        effectTrigger('pop' as EffectType, {
+          intensity: 'sutil',
+        });
+      }
+    } else if (prev === 'none' && feedback === 'incorrect' && effectTrigger) {
+      effectTrigger('shake' as EffectType, {
+        intensity: 'normal',
+      });
+    }
+    prevFeedbackRef.current = feedback;
+  }, [feedback, effectTrigger]);
 
   const handleUpdateExpectedAnswer = useCallback(
     async (associationId: string, field: "term" | "definition", value: string) => {
@@ -144,6 +189,7 @@ export function useGameViewGameplay({
     voiceTermLang,
     voiceDefLang,
     cycleStats,
+    cycleMiniStats,
     cycleColorName,
     cycleColorClass,
     cycle4Count,

@@ -21,6 +21,7 @@ import { useGameViewEffects } from "../../hooks/game/useGameViewEffects";
 import { useGameViewGameplay } from "../../hooks/game/useGameViewGameplay";
 import { useGameViewActions } from "../../hooks/game/useGameViewActions";
 import { useNameEditor } from "../../hooks/game/useNameEditor";
+import { useGameEffect } from "../../hooks/useGameEffect";
 import { GameHeaderBar } from "./game/GameHeaderBar";
 import { GameHeaderMobileToggle } from "./game/GameHeaderMobileToggle";
 import { CardStage } from "./game/CardStage";
@@ -75,6 +76,23 @@ export const GameView: React.FC<GameViewProps> = ({
     isGameFinished: gameState.isFinished,
   });
 
+  const countersRef = useRef<HTMLDivElement>(null);
+  const correctRef = useRef<HTMLSpanElement>(null);
+  const questionCardRef = useRef<HTMLDivElement>(null);
+
+  const { trigger: triggerEffect } = useGameEffect({
+    containerRef: countersRef,
+    targetRef: correctRef,
+    sourceRef: questionCardRef,
+  });
+
+  const triggerRef = useRef(triggerEffect);
+  triggerRef.current = triggerEffect;
+
+  const handleGameEffect = useCallback((type: any, options?: any) => {
+    triggerRef.current(type, options);
+  }, []);
+
   const gameplay = useGameViewGameplay({
     list,
     gameState,
@@ -85,6 +103,7 @@ export const GameView: React.FC<GameViewProps> = ({
     isPracticeMode,
     actions,
     onUpdateAssociations,
+    effectTrigger: handleGameEffect,
   });
 
   const handleVoiceCommand = useCallback(
@@ -309,83 +328,92 @@ export const GameView: React.FC<GameViewProps> = ({
       {state.isVoiceActive && useGameStore.getState().settings.audioRecordingEnabled && (
         <RecordingWarningBanner />
       )}
-      <div className={`flex flex-col lg:flex-row gap-6 items-start ${immersive.isVisible ? "mt-2" : ""}`}>
+      <div ref={countersRef} className={`flex flex-col lg:flex-row gap-6 items-start relative ${immersive.isVisible ? "mt-2" : ""}`}>
         <div className="flex-1 w-full flex flex-col items-center">
-          <CardStage
-            cycleColorName={gameplay.cycleColorName}
-            cycleColorClass={gameplay.cycleColorClass}
-            cycleStats={gameplay.cycleStats}
-            currentAssociation={currentAssociation}
-            currentCycle={currentAssociation?.currentCycle ?? 1}
-            displayTerm={gameplay.displayTerm}
-            displayDef={gameplay.displayDef}
-            labelTerm={gameplay.labelTerm}
-            labelDef={gameplay.labelDef}
-            voiceTermLang={gameplay.voiceTermLang}
-            voiceDefLang={gameplay.voiceDefLang}
-            userInput={userInput}
-            feedback={feedback}
-            similarity={similarity}
-            lastAttempt={lastAttempt}
-            attemptCount={gameplay.attemptCount}
-            isPracticeMode={isPracticeMode}
-            showHints={list.settings.showHints !== false && !state.isPresentationMode}
-            revealed={isRevealed}
-            isNearComplete={gameplay.isNearComplete}
-            isTransitioning={gameplay.isTransitioning}
-            isPresentationMode={state.isPresentationMode}
-            isVoiceMode={state.isVoiceMode}
-            isVoiceActive={state.isVoiceActive}
-            isCountdownRunning={state.isCountdownRunning}
-            isMobile={isMobile}
-            showRevealWarning={state.showRevealWarning}
-            showEditDeckButton={Boolean(onViewList)}
-            gameMode={list.settings.mode}
-            list={list}
-            detectedVoiceCommand={state.detectedVoiceCommand}
-            engineDisclaimer={gameplay.engineDisclaimer}
-            engineFoundAnswers={gameplay.engineFoundAnswers}
-            attempts={attempts}
-            revealedAssociations={gameState.revealedAssociations}
-            associations={gameState.associations}
-            selectedAttemptId={state.selectedAttempt?.timestamp}
-            gameState={gameState}
-            voice={voice}
-            practice={{
-              status: practicePlayer.status,
-              phase: practicePlayer.phase,
-              remainingSeconds: practicePlayer.remainingSeconds,
-              canPrev: gameState.currentIndex > 0,
-              onPlay: practicePlayer.start,
-              onPause: practicePlayer.pause,
-              onStop: practicePlayer.stop,
-              onPrev: actions.goBack,
-            }}
-            inputRef={inputRef}
-            onUserInput={actions.setUserInput}
-            onStartEdit={handlers.handleStartEdit}
-            onSpeakAnswer={handleSpeakAnswer}
-            onCheckAnswer={gameplay.handleCheckAnswer}
-            onPass={actions.handlePass}
-            onGoBack={actions.goBack}
-            onReveal={actions.reveal}
-            onCorrect={actions.handleCorrect}
-            onShowRevealWarning={state.showRevealWarningBanner}
-            onConfirmReveal={() => {
-              state.dismissRevealWarningBanner();
-              actions.reveal();
-            }}
-            onToggleListening={handlers.handleToggleListening}
-            onStopVoice={handlers.handleStopVoice}
-            onSelectAttempt={handlers.handleSelectAttempt}
-            onCloseAttemptModal={handlers.handleCloseAttemptModal}
-            onCountdownComplete={handleCountdownComplete}
-            onEditDeck={handlers.handleEditDeck}
-            onUpdateExpectedAnswer={gameplay.handleUpdateExpectedAnswer}
-          />
+          <div ref={questionCardRef} className="w-full">
+            <CardStage
+              cycleColorName={gameplay.cycleColorName}
+              cycleColorClass={gameplay.cycleColorClass}
+              cycleStats={gameplay.cycleStats}
+              cycleMiniStats={gameplay.cycleMiniStats}
+              currentAssociation={currentAssociation}
+              currentCycle={currentAssociation?.currentCycle ?? 1}
+              displayTerm={gameplay.displayTerm}
+              displayDef={gameplay.displayDef}
+              labelTerm={gameplay.labelTerm}
+              labelDef={gameplay.labelDef}
+              voiceTermLang={gameplay.voiceTermLang}
+              voiceDefLang={gameplay.voiceDefLang}
+              userInput={userInput}
+              feedback={feedback}
+              similarity={similarity}
+              lastAttempt={lastAttempt}
+              attemptCount={gameplay.attemptCount}
+              isPracticeMode={isPracticeMode}
+              showHints={list.settings.showHints !== false && !state.isPresentationMode}
+              revealed={isRevealed}
+              isNearComplete={gameplay.isNearComplete}
+              isTransitioning={gameplay.isTransitioning}
+              isPresentationMode={state.isPresentationMode}
+              isVoiceMode={state.isVoiceMode}
+              isVoiceActive={state.isVoiceActive}
+              isCountdownRunning={state.isCountdownRunning}
+              isMobile={isMobile}
+              showRevealWarning={state.showRevealWarning}
+              showEditDeckButton={Boolean(onViewList)}
+              gameMode={list.settings.mode}
+              list={list}
+              detectedVoiceCommand={state.detectedVoiceCommand}
+              engineDisclaimer={gameplay.engineDisclaimer}
+              engineFoundAnswers={gameplay.engineFoundAnswers}
+              attempts={attempts}
+              revealedAssociations={gameState.revealedAssociations}
+              associations={gameState.associations}
+              selectedAttemptId={state.selectedAttempt?.timestamp}
+              gameState={gameState}
+              voice={voice}
+              practice={{
+                status: practicePlayer.status,
+                phase: practicePlayer.phase,
+                remainingSeconds: practicePlayer.remainingSeconds,
+                canPrev: gameState.currentIndex > 0,
+                onPlay: practicePlayer.start,
+                onPause: practicePlayer.pause,
+                onStop: practicePlayer.stop,
+                onPrev: actions.goBack,
+              }}
+              inputRef={inputRef}
+              onUserInput={actions.setUserInput}
+              onStartEdit={handlers.handleStartEdit}
+              onSpeakAnswer={handleSpeakAnswer}
+              onCheckAnswer={gameplay.handleCheckAnswer}
+              onPass={actions.handlePass}
+              onGoBack={actions.goBack}
+              onReveal={actions.reveal}
+              onCorrect={actions.handleCorrect}
+              onShowRevealWarning={state.showRevealWarningBanner}
+              onConfirmReveal={() => {
+                state.dismissRevealWarningBanner();
+                actions.reveal();
+              }}
+              onToggleListening={handlers.handleToggleListening}
+              onStopVoice={handlers.handleStopVoice}
+              onSelectAttempt={handlers.handleSelectAttempt}
+              onCloseAttemptModal={handlers.handleCloseAttemptModal}
+              onCountdownComplete={handleCountdownComplete}
+              onEditDeck={handlers.handleEditDeck}
+              onUpdateExpectedAnswer={gameplay.handleUpdateExpectedAnswer}
+            />
+          </div>
         </div>
         {!isMobile && (
-          <CycleProgress gameState={gameState} cycleColorName={gameplay.cycleColorName} isMobile={isMobile} />
+          <CycleProgress
+            gameState={gameState}
+            cycleColorName={gameplay.cycleColorName}
+            isMobile={isMobile}
+            learnedCountRef={correctRef}
+            cycleMiniStats={gameplay.cycleMiniStats}
+          />
         )}
       </div>
       {state.isEditingCard && currentAssociation && (
