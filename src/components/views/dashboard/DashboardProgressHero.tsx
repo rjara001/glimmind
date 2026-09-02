@@ -11,19 +11,19 @@ export function DashboardProgressHero({ stats }: DashboardProgressHeroProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
           <p className="text-white/80 text-sm">Total Palabras</p>
-          <p className="text-3xl font-bold text-white">{stats.totalWords}</p>
+          <p className="text-2xl font-bold text-white whitespace-nowrap">{stats.totalWords}</p>
         </div>
         <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
           <p className="text-white/80 text-sm">Aprendidas</p>
-          <p className="text-3xl font-bold text-white">{stats.totalLearned}</p>
+          <p className="text-2xl font-bold text-white whitespace-nowrap">{stats.totalLearned}</p>
         </div>
         <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
           <p className="text-white/80 text-sm">Por Aprender</p>
-          <p className="text-3xl font-bold text-white">{stats.remaining}</p>
+          <p className="text-2xl font-bold text-white whitespace-nowrap">{stats.remaining}</p>
         </div>
         <div className="bg-white/20 rounded-xl p-4 backdrop-blur">
           <p className="text-white/80 text-sm">Completado</p>
-          <p className="text-3xl font-bold text-white">{stats.percentage}%</p>
+          <p className="text-2xl font-bold text-white whitespace-nowrap">{stats.percentage}%</p>
         </div>
       </div>
       <div className="mt-4 h-3 bg-white/20 rounded-full overflow-hidden">
