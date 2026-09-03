@@ -48,9 +48,24 @@ function toDefinitionArray(value: string | string[]): string[] {
 /**
  * Parses an editor-edited definition string into an array, splitting on `|`.
  * Used by the grid when the user edits a definition cell.
+ *
+ * Unlike normalizeAssociation's internal splitting, this intentionally does NOT
+ * trim whitespace from each part. Trimming would strip spaces the user is
+ * actively typing (e.g. "la " becoming "la"), breaking live editing of
+ * multi-word definitions. Whitespace cleanup happens later during
+ * normalizeAssociations (via splitParts) when the list is saved.
  */
 export function parseDefinitions(text: string): string[] {
-  return dedupe(text.split(PIPE_SEPARATOR).map((part) => part.trim()));
+  const parts = text.split(PIPE_SEPARATOR);
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const part of parts) {
+    const key = part.toLowerCase();
+    if (key.length === 0 || seen.has(key)) continue;
+    seen.add(key);
+    result.push(part);
+  }
+  return result;
 }
 
 /**
