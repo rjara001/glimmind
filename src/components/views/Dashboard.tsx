@@ -50,7 +50,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const isPremium = quota?.tier === "premium";
 
   const importer = useDeckImporter(
-    newConcept,
     useCallback(
       (message: string) => showToast(message, "success"),
       [showToast],
@@ -233,6 +232,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           setImportTab={importer.setImportTab}
           bulkData={importer.bulkData}
           setBulkData={importer.setBulkData}
+          parsedData={importer.parsedData}
           fileInputRef={importer.fileInputRef}
           isReadingFile={importer.isReadingFile}
           selectedFileName={importer.selectedFileName}

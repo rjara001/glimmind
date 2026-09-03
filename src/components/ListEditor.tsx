@@ -5,7 +5,7 @@ import { normalizeAssociations, AssociationLike, parseDefinitions } from '../uti
 import { SmartGroupModal } from '../components/modals/SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
 import { QuotaService } from '../services/quotaService';
-import { downloadAssociationsCsv, parseCsvPairs, isHeaderPair } from '../utils/csv';
+import { downloadAssociationsCsv, parseForPreview } from '../utils/csv';
 import { useToast } from '../components/layout/Toast';
 import { QuotaAlert } from '../components/layout/QuotaAlert';
 import { MIN_GROUP_SIZE } from '../constants/limits';
@@ -56,8 +56,6 @@ interface ListEditorProps {
 export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onInitialEditConsumed, onSave, onBack, onBackLabel = 'Volver al dashboard', onCreateMultiple }) => {
   const { showToast } = useToast();
   const [showBulk, setShowBulk] = useState(false);
-  const [bulkText, setBulkText] = useState('');
-  const [isReadingFile, setIsReadingFile] = useState(false);
   const [editList, setEditList] = useState<AssociationList>(list);
   const [searchTerm, setSearchTerm] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
@@ -74,7 +72,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
   const conceptParts = editList.concept.split('/');
   const termHeader = conceptParts[0] || 'Term';
   const definitionHeader = conceptParts[1] || 'Definition';
-  const csvHeader: [string, string] = [termHeader, definitionHeader];
+  const contextHeader = conceptParts[2] || 'Context';
+  const csvHeader: [string, string, string] = [termHeader, definitionHeader, contextHeader];
 
   const quota = useGameStore(state => state.quota);
   const lists = useGameStore(state => state.lists);
@@ -179,8 +178,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
     }
   }, [list, cleanupAndSave]);
 
-  const handleBulkAdd = () => {
-    if (!bulkText.trim()) return;
+  const handleBulkAdd = (text: string) => {
+    if (!text.trim()) return;
     const { quota } = useGameStore.getState();
     const tier = quota?.tier || 'free';
     const status = QuotaService.getStatus(lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0), tier);
@@ -188,11 +187,12 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
       showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
       return;
     }
-    const pairs = parseCsvPairs(bulkText);
-    const newAssocs: Association[] = normalizeAssociations(pairs.map<AssociationLike>(pair => ({
+    const preview = parseForPreview(text);
+    const newAssocs: Association[] = normalizeAssociations(preview.rows.map<AssociationLike>(triple => ({
       id: crypto.randomUUID(),
-      term: pair.term,
-      definition: pair.definition,
+      term: triple.value1,
+      definition: triple.value2,
+      context: triple.context,
       currentCycle: 1,
       status: 'pending' as const,
       isLearned: false,
@@ -202,61 +202,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
     const skippedCount = newAssocs.length - uniqueNewAssocs.length;
     const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
     if (saved) {
-      setBulkText('');
       setShowBulk(false);
       const message = skippedCount > 0
         ? `Se importaron ${uniqueNewAssocs.length} tarjetas (${skippedCount} duplicadas omitidas).`
         : `Se importaron ${uniqueNewAssocs.length} tarjetas.`;
       showToast(message, 'success');
-    }
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const { quota } = useGameStore.getState();
-    const tier = quota?.tier || 'free';
-    const status = QuotaService.getStatus(lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0), tier);
-    if (status.level === 'blocked') {
-      showToast(`Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`, 'error');
-      return;
-    }
-    setIsReadingFile(true);
-    try {
-      const content = await file.text();
-      const pairs = parseCsvPairs(content);
-      const skippedHeader = pairs.length > 0 && isHeaderPair(pairs[0], termHeader, definitionHeader);
-      const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
-      if (dataPairs.length === 0) {
-        alert('El archivo no contiene tarjetas válidas.');
-        return;
-      }
-      const newAssocs: Association[] = normalizeAssociations(dataPairs.map<AssociationLike>(pair => ({
-        id: crypto.randomUUID(),
-        term: pair.term,
-        definition: pair.definition,
-        currentCycle: 1,
-        status: 'pending' as const,
-        isLearned: false,
-        isArchived: false,
-      })));
-      const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
-      const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-      const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
-      if (saved) {
-        const message = skippedCount > 0
-          ? `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}" (${skippedCount} duplicadas omitidas).`
-          : `Se importaron ${uniqueNewAssocs.length} tarjetas de "${file.name}"`;
-        showToast(message, 'success');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo leer el archivo.';
-      alert(`No se pudo importar el archivo: ${message}`);
-    } finally {
-      setIsReadingFile(false);
-      if (event.target) {
-        event.target.value = '';
-      }
     }
   };
 
@@ -604,11 +554,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
         {showBulk && (
           <BulkImport
             onBulkAdd={handleBulkAdd}
-            onFileChange={(file) => {
-              const event = { target: { files: [file] }, preventDefault: () => {} } as unknown as React.ChangeEvent<HTMLInputElement>;
-              handleFileChange(event);
-            }}
-            isReadingFile={isReadingFile}
           />
         )}
 

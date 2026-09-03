@@ -1,6 +1,8 @@
 import type { ChangeEvent, RefObject } from "react";
 import type { Association } from "../../../types";
+import type { ImportPreviewData } from "../../../types/import-deck";
 import type { ImportTab } from "../../../hooks/dashboard/useDeckImporter";
+import { MAX_PREVIEW_ROWS, renderMappingBadge, renderPreviewTable } from "../../../utils/importPreview";
 
 interface BulkImportPanelProps {
   showBulk: boolean;
@@ -8,6 +10,7 @@ interface BulkImportPanelProps {
   setImportTab: (value: ImportTab) => void;
   bulkData: string;
   setBulkData: (value: string) => void;
+  parsedData: ImportPreviewData | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isReadingFile: boolean;
   selectedFileName: string | null;
@@ -23,6 +26,7 @@ export function BulkImportPanel({
   setImportTab,
   bulkData,
   setBulkData,
+  parsedData,
   fileInputRef,
   isReadingFile,
   selectedFileName,
@@ -32,6 +36,10 @@ export function BulkImportPanel({
   onRemoveUploadedFile,
 }: BulkImportPanelProps) {
   if (!showBulk) return null;
+
+  const showPreview = importTab === "paste" || (parsedData !== null && parsedData.rows.length > 0);
+  const hasParsedData = parsedData !== null && (parsedData.rows.length > 0 || parsedData.hasHeader);
+  const hasText = bulkData.trim().length > 0;
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-200">
@@ -55,13 +63,14 @@ export function BulkImportPanel({
       {importTab === "paste" && (
         <>
           <p className="text-xs text-gray-400 mb-2">
-            Pega tus datos aquí (Formato: Término, Definición). Puedes usar Tab, "," o ";".
+            Pega tus datos aquí (Formato: Value1, Value2, Contexto). Puedes usar Tab, "," o ";".
+            Las primeras 3 columnas se toman en orden estricto.
           </p>
           <textarea
             value={bulkData}
             onChange={(e) => setBulkData(e.target.value)}
-            placeholder="correr, run&#10;saltar, jump&#10;hablar, talk"
-            className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm"
+            placeholder="Abandon,Abandonar,They had to abandon the project&#10;Absolutely,Absolutamente,This is crucial for scaling"
+            className="w-full h-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-sm resize-y"
           />
         </>
       )}
@@ -101,10 +110,54 @@ export function BulkImportPanel({
             </div>
           )}
           <p className="text-[10px] text-gray-400">
-            Formato .csv con "Término, Definición" por línea. El encabezado se detecta y se ignora
+            Formato .csv con columnas Value1, Value2, Contexto. El encabezado se detecta y se ignora
             automáticamente.
           </p>
         </div>
+      )}
+
+      {showPreview && (
+        <>
+          {hasParsedData ? (
+            <div
+              className="mapping-badge-preview mt-3 mb-2"
+              dangerouslySetInnerHTML={{ __html: renderMappingBadge(parsedData) }}
+            />
+          ) : (
+            <div
+              className="mt-3 mb-2 text-xs text-gray-400"
+              dangerouslySetInnerHTML={{
+                __html: !hasText
+                  ? '<span class="flex items-center gap-1">📋 Pega tu texto para ver la vista previa</span>'
+                  : '<span class="flex items-center gap-1">📋 No se detectaron datos</span>',
+              }}
+            />
+          )}
+
+          {hasParsedData && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden mb-3 bg-gray-50/50">
+              <div
+                className="overflow-y-auto max-h-[320px]"
+                dangerouslySetInnerHTML={{ __html: renderPreviewTable(parsedData) }}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-xs text-gray-500">
+            <span>
+              📊 <span className="font-semibold text-gray-700">{parsedData?.rows.length ?? 0}</span> filas detectadas
+              {parsedData && parsedData.rows.length > MAX_PREVIEW_ROWS &&
+                ` (mostrando primeras ${MAX_PREVIEW_ROWS})`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setBulkData("")}
+              className="text-xs text-gray-500 hover:text-red-500 underline transition"
+            >
+              🗑️ Limpiar
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

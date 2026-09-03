@@ -16,7 +16,7 @@ export const SmartGroupModal: React.FC<SmartGroupModalProps> = ({ originalList, 
   const sourceAssociations = originalList.associations.filter(a => !a.isArchived);
 
   const conceptParts = originalList.concept.split('/');
-  const csvHeader: [string, string] = [conceptParts[0] || 'Term', conceptParts[1] || 'Definition'];
+  const csvHeader: [string, string, string] = [conceptParts[0] || 'Term', conceptParts[1] || 'Definition', conceptParts[2] || 'Context'];
 
   const toggleGroup = (index: number) => {
     setSelectedGroups(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);

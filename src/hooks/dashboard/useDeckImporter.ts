@@ -1,13 +1,15 @@
 import { useCallback, useRef, useState, type ChangeEvent, type RefObject } from "react";
 import type { Association } from "../../types";
+import type { ImportPreviewData } from "../../types/import-deck";
 import { normalizeAssociations, type AssociationLike } from "../../utils/normalizeAssociation";
-import { parseCsvPairs, isHeaderPair } from "../../utils/csv";
+import { parseForPreview } from "../../utils/csv";
 
 export type ImportTab = "paste" | "upload";
 
 export interface DeckImporterState {
   bulkData: string;
   setBulkData: (value: string) => void;
+  parsedData: ImportPreviewData | null;
   showBulk: boolean;
   setShowBulk: (value: boolean) => void;
   importTab: ImportTab;
@@ -25,11 +27,11 @@ export interface DeckImporterState {
 }
 
 export function useDeckImporter(
-  newConcept: string,
   onImportSuccess: (message: string) => void,
   onImportError: (message: string) => void,
 ): DeckImporterState {
-  const [bulkData, setBulkData] = useState("");
+  const [bulkData, setBulkDataState] = useState("");
+  const [parsedData, setParsedData] = useState<ImportPreviewData | null>(null);
   const [showBulk, setShowBulk] = useState(false);
   const [importTab, setImportTab] = useState<ImportTab>("paste");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -37,14 +39,20 @@ export function useDeckImporter(
   const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const setBulkData = useCallback((value: string) => {
+    setBulkDataState(value);
+    setParsedData(parseForPreview(value));
+  }, []);
+
   const parseBulkData = useCallback((text: string): Association[] => {
-    const pairs = parseCsvPairs(text);
-    const associations: AssociationLike[] = pairs.map((pair) => ({
+    const preview = parseForPreview(text);
+    const associations: AssociationLike[] = preview.rows.map((triple) => ({
       id: crypto.randomUUID(),
-      term: pair.term,
-      definition: pair.definition,
+      term: triple.value1,
+      definition: triple.value2,
+      context: triple.context,
       currentCycle: 1,
-      status: "pending",
+      status: "pending" as const,
       isLearned: false,
       isArchived: false,
     }));
@@ -60,25 +68,22 @@ export function useDeckImporter(
       setIsReadingFile(true);
       try {
         const content = await file.text();
-        const pairs = parseCsvPairs(content);
-        const conceptParts = newConcept.split("/");
-        const skippedHeader =
-          pairs.length > 0 &&
-          isHeaderPair(pairs[0], conceptParts[0] || "", conceptParts[1] || "");
-        const dataPairs = skippedHeader ? pairs.slice(1) : pairs;
+        const preview = parseForPreview(content);
+        setParsedData(preview);
 
-        if (dataPairs.length === 0) {
+        if (preview.rows.length === 0) {
           onImportError("El archivo no contiene tarjetas válidas.");
           return;
         }
 
         const associations: Association[] = normalizeAssociations(
-          dataPairs.map<AssociationLike>((pair) => ({
+          preview.rows.map<AssociationLike>((triple) => ({
             id: crypto.randomUUID(),
-            term: pair.term,
-            definition: pair.definition,
+            term: triple.value1,
+            definition: triple.value2,
+            context: triple.context,
             currentCycle: 1,
-            status: "pending",
+            status: "pending" as const,
             isLearned: false,
             isArchived: false,
           })),
@@ -96,11 +101,12 @@ export function useDeckImporter(
         }
       }
     },
-    [newConcept, onImportError, onImportSuccess],
+    [onImportError, onImportSuccess],
   );
 
   const resetBulkInputs = useCallback(() => {
-    setBulkData("");
+    setBulkDataState("");
+    setParsedData(null);
     setFileAssociations([]);
     setSelectedFileName(null);
   }, []);
@@ -113,6 +119,7 @@ export function useDeckImporter(
   return {
     bulkData,
     setBulkData,
+    parsedData,
     showBulk,
     setShowBulk,
     importTab,

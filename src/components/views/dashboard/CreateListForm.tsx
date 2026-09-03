@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import type { Association } from "../../../types";
+import type { ImportPreviewData } from "../../../types/import-deck";
 import type { ImportTab } from "../../../hooks/dashboard/useDeckImporter";
 import type { RefObject } from "react";
 import { BulkImportPanel } from "./BulkImportPanel";
@@ -15,6 +16,7 @@ interface CreateListFormProps {
   setImportTab: (value: ImportTab) => void;
   bulkData: string;
   setBulkData: (value: string) => void;
+  parsedData: ImportPreviewData | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isReadingFile: boolean;
   selectedFileName: string | null;
@@ -37,6 +39,7 @@ export function CreateListForm({
   setImportTab,
   bulkData,
   setBulkData,
+  parsedData,
   fileInputRef,
   isReadingFile,
   selectedFileName,
@@ -90,6 +93,7 @@ export function CreateListForm({
             setImportTab={setImportTab}
             bulkData={bulkData}
             setBulkData={setBulkData}
+            parsedData={parsedData}
             fileInputRef={fileInputRef}
             isReadingFile={isReadingFile}
             selectedFileName={selectedFileName}
