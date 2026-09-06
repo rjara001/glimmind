@@ -40,10 +40,11 @@ const AppContent: React.FC = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const [youtubePreviewResult, setYoutubePreviewResult] = useState<VocabularyResult | null>(null);
-  const [pendingYouTube, setPendingYouTube] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingTextImport, setPendingTextImport] = useState<{ associations: Association[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingYouTube, setPendingYouTube] = useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingTextImport, setPendingTextImport] = useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   const historyRef = useRef<AppView[]>([]);
+  const tempIdCounter = useRef(0);
 
   const clearListContext = useCallback(() => {
     useGameStore.getState().setCurrentList(null);
@@ -112,18 +113,19 @@ const AppContent: React.FC = () => {
 
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
-      const { sourceRow, sourceUrl } = pendingYouTube.sourceMeta;
-      const tempList: AssociationList = {
-        id: `temp_${Date.now()}`,
+      const { chunks, deckNames, sourceMeta } = pendingYouTube;
+
+      const newLists: AssociationList[] = chunks.map((chunk, i) => ({
+        id: `temp_${tempIdCounter.current++}_${i}`,
         userId: user?.uid || GUEST_UID,
-        name: pendingYouTube.sourceMeta.title || `YouTube - ${sourceRow?.videoTitle || sourceUrl || 'Deck'}`,
+        name: deckNames[i],
         concept: 'value1 / value2',
-        associations: pendingYouTube.associations,
+        associations: chunk,
         isArchived: false,
-        sourceType: pendingYouTube.sourceMeta.sourceType,
-        sourceUrl: pendingYouTube.sourceMeta.sourceUrl,
-        rawSourceText: pendingYouTube.sourceMeta.rawSourceText,
-        sourceRow: pendingYouTube.sourceMeta.sourceRow,
+        sourceType: sourceMeta.sourceType,
+        sourceUrl: sourceMeta.sourceUrl,
+        rawSourceText: sourceMeta.rawSourceText,
+        sourceRow: sourceMeta.sourceRow,
         settings: {
           mode: 'training',
           flipOrder: 'normal',
@@ -133,25 +135,27 @@ const AppContent: React.FC = () => {
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
         },
-      };
-      useGameStore.getState().setCurrentList(tempList.id);
-      useGameStore.getState().setLists([...lists, tempList]);
+      }));
+      useGameStore.getState().setLists([...lists, ...newLists]);
+      useGameStore.getState().setCurrentList(newLists[0].id);
       setPendingYouTube(null);
     }
   }, [view, pendingYouTube, user, lists]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingTextImport) {
-      const tempList: AssociationList = {
-        id: `temp_${Date.now()}`,
+      const { chunks, deckNames, sourceMeta } = pendingTextImport;
+
+      const newLists: AssociationList[] = chunks.map((chunk, i) => ({
+        id: `temp_${tempIdCounter.current++}_${i}`,
         userId: user?.uid || GUEST_UID,
-        name: pendingTextImport.sourceMeta.title || `Texto Libre - ${(pendingTextImport.sourceMeta.rawSourceText || '').slice(0, 40) || 'Deck'}`,
+        name: deckNames[i],
         concept: 'value1 / value2',
-        associations: pendingTextImport.associations,
+        associations: chunk,
         isArchived: false,
         sourceType: 'raw_text',
         sourceUrl: undefined,
-        rawSourceText: pendingTextImport.sourceMeta.rawSourceText,
+        rawSourceText: sourceMeta.rawSourceText,
         sourceRow: undefined,
         settings: {
           mode: 'training',
@@ -162,9 +166,9 @@ const AppContent: React.FC = () => {
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
         },
-      };
-      useGameStore.getState().setCurrentList(tempList.id);
-      useGameStore.getState().setLists([...lists, tempList]);
+      }));
+      useGameStore.getState().setLists([...lists, ...newLists]);
+      useGameStore.getState().setCurrentList(newLists[0].id);
       setPendingTextImport(null);
     }
   }, [view, pendingTextImport, user, lists]);
@@ -268,8 +272,8 @@ const AppContent: React.FC = () => {
           )}
           {view === 'text-importer' && (
             <TextImporter
-              onSave={(associations, sourceMeta) => {
-                setPendingTextImport({ associations, sourceMeta });
+              onSave={(chunks, deckNames, sourceMeta) => {
+                setPendingTextImport({ chunks, deckNames, sourceMeta });
                 navigate('editor');
               }}
               onBack={goBack}
@@ -291,9 +295,9 @@ const AppContent: React.FC = () => {
             onClose={() => {
               setYoutubePreviewResult(null);
             }}
-            onAccept={(associations, sourceMeta) => {
+            onAccept={(chunks, deckNames, sourceMeta) => {
               setYoutubePreviewResult(null);
-              setPendingYouTube({ associations, sourceMeta });
+              setPendingYouTube({ chunks, deckNames, sourceMeta });
               navigate('editor');
             }}
           />
