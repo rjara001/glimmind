@@ -328,6 +328,7 @@ interface GameStore {
   // Actions - Lists
   setLists: (lists: AssociationList[]) => void;
   updateAssociations: (listId: string, associations: Association[]) => void;
+  markListCompleted: (listId: string) => Promise<void>;
   
   // Actions - Current List
   setCurrentList: (listId: string | null) => void;
@@ -443,10 +444,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         get().recordActivity(events);
       }
     }
-    const updatedLists = lists.map(l => 
+    const updatedLists = lists.map(l =>
       l.id === listId ? { ...l, associations } : l
     );
-    set({ 
+    set({
       lists: updatedLists,
       currentList: updatedLists.find(l => l.id === listId) || null
     });
@@ -457,6 +458,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().syncToCloud(listId).catch((error) => {
         console.error('[updateAssociations] syncToCloud failed:', error);
       });
+    }
+  },
+
+  markListCompleted: async (listId) => {
+    const { lists, user } = get();
+    const target = lists.find((l) => l.id === listId);
+    if (!target) return;
+    const now = Date.now();
+    const previousHistory = target.history ?? {};
+    if (previousHistory.completedAt) {
+      return;
+    }
+    const nextHistory = {
+      ...previousHistory,
+      completedAt: previousHistory.completedAt ?? now,
+      lastCompletedAt: now,
+      completedCount: (previousHistory.completedCount ?? 0) + 1,
+    };
+    const updatedLists = lists.map((l) =>
+      l.id === listId ? { ...l, history: nextHistory } : l,
+    );
+    set({
+      lists: updatedLists,
+      currentList: updatedLists.find((l) => l.id === listId) || null,
+    });
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
+    if (user && user.uid !== GUEST_UID) {
+      try {
+        const { listService } = await import('../services/firestoreService');
+        await listService.updateList(listId, { history: nextHistory });
+      } catch (error) {
+        console.error('[markListCompleted] cloud sync failed:', error);
+      }
     }
   },
   
@@ -834,12 +868,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const listToSave = pickLocalOrCloudList(localList, cloudList);
       console.log('[syncToCloud] chosen list assocCount=', listToSave.associations?.length || 0, 'updatedAt=', listToSave.updatedAt, 'ttsProvider=', listToSave.settings?.ttsProvider, 'voiceTermId=', listToSave.settings?.voiceTermId);
 
-      await listService.updateList(listToSave.id, {
-        name: listToSave.name,
-        concept: listToSave.concept,
-        associations: listToSave.associations,
-        settings: listToSave.settings,
-      });
+      try {
+        await listService.updateList(listToSave.id, {
+          name: listToSave.name,
+          concept: listToSave.concept,
+          associations: listToSave.associations,
+          settings: listToSave.settings,
+        });
+      } catch (error) {
+        console.error('[syncToCloud] updateList failed, creating new list:', error);
+        try {
+          const newId = await listService.createList({
+            name: listToSave.name,
+            concept: listToSave.concept,
+            associations: listToSave.associations,
+            settings: listToSave.settings,
+            userId: user.uid,
+            isArchived: false,
+            sourceType: listToSave.sourceType,
+            sourceUrl: listToSave.sourceUrl,
+            rawSourceText: listToSave.rawSourceText,
+            sourceRow: listToSave.sourceRow,
+          });
+          const freshLists = get().lists;
+          const updatedLists = freshLists.map(l => l.id === listId ? { ...l, id: newId } : l);
+          set({
+            lists: updatedLists,
+            ...(get().currentListId === listId
+              ? { currentListId: newId, currentList: updatedLists.find(l => l.id === newId) ?? null }
+              : {}),
+          });
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
+          return;
+        } catch (createError) {
+          console.error('[syncToCloud] createList also failed:', createError);
+          showToast('Error al sincronizar la lista. Se guardaron los cambios localmente.', 'error');
+        }
+      }
     })();
 
     syncToCloudInFlight.set(listId, run);
