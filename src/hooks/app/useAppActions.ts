@@ -62,6 +62,13 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
   }, [currentListId, updateAssociations]);
 
   const handlePlayList = useCallback((id: string) => {
+    const targetList = useGameStore.getState().lists.find((list) => list.id === id);
+    if (targetList?.isDraft) {
+      useGameStore.getState().setCurrentList(id);
+      navigate('editor');
+      return;
+    }
+
     useGameStore.getState().setCurrentList(id);
     localStorage.setItem(LAST_PLAYED_KEY, id);
     setLastPlayedId(id);
@@ -101,7 +108,65 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
     showToast(`Agregado a "${targetList.name}"`, 'success');
   }, [showToast]);
 
+  const handleSaveDraft = useCallback(async (draftList: AssociationList) => {
+    const { lists } = useGameStore.getState();
+    const existingDraft = lists.find((list) => list.id === draftList.id);
+    if (!existingDraft?.isDraft) return;
+
+    if (!user || user.uid === GUEST_ID) {
+      const savedList = { ...draftList, isDraft: false };
+      const currentLists = useGameStore.getState().lists;
+      setLists(currentLists.map((list) => (list.id === draftList.id ? savedList : list)));
+      useGameStore.getState().setCurrentList(savedList.id);
+      useGameStore.getState().loadQuota();
+      return;
+    }
+
+    const listData = {
+      userId: draftList.userId,
+      name: draftList.name,
+      concept: draftList.concept,
+      associations: draftList.associations,
+      isArchived: false,
+      settings: draftList.settings,
+      sourceType: draftList.sourceType,
+      sourceUrl: draftList.sourceUrl,
+      rawSourceText: draftList.rawSourceText,
+      sourceRow: draftList.sourceRow,
+    };
+
+    useGameStore.getState().setActivityRecordingEnabled(false);
+    try {
+      const newId = await listService.createList(listData);
+      const savedList = { ...draftList, id: newId, isDraft: false };
+      const currentLists = useGameStore.getState().lists;
+      setLists(currentLists.map((list) => (list.id === draftList.id ? savedList : list)));
+      useGameStore.getState().setCurrentList(newId);
+      useGameStore.getState().loadQuota();
+
+      const createdEvents = draftList.associations.map((association: Association) => createActivityEvent({
+        userId: user.uid,
+        listId: newId,
+        cardId: association.id,
+        cardTerm: association.term,
+        type: 'card_created',
+      }));
+      if (createdEvents.length > 0) {
+        useGameStore.getState().recordActivity(createdEvents);
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Error al guardar el mazo', 'error');
+    } finally {
+      useGameStore.getState().setActivityRecordingEnabled(true);
+    }
+  }, [setLists, user, showToast]);
+
   const handleUpdateList = useCallback(async (updatedList: AssociationList) => {
+    if (updatedList.isDraft) {
+      await handleSaveDraft(updatedList);
+      return;
+    }
+
     const { lists } = useGameStore.getState();
     const prevList = lists.find((l) => l.id === updatedList.id);
     if (prevList && user) {
@@ -126,7 +191,7 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
         showToast(error instanceof Error ? error.message : 'Error al guardar la lista', 'error');
       }
     }
-  }, [setLists, user, showToast]);
+  }, [handleSaveDraft, setLists, user, showToast]);
 
   const createListCore = useCallback(async (name: string, concept: string, initialAssocs: Association[]): Promise<string | null> => {
     const { lists, quota } = useGameStore.getState();
@@ -158,54 +223,18 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
       concept,
       associations: initialAssocs,
       isArchived: false,
+      isDraft: true,
       settings: normalizeVoiceLanguageSettings(concept, { ...DEFAULT_LIST_SETTINGS }),
     };
 
-    const tempId = `temp_${Date.now()}`;
+    const tempId = `temp_${Date.now()}_${crypto.randomUUID()}`;
     const newList: AssociationList = { ...newListData, id: tempId };
 
     setLists([...lists, newList]);
-
-    let finalId = tempId;
-
-    if (user && user.uid !== GUEST_ID) {
-      try {
-        const newId = await listService.createList(newListData);
-        const updatedList = { ...newList, id: newId };
-        const { lists: currentLists } = useGameStore.getState();
-        setLists(currentLists.map((l) => (l.id === tempId ? updatedList : l)));
-        useGameStore.getState().setCurrentList(newId);
-        useGameStore.getState().loadQuota();
-        finalId = newId;
-        const createdEvents = initialAssocs.map((association: Association) => createActivityEvent({
-          userId: user.uid,
-          listId: newId,
-          cardId: association.id,
-          cardTerm: association.term,
-          type: 'card_created',
-        }));
-        useGameStore.getState().recordActivity(createdEvents);
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : 'Error al crear la lista', 'error');
-        useGameStore.getState().loadQuota();
-        useGameStore.getState().setActivityRecordingEnabled(true);
-        return null;
-      }
-    } else {
-      useGameStore.getState().setCurrentList(tempId);
-      const createdEvents = initialAssocs.map((association: Association) => createActivityEvent({
-        userId: GUEST_ID,
-        listId: tempId,
-        cardId: association.id,
-        cardTerm: association.term,
-        type: 'card_created',
-      }));
-      useGameStore.getState().recordActivity(createdEvents);
-    }
-
+    useGameStore.getState().setCurrentList(tempId);
     useGameStore.getState().setActivityRecordingEnabled(true);
-    return finalId;
-  }, [user, setLists, showToast]);
+    return tempId;
+  }, [user, setLists]);
 
   const handleCreateList = useCallback(async (name: string, concept: string, initialAssocs: Association[]) => {
     const listId = await createListCore(name, concept, initialAssocs);
@@ -217,13 +246,17 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
   const handleCreateListAndPlay = useCallback(async (name: string, concept: string, initialAssocs: Association[]) => {
     const listId = await createListCore(name, concept, initialAssocs);
     if (listId) {
-      handlePlayList(listId);
+      navigate('editor');
     }
-  }, [createListCore, handlePlayList]);
+  }, [createListCore, navigate]);
 
   const handleCreateListQuick = useCallback(async (name: string, concept: string): Promise<string | null> => {
-    return createListCore(name, concept, []);
-  }, [createListCore]);
+    const listId = await createListCore(name, concept, []);
+    if (listId) {
+      navigate('editor');
+    }
+    return listId;
+  }, [createListCore, navigate]);
 
   const handleDeleteList = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar esta lista?')) return;
@@ -243,6 +276,10 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
 
   const handleCreateMultipleLists = useCallback(async (groups: { name: string; associations: Association[] }[]) => {
     if (!user || !currentList) return;
+    if (currentList.isDraft) {
+      showToast('Guarda el mazo antes de organizarlo en agrupaciones.', 'info');
+      return;
+    }
     useGameStore.getState().setActivityRecordingEnabled(false);
     const { lists, quota } = useGameStore.getState();
 
@@ -319,8 +356,11 @@ export function useAppActions({ navigate, showToast, setLastPlayedId }: UseAppAc
   }, [user, currentList, isPremium, setLists, showToast]);
 
   const handleAddDeck = useCallback(async (name: string, concept: string, initialAssocs: Association[]): Promise<void> => {
-    await createListCore(name, concept, initialAssocs);
-  }, [createListCore]);
+    const listId = await createListCore(name, concept, initialAssocs);
+    if (listId) {
+      navigate('editor');
+    }
+  }, [createListCore, navigate]);
 
   return {
     isSyncing,

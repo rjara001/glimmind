@@ -3,12 +3,12 @@ import { PrebuiltDeck } from '../../types/prebuilt-deck';
 
 interface DeckPreviewModalProps {
   deck: PrebuiltDeck | null;
-  onAdd: (deck: PrebuiltDeck) => void;
+  onValidate: (deck: PrebuiltDeck) => void;
   onClose: () => void;
   isAdding: boolean;
 }
 
-export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onAdd, onClose, isAdding }) => {
+export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onValidate, onClose, isAdding }) => {
   if (!deck) return null;
 
   return (
@@ -30,15 +30,6 @@ export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onAdd,
               <p className="text-indigo-100 font-medium text-sm">{deck.description}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="p-2 hover:bg-white/20 rounded-xl transition"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
         <div className="p-6 sm:p-8 bg-slate-50 max-h-[50vh] overflow-y-auto">
@@ -69,7 +60,7 @@ export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onAdd,
             Cancelar
           </button>
           <button
-            onClick={() => onAdd(deck)}
+            onClick={() => onValidate(deck)}
             disabled={isAdding}
             className="flex-[2] bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95 flex items-center justify-center gap-2"
           >
@@ -82,7 +73,7 @@ export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onAdd,
                 Agregando...
               </>
             ) : (
-              '🛒 Agregar esta baraja a mi espacio'
+              '🛒 Agregar a mi Espacio'
             )}
           </button>
         </div>

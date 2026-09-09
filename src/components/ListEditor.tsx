@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AssociationList, Association } from '../types';
-import { aiService, AIGroupSuggestion } from '../services/aiService';
+import type { AIGroupSuggestion } from '../services/aiService';
 import { normalizeAssociations, AssociationLike, parseDefinitions } from '../utils/normalizeAssociation';
 import { SmartGroupModal } from '../components/modals/SmartGroupModal';
 import { useGameStore } from '../store/gameStore';
@@ -8,10 +8,12 @@ import { QuotaService } from '../services/quotaService';
 import { downloadAssociationsCsv, parseForPreview } from '../utils/csv';
 import { useToast } from '../components/layout/Toast';
 import { QuotaAlert } from '../components/layout/QuotaAlert';
-import { MIN_GROUP_SIZE } from '../constants/limits';
 import { AssociationTable } from '../components/list-editor/AssociationTable';
 import { BulkImport } from '../components/list-editor/BulkImport';
+import { ImportValidationModal } from '../components/onboarding/ImportValidationModal';
 import { translationService } from '../services/translationService';
+import { validateImportCards } from '../services/importValidationService';
+import type { ImportValidationResult, CardCategory } from '../services/importValidationService';
 
 type SortField = 'term' | 'definition';
 
@@ -38,11 +40,6 @@ function sortAssociations(associations: Association[], tableSort: TableSort | nu
   });
 }
 
-function deduplicateAssociations(existing: Association[], incoming: Association[]): Association[] {
-  const existingKeys = new Set(existing.map(a => `${a.term}|||${a.definition.join('|')}`));
-  return incoming.filter(a => !existingKeys.has(`${a.term}|||${a.definition.join('|')}`));
-}
-
 interface ListEditorProps {
   list: AssociationList;
   initialEditId?: string | null;
@@ -62,11 +59,20 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
   const [activeSort, setActiveSort] = useState<TableSort | null>(null);
   const [archivedSort, setArchivedSort] = useState<TableSort | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedArchivedIds, setSelectedArchivedIds] = useState<Set<string>>(new Set());
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isImportValidating, setIsImportValidating] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [newAssocs, setNewAssocs] = useState<Association[]>([]);
+  const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<Record<CardCategory, boolean>>({
+    existing: true,
+    similar: true,
+    new: true,
+  });
   const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const conceptParts = editList.concept.split('/');
@@ -83,10 +89,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
   const translationLimit = quota?.translationCharLimit ?? 20000;
   const translationPercentage = Math.min(100, (translationUsed / translationLimit) * 100);
   const translationState = translationPercentage >= 100 ? 'blocked' : translationPercentage >= 70 ? 'warning' : 'ok';
-
-  useEffect(() => {
-    setTranslationUsed(quota?.translationCharsUsed ?? 0);
-  }, [quota?.translationCharsUsed]);
 
   const projectedTotal = useMemo(() => {
     const otherTotal = lists
@@ -147,6 +149,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
   }, [onSave]);
 
   const handleBack = useCallback(async () => {
+    onBack();
+  }, [onBack]);
+
+  const handleSave = useCallback(async () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
@@ -157,8 +163,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
     } finally {
       setIsSaving(false);
     }
-    onBack();
-  }, [cleanupAndSave, editList, isSaving, onBack]);
+  }, [cleanupAndSave, editList, isSaving]);
 
   useEffect(() => {
     const initialAssociations = list.associations;
@@ -198,36 +203,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
       isLearned: false,
       isArchived: false,
     })));
-    const uniqueNewAssocs = deduplicateAssociations(editList.associations, newAssocs);
-    const skippedCount = newAssocs.length - uniqueNewAssocs.length;
-    const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...uniqueNewAssocs] });
-    if (saved) {
-      setShowBulk(false);
-      const message = skippedCount > 0
-        ? `Se importaron ${uniqueNewAssocs.length} tarjetas (${skippedCount} duplicadas omitidas).`
-        : `Se importaron ${uniqueNewAssocs.length} tarjetas.`;
-      showToast(message, 'success');
-    }
-  };
-
-  const handleSmartSplit = async () => {
-    const activeAssociations = editList.associations.filter(a => !a.isArchived);
-    if (activeAssociations.length < MIN_GROUP_SIZE) {
-      alert(`Necesitas al menos ${MIN_GROUP_SIZE} elementos para encontrar patrones lógicos.`);
-      return;
-    }
-    setIsAnalyzing(true);
-    try {
-      const suggestions = await aiService.groupAssociations(activeAssociations, editList.concept);
-      setAiSuggestions(suggestions);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al organizar la lista.';
-      alert(message);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
+    setShowImportModal(true);
+    setNewAssocs(newAssocs);
+    const allLists = [...lists.filter(l => l.id !== editList.id), editList];
+    setValidationResult(validateImportCards(newAssocs, allLists));
+};
   const handleRename = useCallback((value: string) => {
     setEditList((current) => ({ ...current, name: value }));
   }, []);
@@ -360,7 +340,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
     cleanupAndSave({ ...editList, associations: updatedAssociations });
   };
 
-  const [selectedArchivedIds, setSelectedArchivedIds] = useState<Set<string>>(new Set());
 
   const handleRestoreSelected = useCallback(() => {
     if (selectedArchivedIds.size === 0) return;
@@ -434,13 +413,23 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
               <label htmlFor="list-name" className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Nombre del mazo
               </label>
-              <button
-                type="button"
-                onClick={handleBack}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
-              >
-                {onBackLabel} →
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 transition disabled:opacity-50"
+                >
+                  {isSaving ? 'Guardando...' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
+                >
+                  {onBackLabel} →
+                </button>
+              </div>
             </div>
             <input
               id="list-name"
@@ -556,6 +545,33 @@ export const ListEditor: React.FC<ListEditorProps> = ({ list, initialEditId, onI
             onBulkAdd={handleBulkAdd}
           />
         )}
+
+        {showImportModal && <ImportValidationModal
+          cards={newAssocs || []}
+          result={validationResult || { total: 0, counts: { existing: 0, similar: 0, new: 0 }, categorized: [], existingTerms: new Set() }}
+          selectedCategories={selectedCategories}
+          onToggleCategory={(cat) => setSelectedCategories(prev => ({ ...prev, [cat]: !prev[cat] }))}
+          onAddSelected={() => {
+            const categorized = validationResult?.categorized ?? [];
+            const selected = categorized
+              .filter((c, i) => selectedCategories[c.category] && newAssocs[i])
+              .map((_, i) => newAssocs[i]);
+            setIsImportValidating(false);
+            setShowImportModal(false);
+            if (selected.length > 0) {
+              const saved = cleanupAndSave({ ...editList, associations: [...editList.associations, ...selected] });
+              if (saved) {
+                showToast(`Se importaron ${selected.length} tarjetas a tu espacio`, 'success');
+                setShowBulk(false);
+              }
+            }
+          }}
+          onBack={() => {
+            setIsImportValidating(false);
+            setShowImportModal(false);
+          }}
+          isSubmitting={isImportValidating}
+        />}
 
         {selectedIds.size > 0 && (
           <div className="px-4 sm:px-6 py-2 border-b bg-slate-50/30">

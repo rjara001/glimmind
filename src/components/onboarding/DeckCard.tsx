@@ -4,11 +4,11 @@ import { PrebuiltDeck } from '../../types/prebuilt-deck';
 interface DeckCardProps {
   deck: PrebuiltDeck;
   onPreview: (deck: PrebuiltDeck) => void;
-  onAdd: (deck: PrebuiltDeck) => void;
+  onValidate: (deck: PrebuiltDeck) => void;
   isAdding: boolean;
 }
 
-export const DeckCard: React.FC<DeckCardProps> = ({ deck, onPreview, onAdd, isAdding }) => {
+export const DeckCard: React.FC<DeckCardProps> = ({ deck, onPreview, onValidate, isAdding }) => {
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col">
       <div className="flex items-center gap-2 mb-3">
@@ -27,7 +27,7 @@ export const DeckCard: React.FC<DeckCardProps> = ({ deck, onPreview, onAdd, isAd
           👁️ Previsualizar
         </button>
         <button
-          onClick={() => onAdd(deck)}
+          onClick={() => onValidate(deck)}
           disabled={isAdding}
           className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2"
         >

@@ -52,6 +52,7 @@ export interface AssociationList {
   concept: string;
   associations: Association[];
   isArchived: boolean;
+  isDraft?: boolean;
   sourceType?: DeckSourceType;
   sourceUrl?: string;
   rawSourceText?: string;

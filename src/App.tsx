@@ -272,8 +272,12 @@ const AppContent: React.FC = () => {
           )}
           {view === 'text-importer' && (
             <TextImporter
-              onSave={(chunks, deckNames, sourceMeta) => {
-                setPendingTextImport({ chunks, deckNames, sourceMeta });
+              onSave={(associations, sourceMeta) => {
+                setPendingTextImport({
+                  chunks: [associations],
+                  deckNames: [sourceMeta.title || 'Importado'],
+                  sourceMeta,
+                });
                 navigate('editor');
               }}
               onBack={goBack}
@@ -295,9 +299,13 @@ const AppContent: React.FC = () => {
             onClose={() => {
               setYoutubePreviewResult(null);
             }}
-            onAccept={(chunks, deckNames, sourceMeta) => {
+            onAccept={(associations, sourceMeta) => {
               setYoutubePreviewResult(null);
-              setPendingYouTube({ chunks, deckNames, sourceMeta });
+              setPendingYouTube({
+                chunks: [associations],
+                deckNames: [sourceMeta.title || 'Sin nombre'],
+                sourceMeta,
+              });
               navigate('editor');
             }}
           />

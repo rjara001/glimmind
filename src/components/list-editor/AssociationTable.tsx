@@ -278,6 +278,7 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
     ACTIVE_COL_WIDTH,
     '1fr',
     '1fr',
+    'auto',
     ACTION_COL_WIDTH,
   ].join(' ');
 
@@ -286,6 +287,7 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
     ACTIVE_COL_WIDTH,
     '1fr',
     '1fr',
+    'auto',
     ACTION_COL_WIDTH,
   ].join(' ');
 
@@ -416,6 +418,17 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
                     className="w-full bg-transparent border-none focus:ring-0 text-indigo-600 placeholder-slate-300 disabled:opacity-60"
                     placeholder="Enter definition..."
                     disabled={isArchived}
+                  />
+                </div>
+                <div className="px-4 sm:px-6 py-2 sm:py-4 flex items-center cell-truncate hidden md:table-cell">
+                  <input
+                    type="text"
+                    value={assoc.context || ''}
+                    onBlur={handleBlurRow}
+                    onChange={(e) => onUpdateField(assoc.id, 'context', e.target.value)}
+                    className="w-full bg-transparent border-none text-slate-500 placeholder-slate-300 disabled:opacity-60"
+                    readonly
+                    placeholder="Contexto..."
                   />
                 </div>
                 <div className="px-2 sm:px-3 py-2 sm:py-4 flex items-center justify-center" style={{ minWidth: '60px' }}>
