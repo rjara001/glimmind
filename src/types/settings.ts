@@ -10,5 +10,5 @@ export const DEFAULT_SETTINGS: UserSettings = {
   activityHistoryEnabled: false,
   audioRecordingEnabled: false,
   voiceSttFallback: false,
-  maxCardsPerDeck: 150,
+  maxCardsPerDeck: 100,
 };

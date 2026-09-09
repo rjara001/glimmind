@@ -13,7 +13,7 @@ Users can set the maximum cards per deck in **Settings → Máximo de tarjetas p
 - **1000** tarjetas por mazo
 
 ### Default Value
-- Default: **150** tarjetas por mazo (if not configured)
+- Default: **100** tarjetas por mazo (if not configured)
 - Defined in: `src/constants/limits.ts:MAX_CARDS_PER_DECK`
 
 ### Where to Find It
@@ -60,7 +60,7 @@ Users can set the maximum cards per deck in **Settings → Máximo de tarjetas p
 
 ### How It Persists
 - User setting saved to Firebase settings (cloud + localStorage)
-- Falls back to `MAX_CARDS_PER_DECK = 150` if not configured
+- Falls back to `MAX_CARDS_PER_DECK = 100` if not configured
 - Applied automatically on all future imports
 
 ### Current Status (2026-09-09)

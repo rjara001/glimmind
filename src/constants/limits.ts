@@ -1,6 +1,6 @@
 export const EMBEDDING_MODEL_ID = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
 export const MIN_GROUP_SIZE = 2;
-export const MAX_CARDS_PER_DECK = 150;
+export const MAX_CARDS_PER_DECK = 100;
 export const MIN_GROUP_SIZE_ABSOLUTE = 50;
 export const MIN_GROUP_SIZE_RATIO = 0.05;
 export const PROGRESS_SAVE_DEBOUNCE_MS = 15000;

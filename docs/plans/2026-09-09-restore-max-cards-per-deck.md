@@ -56,7 +56,7 @@ Mover `MAX_CARDS_PER_DECK` a `src/types/settings.ts` como `maxCardsPerDeck: numb
 
 1. ¿Debe `MAX_CARDS_PER_DECK` ser configurable por usuario? (Issue 2026-09-04 sugiere que sí)
 2. ¿El backend también debe respetar este límite o solo el frontend?
-3. ¿Qué pasa con mazos existentes que superen 150 tarjetas? ¿Se dividen automáticamente o se respetan?
+3. ¿Qué pasa con mazos existentes que superen 100 tarjetas? ¿Se dividen automáticamente o se respetan?
 
 ## Dueño
 
