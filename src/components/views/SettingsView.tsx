@@ -39,6 +39,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
     setSettings({ ...settings, voiceSttFallback: !settings.voiceSttFallback });
   };
 
+  const handleMaxCardsChange = (value: number) => {
+    setSettings({ ...settings, maxCardsPerDeck: value });
+  };
+
   const handleTogglePremium = async () => {
     if (!user?.uid || user.uid === 'dev-user-local') {
       showToast('Inicia sesión para cambiar el estado premium.', 'error');
@@ -191,6 +195,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
               }`}
             />
           </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
+        <div className="p-6">
+          <h3 className="font-bold text-gray-900">Máximo de tarjetas por mazo</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Al importar texto, CSV o YouTube, si superás este límite se dividirá
+            automáticamente en varios mazos.
+          </p>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[100, 300, 700, 1000].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleMaxCardsChange(option)}
+                className={`py-2 rounded-xl border text-sm font-semibold transition ${
+                  settings.maxCardsPerDeck === option
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-slate-200 bg-white text-gray-700 hover:border-indigo-300'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Valor actual: <span className="font-bold">{settings.maxCardsPerDeck}</span> tarjetas por mazo
+          </p>
         </div>
       </div>
 

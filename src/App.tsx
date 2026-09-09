@@ -18,6 +18,7 @@ import { VoskModelProvider } from './context/VoskModelContext';
 import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useAppActions } from './hooks/app/useAppActions';
 import { GUEST_UID } from './constants/app';
+import { splitAssociationsByMax } from './utils/splitAssociations';
 import type { AppUser } from './types';
 import type { AppView } from './types/app';
 import type { VocabularyResult } from './types/youtube-deck';
@@ -114,11 +115,20 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
       const { chunks, deckNames, sourceMeta } = pendingYouTube;
+      const settings = useGameStore.getState().settings;
+      const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
-      const newLists: AssociationList[] = chunks.map((chunk, i) => ({
+      const allAssociations = chunks.flat();
+      const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
+        allAssociations,
+        maxCardsPerDeck,
+        deckNames[0] || 'Deck'
+      );
+
+      const newLists: AssociationList[] = splitChunks.map((chunk, i) => ({
         id: `temp_${tempIdCounter.current++}_${i}`,
         userId: user?.uid || GUEST_UID,
-        name: deckNames[i],
+        name: splitDeckNames[i],
         concept: 'value1 / value2',
         associations: chunk,
         isArchived: false,
@@ -145,11 +155,20 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     if (view === 'editor' && pendingTextImport) {
       const { chunks, deckNames, sourceMeta } = pendingTextImport;
+      const settings = useGameStore.getState().settings;
+      const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
-      const newLists: AssociationList[] = chunks.map((chunk, i) => ({
+      const allAssociations = chunks.flat();
+      const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
+        allAssociations,
+        maxCardsPerDeck,
+        deckNames[0] || 'Importado'
+      );
+
+      const newLists: AssociationList[] = splitChunks.map((chunk, i) => ({
         id: `temp_${tempIdCounter.current++}_${i}`,
         userId: user?.uid || GUEST_UID,
-        name: deckNames[i],
+        name: splitDeckNames[i],
         concept: 'value1 / value2',
         associations: chunk,
         isArchived: false,
