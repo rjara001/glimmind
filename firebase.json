@@ -50,7 +50,10 @@
       "port": 8080
     },
     "functions": {
-      "port": 5001
+      "port": 5001,
+      "env": {
+        "FIRESTORE_EMULATOR_HOST": "localhost:8080"
+      }
     },
     "ui": {
       "enabled": true,

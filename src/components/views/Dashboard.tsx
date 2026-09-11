@@ -65,7 +65,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   const handleCreateEmpty = useCallback(() => {
-    onCreate("Sin nombre", "Valor 1 / Valor 2", []);
+    onCreate("", "Valor 1 / Valor 2", []);
   }, [onCreate]);
 
   const handleSubmitCreate = useCallback(

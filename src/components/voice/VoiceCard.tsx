@@ -29,7 +29,7 @@ export const VoiceCard: React.FC<VoiceCardProps> = ({
   onStop,
   onSubmitTyped,
   recordingTimeLeft,
-  recordingElapsed,
+  recordingElapsed: _recordingElapsed,
   maxRecordingSeconds,
 }) => {
   const [typedInput, setTypedInput] = useState('');

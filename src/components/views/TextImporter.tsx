@@ -411,7 +411,7 @@ export const TextImporter: React.FC<TextImporterProps> = ({ onSave, onBack }) =>
         {deckTitle && (
           <div className="mb-4 flex items-center gap-2">
             <label htmlFor="deck-title" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
-              Nombre del mazo:
+              Nombre del mazo X: 
             </label>
             <input
               id="deck-title"

@@ -902,7 +902,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return;
         } catch (createError) {
           console.error('[syncToCloud] createList also failed:', createError);
-          showToast('Error al sincronizar la lista. Se guardaron los cambios localmente.', 'error');
+          console.error('Error al sincronizar la lista. Se guardaron los cambios localmente.');
         }
       }
     })();

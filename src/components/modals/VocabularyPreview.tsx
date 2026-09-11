@@ -68,14 +68,14 @@ export const VocabularyPreview: React.FC<VocabularyPreviewProps> = ({ result, on
           </div>
           <div className="mt-3 flex items-center gap-2">
             <label htmlFor="deck-title" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
-              Nombre del mazo:
+              Nombre del mazo X:
             </label>
             <input
               id="deck-title"
               type="text"
               value={deckTitle}
               onChange={(e) => setDeckTitle(e.target.value)}
-              placeholder="Nombre del mazo"
+              placeholder="Nombre del mazo X"
               className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>

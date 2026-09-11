@@ -427,7 +427,7 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
                     onBlur={handleBlurRow}
                     onChange={(e) => onUpdateField(assoc.id, 'context', e.target.value)}
                     className="w-full bg-transparent border-none text-slate-500 placeholder-slate-300 disabled:opacity-60"
-                    readonly
+                    readOnly
                     placeholder="Contexto..."
                   />
                 </div>

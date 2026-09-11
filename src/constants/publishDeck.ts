@@ -1,0 +1,4 @@
+export const PUBLISH_MIN_CARDS = 20;
+export const PUBLISH_MAX_CARDS = 120;
+export const PUBLISH_DUPLICATE_SIMILARITY = 0.80;
+export const PUBLISH_DEBOUNCE_MS = 300;

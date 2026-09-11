@@ -11,7 +11,7 @@ export const CardFeedback: React.FC<CardFeedbackProps> = ({
   feedback,
   similarity,
   lastAttempt,
-  isShaking,
+  isShaking: _isShaking,
 }) => {
   const showLastAttempt = Boolean(lastAttempt && feedback !== 'none');
 

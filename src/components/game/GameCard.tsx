@@ -155,7 +155,7 @@ export const GameCard: React.FC<GameCardProps> = ({
       <span className={`text-[9px] font-black uppercase tracking-[0.3em] block mb-1 ${colors.text}`}>{renderLabel(labelTerm, voiceTermLang)}</span>
 
       <CardBadges
-        isFallbackActive={isFallbackActive}
+        isFallbackActive={!!isFallbackActive}
       />
 
       <CommandToast command={detectedVoiceCommand ?? null} />
@@ -187,11 +187,11 @@ export const GameCard: React.FC<GameCardProps> = ({
         isShaking={isShaking}
       />
       <CardVoiceIndicator
-        voiceMode={voiceMode}
+        voiceMode={!!voiceMode}
         voicePhase={voicePhase}
         voiceTranscript={voiceTranscript}
         voiceInterim={voiceInterim}
-        isVoiceListening={isVoiceListening}
+        isVoiceListening={!!isVoiceListening}
         voiceError={voiceError}
         feedback={feedback}
         similarity={similarity}

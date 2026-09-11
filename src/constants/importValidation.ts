@@ -1,0 +1,2 @@
+export const SIMILARITY_THRESHOLD = 0.80;
+export const IMPORT_VALIDATION_DEBOUNCE_MS = 300;
