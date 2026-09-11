@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PrebuiltDeck } from '../../types/prebuilt-deck';
 import { prebuiltDeckService } from '../../services/prebuiltDeckService';
-import { validateImportCards } from '../../services/importValidationService';
 import { useGameStore } from '../../store/gameStore';
-import { normalizeAssociations, AssociationLike } from '../../utils/normalizeAssociation';
-import { ImportValidationModal } from '../onboarding/ImportValidationModal';
+import { useDeckValidation } from '../../hooks/dashboard/useDeckValidation';
 import { useToast } from '../layout/Toast';
 import { DeckCard } from './DeckCard';
 import { DeckPreviewModal } from './DeckPreviewModal';
+import { DeckValidationScreen } from './DeckValidationScreen';
 import { CustomCreationSection } from './CustomCreationSection';
-import type { ImportValidationResult, CardCategory } from '../../services/importValidationService';
+import type { CardCategory } from '../../services/importValidationService';
 
 interface DeckStoreOnboardingProps {
   onAddDeck: (deck: PrebuiltDeck) => Promise<void>;
@@ -18,21 +17,26 @@ interface DeckStoreOnboardingProps {
   onTextImport: () => void;
 }
 
-export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddDeck, onCreateCustom, onYouTube, onTextImport }) => {
+export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
+  onAddDeck,
+  onCreateCustom,
+  onYouTube,
+  onTextImport,
+}) => {
   const { showToast } = useToast();
+  // Hook reactivo (no getState)
+  const lists = useGameStore((state) => state.lists);
   const [decks, setDecks] = useState<PrebuiltDeck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewDeck, setPreviewDeck] = useState<PrebuiltDeck | null>(null);
-  const [addingDeckId, setAddingDeckId] = useState<string | null>(null);
-  const [validationDeck, setValidationDeck] = useState<PrebuiltDeck | null>(null);
-  const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
+  const [selectedDeck, setSelectedDeck] = useState<PrebuiltDeck | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<Record<CardCategory, boolean>>({
     existing: true,
     similar: true,
     new: true,
   });
-  const [isImportValidating, setIsImportValidating] = useState(false);
+  const { result: validationResult, isValidating } = useDeckValidation(selectedDeck, lists);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +57,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddD
     return () => { cancelled = true; };
   }, []);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setError(null);
     setIsLoading(true);
     prebuiltDeckService
@@ -66,67 +70,46 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddD
         setError(err instanceof Error ? err.message : 'Error al cargar el catálogo');
         setIsLoading(false);
       });
-  };
-
-  const handleAddDeck = useCallback(async (deck: PrebuiltDeck) => {
-    setValidationDeck(deck);
-    setSelectedCategories({ existing: true, similar: true, new: true });
-    setIsImportValidating(true);
   }, []);
 
-  const handleImportConfirm = useCallback(async (categories: Record<CardCategory, boolean>) => {
-    setSelectedCategories(categories);
-    setIsImportValidating(false);
+  const handleAddDeck = useCallback(async (deck: PrebuiltDeck) => {
+    setPreviewDeck(null); // Cerrar modal si está abierto
+    setSelectedDeck(deck);
+    setSelectedCategories({ existing: true, similar: true, new: true });
+  }, []);
 
-    if (!validationDeck) return;
+  const handleImportConfirm = useCallback(async () => {
+    if (!selectedDeck || !validationResult) return;
 
-    const categorized = validationResult?.categorized || [];
-    const filteredAssociations = categorized
-      .filter(c => categories[c.category])
-      .map(c => c.card);
+    const categorized = validationResult.categorized.filter(
+      (c) => selectedCategories[c.category]
+    );
+    const filteredAssociations = categorized.map((c) => ({
+      term: c.card.term,
+      definition: c.card.definition,
+      context: c.card.context,
+    }));
 
-    if (filteredAssociations.length === 0) {
-      showToast('No hay tarjetas seleccionadas para agregar', 'info');
-      return;
-    }
+    const filteredDeck: PrebuiltDeck = {
+      ...selectedDeck,
+      associations: filteredAssociations,
+    };
 
-    setAddingDeckId(validationDeck.id);
+    setSelectedDeck(null);
+    setSelectedCategories({ existing: true, similar: true, new: true });
+
     try {
-      await onAddDeck({
-        ...validationDeck,
-        associations: filteredAssociations,
-      });
+      await onAddDeck(filteredDeck);
       showToast(`¡Se agregaron ${filteredAssociations.length} tarjetas a tu espacio!`, 'success');
-    } finally {
-      setAddingDeckId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Error al agregar tarjetas', 'error');
     }
+  }, [selectedDeck, validationResult, onAddDeck, selectedCategories, showToast]);
 
-    setValidationDeck(null);
-    setValidationResult(null);
+  const handleBackToDecks = useCallback(() => {
+    setSelectedDeck(null);
     setSelectedCategories({ existing: true, similar: true, new: true });
-  }, [validationDeck, validationResult, onAddDeck, showToast]);
-
-  useEffect(() => {
-    if (validationDeck && !validationResult) {
-      const lists = useGameStore.getState().lists;
-      const associations: AssociationLike[] = validationDeck.associations.map(a => ({
-        id: crypto.randomUUID(),
-        term: a.term,
-        definition: a.definition,
-        currentCycle: 1,
-        status: 'pending' as const,
-        isLearned: false,
-        isArchived: false,
-      }));
-      setValidationResult(validateImportCards(normalizeAssociations(associations), lists ?? []));
-    }
-  }, [validationDeck, validationResult]);
-
-  const handleBackToDecks = () => {
-    setValidationDeck(null);
-    setValidationResult(null);
-    setSelectedCategories({ existing: true, similar: true, new: true });
-  };
+  }, []);
 
   if (error) {
     return (
@@ -141,6 +124,18 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddD
         >
           Reintentar
         </button>
+      </div>
+    );
+  }
+
+  // Mientras el análisis está en curso, mostrar overlay
+  if (selectedDeck && isValidating) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-medium text-slate-700">Analizando tarjetas...</span>
+        </div>
       </div>
     );
   }
@@ -176,39 +171,38 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({ onAddD
               deck={deck}
               onPreview={() => setPreviewDeck(deck)}
               onValidate={handleAddDeck}
-              isAdding={addingDeckId === deck.id}
             />
           ))}
         </div>
       )}
 
-      {validationDeck && validationResult && (
-        <ImportValidationModal
-          cards={normalizeAssociations(validationDeck.associations.map(a => ({
-            ...a,
-            id: crypto.randomUUID(),
-            currentCycle: 1,
-            status: 'pending' as const,
-            isLearned: false,
-            isArchived: false,
-          })))}
-          result={validationResult}
-          selectedCategories={selectedCategories}
-          onToggleCategory={(cat) => setSelectedCategories(prev => ({ ...prev, [cat]: !prev[cat] }))}
-          onAddSelected={() => handleImportConfirm(selectedCategories)}
-          onBack={() => handleBackToDecks()}
-          isSubmitting={isImportValidating}
-        />
-      )}
-
-      <CustomCreationSection onCreateCustom={onCreateCustom} onYouTube={onYouTube} onTextImport={onTextImport} />
-
       <DeckPreviewModal
         deck={previewDeck}
         onValidate={handleAddDeck}
         onClose={() => setPreviewDeck(null)}
-        isAdding={addingDeckId === previewDeck?.id}
+      />
+
+      {/* DeckValidationScreen se renderiza como overlay fullscreen */}
+      {selectedDeck && validationResult && !isValidating && (
+        <DeckValidationScreen
+          deck={selectedDeck}
+          result={validationResult}
+          selectedCategories={selectedCategories}
+          onToggleCategory={(cat: CardCategory) =>
+            setSelectedCategories((prev) => ({ ...prev, [cat]: !prev[cat] }))
+          }
+          onAddSelected={handleImportConfirm}
+          onBack={handleBackToDecks}
+        />
+      )}
+
+      <CustomCreationSection
+        onCreateCustom={onCreateCustom}
+        onYouTube={onYouTube}
+        onTextImport={onTextImport}
       />
     </div>
   );
 };
+
+export default DeckStoreOnboarding;

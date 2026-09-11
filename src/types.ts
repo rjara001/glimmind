@@ -81,6 +81,11 @@ export interface AssociationList {
   };
   createdAt?: any;
   updatedAt?: any;
+  history?: {
+    completedAt?: number;
+    lastCompletedAt?: number;
+    completedCount?: number;
+  };
 }
 
 export interface GameSummary {

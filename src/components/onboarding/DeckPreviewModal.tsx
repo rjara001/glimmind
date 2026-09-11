@@ -5,10 +5,9 @@ interface DeckPreviewModalProps {
   deck: PrebuiltDeck | null;
   onValidate: (deck: PrebuiltDeck) => void;
   onClose: () => void;
-  isAdding: boolean;
 }
 
-export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onValidate, onClose, isAdding }) => {
+export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onValidate, onClose }) => {
   if (!deck) return null;
 
   return (
@@ -61,20 +60,9 @@ export const DeckPreviewModal: React.FC<DeckPreviewModalProps> = ({ deck, onVali
           </button>
           <button
             onClick={() => onValidate(deck)}
-            disabled={isAdding}
             className="flex-[2] bg-indigo-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95 flex items-center justify-center gap-2"
           >
-            {isAdding ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Agregando...
-              </>
-            ) : (
-              '🛒 Agregar a mi Espacio'
-            )}
+            🛒 Agregar a mi Espacio
           </button>
         </div>
       </div>

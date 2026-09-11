@@ -12,7 +12,7 @@ export const calculateSimilarity = (str1: string, str2: string): number => {
   return (maxLength - editDistance) / maxLength;
 };
 
-const normalize = (str: string): string => {
+export const normalize = (str: string): string => {
   return str
     .toLowerCase()
     .trim()
