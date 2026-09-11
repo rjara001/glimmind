@@ -93,20 +93,36 @@ exports.deleteList = onRequest({ cors: true }, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 exports.splitList = onRequest({ cors: true }, async (req, res) => {
+  console.log('=== splitList LLAMADO ===');
+  console.log('body:', JSON.stringify(req.body).slice(0, 500));
+
   const { listId, groups } = req.body;
   if (!listId || !Array.isArray(groups) || groups.length === 0) {
+    console.log('=== splitList ERROR: listId o groups inválidos ===');
+    console.log('listId:', listId);
+    console.log('groups:', Array.isArray(groups) ? groups.length : typeof groups);
     return res.status(400).json({ error: "listId and groups are required" });
   }
 
   const uid = await requireAuth(req, res);
-  if (!uid) return;
+  if (!uid) {
+    console.log('=== splitList ERROR: no uid ===');
+    return;
+  }
+
+  console.log('=== splitList: uid =', uid, 'listId =', listId, 'groups =', groups.length);
 
   try {
     const data = await listService.divideOriginalListIntoGroupsAndReplaceIt(getDb(), listId, uid, groups);
+    console.log('=== splitList ÉXITO ===');
+    console.log('ids:', data.ids);
     res.json(data);
   } catch (error) {
+    console.log('=== splitList ERROR CATCH ===');
+    console.log('error.message:', error.message);
+    console.log('error.stack:', error.stack);
+
     if (error instanceof QuotaExceededError) {
       return res.status(400).json({ error: error.message });
     }

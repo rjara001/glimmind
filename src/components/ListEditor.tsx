@@ -69,9 +69,7 @@ interface ListEditorProps {
   onSave: (list: AssociationList) => Promise<void> | void;
   onBack: () => void;
   onBackLabel?: string;
-  onCreateMultiple?: (
-    groups: { name: string; associations: Association[] }[],
-  ) => void;
+  onCreateMultiple?: (groups: { name: string; associations: Association[] }[], realListId?: string) => void;
 }
 
 export const ListEditor: React.FC<ListEditorProps> = ({
@@ -326,13 +324,9 @@ const importSelectedCards = async (categories: Record<CardCategory, boolean>) =>
   const MAX = 100;
   const deckCount = Math.ceil(toImport.length / MAX);
 
-  // Caso 1: un solo mazo → añadir al mazo actual
+  // Caso 1: un solo mazo
   if (deckCount === 1) {
-    const updated = {
-      ...editList,
-      associations: [...editList.associations, ...toImport],
-    };
-    setEditList(updated);
+    const updated = { ...editList, associations: [...editList.associations, ...toImport] };
     await onSave(updated);
     showToast(`✅ ${toImport.length} tarjetas importadas`, 'success');
     setShowValidationScreen(false);
@@ -340,7 +334,7 @@ const importSelectedCards = async (categories: Record<CardCategory, boolean>) =>
     return;
   }
 
-  // Caso 2: múltiples mazos → dividir
+  // Caso 2: múltiples mazos
   if (!onCreateMultiple) {
     showToast('⚠️ No se puede dividir en múltiples mazos.', 'error');
     setShowValidationScreen(false);
@@ -356,17 +350,45 @@ const importSelectedCards = async (categories: Record<CardCategory, boolean>) =>
 
   // 1. Guardar el mazo actual con SOLO el primer grupo
   const firstGroup = groups[0];
-  const updated = {
-    ...editList,
-    associations: firstGroup.associations,
-  };
+  const updated = { ...editList, associations: firstGroup.associations };
   setEditList(updated);
+
+  // 2. ESPERAR a que se guarde en Firestore (que deje de ser temp_)
   await onSave(updated);
 
-  // 2. Crear los mazos adicionales con el resto de grupos
-  if (groups.length > 1) {
-    await onCreateMultiple(groups.slice(1));
+  // 3. ESPERAR a que el store se sincronice Y que el ID real esté disponible
+
+let savedList: AssociationList | undefined;
+for (let i = 0; i < 10; i++) {
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  savedList = useGameStore.getState().lists.find(
+    (l) => l.name === firstGroup.name && !l.id.startsWith('temp_')
+  );
+  if (savedList) break;
+}
+
+if (!savedList) {
+  showToast('⚠️ No se pudo guardar el mazo antes de dividir.', 'error');
+  setShowValidationScreen(false);
+  return;
+}
+
+// 4. Dividir usando el ID REAL
+await onCreateMultiple(groups.slice(1), savedList.id); // ← Pasar el ID real
+
+  console.log('=== VERIFICACIÓN POST-GUARDADO ===');
+  console.log('savedList:', savedList);
+  console.log('savedList.id:', savedList?.id);
+  console.log('savedList.isDraft:', savedList?.isDraft);
+
+  if (!savedList) {
+    showToast('⚠️ No se pudo guardar el mazo antes de dividir.', 'error');
+    setShowValidationScreen(false);
+    return;
   }
+
+  // 4. Ahora sí, dividir (usando el ID real)
+  await onCreateMultiple(groups.slice(1));
 
   showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, 'success');
   setShowValidationScreen(false);

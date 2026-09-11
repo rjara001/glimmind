@@ -370,24 +370,35 @@ export function useAppActions({
   );
 
   const handleCreateMultipleLists = useCallback(
-    async (groups: { name: string; associations: Association[] }[]) => {
-      console.log("=== handleCreateMultipleLists LLAMADO ===");
-      console.log(
-        "groups:",
-        groups.map((g) => ({ name: g.name, count: g.associations.length })),
-      );
-      console.log("user:", !!user);
-      console.log("currentList:", currentList?.id, currentList?.name);
-      console.log("currentList.isDraft:", currentList?.isDraft);
+    async (
+      groups: { name: string; associations: Association[] }[],
+      realListId?: string,
+    ) => {
+      if (!user) return;
 
-      if (!user || !currentList) {
-        console.log("=== RETURN TEMPRANO: user o currentList null ===");
+      const allLists = useGameStore.getState().lists;
+      const realList = realListId
+        ? allLists.find((l) => l.id === realListId)
+        : allLists.find(
+            (l) =>
+              currentList &&
+              l.name === currentList.name &&
+              !l.id.startsWith("temp_"),
+          );
+
+      console.log("=== handleCreateMultipleLists ===");
+      console.log("realListId (recibido):", realListId);
+      console.log("realList encontrado:", realList?.id, realList?.name);
+      console.log("realList.isDraft:", realList?.isDraft);
+
+      if (!realList || realList.isDraft || realList.id.startsWith("temp_")) {
+        showToast(
+          "Guarda el mazo antes de organizarlo en agrupaciones.",
+          "info",
+        );
         return;
       }
-      // El mazo ya se guardó antes de llamar a esta función
-      if (currentList.isDraft) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
+
       useGameStore.getState().setActivityRecordingEnabled(false);
       const { lists, quota } = useGameStore.getState();
 
@@ -395,7 +406,7 @@ export function useAppActions({
         (sum, g) => sum + (g.associations?.length || 0),
         0,
       );
-      const originalCardCount = currentList.associations?.length || 0;
+      const originalCardCount = realList.associations?.length || 0;
       const isGuest = user.uid === GUEST_ID;
 
       const currentCards = lists.reduce(
@@ -426,16 +437,16 @@ export function useAppActions({
         );
       }
 
-      const originalListId = currentList.id;
+      const originalListId = realList.id;
 
       const newLists = groups.map((g) => ({
         id: `temp_${crypto.randomUUID()}`,
         userId: user.uid || GUEST_ID,
         name: g.name,
-        concept: currentList.concept,
+        concept: realList.concept,
         associations: g.associations,
         isArchived: false,
-        settings: normalizeVoiceLanguageSettings(currentList.concept, {
+        settings: normalizeVoiceLanguageSettings(realList.concept, {
           ...DEFAULT_LIST_SETTINGS,
         }),
       }));
@@ -474,13 +485,23 @@ export function useAppActions({
       }
 
       try {
+        console.log("=== ANTES DE splitList ===");
+        console.log("originalListId:", originalListId);
+        console.log(
+          "groups:",
+          groups.map((g) => ({ name: g.name, count: g.associations.length })),
+        );
+
         const newIds = await listService.splitList(originalListId, groups);
+
+        console.log("=== DESPUÉS DE splitList ===");
+        console.log("newIds:", newIds);
+
         const currentStoreLists = useGameStore.getState().lists;
         const newListsWithIds = newLists.map((newList, index) => ({
           ...newList,
           id: newIds[index],
         }));
-
         setLists([
           ...currentStoreLists.filter((l) => l.id !== originalListId),
           ...newListsWithIds,
@@ -488,18 +509,9 @@ export function useAppActions({
         emitMovedEvents(newListsWithIds);
         useGameStore.getState().loadQuota();
 
-        console.log("=== DESPUÉS DE splitList ===");
-        console.log("newIds:", newIds);
+        console.log("=== DESPUÉS DE setLists ===");
         console.log(
-          "newListsWithIds:",
-          newListsWithIds.map((l) => ({
-            id: l.id,
-            name: l.name,
-            count: l.associations.length,
-          })),
-        );
-        console.log(
-          "lists DESPUÉS de setLists:",
+          "lists:",
           useGameStore.getState().lists.map((l) => ({
             id: l.id,
             name: l.name,
@@ -508,9 +520,9 @@ export function useAppActions({
         );
 
         showToast(`${groups.length} agrupaciones creadas con éxito`, "success");
-
-        showToast(`${groups.length} agrupaciones creadas con éxito`, "success");
       } catch (error) {
+        console.error("=== ERROR EN splitList ===");
+        console.error(error);
         showToast(
           error instanceof Error
             ? error.message
