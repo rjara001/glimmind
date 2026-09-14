@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { Association } from "../../types";
 import type { PrebuiltDeck } from "../../types/prebuilt-deck";
 import type { DashboardProps } from "../../types/dashboard";
@@ -57,6 +57,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     useCallback((message: string) => alert(message), []),
   );
 
+  // Auto-set deck name from filename when uploading a file (only if name is empty)
+  useEffect(() => {
+    console.log('paso1');
+    if (importer.selectedFileName && !newName.trim()) {
+      
+      const nameWithoutExt = importer.selectedFileName.replace(/\.[^/.]+$/, "");
+      console.log('nameWithoutExt', nameWithoutExt);
+      setNewName(nameWithoutExt);
+    }
+  }, [importer.selectedFileName, newName]);
+
   const stats = useDashboardStats(lists);
   const { recentLists, bigLists, filteredLists, currentList } = useDashboardLists(
     lists,
@@ -91,6 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleChooseFile = useCallback(() => {
     importer.fileInputRef.current?.click();
+
   }, [importer]);
 
   const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] =>

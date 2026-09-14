@@ -265,6 +265,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({
 
   const handleBulkAdd = (text: string) => {
     if (!text.trim()) return;
+    if (!editList.name.trim()) {
+      setNameError(true);
+      document.getElementById("list-name")?.focus();
+      showToast(
+        "⚠️ Ponle un nombre a tu mazo antes de importar.",
+        "error",
+      );
+      return;
+    }
     const { quota } = useGameStore.getState();
     const tier = quota?.tier || "free";
     const status = QuotaService.getStatus(
@@ -782,18 +791,7 @@ await onCreateMultiple(groups.slice(1), savedList.id); // ← Pasar el ID real
             + Añadir tarjeta
           </button>
           <button
-            onClick={() => {
-              if (!editList.name.trim()) {
-                setNameError(true);
-                document.getElementById("list-name")?.focus();
-                showToast(
-                  "⚠️ Ponle un nombre a tu mazo antes de importar.",
-                  "error",
-                );
-                return;
-              }
-              setShowBulk(!showBulk);
-            }}
+            onClick={() => setShowBulk(!showBulk)}
             className="px-5 py-2.5 rounded-full border border-[#dce2ea] bg-white text-[#1f3347] text-[0.8rem] font-medium hover:bg-[#f1f5f9] transition whitespace-nowrap"
           >
             📥 Importar

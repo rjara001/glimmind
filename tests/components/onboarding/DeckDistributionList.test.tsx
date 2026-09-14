@@ -26,15 +26,16 @@ describe('DeckDistributionList', () => {
     render(<DeckDistributionList deckItems={mockItems} limit={100} />);
 
     expect(screen.getByText(/Límite:/)).toBeInTheDocument();
+    // The limit value has inline style color: #2563eb (blue)
     const limitSpans = screen.getAllByText('100');
-    const limitSpan = limitSpans.find(el => el.className.includes('text-indigo-600'));
-    expect(limitSpan).toBeInTheDocument();
+    const limitIndicator = limitSpans.find(el => el.style.color === 'rgb(37, 99, 235)' || el.style.color === '#2563eb');
+    expect(limitIndicator).toBeTruthy();
   });
 
   it('renders bars with correct fill percentages', () => {
     const { container } = render(<DeckDistributionList deckItems={mockItems} limit={100} />);
 
-    const bars = container.querySelectorAll('.h-full.rounded-full');
+    const bars = container.querySelectorAll('[role="progressbar"]');
     expect(bars.length).toBe(3);
 
     expect(bars[0]).toHaveStyle({ width: '100%' });
@@ -58,10 +59,11 @@ describe('DeckDistributionList', () => {
   it('applies different colors to each bar', () => {
     const { container } = render(<DeckDistributionList deckItems={mockItems} limit={100} />);
 
-    const bars = container.querySelectorAll('.h-full.rounded-full');
-    expect(bars[0]).toHaveStyle({ backgroundColor: '#6366f1' });
-    expect(bars[1]).toHaveStyle({ backgroundColor: '#3b82f6' });
-    expect(bars[2]).toHaveStyle({ backgroundColor: '#2563eb' });
+    const bars = container.querySelectorAll('[role="progressbar"]');
+    // BAR_COLORS in component: ['#8b5cf6', '#6366f1', '#3b82f6', '#059669', '#d97706', '#64748b']
+    expect(bars[0]).toHaveStyle({ backgroundColor: '#8b5cf6' });
+    expect(bars[1]).toHaveStyle({ backgroundColor: '#6366f1' });
+    expect(bars[2]).toHaveStyle({ backgroundColor: '#3b82f6' });
   });
 
   it('shows all items without scroll when <=10 decks', () => {

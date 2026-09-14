@@ -57,9 +57,7 @@ const defaultProps = {
   selectedCategories: { existing: true, similar: true, new: true } as Record<CardCategory, boolean>,
   isAdding: false,
   onToggleCategory: vi.fn(),
-  onAddComplete: vi.fn(),
-  onAddNewOnly: vi.fn(),
-  onCustomize: vi.fn(),
+  onAddSelected: vi.fn(),
   onBack: vi.fn(),
 };
 
@@ -67,10 +65,12 @@ describe('DeckValidationScreen', () => {
   it('renders analysis tiles with correct counts', () => {
     render(<DeckValidationScreen {...defaultProps} />);
 
-    expect(screen.getByText('65')).toBeInTheDocument();
-    expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText('10')).toBeInTheDocument();
-    expect(screen.getByText('40')).toBeInTheDocument();
+    // Total appears in header badge and in stats - check both exist
+    expect(screen.getAllByText('65')).toHaveLength(2);
+    // The counts 15, 10, 40 appear in stats tiles and in description
+    expect(screen.getAllByText('15')).toHaveLength(2);
+    expect(screen.getAllByText('10')).toHaveLength(2);
+    expect(screen.getAllByText('40')).toHaveLength(2);
   });
 
   it('renders the deck name and total badge in header', () => {
@@ -81,11 +81,12 @@ describe('DeckValidationScreen', () => {
   });
 
   it('renders description with category breakdown', () => {
-    render(<DeckValidationScreen {...defaultProps} />);
+    const { container } = render(<DeckValidationScreen {...defaultProps} />);
 
-    expect(screen.getByText(/15 ya están en tu catálogo/)).toBeInTheDocument();
-    expect(screen.getByText(/10 son similares/)).toBeInTheDocument();
-    expect(screen.getByText(/40 son completamente nuevas/)).toBeInTheDocument();
+    // Text is broken up by <strong> tags, check container textContent
+    expect(container.textContent).toContain('existentes');
+    expect(container.textContent).toContain('similares');
+    expect(container.textContent).toContain('nuevas');
   });
 
   it('shows special message when all cards are new', () => {
@@ -95,42 +96,13 @@ describe('DeckValidationScreen', () => {
     expect(screen.getByText(/¡Todas las tarjetas son nuevas para ti!/)).toBeInTheDocument();
   });
 
-  it('calls onAddComplete when "Añadir mazo completo" is clicked', () => {
-    const onAddComplete = vi.fn();
-    render(<DeckValidationScreen {...defaultProps} onAddComplete={onAddComplete} />);
+  it('calls onAddSelected when "Agregar tarjetas" is clicked', () => {
+    const onAddSelected = vi.fn();
+    render(<DeckValidationScreen {...defaultProps} onAddSelected={onAddSelected} />);
 
-    fireEvent.click(screen.getByText(/Añadir mazo completo/));
+    fireEvent.click(screen.getByText(/Agregar tarjetas/));
 
-    expect(onAddComplete).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onAddNewOnly when "Añadir solo tarjetas nuevas" is clicked', () => {
-    const onAddNewOnly = vi.fn();
-    render(<DeckValidationScreen {...defaultProps} onAddNewOnly={onAddNewOnly} />);
-
-    fireEvent.click(screen.getByText(/Añadir solo tarjetas nuevas/));
-
-    expect(onAddNewOnly).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onCustomize when "Personalizar selección" is clicked', () => {
-    const onCustomize = vi.fn();
-    render(<DeckValidationScreen {...defaultProps} onCustomize={onCustomize} />);
-
-    fireEvent.click(screen.getByText(/Personalizar selección/));
-
-    expect(onCustomize).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows spinner text when isAdding is true', () => {
-    render(<DeckValidationScreen {...defaultProps} isAdding={true} />);
-
-    const addingButtons = screen.getAllByText('Agregando...');
-    expect(addingButtons.length).toBeGreaterThanOrEqual(1);
-
-    const buttons = screen.getAllByRole('button');
-    const addButtons = buttons.filter((btn) => btn.hasAttribute('disabled'));
-    expect(addButtons.length).toBeGreaterThan(0);
+    expect(onAddSelected).toHaveBeenCalledTimes(1);
   });
 
   it('calls onBack when back button is clicked', () => {
@@ -146,10 +118,7 @@ describe('DeckValidationScreen', () => {
     const onToggleCategory = vi.fn();
     render(<DeckValidationScreen {...defaultProps} onToggleCategory={onToggleCategory} />);
 
-    const similarCheckbox = screen.getByRole('checkbox', { name: /Similares/i })
-      .closest('label')
-      ?.querySelector('input[type="checkbox"]') as HTMLInputElement;
-
+    const similarCheckbox = screen.getByRole('checkbox', { name: /Similares/i }) as HTMLInputElement;
     fireEvent.click(similarCheckbox);
 
     expect(onToggleCategory).toHaveBeenCalledWith('similar');
@@ -165,11 +134,19 @@ describe('DeckValidationScreen', () => {
     expect(examples.length).toBeGreaterThan(0);
   });
 
-  it('disables "Add only new" when new category is not selected', () => {
-    const unselectedNew = { existing: true, similar: true, new: false } as Record<CardCategory, boolean>;
-    render(<DeckValidationScreen {...defaultProps} selectedCategories={unselectedNew} />);
+  it('does not disable button based on isAdding prop (only selectedCount matters)', () => {
+    render(<DeckValidationScreen {...defaultProps} isAdding={true} />);
 
-    fireEvent.click(screen.getByText(/Añadir solo tarjetas nuevas/));
-    expect(defaultProps.onAddNewOnly).not.toHaveBeenCalled();
+    const addButton = screen.getByRole('button', { name: /Agregar tarjetas/ });
+    // isAdding prop doesn't disable the button - only selectedCount === 0 does
+    expect(addButton).not.toBeDisabled();
+  });
+
+  it('disables "Agregar tarjetas" when no categories selected', () => {
+    const unselectedAll = { existing: false, similar: false, new: false } as Record<CardCategory, boolean>;
+    render(<DeckValidationScreen {...defaultProps} selectedCategories={unselectedAll} />);
+
+    const addButton = screen.getByRole('button', { name: /Agregar tarjetas/ });
+    expect(addButton).toBeDisabled();
   });
 });

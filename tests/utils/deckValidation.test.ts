@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { categorizeDeckCards } from '@/utils/deckValidation';
-
+import type { PrebuiltDeck } from '@/types/prebuilt-deck';
 import type { AssociationList } from '@/types';
 
 const makeList = (term: string, definition = 'def'): AssociationList => ({
@@ -31,13 +31,23 @@ const makeList = (term: string, definition = 'def'): AssociationList => ({
   },
 });
 
-const makeDeckCards = (associations: { term: string; definition: string }[]): { term: string; definition: string }[] => associations;
+const makeDeck = (associations: { term: string; definition: string }[]): PrebuiltDeck => ({
+  id: 'test-deck',
+  name: 'Test Deck',
+  concept: 'value1 / value2',
+  category: 'Casual',
+  description: 'Test',
+  icon: '📚',
+  order: 1,
+  active: true,
+  associations: associations.map(a => ({ term: a.term, definition: [a.definition], context: '' })),
+});
 
 
 describe('categorizeDeckCards', () => {
   it('categorizes exact term match as existing (case-insensitive)', () => {
     const existingLists = [makeList('House', 'Casa')];
-    const deck = makeDeckCards([{ term: 'house', definition: 'Casa' }]);
+    const deck = makeDeck([{ term: 'house', definition: 'Casa' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -49,7 +59,7 @@ describe('categorizeDeckCards', () => {
 
   it('categorizes Levenshtein-similar term as similar with match data', () => {
     const existingLists = [makeList('test', 'prueba')];
-    const deck = makeDeckCards([{ term: 'tests', definition: 'pruebas' }]);
+    const deck = makeDeck([{ term: 'tests', definition: 'pruebas' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -62,7 +72,7 @@ describe('categorizeDeckCards', () => {
 
   it('categorizes below-threshold similarity as new', () => {
     const existingLists = [makeList('abandon', 'abandonar')];
-    const deck = makeDeckCards([{ term: 'Abandonar', definition: 'Abandon' }]);
+    const deck = makeDeck([{ term: 'Abandonar', definition: 'Abandon' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -74,7 +84,7 @@ describe('categorizeDeckCards', () => {
 
   it('categorizes completely new term as new', () => {
     const existingLists = [makeList('dog', 'perro')];
-    const deck = makeDeckCards([{ term: 'cat', definition: 'gato' }]);
+    const deck = makeDeck([{ term: 'cat', definition: 'gato' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -83,7 +93,7 @@ describe('categorizeDeckCards', () => {
   });
 
   it('returns all new when existing lists are empty', () => {
-    const deck = makeDeckCards([
+    const deck = makeDeck([
       { term: 'alpha', definition: 'A' },
       { term: 'beta', definition: 'B' },
     ]);
@@ -96,7 +106,7 @@ describe('categorizeDeckCards', () => {
   });
 
   it('returns all new when existingLists is undefined', () => {
-    const deck = makeDeckCards([{ term: 'alpha', definition: 'A' }]);
+    const deck = makeDeck([{ term: 'alpha', definition: 'A' }]);
 
     const result = categorizeDeckCards(deck, undefined);
 
@@ -104,7 +114,7 @@ describe('categorizeDeckCards', () => {
   });
 
   it('returns all new when existingLists is null', () => {
-    const deck = makeDeckCards([{ term: 'alpha', definition: 'A' }]);
+    const deck = makeDeck([{ term: 'alpha', definition: 'A' }]);
 
     const result = categorizeDeckCards(deck, null);
 
@@ -113,7 +123,7 @@ describe('categorizeDeckCards', () => {
 
   it('handles deck with no associations', () => {
     const existingLists = [makeList('dog', 'perro')];
-    const deck = makeDeckCards([]);
+    const deck = makeDeck([]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -129,7 +139,7 @@ describe('categorizeDeckCards', () => {
       makeList('house', 'Casa'),  // matches deck "house" exactly
       makeList('test', 'prueba'), // similar to deck "tests"
     ];
-    const deck = makeDeckCards([
+    const deck = makeDeck([
       { term: 'house', definition: 'Casa' },
       { term: 'tests', definition: 'pruebas' },
       { term: 'cat', definition: 'gato' },
@@ -150,7 +160,7 @@ describe('categorizeDeckCards', () => {
       makeList('test', 'prueba'),
       makeList('tests', 'pruebas'),
     ];
-    const deck = makeDeckCards([{ term: 'testing', definition: 'prueba' }]);
+    const deck = makeDeck([{ term: 'testing', definition: 'prueba' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -163,7 +173,7 @@ describe('categorizeDeckCards', () => {
 
   it('normalizes accents and casing for exact match', () => {
     const existingLists = [makeList('café', 'coffee shop')];
-    const deck = makeDeckCards([{ term: 'CAFE', definition: 'coffee shop' }]);
+    const deck = makeDeck([{ term: 'CAFE', definition: 'coffee shop' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
@@ -173,7 +183,7 @@ describe('categorizeDeckCards', () => {
 
   it('strips punctuation for normalization', () => {
     const existingLists = [makeList('okay', 'de acuerdo')];
-    const deck = makeDeckCards([{ term: 'okay!', definition: 'de acuerdo' }]);
+    const deck = makeDeck([{ term: 'okay!', definition: 'de acuerdo' }]);
 
     const result = categorizeDeckCards(deck, existingLists);
 
