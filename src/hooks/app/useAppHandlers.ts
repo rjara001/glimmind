@@ -243,10 +243,15 @@ export function useAppHandlers({
         useGameStore.getState().setLists(currentLists.filter((l) => l.id !== id));
         showToast("Mazo eliminado", "success");
       } catch (error) {
-        showToast(
-          error instanceof Error ? error.message : "Error al eliminar",
-          "error",
-        );
+        // If list doesn't exist in Firestore (e.g., local-only list), still remove from local store
+        const errorMessage = error instanceof Error ? error.message : "Error al eliminar";
+        if (errorMessage.toLowerCase().includes("not found") || errorMessage.toLowerCase().includes("no existe")) {
+          const currentLists = useGameStore.getState().lists;
+          useGameStore.getState().setLists(currentLists.filter((l) => l.id !== id));
+          showToast("Mazo eliminado (solo local)", "success");
+        } else {
+          showToast(errorMessage, "error");
+        }
       }
     },
     [user, showToast],
