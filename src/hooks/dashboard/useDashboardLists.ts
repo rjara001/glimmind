@@ -17,7 +17,6 @@ export function useDashboardLists(
 ): DashboardLists {
   const recentLists = useMemo(() => {
     return [...lists]
-      .filter((list) => !list.isDraft)
       .sort((a, b) => {
         if (!a.updatedAt || !b.updatedAt) return 0;
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
@@ -28,7 +27,6 @@ export function useDashboardLists(
   const bigLists = useMemo(() => {
     return lists.filter(
       (list) =>
-        !list.isDraft &&
         (list.associations || []).filter((a) => !a.isArchived).length > BIG_LIST_THRESHOLD,
     );
   }, [lists]);
@@ -37,9 +35,8 @@ export function useDashboardLists(
     const term = searchTerm.toLowerCase();
     return lists.filter(
       (list) =>
-        !list.isDraft &&
-        (list.name.toLowerCase().includes(term) ||
-          list.concept.toLowerCase().includes(term)),
+        list.name.toLowerCase().includes(term) ||
+        list.concept.toLowerCase().includes(term),
     );
   }, [lists, searchTerm]);
 

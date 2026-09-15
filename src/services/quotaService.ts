@@ -53,6 +53,23 @@ export class QuotaService {
     }
     return maxCards;
   }
+
+  static async checkQuota(userId: string, projectedCards: number): Promise<QuotaStatus> {
+    const userQuota = await quotaService.fetchQuota(userId);
+    if (!userQuota) {
+      return {
+        currentCards: 0,
+        maxCards: this.getMaxCards('free'),
+        usageRatio: 0,
+        percentage: 0,
+        level: 'ok',
+        isAiBlocked: false,
+        isManualBlocked: false,
+        remainingCards: this.getMaxCards('free'),
+      };
+    }
+    return this.getStatus(projectedCards, userQuota.tier);
+  }
 }
 
 export const quotaService = {
@@ -63,5 +80,9 @@ export const quotaService = {
     } catch (error) {
       return null;
     }
+  },
+
+  checkQuota: async (userId: string, projectedCards: number): Promise<QuotaStatus> => {
+    return QuotaService.checkQuota(userId, projectedCards);
   },
 };

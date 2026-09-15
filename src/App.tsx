@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
 import { ListEditor } from './components/ListEditor';
@@ -16,13 +16,13 @@ import { useGameStore } from './store/gameStore';
 import { auth } from './firebase';
 import { VoskModelProvider } from './context/VoskModelContext';
 import { useAppBootstrap } from './hooks/app/useAppBootstrap';
-import { useAppActions } from './hooks/app/useAppActions';
+import { useNavigation } from './hooks/app/useNavigation';
+import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
 import { splitAssociationsByMax } from './utils/splitAssociations';
 import type { AppUser } from './types';
-import type { AppView } from './types/app';
 import type { VocabularyResult } from './types/youtube-deck';
-import type { Association, AssociationList } from './types';
+import type { Association } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
 import { TextImporter } from './components/views/TextImporter';
@@ -37,42 +37,43 @@ const MOCK_USER: AppUser = {
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
-  const [view, setView] = useState<AppView>('dashboard');
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
-  const [youtubePreviewResult, setYoutubePreviewResult] = useState<VocabularyResult | null>(null);
-  const [pendingYouTube, setPendingYouTube] = useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingTextImport, setPendingTextImport] = useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
-  const historyRef = useRef<AppView[]>([]);
-  const tempIdCounter = useRef(0);
+  const { view, navigate, goBack, isReturningToGame } = useNavigation();
+  const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
-  const clearListContext = useCallback(() => {
-    useGameStore.getState().setCurrentList(null);
-    useGameStore.getState().clearAllResumeState();
-  }, []);
+  const handlers = useAppHandlers({ navigate, showToast, setLastPlayedId });
 
-  const navigate = useCallback((nextView: string) => {
-    if (nextView === 'dashboard') {
-      clearListContext();
-      historyRef.current = [];
-    } else {
-      historyRef.current = [...historyRef.current, view];
-    }
-    setView(nextView as AppView);
-  }, [view, clearListContext]);
+  // Wrapper functions to match DashboardProps interface
+  const handleCreate = useCallback(
+    async (name: string, concept: string, initialAssociations: Association[]) => {
+      const id = await handlers.handleCreateList(name, concept, initialAssociations);
+      if (id) {
+        useGameStore.getState().setCurrentList(id);
+        navigate('editor');
+      }
+    },
+    [handlers.handleCreateList, navigate]
+  );
 
-  const goBack = useCallback(() => {
-    const prev = historyRef.current[historyRef.current.length - 1];
-    historyRef.current = historyRef.current.slice(0, -1);
-    const target = prev ?? 'dashboard';
-    if (target === 'dashboard') {
-      clearListContext();
-    }
-    setView(target as AppView);
-  }, [clearListContext]);
+  const handleCreateAndPlay = useCallback(
+    (name: string, concept: string, initialAssociations: Association[]) => {
+      handlers.handleCreateListAndPlay(name, concept, initialAssociations);
+    },
+    [handlers.handleCreateListAndPlay]
+  );
 
-  const isReturningToGame = historyRef.current[historyRef.current.length - 1] === 'game';
+  const handleAddDeck = useCallback(
+    async (name: string, concept: string, initialAssociations: Association[]) => {
+      await handlers.handleAddDeck({ name, associations: initialAssociations, concept });
+    },
+    [handlers.handleAddDeck]
+  );
+
+  const handleUpdateAssociations = useCallback(
+    async (updatedAssociations: Association[]) => {
+      await handlers.handleUpdateAssociations(updatedAssociations);
+    },
+    [handlers.handleUpdateAssociations]
+  );
 
   const user = useGameStore((state) => state.user);
   const setUser = useGameStore((state) => state.setUser);
@@ -80,24 +81,14 @@ const AppContent: React.FC = () => {
   const lists = useGameStore((state) => state.lists);
   const celebration = useGameStore((state) => state.celebration);
   const clearCelebration = useGameStore((state) => state.clearCelebration);
+  const setCurrentList = useGameStore((state) => state.setCurrentList);
 
-  const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
-
-  const {
-    isSyncing,
-    currentList,
-    handleSyncFromCloud,
-    handleUpdateAssociations,
-    handlePlayList,
-    handleQuickAdd,
-    handleUpdateList,
-    handleCreateList,
-    handleCreateListQuick,
-    handleDeleteList,
-    handleCreateMultipleLists,
-    handleCreateListAndPlay,
-    handleAddDeck,
-  } = useAppActions({ navigate, showToast, setLastPlayedId });
+  const [showQuickAdd, setShowQuickAdd] = React.useState(false);
+  const [showYouTubeModal, setShowYouTubeModal] = React.useState(false);
+  const [youtubePreviewResult, setYoutubePreviewResult] = React.useState<VocabularyResult | null>(null);
+  const [pendingYouTube, setPendingYouTube] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingTextImport, setPendingTextImport] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingEditId, setPendingEditId] = React.useState<string | null>(null);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -105,16 +96,13 @@ const AppContent: React.FC = () => {
     } catch {
       showToast('Failed to sign out. Please try again.', 'error');
     } finally {
-      // Clear local user state explicitly. On mobile (Capacitor webview),
-      // onAuthStateChanged does not reliably fire with null after signOut,
-      // so we cannot depend on it to reset the UI.
       setUser(null);
     }
   }, [setUser, showToast]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
-      const { chunks, deckNames, sourceMeta } = pendingYouTube;
+      const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingYouTube;
       const settings = useGameStore.getState().settings;
       const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
@@ -125,18 +113,13 @@ const AppContent: React.FC = () => {
         deckNames[0] || 'Deck'
       );
 
-      const newLists: AssociationList[] = splitChunks.map((chunk, i) => ({
-        id: `temp_${tempIdCounter.current++}_${i}`,
-        userId: user?.uid || GUEST_UID,
-        name: splitDeckNames[i],
-        concept: 'value1 / value2',
-        associations: chunk,
-        isArchived: false,
-        sourceType: sourceMeta.sourceType,
-        sourceUrl: sourceMeta.sourceUrl,
-        rawSourceText: sourceMeta.rawSourceText,
-        sourceRow: sourceMeta.sourceRow,
-        settings: {
+      // Create the first deck and then split if needed
+      const firstChunk = splitChunks[0];
+      handlers.handleCreateList(
+        splitDeckNames[0],
+        'value1 / value2',
+        firstChunk,
+        {
           mode: 'training',
           flipOrder: 'normal',
           threshold: 0.95,
@@ -144,17 +127,27 @@ const AppContent: React.FC = () => {
           showHints: true,
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
-        },
-      }));
-      useGameStore.getState().setLists([...lists, ...newLists]);
-      useGameStore.getState().setCurrentList(newLists[0].id);
-      setPendingYouTube(null);
+        }
+      ).then((firstId) => {
+        if (firstId && splitChunks.length > 1) {
+          // Create remaining decks
+          const groups = splitChunks.slice(1).map((chunk, i) => ({
+            name: splitDeckNames[i + 1],
+            associations: chunk,
+          }));
+          handlers.handleCreateMultipleLists(groups, firstId);
+        }
+        if (firstId) {
+          setCurrentList(firstId);
+        }
+        setPendingYouTube(null);
+      });
     }
-  }, [view, pendingYouTube, user, lists]);
+  }, [view, pendingYouTube, user, lists, handlers, setCurrentList]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingTextImport) {
-      const { chunks, deckNames, sourceMeta } = pendingTextImport;
+      const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingTextImport;
       const settings = useGameStore.getState().settings;
       const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
@@ -165,18 +158,12 @@ const AppContent: React.FC = () => {
         deckNames[0] || 'Importado'
       );
 
-      const newLists: AssociationList[] = splitChunks.map((chunk, i) => ({
-        id: `temp_${tempIdCounter.current++}_${i}`,
-        userId: user?.uid || GUEST_UID,
-        name: splitDeckNames[i],
-        concept: 'value1 / value2',
-        associations: chunk,
-        isArchived: false,
-        sourceType: 'raw_text',
-        sourceUrl: undefined,
-        rawSourceText: sourceMeta.rawSourceText,
-        sourceRow: undefined,
-        settings: {
+      const firstChunk = splitChunks[0];
+      handlers.handleCreateList(
+        splitDeckNames[0],
+        'value1 / value2',
+        firstChunk,
+        {
           mode: 'training',
           flipOrder: 'normal',
           threshold: 0.95,
@@ -184,13 +171,22 @@ const AppContent: React.FC = () => {
           showHints: true,
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
-        },
-      }));
-      useGameStore.getState().setLists([...lists, ...newLists]);
-      useGameStore.getState().setCurrentList(newLists[0].id);
-      setPendingTextImport(null);
+        }
+      ).then((firstId) => {
+        if (firstId && splitChunks.length > 1) {
+          const groups = splitChunks.slice(1).map((chunk, i) => ({
+            name: splitDeckNames[i + 1],
+            associations: chunk,
+          }));
+          handlers.handleCreateMultipleLists(groups, firstId);
+        }
+        if (firstId) {
+          setCurrentList(firstId);
+        }
+        setPendingTextImport(null);
+      });
     }
-  }, [view, pendingTextImport, user, lists]);
+  }, [view, pendingTextImport, user, lists, handlers, setCurrentList]);
 
   if (!isLoaded) {
     return (
@@ -229,9 +225,9 @@ const AppContent: React.FC = () => {
           view={view}
           user={user}
           onShowQuickAdd={() => setShowQuickAdd(true)}
-          onSync={handleSyncFromCloud}
-          isSyncing={isSyncing}
-          onNavigate={navigate}
+          onSync={handlers.handleSyncFromCloud}
+          isSyncing={handlers.isSyncing}
+          onNavigate={navigate as (view: string) => void}
           onLogout={handleLogout}
         />
         {isGuest && <GuestBanner onDismiss={() => {}} />}
@@ -241,35 +237,35 @@ const AppContent: React.FC = () => {
             <Dashboard
               lists={lists}
               lastPlayedId={lastPlayedId}
-              onCreate={handleCreateList}
-              onCreateAndPlay={handleCreateListAndPlay}
+              onCreate={handleCreate}
+              onCreateAndPlay={handleCreateAndPlay}
               onAddDeck={handleAddDeck}
-              onDelete={handleDeleteList}
+              onDelete={handlers.handleDeleteList}
               onEdit={(id) => {
                 useGameStore.getState().setCurrentList(id);
                 navigate('editor');
               }}
-              onPlay={handlePlayList}
+              onPlay={handlers.handlePlayList}
               onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
               onTextImport={() => navigate('text-importer')}
             />
           )}
-          {view === 'editor' && currentList && (
+          {view === 'editor' && handlers.currentList && (
             <ListEditor
-              list={currentList}
+              list={handlers.currentList}
               initialEditId={pendingEditId}
               onInitialEditConsumed={() => setPendingEditId(null)}
-              onSave={handleUpdateList}
+              onSave={handlers.handleUpdateList}
               onBack={goBack}
               onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
-              onCreateMultiple={handleCreateMultipleLists}
+              onCreateMultiple={handlers.handleCreateMultipleLists}
             />
           )}
-          {view === 'game' && currentList && (
+          {view === 'game' && handlers.currentList && (
             <GameView
-              list={currentList}
+              list={handlers.currentList}
               onUpdateAssociations={handleUpdateAssociations}
-              onUpdateList={handleUpdateList}
+              onUpdateList={handlers.handleUpdateList}
               onBack={goBack}
               onViewList={(id) => {
                 setPendingEditId(id ?? null);
@@ -307,8 +303,8 @@ const AppContent: React.FC = () => {
         {showQuickAdd && (
           <QuickAddModal
             lists={lists}
-            onAdd={handleQuickAdd}
-            onCreateList={handleCreateListQuick}
+            onAdd={handlers.handleQuickAdd}
+            onCreateList={handlers.handleCreateListQuick}
             onClose={() => setShowQuickAdd(false)}
           />
         )}

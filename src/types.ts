@@ -45,6 +45,29 @@ export interface Association {
   updatedAt?: number;
 }
 
+export interface ListSettings {
+  mode: GameMode;
+  flipOrder: 'normal' | 'reversed';
+  threshold: number;
+  ignoreArticles?: boolean;
+  showHints?: boolean;
+  hintMode?: HintMode | false;
+  voiceEnabled?: boolean;
+  ttsProvider?: VoiceProvider;
+  sttProvider?: SttProviderType;
+  voiceSttFallback?: boolean;
+  voiceTermLang?: string;
+  voiceDefLang?: string;
+  voiceTermId?: string;
+  voiceDefId?: string;
+  voiceRate?: number;
+  voicePitch?: number;
+  voiceCommands?: VoiceCommandsConfig;
+  autoRevealAfterSeconds?: number;
+  autoAdvanceAfterAttempts?: number;
+  practiceRevealDelay?: number;
+}
+
 export interface AssociationList {
   id: string;
   userId: string;
@@ -52,33 +75,11 @@ export interface AssociationList {
   concept: string;
   associations: Association[];
   isArchived: boolean;
-  isDraft?: boolean;
   sourceType?: DeckSourceType;
   sourceUrl?: string;
   rawSourceText?: string;
   sourceRow?: SourceRow;
-  settings: {
-    mode: GameMode;
-    flipOrder: 'normal' | 'reversed';
-    threshold: number;
-    ignoreArticles?: boolean;
-    showHints?: boolean;
-    hintMode?: HintMode | false;
-    voiceEnabled?: boolean;
-    ttsProvider?: VoiceProvider;
-    sttProvider?: SttProviderType;
-    voiceSttFallback?: boolean;
-    voiceTermLang?: string;
-    voiceDefLang?: string;
-    voiceTermId?: string;
-    voiceDefId?: string;
-    voiceRate?: number;
-    voicePitch?: number;
-    voiceCommands?: VoiceCommandsConfig;
-    autoRevealAfterSeconds?: number;
-    autoAdvanceAfterAttempts?: number;
-    practiceRevealDelay?: number;
-  };
+  settings: ListSettings;
   createdAt?: any;
   updatedAt?: any;
   history?: {

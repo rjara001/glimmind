@@ -453,8 +453,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     // Persist to localStorage
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
-    // Drafts are persisted locally for editing, but cloud writes wait for explicit save.
-    if (user && user.uid !== GUEST_UID && !prevList?.isDraft) {
+    if (user && user.uid !== GUEST_UID) {
       get().syncToCloud(listId).catch((error) => {
         console.error('[updateAssociations] syncToCloud failed:', error);
       });
@@ -832,7 +831,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const run = (async () => {
       const { lists, user } = get();
       const localList = lists.find(l => l.id === listId);
-      if (!localList || !user || user.uid === GUEST_UID || localList.isDraft) return;
+      if (!localList || !user || user.uid === GUEST_UID) return;
 
       console.log('[syncToCloud] start listId=', listId, 'localAssocCount=', localList.associations?.length || 0, 'userId=', user.uid);
 

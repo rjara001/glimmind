@@ -1,5 +1,7 @@
 import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { callFunction } from './callFunction';
+import { Association } from '../types';
+import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
 
 const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
 const LOCAL_SESSIONS_KEY = 'glimmind_sessions';
@@ -49,23 +51,78 @@ function saveLocalSessions(sessions: GameSessionSummary[]): void {
   localStorage.setItem(LOCAL_SESSIONS_KEY, JSON.stringify(sessions));
 }
 
+async function recordEventsInternal(userId: string, events: CardActivityEvent[]): Promise<void> {
+  if (events.length === 0) return;
+  if (!userId) {
+    const merged = [...loadLocalActivity(), ...events]
+      .sort((a, b) => b.at - a.at)
+      .slice(0, LOCAL_MAX_EVENTS);
+    saveLocalActivity(merged);
+    return;
+  }
+  const chunks: CardActivityEvent[][] = [];
+  for (let i = 0; i < events.length; i += MAX_EVENTS_PER_BATCH) {
+    chunks.push(events.slice(i, i + MAX_EVENTS_PER_BATCH));
+  }
+  await Promise.all(
+    chunks.map((chunk) => callFunction('appendActivity', { userId, events: chunk }))
+  );
+}
+
 export const activityService = {
   appendEvents: async (userId: string, events: CardActivityEvent[]): Promise<void> => {
-    if (events.length === 0) return;
-    if (!userId) {
-      const merged = [...loadLocalActivity(), ...events]
-        .sort((a, b) => b.at - a.at)
-        .slice(0, LOCAL_MAX_EVENTS);
-      saveLocalActivity(merged);
-      return;
-    }
-    const chunks: CardActivityEvent[][] = [];
-    for (let i = 0; i < events.length; i += MAX_EVENTS_PER_BATCH) {
-      chunks.push(events.slice(i, i + MAX_EVENTS_PER_BATCH));
-    }
-    await Promise.all(
-      chunks.map((chunk) => callFunction('appendActivity', { userId, events: chunk }))
+    return recordEventsInternal(userId, events);
+  },
+
+  recordEvents: async (events: CardActivityEvent[]): Promise<void> => {
+    const { user } = await import('../store/gameStore').then(m => m.useGameStore.getState());
+    const userId = user && user.uid !== 'guest' ? user.uid : '';
+    return recordEventsInternal(userId, events);
+  },
+
+  recordCardsCreated: async (userId: string, listId: string, associations: Association[]): Promise<void> => {
+    const events = associations.map(a =>
+      createActivityEvent({
+        userId,
+        listId,
+        cardId: a.id,
+        cardTerm: a.term,
+        type: 'card_created',
+      })
     );
+    await recordEventsInternal(userId, events);
+  },
+
+  recordListDiffEvents: async (userId: string, listId: string, before: Association[], after: Association[]): Promise<void> => {
+    const events = buildListDiffEvents({
+      userId,
+      listId,
+      before,
+      after,
+    });
+    await recordEventsInternal(userId, events);
+  },
+
+  recordSplitEvents: async (
+    userId: string,
+    originalListId: string,
+    groups: { name: string; associations: Association[] }[],
+    newIds: string[]
+  ): Promise<void> => {
+    const events = groups.flatMap((g, i) =>
+      g.associations.map(a =>
+        createActivityEvent({
+          userId,
+          listId: newIds[i],
+          cardId: a.id,
+          cardTerm: a.term,
+          type: 'card_moved',
+          fromListId: originalListId,
+          toListId: newIds[i],
+        })
+      )
+    );
+    await recordEventsInternal(userId, events);
   },
 
   fetchActivity: async (userId: string, query: ActivityQuery = {}): Promise<ActivityPage> => {
