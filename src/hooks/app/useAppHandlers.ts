@@ -238,6 +238,9 @@ export function useAppHandlers({
       if (!user) return;
       try {
         await listService.deleteList(id);
+        // Remove from local store
+        const currentLists = useGameStore.getState().lists;
+        useGameStore.getState().setLists(currentLists.filter((l) => l.id !== id));
         showToast("Mazo eliminado", "success");
       } catch (error) {
         showToast(
