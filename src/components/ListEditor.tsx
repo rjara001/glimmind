@@ -63,12 +63,30 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     setTranslationUsed: state.setTranslationUsed,
   });
 
+  // Wrapped onSave that handles create mode by delegating to onCreateList
+  const wrappedOnSave = useCallback(async (listToSave: AssociationList) => {
+    if (isCreateMode && onCreateList) {
+      const id = await onCreateList(
+        listToSave.name,
+        listToSave.concept,
+        listToSave.associations,
+        listToSave.settings
+      );
+      if (id) {
+        showToast("Mazo creado", "success");
+        onBack();
+      }
+    } else {
+      await onSave(listToSave);
+    }
+  }, [isCreateMode, onCreateList, onSave, showToast, onBack]);
+
   const actions = useListEditorActions({
     editList: state.editList,
     setEditList: state.setEditList,
     selectedIds: state.selectedIds,
     selectedArchivedIds: state.selectedArchivedIds,
-    onSave,
+    onSave: wrappedOnSave,
     onCreateMultiple: onCreateMultiple ?? (() => {}),
     showToast,
     translateLang: state.translateLang,
