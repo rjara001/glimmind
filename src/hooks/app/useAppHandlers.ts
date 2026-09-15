@@ -236,6 +236,11 @@ export function useAppHandlers({
   const handleDeleteList = useCallback(
     async (id: string) => {
       if (!user) return;
+      if (!id) {
+        // Don't allow deleting lists with empty IDs (create mode lists)
+        showToast("No se puede eliminar una lista sin guardar", "error");
+        return;
+      }
       try {
         await listService.deleteList(id);
         // Remove from local store
