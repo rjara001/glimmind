@@ -29,6 +29,8 @@ interface ListEditorProps {
   onBack: () => void;
   onBackLabel: string;
   onCreateMultiple?: (groups: { name: string; associations: Association[] }[], realListId?: string) => void;
+  isCreateMode?: boolean;
+  onCreateList?: (name: string, concept: string, associations: Association[], settings?: Partial<AssociationList["settings"]>) => Promise<string | null>;
 }
 
 export const ListEditor: React.FC<ListEditorProps> = ({
@@ -39,6 +41,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
   onBack,
   onBackLabel = "Volver al dashboard",
   onCreateMultiple,
+  isCreateMode = false,
+  onCreateList,
 }) => {
   const { showToast } = useToast();
   const quota = useGameStore((state) => state.quota);
@@ -90,19 +94,38 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     }
   }, [initialEditId, onInitialEditConsumed]);
 
+  // Only auto-save existing lists, not create mode
   useEffect(() => {
-    actions.cleanupAndSave(list);
-  }, [list, actions.cleanupAndSave]);
+    if (!isCreateMode) {
+      actions.cleanupAndSave(list);
+    }
+  }, [list, actions.cleanupAndSave, isCreateMode]);
 
-  const handleSaveClick = useCallback(() => {
+  const handleSaveClick = useCallback(async () => {
     if (!state.hasName) {
       state.setNameError(true);
       document.getElementById("list-name")?.focus();
       showToast("⚠️ Ponle un nombre a tu mazo antes de guardar.", "error");
       return;
     }
-    actions.handleSave();
-  }, [state.hasName, state.setNameError, actions.handleSave, showToast]);
+    
+    if (isCreateMode && onCreateList) {
+      // Create new list in Firestore
+      const id = await onCreateList(
+        state.editList.name,
+        state.editList.concept,
+        state.editList.associations,
+        state.editList.settings
+      );
+      if (id) {
+        showToast("Mazo creado", "success");
+        onBack();
+      }
+    } else {
+      // Update existing list
+      actions.handleSave();
+    }
+  }, [state.hasName, state.setNameError, state.editList, isCreateMode, onCreateList, actions.handleSave, showToast, onBack]);
 
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">

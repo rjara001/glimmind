@@ -22,7 +22,7 @@ import { GUEST_UID } from './constants/app';
 import { splitAssociationsByMax } from './utils/splitAssociations';
 import type { AppUser } from './types';
 import type { VocabularyResult } from './types/youtube-deck';
-import type { Association } from './types';
+import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
 import { TextImporter } from './components/views/TextImporter';
@@ -53,6 +53,31 @@ const AppContent: React.FC = () => {
     },
     [handlers.handleCreateList, navigate]
   );
+
+  // Navigate to editor in create mode - user will create list on first save
+  const handleCreateEmpty = useCallback(() => {
+    const emptyList: AssociationList = {
+      id: '', // Empty ID indicates create mode
+      userId: handlers.currentList?.userId || '',
+      name: '',
+      concept: 'Valor 1 / Valor 2',
+      associations: [],
+      isArchived: false,
+      settings: {
+        mode: 'training',
+        flipOrder: 'normal',
+        threshold: 0.95,
+        ignoreArticles: true,
+        showHints: true,
+        autoRevealAfterSeconds: 15,
+        autoAdvanceAfterAttempts: 3,
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    useGameStore.getState().setCurrentList(emptyList);
+    navigate('editor');
+  }, [navigate, handlers.currentList]);
 
   const handleCreateAndPlay = useCallback(
     (name: string, concept: string, initialAssociations: Association[]) => {
@@ -248,6 +273,7 @@ const AppContent: React.FC = () => {
               onPlay={handlers.handlePlayList}
               onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
               onTextImport={() => navigate('text-importer')}
+              onCreateEmpty={handleCreateEmpty}
             />
           )}
           {view === 'editor' && handlers.currentList && (
@@ -259,6 +285,8 @@ const AppContent: React.FC = () => {
               onBack={goBack}
               onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
               onCreateMultiple={handlers.handleCreateMultipleLists}
+              isCreateMode={!handlers.currentList.id}
+              onCreateList={handlers.handleCreateList}
             />
           )}
           {view === 'game' && handlers.currentList && (

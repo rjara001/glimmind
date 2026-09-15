@@ -12,6 +12,7 @@ export interface DashboardProps {
   onPlay: (id: string) => void;
   onYouTubeSuccess?: (result: VocabularyResult) => void;
   onTextImport?: () => void;
+  onCreateEmpty: () => void;
 }
 
 export interface DashboardStats {

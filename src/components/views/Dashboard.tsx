@@ -35,6 +35,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onPlay,
   onYouTubeSuccess,
   onTextImport,
+  onCreateEmpty,
 }) => {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
@@ -76,8 +77,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   const handleCreateEmpty = useCallback(() => {
-    onCreate("", "Valor 1 / Valor 2", []);
-  }, [onCreate]);
+    onCreateEmpty();
+  }, [onCreateEmpty]);
 
   const handleSubmitCreate = useCallback(
     (e: React.FormEvent) => {
