@@ -75,7 +75,10 @@ const AppContent: React.FC = () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    useGameStore.getState().setCurrentList(emptyList);
+    // Add to store lists and set as current
+    const currentLists = useGameStore.getState().lists;
+    useGameStore.getState().setLists([...currentLists, emptyList]);
+    useGameStore.getState().setCurrentList('');
     navigate('editor');
   }, [navigate, handlers.currentList]);
 
