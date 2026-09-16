@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import type { AppView } from "../../types/app";
 import { useGameStore } from "../../store/gameStore";
 
@@ -10,6 +11,7 @@ export interface UseNavigationReturn {
 }
 
 export function useNavigation(): UseNavigationReturn {
+  const routerNavigate = useNavigate();
   const [view, setView] = useState<AppView>("dashboard");
   const historyRef = useRef<AppView[]>([]);
 
@@ -27,8 +29,9 @@ export function useNavigation(): UseNavigationReturn {
         historyRef.current = [...historyRef.current, view];
       }
       setView(nextView);
+      routerNavigate(`/${nextView}`);
     },
-    [view, clearListContext]
+    [view, clearListContext, routerNavigate],
   );
 
   const goBack = useCallback(() => {
@@ -39,7 +42,8 @@ export function useNavigation(): UseNavigationReturn {
       clearListContext();
     }
     setView(target);
-  }, [clearListContext]);
+    routerNavigate(`/${target}`);
+  }, [clearListContext, routerNavigate]);
 
   const isReturningToGame =
     historyRef.current[historyRef.current.length - 1] === "game";

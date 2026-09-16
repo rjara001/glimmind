@@ -4,12 +4,41 @@ const { requireAuth } = require("../utils/helpers");
 const { QuotaExceededError } = require("../utils/helpers");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../utils/constants");
 const listService = require("../services/listService");
+const { GetListsSchema, CreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema } = require("../utils/validation");
+const { rateLimit } = require("../utils/rateLimit");
 
-exports.getLists = onRequest({ cors: true }, async (req, res) => {
-  const { userId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
+function applyRateLimit(fnName, handler) {
+  const limiter = rateLimit(fnName);
+  return async (req, res) => {
+    await new Promise((resolve, reject) => {
+      limiter(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    return handler(req, res);
+  };
+}
+
+async function runValidation(req, res, schema) {
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.flatten();
+    res.status(400).json({
+      error: "Invalid request body",
+      details: errors.fieldErrors,
+    });
+    return null;
   }
+  req.validatedBody = result.data;
+  return req.validatedBody;
+}
+
+exports.getLists = onRequest({ cors: true }, applyRateLimit("getLists", async (req, res) => {
+  const body = await runValidation(req, res, GetListsSchema);
+  if (!body) return;
+
+  const { userId } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -20,13 +49,13 @@ exports.getLists = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.createList = onRequest({ cors: true }, async (req, res) => {
-  const { name, concept, associations, settings, userId, sourceType, sourceUrl, rawSourceText, sourceRow } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
-  }
+exports.createList = onRequest({ cors: true }, applyRateLimit("createList", async (req, res) => {
+  const body = await runValidation(req, res, CreateListSchema);
+  if (!body) return;
+
+  const { name, concept, associations, settings, userId, sourceType, sourceUrl, rawSourceText, sourceRow } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -49,10 +78,13 @@ exports.createList = onRequest({ cors: true }, async (req, res) => {
     }
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.updateList = onRequest({ cors: true }, async (req, res) => {
-  const { listId, ...updates } = req.body;
+exports.updateList = onRequest({ cors: true }, applyRateLimit("updateList", async (req, res) => {
+  const body = await runValidation(req, res, UpdateListSchema);
+  if (!body) return;
+
+  const { listId, ...updates } = body;
 
   const uid = await requireAuth(req, res);
   if (!uid) return;
@@ -72,10 +104,13 @@ exports.updateList = onRequest({ cors: true }, async (req, res) => {
     }
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.deleteList = onRequest({ cors: true }, async (req, res) => {
-  const { listId } = req.body;
+exports.deleteList = onRequest({ cors: true }, applyRateLimit("deleteList", async (req, res) => {
+  const body = await runValidation(req, res, DeleteListSchema);
+  if (!body) return;
+
+  const { listId } = body;
 
   const uid = await requireAuth(req, res);
   if (!uid) return;
@@ -92,18 +127,16 @@ exports.deleteList = onRequest({ cors: true }, async (req, res) => {
     }
     res.status(500).json({ error: error.message });
   }
-});
-exports.splitList = onRequest({ cors: true }, async (req, res) => {
+}));
+
+exports.splitList = onRequest({ cors: true }, applyRateLimit("splitList", async (req, res) => {
   console.log('=== splitList LLAMADO ===');
   console.log('body:', JSON.stringify(req.body).slice(0, 500));
 
-  const { listId, groups } = req.body;
-  if (!listId || !Array.isArray(groups) || groups.length === 0) {
-    console.log('=== splitList ERROR: listId o groups inválidos ===');
-    console.log('listId:', listId);
-    console.log('groups:', Array.isArray(groups) ? groups.length : typeof groups);
-    return res.status(400).json({ error: "listId and groups are required" });
-  }
+  const body = await runValidation(req, res, SplitListSchema);
+  if (!body) return;
+
+  const { listId, groups } = body;
 
   const uid = await requireAuth(req, res);
   if (!uid) {
@@ -134,10 +167,13 @@ exports.splitList = onRequest({ cors: true }, async (req, res) => {
     }
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.getList = onRequest({ cors: true }, async (req, res) => {
-  const { listId } = req.body;
+exports.getList = onRequest({ cors: true }, applyRateLimit("getList", async (req, res) => {
+  const body = await runValidation(req, res, GetListSchema);
+  if (!body) return;
+
+  const { listId } = body;
 
   const uid = await requireAuth(req, res);
   if (!uid) return;
@@ -154,4 +190,4 @@ exports.getList = onRequest({ cors: true }, async (req, res) => {
     }
     res.status(500).json({ error: error.message });
   }
-});
+}));
