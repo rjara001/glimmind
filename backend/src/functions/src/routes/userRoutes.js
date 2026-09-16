@@ -4,25 +4,24 @@ const { requireAuth } = require("../utils/helpers");
 const { QuotaExceededError } = require("../utils/helpers");
 const userService = require("../services/userService");
 const adminService = require("../services/adminService");
-const {
-  TRANSLATION_GLOBAL_MONTHLY_CHARS,
-  TRANSLATION_USER_MONTHLY_CHARS,
-  TRANSLATION_PREMIUM_USER_MONTHLY_CHARS,
-  CHIRP_TTS_GLOBAL_LIMIT,
-  CHIRP_TTS_USER_LIMIT,
-  CHIRP_TTS_PREMIUM_USER_LIMIT,
-  CHIPTT_STT_GLOBAL_LIMIT,
-  CHIPTT_STT_USER_LIMIT,
-  CHIPTT_STT_PREMIUM_USER_LIMIT,
-  GLOBAL_AI_DAILY_CAP,
-} = require("../utils/constants");
-const { QuotaService } = require("../services/quotaService");
+const { validate, GetQuotaSchema } = require("../utils/validation");
+const { rateLimit } = require("../utils/rateLimit");
 
-exports.getQuota = onRequest({ cors: true }, async (req, res) => {
-  const { userId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
-  }
+function applyRateLimit(fnName, handler) {
+  const limiter = rateLimit(fnName);
+  return async (req, res) => {
+    await new Promise((resolve, reject) => {
+      limiter(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    return handler(req, res);
+  };
+}
+
+exports.getQuota = onRequest({ cors: true }, validate(GetQuotaSchema), applyRateLimit("default", async (req, res) => {
+  const { userId } = req.validatedBody;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -33,7 +32,7 @@ exports.getQuota = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
 exports.setUserQuota = onRequest({ cors: true, secrets: ["ADMIN_UIDS"] }, async (req, res) => {
   const authHeader = req.headers.authorization;
@@ -78,6 +77,57 @@ exports.setUserPremium = onRequest({ cors: true }, async (req, res) => {
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+exports.deleteUserAccount = onRequest({ cors: true }, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  let uid;
+  try {
+    const token = await getAuth().verifyIdToken(authHeader.slice(7));
+    uid = token.uid;
+  } catch (error) {
+    return res.status(401).json({ error: "Unauthorized", reason: error.message });
+  }
+
+  const db = getDb();
+
+  try {
+    await deleteUserData(db, uid);
+    await getAuth().deleteUser(uid);
+    res.json({ success: true, message: "User account and all associated data deleted" });
+  } catch (error) {
+    console.error("[deleteUserAccount] failed:", error.message);
+    res.status(500).json({ error: "Failed to delete user account", reason: error.message });
+  }
+});
+
+exports.exportUserData = onRequest({ cors: true }, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  let uid;
+  try {
+    const token = await getAuth().verifyIdToken(authHeader.slice(7));
+    uid = token.uid;
+  } catch (error) {
+    return res.status(401).json({ error: "Unauthorized", reason: error.message });
+  }
+
+  const db = getDb();
+
+  try {
+    const userData = await exportUserData(db, uid);
+    res.json(userData);
+  } catch (error) {
+    console.error("[exportUserData] failed:", error.message);
+    res.status(500).json({ error: "Failed to export user data", reason: error.message });
   }
 });
 
@@ -242,4 +292,88 @@ async function enrichUsersWithUsage(db, users, monthKey) {
   }
 
   return results;
+}
+
+async function deleteUserData(db, uid) {
+  const batch = db.batch();
+  let deleteCount = 0;
+
+  const userDoc = db.collection("users").doc(uid);
+  batch.delete(userDoc);
+  deleteCount++;
+
+  const listsSnap = await db.collection("lists").where("userId", "==", uid).get();
+  listsSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    deleteCount++;
+  });
+
+  const metaSnap = await db.collection("users").doc(uid).collection("meta").get();
+  metaSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    deleteCount++;
+  });
+
+  const activitySnap = await db.collection("users").doc(uid).collection("activity").get();
+  activitySnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    deleteCount++;
+  });
+
+  const sessionsSnap = await db.collection("users").doc(uid).collection("sessions").get();
+  sessionsSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    deleteCount++;
+  });
+
+  const usageSnap = await db.collection("users").doc(uid).collection("usage").get();
+  usageSnap.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+    deleteCount++;
+  });
+
+  await batch.commit();
+  console.log(`[deleteUserData] Deleted ${deleteCount} documents for user ${uid}`);
+
+  const { getStorage } = require("firebase-admin/storage");
+  const bucket = getStorage().bucket();
+  const [files] = await bucket.getFiles({ prefix: `audio/${uid}/` });
+  if (files.length > 0) {
+    await bucket.deleteFiles(files);
+    console.log(`[deleteUserData] Deleted ${files.length} audio files for user ${uid}`);
+  }
+}
+
+async function exportUserData(db, uid) {
+  const [
+    userDoc,
+    listsSnap,
+    metaSnap,
+    activitySnap,
+    sessionsSnap,
+    usageSnap,
+    progressSnap,
+  ] = await Promise.all([
+    db.collection("users").doc(uid).get(),
+    db.collection("lists").where("userId", "==", uid).get(),
+    db.collection("users").doc(uid).collection("meta").get(),
+    db.collection("users").doc(uid).collection("activity").get(),
+    db.collection("users").doc(uid).collection("sessions").get(),
+    db.collection("users").doc(uid).collection("usage").get(),
+    db.collection("progress").where("userId", "==", uid).get(),
+  ]);
+
+  const userData = userDoc.exists ? userDoc.data() : {};
+
+  return {
+    exportedAt: new Date().toISOString(),
+    userId: uid,
+    profile: userData,
+    lists: listsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    meta: metaSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    activity: activitySnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    sessions: sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    usage: usageSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    progress: progressSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
 }

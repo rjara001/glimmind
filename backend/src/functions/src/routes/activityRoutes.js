@@ -2,15 +2,41 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { getDb } = require("../utils/firebase");
 const { requireAuth } = require("../utils/helpers");
 const activityService = require("../services/activityService");
+const { GetQuotaSchema, AppendActivitySchema, GetActivitySchema, SaveSessionSchema, GetSessionsSchema } = require("../utils/validation");
+const { rateLimit } = require("../utils/rateLimit");
 
-exports.appendActivity = onRequest({ cors: true }, async (req, res) => {
-  const { userId, events } = req.body;
-  if (!userId || !Array.isArray(events) || events.length === 0) {
-    return res.status(400).json({ error: "userId and events are required" });
+function applyRateLimit(fnName, handler) {
+  const limiter = rateLimit(fnName);
+  return async (req, res) => {
+    await new Promise((resolve, reject) => {
+      limiter(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    return handler(req, res);
+  };
+}
+
+async function runValidation(req, res, schema) {
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.flatten();
+    res.status(400).json({
+      error: "Invalid request body",
+      details: errors.fieldErrors,
+    });
+    return null;
   }
-  if (events.length > 400) {
-    return res.status(400).json({ error: "Máximo 400 eventos por lote." });
-  }
+  req.validatedBody = result.data;
+  return req.validatedBody;
+}
+
+exports.appendActivity = onRequest({ cors: true }, applyRateLimit("appendActivity", async (req, res) => {
+  const body = await runValidation(req, res, AppendActivitySchema);
+  if (!body) return;
+
+  const { userId, events } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -21,13 +47,13 @@ exports.appendActivity = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.getActivity = onRequest({ cors: true }, async (req, res) => {
-  const { userId, cursor, limit = 50, type, listId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
-  }
+exports.getActivity = onRequest({ cors: true }, applyRateLimit("default", async (req, res) => {
+  const body = await runValidation(req, res, GetActivitySchema);
+  if (!body) return;
+
+  const { userId, cursor, limit, type, listId } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -43,13 +69,13 @@ exports.getActivity = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.saveSession = onRequest({ cors: true }, async (req, res) => {
-  const { userId, session } = req.body;
-  if (!userId || !session || !session.id) {
-    return res.status(400).json({ error: "userId and session are required" });
-  }
+exports.saveSession = onRequest({ cors: true }, applyRateLimit("default", async (req, res) => {
+  const body = await runValidation(req, res, SaveSessionSchema);
+  if (!body) return;
+
+  const { userId, session } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -60,13 +86,13 @@ exports.saveSession = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));
 
-exports.getSessions = onRequest({ cors: true }, async (req, res) => {
-  const { userId } = req.body;
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
-  }
+exports.getSessions = onRequest({ cors: true }, applyRateLimit("default", async (req, res) => {
+  const body = await runValidation(req, res, GetSessionsSchema);
+  if (!body) return;
+
+  const { userId } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
@@ -77,4 +103,4 @@ exports.getSessions = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+}));

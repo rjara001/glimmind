@@ -112,13 +112,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     }
   }, [initialEditId, onInitialEditConsumed]);
 
-  // Only auto-save existing lists, not create mode
-  useEffect(() => {
-    if (!isCreateMode) {
-      actions.cleanupAndSave(list);
-    }
-  }, [list, actions.cleanupAndSave, isCreateMode]);
-
   const handleSaveClick = useCallback(async () => {
     if (!state.hasName) {
       state.setNameError(true);

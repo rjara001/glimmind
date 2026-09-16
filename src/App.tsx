@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
 import { ListEditor } from './components/ListEditor';
@@ -7,36 +8,29 @@ import { SettingsView } from './components/views/SettingsView';
 import { HistoryView } from './components/views/HistoryView';
 import { ReportsView } from './components/views/ReportsView';
 import { AdminUsageView } from './components/views/AdminUsageView';
-import { Auth } from './components/Auth';
 import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
-import { AppHeader } from './components/layout/AppHeader';
 import { GuestBanner } from './components/layout/GuestBanner';
+import { Navbar } from './components/Navbar';
 import { useGameStore } from './store/gameStore';
-import { auth } from './firebase';
 import { VoskModelProvider } from './context/VoskModelContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useNavigation } from './hooks/app/useNavigation';
 import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
 import { splitAssociationsByMax } from './utils/splitAssociations';
-import type { AppUser } from './types';
-import type { VocabularyResult } from './types/youtube-deck';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
 import { TextImporter } from './components/views/TextImporter';
+import type { VocabularyResult } from './types/youtube-deck';
 import type { VocabularySourceMeta } from './components/modals/VocabularyPreview';
-
-const MOCK_USER: AppUser = {
-  uid: GUEST_UID,
-  displayName: 'Local Guest',
-  email: null,
-  photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff',
-};
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
+  const { user } = useAuth();
   const { view, navigate, goBack, isReturningToGame } = useNavigation();
   const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
@@ -57,11 +51,19 @@ const AppContent: React.FC = () => {
   // Create mode state - holds the draft list before saving
   const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);
 
+  const [showQuickAdd, setShowQuickAdd] = React.useState(false);
+  const [showYouTubeModal, setShowYouTubeModal] = React.useState(false);
+  const [youtubePreviewResult, setYoutubePreviewResult] = React.useState<VocabularyResult | null>(null);
+  const [pendingYouTube, setPendingYouTube] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingTextImport, setPendingTextImport] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
+  const [pendingEditId, setPendingEditId] = React.useState<string | null>(null);
+
   // Navigate to editor in create mode - user will create list on first save
   const handleCreateEmpty = useCallback(() => {
+    useGameStore.getState().setCurrentList(null);
     const emptyList: AssociationList = {
-      id: '', // Empty ID indicates create mode
-      userId: handlers.currentList?.userId || '',
+      id: '',
+      userId: '',
       name: '',
       concept: 'Valor 1 / Valor 2',
       associations: [],
@@ -80,7 +82,7 @@ const AppContent: React.FC = () => {
     };
     setCreateModeList(emptyList);
     navigate('editor');
-  }, [navigate, handlers.currentList]);
+  }, [navigate]);
 
   const handleCreateAndPlay = useCallback(
     (name: string, concept: string, initialAssociations: Association[]) => {
@@ -103,30 +105,24 @@ const AppContent: React.FC = () => {
     [handlers.handleUpdateAssociations]
   );
 
-  const user = useGameStore((state) => state.user);
-  const setUser = useGameStore((state) => state.setUser);
+  const onSaveList = useCallback(
+    async (updatedList: AssociationList) => {
+      await handlers.handleUpdateList(updatedList);
+      setCreateModeList(null);
+    },
+    [handlers.handleUpdateList, setCreateModeList],
+  );
+
+  const onBackFromEditor = useCallback(() => {
+    setCreateModeList(null);
+    goBack();
+  }, [goBack, setCreateModeList]);
+
   const isLoaded = useGameStore((state) => state.isLoaded);
   const lists = useGameStore((state) => state.lists);
   const celebration = useGameStore((state) => state.celebration);
   const clearCelebration = useGameStore((state) => state.clearCelebration);
   const setCurrentList = useGameStore((state) => state.setCurrentList);
-
-  const [showQuickAdd, setShowQuickAdd] = React.useState(false);
-  const [showYouTubeModal, setShowYouTubeModal] = React.useState(false);
-  const [youtubePreviewResult, setYoutubePreviewResult] = React.useState<VocabularyResult | null>(null);
-  const [pendingYouTube, setPendingYouTube] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingTextImport, setPendingTextImport] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingEditId, setPendingEditId] = React.useState<string | null>(null);
-
-  const handleLogout = useCallback(async () => {
-    try {
-      await auth?.signOut();
-    } catch {
-      showToast('Failed to sign out. Please try again.', 'error');
-    } finally {
-      setUser(null);
-    }
-  }, [setUser, showToast]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
@@ -218,170 +214,206 @@ const AppContent: React.FC = () => {
 
   if (!isLoaded) {
     return (
-      <ToastProvider>
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <div className="flex flex-col items-center gap-3">
-            <svg className="w-8 h-8 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <span className="text-sm font-medium text-slate-400">Loading...</span>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="w-8 h-8 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm font-medium text-slate-400">Loading...</span>
         </div>
-      </ToastProvider>
-    );
-  }
-
-  if (!user) {
-    return (
-      <ToastProvider>
-        <Auth
-          onLoginDev={() => {
-            setUser(MOCK_USER);
-          }}
-        />
-      </ToastProvider>
+      </div>
     );
   }
 
   const isGuest = user?.uid === GUEST_UID;
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-slate-50">
-        <AppHeader
-          view={view}
-          user={user}
-          onShowQuickAdd={() => setShowQuickAdd(true)}
-          onSync={handlers.handleSyncFromCloud}
-          isSyncing={handlers.isSyncing}
-          onNavigate={navigate as (view: string) => void}
-          onLogout={handleLogout}
-        />
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar onNavigate={navigate as (view: string) => void} />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
         {isGuest && <GuestBanner onDismiss={() => {}} />}
 
-        <main className="max-w-7xl mx-auto px-4 py-6">
-          {view === 'dashboard' && (
-            <Dashboard
-              lists={lists}
-              lastPlayedId={lastPlayedId}
-              onCreate={handleCreate}
-              onCreateAndPlay={handleCreateAndPlay}
-              onAddDeck={handleAddDeck}
-              onDelete={handlers.handleDeleteList}
-              onEdit={(id) => {
-                useGameStore.getState().setCurrentList(id);
-                navigate('editor');
-              }}
-              onPlay={handlers.handlePlayList}
-              onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
-              onTextImport={() => navigate('text-importer')}
-              onCreateEmpty={handleCreateEmpty}
-            />
-          )}
-          {view === 'editor' && (handlers.currentList || createModeList) && (
-            <ListEditor
-              list={createModeList || handlers.currentList!}
-              initialEditId={pendingEditId}
-              onInitialEditConsumed={() => setPendingEditId(null)}
-              onSave={handlers.handleUpdateList}
-              onBack={() => {
-                setCreateModeList(null);
-                goBack();
-              }}
-              onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
-              onCreateMultiple={handlers.handleCreateMultipleLists}
-              isCreateMode={!!createModeList}
-              onCreateList={handlers.handleCreateList}
-            />
-          )}
-          {view === 'game' && handlers.currentList && (
-            <GameView
-              list={handlers.currentList}
-              onUpdateAssociations={handleUpdateAssociations}
-              onUpdateList={handlers.handleUpdateList}
-              onBack={goBack}
-              onViewList={(id) => {
-                setPendingEditId(id ?? null);
-                navigate('editor');
-              }}
-            />
-          )}
-          {view === 'settings' && (
-            <SettingsView onBack={goBack} />
-          )}
-          {view === 'activity' && (
-            <HistoryView onBack={goBack} onGoToSettings={() => navigate('settings')} />
-          )}
-          {view === 'reports' && (
-            <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
-          )}
-          {view === 'admin' && (
-            <AdminUsageView onBack={goBack} />
-          )}
-          {view === 'text-importer' && (
-            <TextImporter
-              onSave={(associations, sourceMeta) => {
-                setPendingTextImport({
-                  chunks: [associations],
-                  deckNames: [sourceMeta.title || 'Importado'],
-                  sourceMeta,
-                });
-                navigate('editor');
-              }}
-              onBack={goBack}
-            />
-          )}
-        </main>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <ProtectedRoute fallbackPath="/dashboard">
+                <Navigate to="/dashboard" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard
+                  lists={lists}
+                  lastPlayedId={lastPlayedId}
+                  onCreate={handleCreate}
+                  onCreateAndPlay={handleCreateAndPlay}
+                  onAddDeck={handleAddDeck}
+                  onDelete={handlers.handleDeleteList}
+                  onEdit={(id) => {
+                    useGameStore.getState().setCurrentList(id);
+                    navigate('editor');
+                  }}
+                  onPlay={handlers.handlePlayList}
+                  onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
+                  onTextImport={() => navigate('text-importer')}
+                  onCreateEmpty={handleCreateEmpty}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editor"
+            element={
+              <ProtectedRoute>
+                {(createModeList || handlers.currentList) ? (
+                  <ListEditor
+                    list={createModeList || handlers.currentList!}
+                    initialEditId={pendingEditId}
+                    onInitialEditConsumed={() => setPendingEditId(null)}
+                    onSave={onSaveList}
+                    onBack={onBackFromEditor}
+                    onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
+                    onCreateMultiple={handlers.handleCreateMultipleLists}
+                    isCreateMode={!!createModeList}
+                    onCreateList={handlers.handleCreateList}
+                  />
+                ) : (
+                  <Navigate replace to="/dashboard" />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <ProtectedRoute>
+                {handlers.currentList && (
+                  <GameView
+                    list={handlers.currentList}
+                    onUpdateAssociations={handleUpdateAssociations}
+                    onUpdateList={handlers.handleUpdateList}
+                    onBack={goBack}
+                    onViewList={(id) => {
+                      setPendingEditId(id ?? null);
+                      navigate('editor');
+                    }}
+                  />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsView onBack={goBack} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/activity"
+            element={
+              <ProtectedRoute>
+                <HistoryView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                <AdminUsageView onBack={goBack} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/text-importer"
+            element={
+              <ProtectedRoute>
+                <TextImporter
+                  onSave={(associations, sourceMeta) => {
+                    setPendingTextImport({
+                      chunks: [associations],
+                      deckNames: [sourceMeta.title || 'Importado'],
+                      sourceMeta,
+                    });
+                    navigate('editor');
+                  }}
+                  onBack={goBack}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </main>
 
-        {showQuickAdd && (
-          <QuickAddModal
-            lists={lists}
-            onAdd={handlers.handleQuickAdd}
-            onCreateList={handlers.handleCreateListQuick}
-            onClose={() => setShowQuickAdd(false)}
-          />
-        )}
-        {youtubePreviewResult && (
-          <VocabularyPreview
-            result={youtubePreviewResult}
-            onClose={() => {
-              setYoutubePreviewResult(null);
-            }}
-            onAccept={(associations, sourceMeta) => {
-              setYoutubePreviewResult(null);
-              setPendingYouTube({
-                chunks: [associations],
-                deckNames: [sourceMeta.title || 'Sin nombre'],
-                sourceMeta,
-              });
-              navigate('editor');
-            }}
-          />
-        )}
-        {showYouTubeModal && (
-          <CreateYouTubeDeckModal
-            onClose={() => setShowYouTubeModal(false)}
-            onSuccess={(result) => {
-              setShowYouTubeModal(false);
-              setYoutubePreviewResult(result);
-            }}
-          />
-        )}
-        {celebration && (
-          <CelebrationOverlay celebration={celebration} onClose={clearCelebration} />
-        )}
-      </div>
-    </ToastProvider>
+      {showQuickAdd && (
+        <QuickAddModal
+          lists={lists}
+          onAdd={handlers.handleQuickAdd}
+          onCreateList={handlers.handleCreateListQuick}
+          onClose={() => setShowQuickAdd(false)}
+        />
+      )}
+      {youtubePreviewResult && (
+        <VocabularyPreview
+          result={youtubePreviewResult}
+          onClose={() => {
+            setYoutubePreviewResult(null);
+          }}
+          onAccept={(associations, sourceMeta) => {
+            setYoutubePreviewResult(null);
+            setPendingYouTube({
+              chunks: [associations],
+              deckNames: [sourceMeta.title || 'Sin nombre'],
+              sourceMeta,
+            });
+            navigate('editor');
+          }}
+        />
+      )}
+      {showYouTubeModal && (
+        <CreateYouTubeDeckModal
+          onClose={() => setShowYouTubeModal(false)}
+          onSuccess={(result) => {
+            setShowYouTubeModal(false);
+            setYoutubePreviewResult(result);
+          }}
+        />
+      )}
+      {celebration && (
+        <CelebrationOverlay celebration={celebration} onClose={clearCelebration} />
+      )}
+    </div>
   );
 };
 
 const AppWrapper: React.FC = () => {
   return (
     <ToastProvider>
-      <VoskModelProvider>
-        <AppContent />
-      </VoskModelProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <VoskModelProvider>
+            <AppContent />
+          </VoskModelProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ToastProvider>
   );
 };

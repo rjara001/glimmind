@@ -1,8 +1,10 @@
-// CRITICAL: Set FIRESTORE_EMULATOR_HOST BEFORE any requires.
+// CRITICAL: Set FIRESTORE_EMULATOR_HOST BEFORE any requires ONLY in emulator mode.
 // The Admin SDK reads this env var at module load time.
 // The Firebase CLI may rewrite "localhost" to "127.0.0.1" when loading .env,
 // so we set it explicitly here to ensure we connect to the same host as the seed script.
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+if (process.env.FUNCTIONS_EMULATOR === "true") {
+  process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+}
 
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");

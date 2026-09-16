@@ -8,9 +8,11 @@ const EMULATOR_FUNCTIONS_BASE = isUsingEmulators ? '/functions' : `http://localh
 const FUNCTIONS_BASE = env.VITE_FUNCTIONS_BASE
   || (isUsingEmulators ? EMULATOR_FUNCTIONS_BASE : PROD_FUNCTIONS_BASE);
 
-const SECOND_GEN_FUNCTIONS: Record<string, string> = {
+const SECOND_GEN_FUNCTIONS: Record<string, string | undefined> = {
   synthesizeSpeech: isUsingEmulators ? undefined : 'https://us-central1-fladycard-22a3e.cloudfunctions.net',
 };
+
+const USE_CLEAN_URLS = !isUsingEmulators && !env.VITE_FUNCTIONS_BASE;
 
 async function getToken(): Promise<string | null> {
   const currentUser = auth.currentUser;
@@ -34,7 +36,13 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   const override = SECOND_GEN_FUNCTIONS[functionName];
   const base = (override || FUNCTIONS_BASE).replace(/\/$/, '');
   const payload = JSON.stringify(data);
-  const url = `${base}/${functionName}`;
+  let url: string;
+  
+  if (USE_CLEAN_URLS) {
+    url = `/api/${functionName}`;
+  } else {
+    url = `${base}/${functionName}`;
+  }
 
   console.log('[callFunction]', functionName, 'url=', url, 'base=', base, 'isUsingEmulators=', isUsingEmulators);
 
