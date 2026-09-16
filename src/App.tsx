@@ -54,6 +54,9 @@ const AppContent: React.FC = () => {
     [handlers.handleCreateList, navigate]
   );
 
+  // Create mode state - holds the draft list before saving
+  const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);
+
   // Navigate to editor in create mode - user will create list on first save
   const handleCreateEmpty = useCallback(() => {
     const emptyList: AssociationList = {
@@ -75,10 +78,7 @@ const AppContent: React.FC = () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    // Add to store lists and set as current
-    const currentLists = useGameStore.getState().lists;
-    useGameStore.getState().setLists([...currentLists, emptyList]);
-    useGameStore.getState().setCurrentList('');
+    setCreateModeList(emptyList);
     navigate('editor');
   }, [navigate, handlers.currentList]);
 
@@ -279,16 +279,19 @@ const AppContent: React.FC = () => {
               onCreateEmpty={handleCreateEmpty}
             />
           )}
-          {view === 'editor' && handlers.currentList && (
+          {view === 'editor' && (handlers.currentList || createModeList) && (
             <ListEditor
-              list={handlers.currentList}
+              list={createModeList || handlers.currentList!}
               initialEditId={pendingEditId}
               onInitialEditConsumed={() => setPendingEditId(null)}
               onSave={handlers.handleUpdateList}
-              onBack={goBack}
+              onBack={() => {
+                setCreateModeList(null);
+                goBack();
+              }}
               onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
               onCreateMultiple={handlers.handleCreateMultipleLists}
-              isCreateMode={!handlers.currentList.id}
+              isCreateMode={!!createModeList}
               onCreateList={handlers.handleCreateList}
             />
           )}
