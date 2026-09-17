@@ -38,6 +38,8 @@ export interface UseListEditorActionsParams {
   csvHeader: [string, string, string];
   setTranslationUsed: React.Dispatch<React.SetStateAction<number>>;
   setIsTranslating: React.Dispatch<React.SetStateAction<boolean>>;
+  isImporting: boolean;
+  setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface UseListEditorActionsReturn {
@@ -89,6 +91,7 @@ export function useListEditorActions(
     csvHeader,
     setTranslationUsed,
     setIsTranslating,
+    setIsImporting,
   } = params;
 
   const pendingSaveRef = useRef<Promise<void> | null>(null);
@@ -444,108 +447,113 @@ export function useListEditorActions(
   const importSelectedCards = useCallback(
     async (categories: Record<CardCategory, boolean>) => {
       if (!validationResult) return;
-      const categorized = validationResult.categorized;
+      setIsImporting(true);
+      try {
+        const categorized = validationResult.categorized;
 
-      const toImport: Association[] = [];
-      for (const cat of categorized) {
-        if (!categories[cat.category]) continue;
-        toImport.push({
-          id: crypto.randomUUID(),
-          term: cat.card.term,
-          definition: cat.card.definition.split(" | "),
-          currentCycle: 1,
-          status: "pending",
-          isLearned: false,
-          isArchived: false,
-        });
-      }
+        const toImport: Association[] = [];
+        for (const cat of categorized) {
+          if (!categories[cat.category]) continue;
+          toImport.push({
+            id: crypto.randomUUID(),
+            term: cat.card.term,
+            definition: cat.card.definition.split(" | "),
+            currentCycle: 1,
+            status: "pending",
+            isLearned: false,
+            isArchived: false,
+          });
+        }
 
-      if (toImport.length === 0) {
-        showToast("⚠️ No hay tarjetas para importar.", "error");
-        setShowValidationScreen(false);
-        return;
-      }
-
-      const MAX = 100;
-      const deckCount = Math.ceil(toImport.length / MAX);
-
-      if (deckCount === 1) {
-        if (isCreateMode && onCreateList) {
-          const id = await onCreateList(
-            editList.name,
-            editList.concept,
-            [...editList.associations, ...toImport],
-            editList.settings,
-          );
-          if (id) {
-            showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
-            setShowValidationScreen(false);
-            onBack();
-          } else {
-            setShowValidationScreen(false);
-          }
+        if (toImport.length === 0) {
+          showToast("⚠️ No hay tarjetas para importar.", "error");
+          setShowValidationScreen(false);
           return;
         }
-        const updated = { ...editList, associations: [...editList.associations, ...toImport] };
-        await onSave(updated);
-        showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
+
+        const MAX = 100;
+        const deckCount = Math.ceil(toImport.length / MAX);
+
+        if (deckCount === 1) {
+          if (isCreateMode && onCreateList) {
+            const id = await onCreateList(
+              editList.name,
+              editList.concept,
+              [...editList.associations, ...toImport],
+              editList.settings,
+            );
+            if (id) {
+              showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
+              setShowValidationScreen(false);
+              onBack();
+            } else {
+              setShowValidationScreen(false);
+            }
+            return;
+          }
+          const updated = { ...editList, associations: [...editList.associations, ...toImport] };
+          await onSave(updated);
+          showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
+          setShowValidationScreen(false);
+          onBack();
+          return;
+        }
+
+        if (!onCreateMultiple) {
+          showToast("⚠️ No se puede dividir en múltiples mazos.", "error");
+          setShowValidationScreen(false);
+          return;
+        }
+
+        const groups: { name: string; associations: Association[] }[] = [];
+        for (let i = 0; i < deckCount; i++) {
+          const chunk = toImport.slice(i * MAX, (i + 1) * MAX);
+          const name = i === 0 ? editList.name : `${editList.name}-${i + 1}`;
+          groups.push({ name, associations: chunk });
+        }
+
+        const firstGroup = groups[0];
+
+        let firstId: string | null | undefined;
+        if (isCreateMode && onCreateList) {
+          firstId = await onCreateList(
+            firstGroup.name,
+            editList.concept,
+            firstGroup.associations,
+            editList.settings,
+          );
+        } else {
+          const updated = { ...editList, associations: firstGroup.associations };
+          setEditList(updated);
+          await onSave(updated);
+
+          let savedList: AssociationList | undefined;
+          for (let i = 0; i < 10; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            savedList = useGameStore.getState().lists.find(
+              (l) => l.name === firstGroup.name
+            );
+            if (savedList) break;
+          }
+          firstId = savedList?.id;
+        }
+
+        if (!firstId) {
+          showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
+          setShowValidationScreen(false);
+          return;
+        }
+
+        await onCreateMultiple(groups.slice(1), firstId);
+
+        showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
         setShowValidationScreen(false);
         onBack();
-        return;
+      } finally {
+        setIsImporting(false);
       }
-
-      if (!onCreateMultiple) {
-        showToast("⚠️ No se puede dividir en múltiples mazos.", "error");
-        setShowValidationScreen(false);
-        return;
-      }
-
-      const groups: { name: string; associations: Association[] }[] = [];
-      for (let i = 0; i < deckCount; i++) {
-        const chunk = toImport.slice(i * MAX, (i + 1) * MAX);
-        const name = i === 0 ? editList.name : `${editList.name}-${i + 1}`;
-        groups.push({ name, associations: chunk });
-      }
-
-      const firstGroup = groups[0];
-
-      let firstId: string | null | undefined;
-      if (isCreateMode && onCreateList) {
-        firstId = await onCreateList(
-          firstGroup.name,
-          editList.concept,
-          firstGroup.associations,
-          editList.settings,
-        );
-      } else {
-        const updated = { ...editList, associations: firstGroup.associations };
-        setEditList(updated);
-        await onSave(updated);
-
-        let savedList: AssociationList | undefined;
-        for (let i = 0; i < 10; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          savedList = useGameStore.getState().lists.find(
-            (l) => l.name === firstGroup.name
-          );
-          if (savedList) break;
-        }
-        firstId = savedList?.id;
-      }
-
-      if (!firstId) {
-        showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
-        setShowValidationScreen(false);
-        return;
-      }
-
-      await onCreateMultiple(groups.slice(1), firstId);
-
-      showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
-      setShowValidationScreen(false);
-      onBack();
     },
-    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setEditList]
+    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setEditList, setIsImporting]
   );
 
   const handleBackToEditor = useCallback(() => {

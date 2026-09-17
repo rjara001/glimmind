@@ -106,6 +106,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     csvHeader: state.csvHeader,
     setTranslationUsed: state.setTranslationUsed,
     setIsTranslating: state.setIsTranslating,
+    isImporting: state.isImporting,
+    setIsImporting: state.setIsImporting,
   });
 
   useEffect(() => {
@@ -169,6 +171,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           onBack={actions.handleBackToEditor}
           deckName={state.editList.name}
           showToast={showToast as (message: string, type?: string) => void}
+          isImporting={state.isImporting}
         />
       )}
 

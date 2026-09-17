@@ -65,6 +65,8 @@ export interface ListEditorState {
   autoOpenActiveId: string | null;
   autoOpenArchivedId: string | null;
   hasName: boolean;
+  isImporting: boolean;
+  setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useListEditorState(
@@ -91,6 +93,7 @@ export function useListEditorState(
   const [nameError, setNameError] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
+  const [isImporting, setIsImporting] = useState(false);
 
   const conceptParts = editList.concept.split("/");
   const termHeader = conceptParts[0] || "Term";
@@ -240,6 +243,8 @@ export function useListEditorState(
     autoOpenArchivedId,
     hasName,
     setTranslationUsed,
+    isImporting,
+    setIsImporting,
   };
 }
 
