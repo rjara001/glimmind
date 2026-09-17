@@ -25,7 +25,7 @@ export function RecentListsStrip({ lists, onPlay }: RecentListsStripProps) {
               onClick={() => onPlay(list.id)}
               className="flex-shrink-0 bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition text-left min-w-[200px]"
             >
-              <p className="font-bold text-gray-900 truncate">{list.name}</p>
+              <p className="font-bold text-gray-900 truncate max-w-[180px]" title={list.name}>{list.name}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span
                   className={`text-sm font-bold ${isComplete ? "text-emerald-600" : "text-slate-600"}`}

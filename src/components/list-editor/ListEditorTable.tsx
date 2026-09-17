@@ -10,7 +10,7 @@ interface ListEditorTableProps {
   definitionHeader: string;
   onUpdateField: (id: string, field: keyof Association, value: string) => void;
   onUpdateTags: (id: string, tags: string[]) => void;
-  onBlurRow: () => void;
+  onBlurRow?: () => void;
   onRemoveRow: (id: string) => void;
   onRestoreRow?: (id: string) => void;
   isArchived?: boolean;

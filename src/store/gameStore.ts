@@ -17,6 +17,7 @@ import { UserSettings, DEFAULT_SETTINGS } from '../types/settings';
 import { settingsService } from '../services/settingsService';
 import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { activityService, ActivityQuery } from '../services/activityService';
+import { dashboardService } from '../services/dashboardService';
 import {
   PROGRESS_SAVE_DEBOUNCE_MS,
   ACTIVITY_SAVE_DEBOUNCE_MS,
@@ -358,6 +359,7 @@ interface GameStore {
   
   // Actions - Initialization
   loadInitialData: () => Promise<void>;
+  loadDashboardData: () => Promise<void>;
   
   // Actions - Persistence
   syncFromCloud: () => Promise<void>;
@@ -780,7 +782,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
       console.log('[STORE] Guest mode - using localStorage only');
     }
   },
-  
+
+  loadDashboardData: async () => {
+    const { user } = get();
+    if (!user || user.uid === GUEST_UID) return;
+    set({ isLoaded: true, isLoading: false });
+    try {
+      const data = await dashboardService.fetchDashboardData(user.uid);
+      if (data.lists && data.lists.length > 0) {
+        set({ lists: data.lists });
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.lists));
+      }
+      if (data.progress) {
+        set({ progress: data.progress });
+        localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(data.progress));
+      }
+      if (data.quota) {
+        set({ quota: data.quota });
+      }
+      if (data.settings) {
+        set({ settings: data.settings });
+        settingsService.saveLocalSettings(data.settings);
+      }
+    } catch (error) {
+      console.error('[loadDashboardData] failed:', error);
+    }
+  },
+
   // Sync from cloud
   syncFromCloud: async () => {
     const { user } = get();

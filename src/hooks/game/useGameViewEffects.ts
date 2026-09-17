@@ -71,6 +71,8 @@ export function useGameViewEffects({
 }: UseGameViewEffectsArgs) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const nearCompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasSyncedRef = useRef(false);
+  const loadedAssociationsRef = useRef<string>('');
 
   useEffect(() => {
     if (list.settings.mode === "training" || isPresentationMode || !currentAssociationId) return;
@@ -176,8 +178,19 @@ export function useGameViewEffects({
   }, [handleKeyDown]);
 
   useEffect(() => {
+    if (!hasSyncedRef.current) {
+      if (gameState.associations) {
+        loadedAssociationsRef.current = JSON.stringify(gameState.associations);
+      }
+      hasSyncedRef.current = true;
+      return;
+    }
     if (onUpdateAssociations && gameState.associations) {
-      void onUpdateAssociations(gameState.associations);
+      const current = JSON.stringify(gameState.associations);
+      if (current !== loadedAssociationsRef.current) {
+        void onUpdateAssociations(gameState.associations);
+        loadedAssociationsRef.current = current;
+      }
     }
   }, [gameState.associations, onUpdateAssociations]);
 

@@ -77,11 +77,17 @@ export function useAppHandlers({
 
   const handleUpdateAssociations = useCallback(
     (updatedAssociations: Association[]) => {
-      if (currentListId) {
-        updateAssociations(currentListId, updatedAssociations);
+      if (!currentListId) return;
+      // No sincronizar si estamos en modo crear lista (aún no se guardó)
+      const { createModeList } = useGameStore.getState();
+      if (createModeList) return;
+      const currentList = lists.find((l) => l.id === currentListId);
+      if (currentList && JSON.stringify(currentList.associations) === JSON.stringify(updatedAssociations)) {
+        return;
       }
+      updateAssociations(currentListId, updatedAssociations);
     },
-    [currentListId, updateAssociations],
+    [currentListId, updateAssociations, lists],
   );
 
   const handlePlayList = useCallback(
@@ -152,11 +158,12 @@ export function useAppHandlers({
       associations: Association[],
       settings?: Partial<AssociationList["settings"]>
     ): Promise<string | null> => {
+      console.log('pass1');
       if (!user) {
         showToast("Debes iniciar sesión para crear listas", "error");
         return null;
       }
-
+console.log('pass2');
       const defaultSettings: AssociationList["settings"] = {
         mode: "training",
         flipOrder: "normal",
@@ -166,7 +173,7 @@ export function useAppHandlers({
         autoRevealAfterSeconds: 15,
         autoAdvanceAfterAttempts: 3,
       };
-
+console.log('pass3');
       try {
         const id = await listService.createList({
           name,

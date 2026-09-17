@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import { auth, onAuthStateChanged } from '../../firebase';
 import type { User } from 'firebase/auth';
 import type { AppView } from '../../types/app';
-import { GUEST_ID, LAST_PLAYED_KEY } from '../../constants/app';
+import { GUEST_ID, GUEST_UID, LAST_PLAYED_KEY } from '../../constants/app';
 
 export function useAppBootstrap(navigate: (view: AppView) => void) {
   const setUser = useGameStore((state) => state.setUser);
@@ -43,10 +43,11 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   }, [setUser]);
 
   useEffect(() => {
-    useGameStore.getState().loadInitialData();
-    useGameStore.getState().loadProgress();
-    useGameStore.getState().loadQuota();
-    useGameStore.getState().loadSettings();
+    if (user && user.uid !== GUEST_UID) {
+      useGameStore.getState().loadDashboardData();
+    } else {
+      useGameStore.getState().loadInitialData();
+    }
   }, [user]);
 
   useEffect(() => {

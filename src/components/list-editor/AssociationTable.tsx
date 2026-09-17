@@ -36,7 +36,7 @@ interface AssociationTableProps {
   definitionHeader: string;
   onUpdateField: (id: string, field: keyof Association, value: string) => void;
   onUpdateTags?: (id: string, tags: string[]) => void;
-  onBlurRow: () => void;
+  onBlurRow?: () => void;
   onRemoveRow: (id: string) => void;
   onRestoreRow?: (id: string) => void;
   isArchived?: boolean;
@@ -114,7 +114,7 @@ interface DetailDrawerProps {
   isArchived: boolean;
   onUpdateField: (id: string, field: keyof Association, value: string) => void;
   onUpdateTags?: (id: string, tags: string[]) => void;
-  onBlurRow: () => void;
+  onBlurRow?: () => void;
   onClose: () => void;
 }
 
@@ -223,7 +223,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
           <div className="pt-2">
             <button
               onClick={() => {
-                onBlurRow();
+                onBlurRow?.();
                 onClose();
               }}
               className="w-full bg-indigo-600 text-white font-bold text-xs uppercase tracking-widest rounded-xl px-4 py-2.5 hover:bg-indigo-700 transition"
@@ -270,7 +270,7 @@ export const AssociationTable: React.FC<AssociationTableProps> = ({
     : undefined;
 
   const handleBlurRow = () => {
-    onBlurRow();
+    onBlurRow?.();
   };
 
   const headerColumns = [

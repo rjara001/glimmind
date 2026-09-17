@@ -58,7 +58,7 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
             </svg>
           </button>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-1">{list.name}</h3>
+        <h3 className="text-xl font-bold text-gray-900 mb-1 truncate max-w-[200px]" title={list.name}>{list.name}</h3>
         <div className="flex items-center gap-2 mb-2">
           <p className="text-gray-500 text-sm">{activeAssociations.length} pairs</p>
         </div>

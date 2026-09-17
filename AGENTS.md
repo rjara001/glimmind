@@ -625,7 +625,37 @@ Agents MUST inspect their own `git diff` before declaring any task completed to 
 
 ---
 
-## 33. Verification Before Declaring Success
+## 33. Dashboard API Analysis Document Maintenance
+
+### Required
+The file `docs/dashboard-api-trigger-analysis.md` documents all APIs triggered when loading the dashboard and `/game` routes. When an agent modifies any of the following, they MUST update this document with a change log entry:
+
+**Files that trigger documented APIs:**
+- `src/hooks/app/useAppBootstrap.ts`
+- `src/store/gameStore.ts`
+- `src/services/firestoreService.ts`
+- `src/services/quotaService.ts`
+- `src/services/settingsService.ts`
+- `src/services/progressService.ts`
+- `src/services/activityService.ts`
+- `src/services/prebuiltDeckService.ts`
+- `src/hooks/game/useGameViewEffects.ts`
+- `src/hooks/game/useGameLogic.ts`
+- `src/hooks/app/useAppHandlers.ts`
+- `src/components/views/Dashboard.tsx`
+- `src/components/views/GameView.tsx`
+- `src/components/onboarding/DeckStoreOnboarding.tsx`
+- Any new Firebase Cloud Function added or removed that is triggered during dashboard/game load
+- `firebase.json` rewrites affecting dashboard/game routes
+
+**What to update:**
+1. Add a new row in the **Registro de Cambios** table with date, description of change, and author.
+2. If APIs are added, removed, or their purpose changes, update the relevant tables and sections.
+3. If the flow changes (new phases, different trigger order), update the flow diagram.
+
+---
+
+## 34. Verification Before Declaring Success
 
 ### Mandatory Verification
 Before declaring "done", "complete", "listo", or "the plan was applied", agents MUST:
@@ -659,7 +689,7 @@ If any section is empty, the task is NOT complete.
 
 ---
 
-## 34. Read Before Modify
+## 35. Read Before Modify
 
 ### Mandatory Reading
 Before modifying any file, agents MUST:
@@ -687,7 +717,7 @@ If the agent cannot verify something, it MUST say: "I cannot verify X without re
 
 ---
 
-## 35. Update All Call Sites
+## 36. Update All Call Sites
 
 ### When Changing a Signature
 If an agent changes the signature of a function, hook, or component, it MUST:
@@ -712,7 +742,7 @@ const { result: validationResult, isValidating } = useDeckValidation(...);
 
 ---
 
-## 36. Update Tests When Code Changes
+## 37. Update Tests When Code Changes
 
 ### Mandatory Test Updates
 When code changes, agents MUST update the corresponding tests:
@@ -738,7 +768,7 @@ fireEvent.click(screen.getByText(/Anadir solo tarjetas nuevas/));
 
 ---
 
-## 37. No Hallucination
+## 38. No Hallucination
 
 ### Prohibited Behaviors
 Agents MUST NOT:
@@ -766,7 +796,7 @@ If an agent cannot verify something, it MUST say:
 
 ---
 
-## 38. Closing Checklist
+## 39. Closing Checklist
 
 Before saying "done", agents MUST complete this checklist:
 
@@ -785,7 +815,7 @@ If any answer is "no", it is NOT done.
 
 ---
 
-## 39. Concise Communication
+## 40. Concise Communication
 
 ### Required Style
 Agents MUST communicate concisely:
@@ -821,7 +851,7 @@ Not ready. Need to fix DeckStoreOnboarding first."
 
 ---
 
-## 40. Verify Before Assuming
+## 41. Verify Before Assuming
 
 ### Mandatory Verification
 Before assuming anything, agents MUST verify:
@@ -844,7 +874,7 @@ If the agent cannot verify something, it MUST ask the user or read the relevant 
 
 ---
 
-## 41. One Change at a Time
+## 42. One Change at a Time
 
 ### Incremental Changes
 Agents MUST make changes incrementally:
@@ -866,7 +896,7 @@ If you modify 10 files at once and `tsc` reports 40 errors, you don't know which
 
 ---
 
-## 42. No Success Claims Without Evidence
+## 43. No Success Claims Without Evidence
 
 ### Prohibited Phrases
 Agents MUST NOT use these phrases without evidence:

@@ -28,9 +28,17 @@ interface ListEditorProps {
   onSave: (list: AssociationList) => Promise<void>;
   onBack: () => void;
   onBackLabel: string;
-  onCreateMultiple?: (groups: { name: string; associations: Association[] }[], realListId?: string) => void;
+  onCreateMultiple?: (
+    groups: { name: string; associations: Association[] }[],
+    realListId?: string
+  ) => void;
   isCreateMode?: boolean;
-  onCreateList?: (name: string, concept: string, associations: Association[], settings?: Partial<AssociationList["settings"]>) => Promise<string | null>;
+  onCreateList?: (
+    name: string,
+    concept: string,
+    associations: Association[],
+    settings?: Partial<AssociationList["settings"]>
+  ) => Promise<string | null>;
 }
 
 export const ListEditor: React.FC<ListEditorProps> = ({
@@ -63,23 +71,15 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     setTranslationUsed: state.setTranslationUsed,
   });
 
-  // Wrapped onSave that handles create mode by delegating to onCreateList
-  const wrappedOnSave = useCallback(async (listToSave: AssociationList) => {
-    if (isCreateMode && onCreateList) {
-      const id = await onCreateList(
-        listToSave.name,
-        listToSave.concept,
-        listToSave.associations,
-        listToSave.settings
-      );
-      if (id) {
-        showToast("Mazo creado", "success");
-        onBack();
-      }
-    } else {
+  // Wrapped onSave: para listas existentes llama a onSave.
+  // En create mode, onCreateList solo se dispara desde handleSaveClick (Guardar mazo).
+  const wrappedOnSave = useCallback(
+    async (listToSave: AssociationList) => {
+      if (isCreateMode) return;
       await onSave(listToSave);
-    }
-  }, [isCreateMode, onCreateList, onSave, showToast, onBack]);
+    },
+    [isCreateMode, onSave]
+  );
 
   const actions = useListEditorActions({
     editList: state.editList,
@@ -88,6 +88,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     selectedArchivedIds: state.selectedArchivedIds,
     onSave: wrappedOnSave,
     onCreateMultiple: onCreateMultiple ?? (() => {}),
+    isCreateMode,
+    onCreateList,
     showToast,
     translateLang: state.translateLang,
     lists,
@@ -112,6 +114,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     }
   }, [initialEditId, onInitialEditConsumed]);
 
+  const handleFileName = useCallback(
+    (fileName: string) => {
+      if (!state.editList.name.trim()) {
+        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+        state.setEditList((current) => ({ ...current, name: nameWithoutExt }));
+      }
+    },
+    [state.setEditList, state.editList.name]
+  );
+
   const handleSaveClick = useCallback(async () => {
     if (!state.hasName) {
       state.setNameError(true);
@@ -119,7 +131,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
       showToast("⚠️ Ponle un nombre a tu mazo antes de guardar.", "error");
       return;
     }
-    
+
     if (isCreateMode && onCreateList) {
       // Create new list in Firestore
       const id = await onCreateList(
@@ -136,7 +148,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({
       // Update existing list
       actions.handleSave();
     }
-  }, [state.hasName, state.setNameError, state.editList, isCreateMode, onCreateList, actions.handleSave, showToast, onBack]);
+  }, [
+    state.hasName,
+    state.setNameError,
+    state.editList,
+    isCreateMode,
+    onCreateList,
+    actions.handleSave,
+    showToast,
+    onBack,
+  ]);
 
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-6">
@@ -152,7 +173,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({
       )}
 
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
-        <ListEditorHeader onBack={actions.handleBack} onBackLabel={onBackLabel} />
+        <ListEditorHeader
+          onBack={actions.handleBack}
+          onBackLabel={onBackLabel}
+        />
         <ListEditorNameSection
           name={state.editList.name}
           onRename={actions.handleRename}
@@ -171,7 +195,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           onDelete={actions.handleDeleteSelected}
           onExport={actions.handleExportSelected}
           onAddRow={actions.handleAddRow}
-          isAddRowDisabled={!isPremium && quotaData.quotaStatus?.level === "blocked"}
+          isAddRowDisabled={
+            !isPremium && quotaData.quotaStatus?.level === "blocked"
+          }
           onToggleBulk={() => state.setShowBulk((prev) => !prev)}
         />
         <ListEditorTagFilter
@@ -180,13 +206,20 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           onFilterChange={state.setActiveTagFilter}
           activeCount={state.activeAssociations.length}
         />
-        {state.showBulk && <ListEditorBulkImport onBulkAdd={actions.handleBulkAdd} />}
+        {state.showBulk && (
+          <ListEditorBulkImport
+            onBulkAdd={actions.handleBulkAdd}
+            onFileName={handleFileName}
+          />
+        )}
         {state.showImportModal && (
           <CreateListForm
             newName={state.editList.name}
             setNewName={(v) => state.setEditList((c) => ({ ...c, name: v }))}
             newConcept={state.editList.concept || ""}
-            setNewConcept={(v) => state.setEditList((c) => ({ ...c, concept: v }))}
+            setNewConcept={(v) =>
+              state.setEditList((c) => ({ ...c, concept: v }))
+            }
             showBulk={false}
             importTab={"paste"}
             onCancel={() => state.setShowImportModal(false)}
@@ -194,9 +227,14 @@ export const ListEditor: React.FC<ListEditorProps> = ({
               state.setShowImportModal(false);
               const saved = actions.cleanupAndSave(state.editList);
               if (saved)
-                showToast(`Se guardaron los cambios a "${state.editList.name}"`, "success");
+                showToast(
+                  `Se guardaron los cambios a "${state.editList.name}"`,
+                  "success"
+                );
             }}
-            maxCardsPerDeck={useGameStore.getState().settings?.maxCardsPerDeck ?? 50}
+            maxCardsPerDeck={
+              useGameStore.getState().settings?.maxCardsPerDeck ?? 50
+            }
             totalCards={state.editList.associations.length}
           />
         )}
@@ -213,7 +251,11 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           onSort={(field) =>
             state.setActiveSort(
               state.activeSort && state.activeSort.field === field
-                ? { field, direction: state.activeSort.direction === "asc" ? "desc" : "asc" }
+                ? {
+                    field,
+                    direction:
+                      state.activeSort.direction === "asc" ? "desc" : "asc",
+                  }
                 : { field, direction: "asc" }
             )
           }
@@ -221,7 +263,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           definitionHeader={state.definitionHeader}
           onUpdateField={actions.handleUpdateField}
           onUpdateTags={actions.handleUpdateTags}
-          onBlurRow={actions.handleBlurRow}
           onRemoveRow={actions.handleRemoveRow}
           selectable
           autoOpenId={state.autoOpenActiveId}
@@ -265,7 +306,13 @@ export const ListEditor: React.FC<ListEditorProps> = ({
               onSort={(field) =>
                 state.setArchivedSort(
                   state.archivedSort && state.archivedSort.field === field
-                    ? { field, direction: state.archivedSort.direction === "asc" ? "desc" : "asc" }
+                    ? {
+                        field,
+                        direction:
+                          state.archivedSort.direction === "asc"
+                            ? "desc"
+                            : "asc",
+                      }
                     : { field, direction: "asc" }
                 )
               }
@@ -273,7 +320,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
               definitionHeader={state.definitionHeader}
               onUpdateField={actions.handleUpdateField}
               onUpdateTags={actions.handleUpdateTags}
-              onBlurRow={actions.handleBlurRow}
               onRemoveRow={actions.handleRemoveRow}
               onRestoreRow={actions.handleRestoreRow}
               isArchived

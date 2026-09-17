@@ -5,11 +5,11 @@ const CreateListSchema = z.object({
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
     term: z.string().min(1).max(500),
-    definition: z.string().min(1).max(2000),
+    definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).max(2000).optional(),
   settings: z.object({
-    mode: z.enum(["normal", "reverse", "mixed"]).optional(),
-    flipOrder: z.boolean().optional(),
+    mode: z.enum(["normal", "reverse", "mixed", "training", "real"]).optional(),
+    flipOrder: z.enum(["normal", "reversed"]).optional(),
     threshold: z.number().min(0).max(1).optional(),
   }).optional(),
   userId: z.string().min(1),
@@ -25,18 +25,18 @@ const UpdateListSchema = z.object({
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
     term: z.string().min(1).max(500),
-    definition: z.string().min(1).max(2000),
+    definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).max(2000).optional(),
   settings: z.object({
-    mode: z.enum(["normal", "reverse", "mixed"]).optional(),
-    flipOrder: z.boolean().optional(),
+    mode: z.enum(["normal", "reverse", "mixed", "training", "real"]).optional(),
+    flipOrder: z.enum(["normal", "reversed"]).optional(),
     threshold: z.number().min(0).max(1).optional(),
   }).optional(),
   sourceType: z.enum(["manual", "ai", "youtube", "import", "text"]).optional(),
   sourceUrl: z.string().url().optional().or(z.literal("")),
   rawSourceText: z.string().max(50000).optional(),
   sourceRow: z.number().int().min(0).optional(),
-}).strict();
+});
 
 const GetListSchema = z.object({
   listId: z.string().min(1),
@@ -52,7 +52,7 @@ const SplitListSchema = z.object({
     name: z.string().min(1).max(200),
     associations: z.array(z.object({
       term: z.string().min(1).max(500),
-      definition: z.string().min(1).max(2000),
+      definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
     })).min(1).max(2000),
   })).min(1).max(50),
 });
@@ -112,7 +112,7 @@ const AppendActivitySchema = z.object({
     type: z.string().min(1).max(50),
     listId: z.string().optional(),
     cardId: z.string().optional(),
-    timestamp: z.number().int().min(0),
+    at: z.number().int().min(0),
     data: z.record(z.unknown()).optional(),
   })).min(1).max(500),
 });
@@ -120,13 +120,15 @@ const AppendActivitySchema = z.object({
 const SaveSessionSchema = z.object({
   userId: z.string().min(1),
   session: z.object({
+    id: z.string().min(1),
     listId: z.string().min(1),
-    startTime: z.number().int().min(0),
-    endTime: z.number().int().min(0),
-    cardsReviewed: z.number().int().min(0),
-    correctCount: z.number().int().min(0),
-    incorrectCount: z.number().int().min(0),
-    avgResponseTime: z.number().min(0).optional(),
+    listName: z.string(),
+    startedAt: z.number().int().min(0),
+    endedAt: z.number().int().min(0),
+    cardsPlayed: z.number().int().min(0),
+    correct: z.number().int().min(0),
+    incorrect: z.number().int().min(0),
+    byLevel: z.record(z.string(), z.number().int().min(0)).optional(),
   }),
 });
 
@@ -139,6 +141,10 @@ const GetActivitySchema = z.object({
 });
 
 const GetSessionsSchema = z.object({
+  userId: z.string().min(1),
+});
+
+const GetDashboardDataSchema = z.object({
   userId: z.string().min(1),
 });
 
@@ -155,12 +161,12 @@ const AiGroupSchema = z.object({
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
     term: z.string().min(1).max(500),
-    definition: z.string().min(1).max(2000),
+    definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).min(3).max(2000),
 });
 
 function validate(schema) {
-  return async (req, res) => {
+  return async (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
       const errors = result.error.flatten();
@@ -189,6 +195,7 @@ module.exports = {
   SaveSessionSchema,
   GetActivitySchema,
   GetSessionsSchema,
+  GetDashboardDataSchema,
   SynthesizeSpeechSchema,
   AiGroupSchema,
 };

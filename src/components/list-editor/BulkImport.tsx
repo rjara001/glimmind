@@ -6,10 +6,12 @@ import { renderMappingBadge, renderPreviewTable } from '../../utils/importPrevie
 
 interface BulkImportProps {
   onBulkAdd: (text: string) => void;
+  onFileName?: (name: string) => void;
 }
 
 export const BulkImport: React.FC<BulkImportProps> = ({
   onBulkAdd,
+  onFileName,
 }) => {
   const [bulkText, setBulkText] = useState('');
   const [parsedData, setParsedData] = useState<ImportPreviewData | null>(null);
@@ -30,6 +32,8 @@ export const BulkImport: React.FC<BulkImportProps> = ({
   const handleFileSelect = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    onFileName?.(file.name);
     setIsReadingFile(true);
     try {
       const content = await file.text();
@@ -45,7 +49,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({
         e.target.value = '';
       }
     }
-  }, []);
+  }, [onFileName]);
 
   const showPreview = true;
   const hasParsedData = showPreview && parsedData && (parsedData.rows.length > 0 || parsedData.hasHeader);

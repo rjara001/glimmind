@@ -178,6 +178,10 @@
         "function": "getQuota"
       },
       {
+        "source": "/api/getDashboardData",
+        "function": "getDashboardData"
+      },
+      {
         "source": "/api/setUserQuota",
         "function": "setUserQuota"
       },

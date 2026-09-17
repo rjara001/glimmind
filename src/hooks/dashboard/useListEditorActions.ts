@@ -15,6 +15,13 @@ export interface UseListEditorActionsParams {
   selectedArchivedIds: Set<string>;
   onSave: (list: AssociationList) => Promise<void>;
   onCreateMultiple: (groups: { name: string; associations: Association[] }[], realListId?: string) => void;
+  isCreateMode?: boolean;
+  onCreateList?: (
+    name: string,
+    concept: string,
+    associations: Association[],
+    settings?: Partial<AssociationList["settings"]>,
+  ) => Promise<string | null>;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   translateLang: string;
   lists: AssociationList[];
@@ -64,6 +71,8 @@ export function useListEditorActions(
     selectedArchivedIds,
     onSave,
     onCreateMultiple,
+    isCreateMode,
+    onCreateList,
     showToast,
     translateLang,
     lists,
@@ -145,7 +154,6 @@ export function useListEditorActions(
       const updatedList = { ...listToSave, associations: cleanedAssociations };
       setEditList(updatedList);
       pendingSaveRef.current = Promise.resolve(onSave(updatedList));
-      showToast("Lista guardada", "success");
       return true;
     },
     [onSave, setEditList, showToast]
@@ -168,6 +176,7 @@ export function useListEditorActions(
       if (saved && pendingSaveRef.current) {
         await pendingSaveRef.current;
       }
+      showToast("Lista guardada", "success");
     } finally {
       setIsSaving(false);
     }
@@ -461,6 +470,22 @@ export function useListEditorActions(
       const deckCount = Math.ceil(toImport.length / MAX);
 
       if (deckCount === 1) {
+        if (isCreateMode && onCreateList) {
+          const id = await onCreateList(
+            editList.name,
+            editList.concept,
+            [...editList.associations, ...toImport],
+            editList.settings,
+          );
+          if (id) {
+            showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
+            setShowValidationScreen(false);
+            onBack();
+          } else {
+            setShowValidationScreen(false);
+          }
+          return;
+        }
         const updated = { ...editList, associations: [...editList.associations, ...toImport] };
         await onSave(updated);
         showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
@@ -483,32 +508,44 @@ export function useListEditorActions(
       }
 
       const firstGroup = groups[0];
-      const updated = { ...editList, associations: firstGroup.associations };
-      setEditList(updated);
-      await onSave(updated);
 
-      let savedList: AssociationList | undefined;
-      for (let i = 0; i < 10; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        savedList = useGameStore.getState().lists.find(
-          (l) => l.name === firstGroup.name
+      let firstId: string | null | undefined;
+      if (isCreateMode && onCreateList) {
+        firstId = await onCreateList(
+          firstGroup.name,
+          editList.concept,
+          firstGroup.associations,
+          editList.settings,
         );
-        if (savedList) break;
+      } else {
+        const updated = { ...editList, associations: firstGroup.associations };
+        setEditList(updated);
+        await onSave(updated);
+
+        let savedList: AssociationList | undefined;
+        for (let i = 0; i < 10; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          savedList = useGameStore.getState().lists.find(
+            (l) => l.name === firstGroup.name
+          );
+          if (savedList) break;
+        }
+        firstId = savedList?.id;
       }
 
-      if (!savedList) {
+      if (!firstId) {
         showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
         setShowValidationScreen(false);
         return;
       }
 
-      await onCreateMultiple(groups.slice(1), savedList.id);
+      await onCreateMultiple(groups.slice(1), firstId);
 
       showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
       setShowValidationScreen(false);
       onBack();
     },
-    [validationResult, editList, onSave, onCreateMultiple, showToast, onBack, setShowValidationScreen, setEditList]
+    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setEditList]
   );
 
   const handleBackToEditor = useCallback(() => {

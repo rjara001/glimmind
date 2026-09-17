@@ -1,4 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
+// deploy: schema update 2026-09-17
 const { getDb } = require("./src/utils/firebase");
 const { requireAuth } = require("./src/utils/helpers");
 const { QuotaExceededError } = require("./src/utils/helpers");
@@ -20,6 +21,8 @@ const aiRoutes = require("./src/routes/aiRoutes");
 const ttsRoutes = require("./src/routes/ttsRoutes");
 const sttRoutes = require("./src/routes/sttRoutes");
 const deckRoutes = require("./src/routes/deckRoutes");
+const catalogRoutes = require("./src/routes/catalogRoutes");
+const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const youtubeDeckRoutes = require("./src/routes/youtubeDeckRoutes");
 const createDeckFromTextRoutes = require("./src/routes/createDeckFromText");
 const translateVocabularyRoutes = require("./src/routes/translateVocabulary");
@@ -39,6 +42,8 @@ loadRoutes(aiRoutes);
 loadRoutes(ttsRoutes);
 loadRoutes(sttRoutes);
 loadRoutes(deckRoutes);
+loadRoutes(catalogRoutes);
+loadRoutes(dashboardRoutes);
 loadRoutes(youtubeDeckRoutes);
 loadRoutes(createDeckFromTextRoutes);
 loadRoutes(translateVocabularyRoutes);

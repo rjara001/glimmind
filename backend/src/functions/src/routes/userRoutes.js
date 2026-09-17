@@ -4,7 +4,7 @@ const { requireAuth } = require("../utils/helpers");
 const { QuotaExceededError } = require("../utils/helpers");
 const userService = require("../services/userService");
 const adminService = require("../services/adminService");
-const { validate, GetQuotaSchema } = require("../utils/validation");
+const { GetQuotaSchema } = require("../utils/validation");
 const { rateLimit } = require("../utils/rateLimit");
 
 function applyRateLimit(fnName, handler) {
@@ -20,8 +20,25 @@ function applyRateLimit(fnName, handler) {
   };
 }
 
-exports.getQuota = onRequest({ cors: true }, validate(GetQuotaSchema), applyRateLimit("default", async (req, res) => {
-  const { userId } = req.validatedBody;
+function runValidation(req, res, schema) {
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const errors = result.error.flatten();
+    res.status(400).json({
+      error: "Invalid request body",
+      details: errors.fieldErrors,
+    });
+    return null;
+  }
+  req.validatedBody = result.data;
+  return req.validatedBody;
+}
+
+exports.getQuota = onRequest({ cors: true }, applyRateLimit("default", async (req, res) => {
+  const body = runValidation(req, res, GetQuotaSchema);
+  if (!body) return;
+
+  const { userId } = body;
 
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;

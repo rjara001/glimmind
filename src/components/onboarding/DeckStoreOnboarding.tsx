@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { PrebuiltDeck } from '../../types/prebuilt-deck';
 import { prebuiltDeckService } from '../../services/prebuiltDeckService';
 import { useGameStore } from '../../store/gameStore';
@@ -27,7 +27,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   // Hook reactivo (no getState)
   const lists = useGameStore((state) => state.lists);
   const [decks, setDecks] = useState<PrebuiltDeck[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewDeck, setPreviewDeck] = useState<PrebuiltDeck | null>(null);
   const [selectedDeck, setSelectedDeck] = useState<PrebuiltDeck | null>(null);
@@ -36,25 +36,25 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
     similar: true,
     new: true,
   });
+  const hasFetchedRef = useRef(false);
+  const [hasExplored, setHasExplored] = useState(false);
   const { result: validationResult, isValidating } = useDeckValidation(selectedDeck, lists);
 
-  useEffect(() => {
-    let cancelled = false;
+  const handleExplore = useCallback(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    setHasExplored(true);
+    setIsLoading(true);
     prebuiltDeckService
       .fetchDecks()
       .then((data) => {
-        if (!cancelled) {
-          setDecks(data);
-          setIsLoading(false);
-        }
+        setDecks(data);
+        setIsLoading(false);
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Error al cargar el catálogo');
-          setIsLoading(false);
-        }
+        setError(err instanceof Error ? err.message : 'Error al cargar el catálogo');
+        setIsLoading(false);
       });
-    return () => { cancelled = true; };
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -149,7 +149,18 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
         </p>
       </div>
 
-      {isLoading ? (
+      {!hasExplored && !error && (
+        <div className="mb-8 flex justify-center">
+          <button
+            onClick={handleExplore}
+            className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-medium text-lg hover:bg-indigo-700 transition shadow-lg"
+          >
+            Explorar Catálogo
+          </button>
+        </div>
+      )}
+
+      {(hasExplored || error) && isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse">
@@ -163,7 +174,9 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
             </div>
           ))}
         </div>
-      ) : (
+      )}
+
+      {(hasExplored || error) && !isLoading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {decks.map((deck) => (
             <DeckCard
