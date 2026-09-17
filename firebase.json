@@ -110,6 +110,90 @@
         "function": "exportUserData"
       },
       {
+        "source": "/api/getActivity",
+        "function": "getActivity"
+      },
+      {
+        "source": "/api/getSessions",
+        "function": "getSessions"
+      },
+      {
+        "source": "/api/aiGroup",
+        "function": "aiGroup"
+      },
+      {
+        "source": "/api/submitDeckToCatalog",
+        "function": "submitDeckToCatalog"
+      },
+      {
+        "source": "/api/moderateDeckPreview",
+        "function": "moderateDeckPreview"
+      },
+      {
+        "source": "/api/createDeckFromText",
+        "function": "createDeckFromText"
+      },
+      {
+        "source": "/api/getPrebuiltDecks",
+        "function": "getPrebuiltDecks"
+      },
+      {
+        "source": "/api/getLists",
+        "function": "getLists"
+      },
+      {
+        "source": "/api/createList",
+        "function": "createList"
+      },
+      {
+        "source": "/api/getList",
+        "function": "getList"
+      },
+      {
+        "source": "/api/splitList",
+        "function": "splitList"
+      },
+      {
+        "source": "/api/transcribeSpeech",
+        "function": "transcribeSpeech"
+      },
+      {
+        "source": "/api/transcribeExistingAudio",
+        "function": "transcribeExistingAudio"
+      },
+      {
+        "source": "/api/transcribeChirp3",
+        "function": "transcribeChirp3"
+      },
+      {
+        "source": "/api/translateVocabulary",
+        "function": "translateVocabulary"
+      },
+      {
+        "source": "/api/listTtsVoices",
+        "function": "listTtsVoices"
+      },
+      {
+        "source": "/api/getQuota",
+        "function": "getQuota"
+      },
+      {
+        "source": "/api/setUserQuota",
+        "function": "setUserQuota"
+      },
+      {
+        "source": "/api/setUserPremium",
+        "function": "setUserPremium"
+      },
+      {
+        "source": "/api/getAdminUsage",
+        "function": "getAdminUsage"
+      },
+      {
+        "source": "/api/createYouTubeDeck",
+        "function": "createYouTubeDeck"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
