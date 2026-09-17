@@ -12,6 +12,7 @@ import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { GuestBanner } from './components/layout/GuestBanner';
 import { Navbar } from './components/Navbar';
+import { Login } from './pages/Login';
 import { useGameStore } from './store/gameStore';
 import { VoskModelProvider } from './context/VoskModelContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -239,9 +240,9 @@ const AppContent: React.FC = () => {
           <Route
             path="/login"
             element={
-              <ProtectedRoute fallbackPath="/dashboard">
-                <Navigate to="/dashboard" replace />
-              </ProtectedRoute>
+              user
+                ? <Navigate to="/dashboard" replace />
+                : <Login />
             }
           />
           <Route
