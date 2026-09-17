@@ -12,7 +12,7 @@ import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { GuestBanner } from './components/layout/GuestBanner';
 import { Navbar } from './components/Navbar';
-import { Login } from './pages/Login';
+import { Auth } from './components/Auth';
 import { useGameStore } from './store/gameStore';
 import { VoskModelProvider } from './context/VoskModelContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -31,11 +31,20 @@ import type { VocabularySourceMeta } from './components/modals/VocabularyPreview
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const { view, navigate, goBack, isReturningToGame } = useNavigation();
   const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
   const handlers = useAppHandlers({ navigate, showToast, setLastPlayedId });
+
+  const handleLoginDev = useCallback(() => {
+    setUser({
+      uid: GUEST_UID,
+      displayName: 'Local Guest',
+      email: null,
+      photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff',
+    });
+  }, [setUser]);
 
   // Wrapper functions to match DashboardProps interface
   const handleCreate = useCallback(
@@ -242,7 +251,7 @@ const AppContent: React.FC = () => {
             element={
               user
                 ? <Navigate to="/dashboard" replace />
-                : <Login />
+                : <Auth onLoginDev={handleLoginDev} />
             }
           />
           <Route
