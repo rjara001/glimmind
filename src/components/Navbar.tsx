@@ -9,6 +9,11 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+interface NavbarProps {
+  onNavigate?: (view: string) => void;
+  onLogout?: () => void;
+}
+
 const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -37,7 +42,7 @@ interface NavbarProps {
   onNavigate?: (view: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
   const { user } = useAuth();
   const location = useLocation();
 
@@ -96,9 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
             <UserMenu
               user={user}
               onNavigate={handleNavClick}
-              onLogout={() => {
-                // Handled by UserMenu
-              }}
+              onLogout={onLogout}
             />
           </div>
         </div>

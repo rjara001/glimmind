@@ -30,7 +30,7 @@ import type { VocabularySourceMeta } from './components/modals/VocabularyPreview
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { view, navigate, goBack, isReturningToGame } = useNavigation();
   const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
@@ -230,7 +230,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Navbar onNavigate={navigate as (view: string) => void} />
+      <Navbar onNavigate={navigate as (view: string) => void} onLogout={logout} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
         {isGuest && <GuestBanner onDismiss={() => {}} />}
