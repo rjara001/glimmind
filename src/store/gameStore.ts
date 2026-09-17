@@ -730,6 +730,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
+    set({ isLoaded: true, isLoading: false });
+
     // Load from cloud only if NOT guest
     if (!isGuest) {
       console.log('[STORE] Loading from cloud for user:', user.uid, 'cachedListsCount=', get().lists.length);
@@ -777,8 +779,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } else {
       console.log('[STORE] Guest mode - using localStorage only');
     }
-
-    set({ isLoaded: true, isLoading: false });
   },
   
   // Sync from cloud
