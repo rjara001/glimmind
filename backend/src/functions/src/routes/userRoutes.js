@@ -86,8 +86,13 @@ exports.setUserPremium = onRequest({ cors: true }, async (req, res) => {
     const email = token.email;
     const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
 
-    if (!isEmulator && email !== "rjara001@gmail.com") {
-      return res.status(403).json({ error: "Forbidden" });
+    if (!isEmulator) {
+      const db = getDb();
+      const whitelistSnap = await db.collection("config").doc("premiumWhitelist").get();
+      const whitelistEmails = whitelistSnap.exists ? whitelistSnap.data().emails || [] : [];
+      if (!email || !whitelistEmails.includes(email)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
     }
 
     const data = await userService.setUserPremium(getDb(), uid);
