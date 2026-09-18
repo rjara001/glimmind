@@ -229,6 +229,10 @@ console.log('pass3');
           associations: list.associations,
           settings: list.settings,
         });
+        const currentLists = useGameStore.getState().lists;
+        useGameStore.getState().setLists(
+          currentLists.map((l) => (l.id === list.id ? list : l)),
+        );
         showToast("Lista guardada", "success");
       } catch (error) {
         showToast(
