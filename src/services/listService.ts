@@ -75,7 +75,7 @@ export class ListServiceImpl {
         before: existing.associations,
         after: input.associations,
       });
-      await this.activity.recordEvents(events);
+      await this.activity.recordEvents(existing.userId, events);
     }
 
     await this.firestore.updateList(input.id, input);
@@ -106,7 +106,7 @@ export class ListServiceImpl {
         })
       )
     );
-    await this.activity.recordEvents(events);
+    await this.activity.recordEvents(list.userId, events);
 
     return newIds;
   }

@@ -74,10 +74,8 @@ export const activityService = {
     return recordEventsInternal(userId, events);
   },
 
-  recordEvents: async (events: CardActivityEvent[]): Promise<void> => {
+  recordEvents: async (userId: string, events: CardActivityEvent[]): Promise<void> => {
     if (events.length === 0) return;
-    const { user } = await import('../store/gameStore').then(m => m.useGameStore.getState());
-    const userId = user && user.uid !== 'guest' ? user.uid : '';
     return recordEventsInternal(userId, events);
   },
 
