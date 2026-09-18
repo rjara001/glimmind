@@ -72,7 +72,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, []);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     const finalSettings =
       normalizeVoiceSettings(draft);
 
@@ -80,7 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ...list,
       settings: finalSettings as Record<string, unknown> as typeof list.settings,
     };
-    onUpdateList(updated);
+    await onUpdateList(updated);
     onClose();
   };
 
