@@ -4,6 +4,7 @@ const CreateListSchema = z.object({
   name: z.string().min(1).max(200),
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
+    id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).max(2000).optional(),
@@ -24,6 +25,7 @@ const UpdateListSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
+    id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).max(2000).optional(),
@@ -51,6 +53,7 @@ const SplitListSchema = z.object({
   groups: z.array(z.object({
     name: z.string().min(1).max(200),
     associations: z.array(z.object({
+      id: z.string().optional(),
       term: z.string().min(1).max(500),
       definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
     })).min(1).max(2000),
@@ -160,6 +163,7 @@ const SynthesizeSpeechSchema = z.object({
 const AiGroupSchema = z.object({
   concept: z.string().max(500).optional(),
   associations: z.array(z.object({
+    id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
   })).min(3).max(2000),

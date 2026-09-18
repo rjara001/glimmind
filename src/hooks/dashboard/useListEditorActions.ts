@@ -512,22 +512,28 @@ export function useListEditorActions(
           groups.push({ name, associations: chunk });
         }
 
-        const firstGroup = groups[0];
-
-        let firstId: string | null | undefined;
         if (isCreateMode && onCreateList) {
-          firstId = await onCreateList(
-            firstGroup.name,
-            editList.concept,
-            firstGroup.associations,
-            editList.settings,
-          );
+          for (const group of groups) {
+            const id = await onCreateList(
+              group.name,
+              editList.concept,
+              group.associations,
+              editList.settings,
+            );
+            if (!id) {
+              showToast("⚠️ No se pudo crear el mazo.", "error");
+              setShowValidationScreen(false);
+              return;
+            }
+          }
         } else {
+          const firstGroup = groups[0];
           const updated = { ...editList, associations: firstGroup.associations };
           setEditList(updated);
           await onSave(updated);
 
           let savedList: AssociationList | undefined;
+          let firstId: string | null | undefined;
           for (let i = 0; i < 10; i++) {
             await new Promise((resolve) => setTimeout(resolve, 200));
             savedList = useGameStore.getState().lists.find(
@@ -536,15 +542,15 @@ export function useListEditorActions(
             if (savedList) break;
           }
           firstId = savedList?.id;
-        }
 
-        if (!firstId) {
-          showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
-          setShowValidationScreen(false);
-          return;
-        }
+          if (!firstId) {
+            showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
+            setShowValidationScreen(false);
+            return;
+          }
 
-        await onCreateMultiple(groups.slice(1), firstId);
+          await onCreateMultiple(groups.slice(1), firstId);
+        }
 
         showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
         setShowValidationScreen(false);

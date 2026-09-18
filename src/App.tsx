@@ -136,89 +136,89 @@ const AppContent: React.FC = () => {
 
   React.useEffect(() => {
     if (view === 'editor' && pendingYouTube) {
-      const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingYouTube;
-      const settings = useGameStore.getState().settings;
-      const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
+      (async () => {
+        const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingYouTube;
+        const settings = useGameStore.getState().settings;
+        const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
-      const allAssociations = chunks.flat();
-      const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
-        allAssociations,
-        maxCardsPerDeck,
-        deckNames[0] || 'Deck'
-      );
+        const allAssociations = chunks.flat();
+        const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
+          allAssociations,
+          maxCardsPerDeck,
+          deckNames[0] || 'Deck'
+        );
 
-      // Create the first deck and then split if needed
-      const firstChunk = splitChunks[0];
-      handlers.handleCreateList(
-        splitDeckNames[0],
-        'value1 / value2',
-        firstChunk,
-        {
-          mode: 'training',
-          flipOrder: 'normal',
+        const defaultSettings = {
+          mode: 'training' as const,
+          flipOrder: 'normal' as const,
           threshold: 0.95,
           ignoreArticles: true,
           showHints: true,
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
+        };
+
+        let firstId: string | null = null;
+        for (let i = 0; i < splitChunks.length; i++) {
+          const id = await handlers.handleCreateList(
+            splitDeckNames[i],
+            'value1 / value2',
+            splitChunks[i],
+            defaultSettings,
+          );
+          if (i === 0) firstId = id;
+          if (!id) break;
         }
-      ).then((firstId) => {
-        if (firstId && splitChunks.length > 1) {
-          // Create remaining decks
-          const groups = splitChunks.slice(1).map((chunk, i) => ({
-            name: splitDeckNames[i + 1],
-            associations: chunk,
-          }));
-          handlers.handleCreateMultipleLists(groups, firstId);
-        }
+
         if (firstId) {
           setCurrentList(firstId);
         }
         setPendingYouTube(null);
-      });
+      })();
     }
   }, [view, pendingYouTube, user, lists, handlers, setCurrentList]);
 
   React.useEffect(() => {
     if (view === 'editor' && pendingTextImport) {
-      const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingTextImport;
-      const settings = useGameStore.getState().settings;
-      const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
+      (async () => {
+        const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingTextImport;
+        const settings = useGameStore.getState().settings;
+        const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
-      const allAssociations = chunks.flat();
-      const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
-        allAssociations,
-        maxCardsPerDeck,
-        deckNames[0] || 'Importado'
-      );
+        const allAssociations = chunks.flat();
+        const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
+          allAssociations,
+          maxCardsPerDeck,
+          deckNames[0] || 'Importado'
+        );
 
-      const firstChunk = splitChunks[0];
-      handlers.handleCreateList(
-        splitDeckNames[0],
-        'value1 / value2',
-        firstChunk,
-        {
-          mode: 'training',
-          flipOrder: 'normal',
+        const defaultSettings = {
+          mode: 'training' as const,
+          flipOrder: 'normal' as const,
           threshold: 0.95,
           ignoreArticles: true,
           showHints: true,
           autoRevealAfterSeconds: 15,
           autoAdvanceAfterAttempts: 3,
+        };
+
+        let firstId: string | null = null;
+        for (let i = 0; i < splitChunks.length; i++) {
+          const id = await handlers.handleCreateList(
+            splitDeckNames[i],
+            'value1 / value2',
+            splitChunks[i],
+            defaultSettings,
+          );
+          if (i === 0) firstId = id;
+          if (!id) break;
         }
-      ).then((firstId) => {
-        if (firstId && splitChunks.length > 1) {
-          const groups = splitChunks.slice(1).map((chunk, i) => ({
-            name: splitDeckNames[i + 1],
-            associations: chunk,
-          }));
-          handlers.handleCreateMultipleLists(groups, firstId);
-        }
+
         if (firstId) {
           setCurrentList(firstId);
         }
         setPendingTextImport(null);
-      });
+      })();
     }
   }, [view, pendingTextImport, user, lists, handlers, setCurrentList]);
 
@@ -303,7 +303,7 @@ const AppContent: React.FC = () => {
             path="/game"
             element={
               <ProtectedRoute>
-                {handlers.currentList && (
+                {handlers.currentList ? (
                   <GameView
                     list={handlers.currentList}
                     onUpdateAssociations={handleUpdateAssociations}
@@ -314,6 +314,16 @@ const AppContent: React.FC = () => {
                       navigate('editor');
                     }}
                   />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <svg className="w-8 h-8 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm text-slate-400">Loading deck...</span>
+                    </div>
+                  </div>
                 )}
               </ProtectedRoute>
             }

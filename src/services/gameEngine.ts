@@ -139,14 +139,17 @@ export class GlimmindGame {
     const revealedAssociations = savedState.revealedAssociations.filter((id) => associationIds.has(id));
     const attempts = savedState.attempts.filter((a) => associationIds.has(a.associationId));
 
+    const isFinished = savedState.isFinished || validQueue.length === 0;
+    const summary = isFinished ? GlimmindGame._calculateSummary(associations) : savedState.summary;
+
     const refreshedState: GameState = {
       listId: list.id,
       globalCycle: savedState.globalCycle,
       associations,
       activeQueue: validQueue,
       currentIndex,
-      isFinished: savedState.isFinished,
-      summary: savedState.summary,
+      isFinished,
+      summary,
       revealed: savedState.revealed,
       userInput: savedState.userInput,
       feedback: savedState.feedback,
@@ -520,7 +523,9 @@ export class GlimmindGame {
   }
 
   private static _initializeGame(list: AssociationList): GameState {
-    const initialAssociations = [...list.associations];
+    const initialAssociations = list.associations.map((a) =>
+      a.id ? a : { ...a, id: crypto.randomUUID() },
+    );
     
     // Calculate current global cycle based on highest cycle among unarchived associations
     const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived);
