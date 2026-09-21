@@ -12,7 +12,7 @@ import {
   ListEditorTagFilter,
   ListEditorBulkImport,
   ListEditorTranslationBar,
-  ListEditorTable,
+  AssociationTable,
   ListEditorFooter,
   ValidationScreen,
 } from "../components/list-editor";
@@ -248,20 +248,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           translationPercentage={quotaData.translationPercentage}
           translationState={quotaData.translationState}
         />
-        <ListEditorTable
+        <AssociationTable
           associations={state.sortedActive}
           sort={state.activeSort}
-          onSort={(field) =>
-            state.setActiveSort(
-              state.activeSort && state.activeSort.field === field
-                ? {
-                    field,
-                    direction:
-                      state.activeSort.direction === "asc" ? "desc" : "asc",
-                  }
-                : { field, direction: "asc" }
-            )
-          }
+          onSort={(sort) => state.setActiveSort(sort as { field: 'term' | 'definition'; direction: 'asc' | 'desc' })}
           termHeader={state.termHeader}
           definitionHeader={state.definitionHeader}
           onUpdateField={actions.handleUpdateField}
@@ -303,22 +293,10 @@ export const ListEditor: React.FC<ListEditorProps> = ({
                 )}
               </div>
             </div>
-            <ListEditorTable
+            <AssociationTable
               associations={state.sortedArchived}
               sort={state.archivedSort}
-              onSort={(field) =>
-                state.setArchivedSort(
-                  state.archivedSort && state.archivedSort.field === field
-                    ? {
-                        field,
-                        direction:
-                          state.archivedSort.direction === "asc"
-                            ? "desc"
-                            : "asc",
-                      }
-                    : { field, direction: "asc" }
-                )
-              }
+              onSort={(sort) => state.setArchivedSort(sort as { field: 'term' | 'definition'; direction: 'asc' | 'desc' })}
               termHeader={state.termHeader}
               definitionHeader={state.definitionHeader}
               onUpdateField={actions.handleUpdateField}

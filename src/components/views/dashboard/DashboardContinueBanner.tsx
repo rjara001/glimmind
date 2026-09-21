@@ -13,9 +13,9 @@ export function DashboardContinueBanner({
 }: DashboardContinueBannerProps) {
   return (
     <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-      <div>
+      <div className="min-w-0 flex-1">
         <p className="text-sm text-amber-700 font-medium">Continuar última sesión</p>
-        <p className="text-lg font-bold text-gray-900">{currentList.name}</p>
+        <p className="text-lg font-bold text-gray-900 truncate" title={currentList.name}>{currentList.name}</p>
       </div>
       <button
         onClick={() => onPlay(lastPlayedId)}
