@@ -7,6 +7,7 @@ import {
   EngineMode,
 } from "../types";
 import { normalizeAnswer } from "../utils/textNormalization";
+import { shuffle } from "./shuffleService";
 
 const INITIAL_GAME_STATE: Omit<GameState, "listId" | "associations"> = {
   globalCycle: 1,
@@ -126,21 +127,22 @@ export class GlimmindGame {
     );
 
     const currentId = savedState.activeQueue[savedState.currentIndex];
-    const normalizedIndex = validQueue.indexOf(currentId);
+    const shuffledQueue = shuffle(validQueue);
+    const normalizedIndex = shuffledQueue.indexOf(currentId);
     const currentIndex = normalizedIndex === -1 ? 0 : normalizedIndex;
 
     const associationIds = new Set(associations.map((a) => a.id));
     const revealedAssociations = savedState.revealedAssociations.filter((id) => associationIds.has(id));
     const attempts = savedState.attempts.filter((a) => associationIds.has(a.associationId));
 
-    const isFinished = savedState.isFinished || validQueue.length === 0;
+    const isFinished = savedState.isFinished || shuffledQueue.length === 0;
     const summary = isFinished ? GlimmindGame._calculateSummary(associations) : savedState.summary;
 
     const refreshedState: GameState = {
       listId: list.id,
       globalCycle: savedState.globalCycle,
       associations,
-      activeQueue: validQueue,
+      activeQueue: shuffledQueue,
       currentIndex,
       isFinished,
       summary,
@@ -475,7 +477,7 @@ export class GlimmindGame {
     const nextState: GameState = {
       ...this.state,
       globalCycle: nextGlobalCycle,
-      activeQueue: newQueue,
+      activeQueue: shuffle(newQueue),
       currentIndex: 0,
     };
     return new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
@@ -538,7 +540,6 @@ export class GlimmindGame {
     // Calculate summary based on current state of associations
     const summary = GlimmindGame._calculateSummary(initialAssociations);
     
-    const shuffle = (arr: string[]) => arr.sort(() => Math.random() - 0.5);
     const activeQueue = GlimmindGame._generateActiveQueue(
       initialAssociations,
       currentCycle,
