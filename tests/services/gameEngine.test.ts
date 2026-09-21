@@ -613,9 +613,12 @@ describe('GlimmindGame', () => {
             progressed = progressed.reveal();
 
             const restored = GlimmindGame.restore(list, progressed.state);
-            expect(restored.state.activeQueue).toEqual(progressed.state.activeQueue);
-            expect(restored.state.currentIndex).toBe(progressed.state.currentIndex);
+            // Queue is rebuilt by restore — only cards at the current globalCycle
+            expect(restored.state.globalCycle).toBe(progressed.state.globalCycle);
             expect(restored.state.associations[0].currentCycle).toBe(progressed.state.associations[0].currentCycle);
+            expect(restored.state.associations[1].currentCycle).toBe(progressed.state.associations[1].currentCycle);
+            // currentIndex points to a valid card in the rebuilt queue
+            expect(restored.currentAssociation).toBeDefined();
         });
 
         it('re-hydrates edited term/definition values from the list', () => {
@@ -686,15 +689,22 @@ describe('GlimmindGame', () => {
             expect(restored.currentAssociation).toBeDefined();
         });
 
-        it('keeps the currentIndex when the active card still exists', () => {
+        it('keeps the currentIndex when the active card still exists in rebuilt queue', () => {
             const associations = createMockAssociations(3);
             const game = GlimmindGame.create(createMockList(associations));
             // Advance to the second card in the shuffled queue
             const advanced = game.processAction({ type: 'PASS' });
-            const indexBefore = advanced.state.currentIndex;
+            const activeAssocId = advanced.currentAssociation?.id;
 
             const restored = GlimmindGame.restore(createMockList(associations), advanced.state);
-            expect(restored.state.currentIndex).toBe(indexBefore);
+            // Queue is rebuilt for the current globalCycle, so currentIndex is
+            // the position of the active card within the new queue
+            if (activeAssocId && restored.state.activeQueue.includes(activeAssocId)) {
+                expect(restored.state.activeQueue[restored.state.currentIndex]).toBe(activeAssocId);
+            } else {
+                // Card moved to next cycle, so it's not in the rebuilt queue
+                expect(restored.state.currentIndex).toBe(0);
+            }
         });
     });
 
@@ -830,6 +840,86 @@ describe('GlimmindGame', () => {
             const updatedAssoc = after.state.associations.find(a => a.id === currentId);
             expect(updatedAssoc?.isLearned).toBe(true);
             expect(updatedAssoc?.status).toBe('correct');
+        });
+    });
+
+    describe('cycle-scoped queues', () => {
+        it('queue only contains cards at the current globalCycle', () => {
+            const associations = createMockAssociations(5);
+            const list = createMockList(associations);
+            const game = GlimmindGame.create(list);
+
+            // All start at cycle 1
+            expect(game.state.globalCycle).toBe(1);
+            expect(game.state.activeQueue.length).toBe(5);
+
+            // PASS card 1 → moves to cycle 2
+            const after = game.processAction({ type: 'PASS' });
+            const passedId = game.currentAssociation?.id;
+            const passedAssoc = after.state.associations.find(a => a.id === passedId);
+
+            // Card moved to cycle 2
+            expect(passedAssoc?.currentCycle).toBe(2);
+
+            // Queue still has all 5 (pre-built), but only 4 remain at cycle 1
+            // The passed card is still in queue until queue rebuilds
+            expect(after.state.activeQueue.length).toBe(5);
+        });
+
+        it('advances to next cycle when queue is exhausted', () => {
+            const associations = createMockAssociations(2);
+            const list = createMockList(associations);
+            let game = GlimmindGame.create(list);
+
+            // Both cards at cycle 1, queue has 2
+            expect(game.state.globalCycle).toBe(1);
+            expect(game.state.activeQueue.length).toBe(2);
+
+            // PASS both cards → both move to cycle 2
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+
+            // Queue exhausted → _checkForNextCycle fires
+            // globalCycle should advance to 2, queue should have 2 cards at cycle 2
+            expect(game.state.globalCycle).toBe(2);
+            expect(game.state.activeQueue.length).toBe(2);
+        });
+
+        it('PASS on cycle 2 card advances to cycle 3 and removes from queue', () => {
+            const associations = createMockAssociations(2);
+            const list = createMockList(associations);
+            let game = GlimmindGame.create(list);
+
+            // PASS both → move to cycle 2
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+
+            // Now at cycle 2 with 2 cards
+            expect(game.state.globalCycle).toBe(2);
+
+            // PASS first card in cycle 2 → moves to cycle 3
+            game = game.processAction({ type: 'PASS' });
+            const passedId = game.state.associations.find(a => a.currentCycle === 3)?.id;
+            expect(passedId).toBeDefined();
+
+            // PASS second card → queue exhausted → advance to cycle 3
+            game = game.processAction({ type: 'PASS' });
+
+            expect(game.state.globalCycle).toBe(3);
+            expect(game.state.activeQueue.length).toBe(2);
+        });
+
+        it('game ends when all cards are learned or reach cycle 4', () => {
+            const associations = createMockAssociations(2);
+            const list = createMockList(associations);
+            let game = GlimmindGame.create(list);
+
+            // CORRECT both in cycle 1 → both learned
+            game = game.processAction({ type: 'CORRECT' });
+            game = game.processAction({ type: 'CORRECT' });
+
+            expect(game.state.isFinished).toBe(true);
+            expect(game.state.summary?.learned).toBe(2);
         });
     });
 });

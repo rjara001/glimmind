@@ -103,7 +103,6 @@ export class GlimmindGame {
   public static restore(list: AssociationList, savedState: GameState, options: GameOptions = {}): GlimmindGame {
     const trackingEnabled = options.trackingEnabled !== false;
 
-    const listById = new Map(list.associations.map((a) => [a.id, a]));
     const progressById = new Map(savedState.associations.map((a) => [a.id, a]));
 
     const associations = list.associations.map((current) => {
@@ -121,15 +120,10 @@ export class GlimmindGame {
       } as Association;
     });
 
-    const validQueue = savedState.activeQueue.filter((id) => {
-      const assoc = listById.get(id);
-      return (
-        assoc !== undefined &&
-        !assoc.isArchived &&
-        !assoc.isLearned &&
-        assoc.status !== "correct"
-      );
-    });
+    const validQueue = GlimmindGame._generateActiveQueue(
+      associations,
+      savedState.globalCycle,
+    );
 
     const currentId = savedState.activeQueue[savedState.currentIndex];
     const normalizedIndex = validQueue.indexOf(currentId);
@@ -469,14 +463,15 @@ export class GlimmindGame {
   private _checkForNextCycle(): GlimmindGame {
     if (this.state.currentIndex < this.state.activeQueue.length) return this;
     
+    const nextGlobalCycle = Math.min(this.state.globalCycle + 1, 4) as GameCycle;
+    
     const newQueue = GlimmindGame._generateActiveQueue(
       this.state.associations,
-      this.state.globalCycle,
+      nextGlobalCycle,
     );
     
     if (newQueue.length === 0) return this._endGame();
 
-    const nextGlobalCycle = Math.min(this.state.globalCycle + 1, 4) as GameCycle;
     const nextState: GameState = {
       ...this.state,
       globalCycle: nextGlobalCycle,
@@ -532,15 +527,13 @@ export class GlimmindGame {
       isArchived: a.isArchived ?? false,
     }));
     
-    // Calculate current global cycle based on highest cycle among unarchived associations
-    const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived);
-    const currentCycle: GameCycle = Math.max(
-      1,
-      unarchivedAssocs.reduce(
-        (max, a) => Math.max(max, a.currentCycle || 1),
-        1
-      )
-    ) as GameCycle;
+    // Calculate current global cycle: the lowest cycle that has pending, non-learned, non-archived cards
+    const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived && !a.isLearned && a.status !== "correct");
+    const currentCycle: GameCycle = unarchivedAssocs.length > 0
+      ? Math.min(
+          ...unarchivedAssocs.map(a => a.currentCycle || 1),
+        ) as GameCycle
+      : 1;
     
     // Calculate summary based on current state of associations
     const summary = GlimmindGame._calculateSummary(initialAssociations);
@@ -567,10 +560,10 @@ export class GlimmindGame {
 
   private static _generateActiveQueue(
     associations: Association[],
-    _cycle: GameCycle,
+    cycle: GameCycle,
   ): string[] {
     return associations
-      .filter((a) => !a.isArchived && !a.isLearned && a.status !== "correct")
+      .filter((a) => !a.isArchived && !a.isLearned && a.status !== "correct" && a.currentCycle === cycle)
       .map((a) => a.id);
   }
 }
