@@ -111,9 +111,9 @@ export class GlimmindGame {
       if (!prev) return current;
       return {
         ...current,
-        currentCycle: prev.currentCycle,
-        status: prev.status,
-        isLearned: prev.isLearned,
+        currentCycle: prev.currentCycle ?? 1,
+        status: prev.status ?? 'pending',
+        isLearned: prev.isLearned ?? false,
         hits: prev.hits ?? 0,
         misses: prev.misses ?? 0,
         timesPlayed: prev.timesPlayed ?? 0,
@@ -523,9 +523,14 @@ export class GlimmindGame {
   }
 
   private static _initializeGame(list: AssociationList): GameState {
-    const initialAssociations = list.associations.map((a) =>
-      a.id ? a : { ...a, id: crypto.randomUUID() },
-    );
+    const initialAssociations = list.associations.map((a) => ({
+      ...a,
+      id: a.id || crypto.randomUUID(),
+      currentCycle: a.currentCycle ?? 1,
+      status: a.status ?? 'pending' as const,
+      isLearned: a.isLearned ?? false,
+      isArchived: a.isArchived ?? false,
+    }));
     
     // Calculate current global cycle based on highest cycle among unarchived associations
     const unarchivedAssocs = initialAssociations.filter(a => !a.isArchived);

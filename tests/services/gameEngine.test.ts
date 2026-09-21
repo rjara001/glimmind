@@ -784,4 +784,52 @@ describe('GlimmindGame', () => {
             expect(after.state.remainingCount).toBe(1);
         });
     });
+
+    describe('normalizes missing fields', () => {
+        it('sets currentCycle=1, status=pending, isLearned=false when missing', () => {
+            const brokenAssocs: Association[] = [
+                { id: '1', term: 'Hello', definition: ['Hola'] } as any,
+                { id: '2', term: 'Bye', definition: ['Chao'] } as any,
+            ];
+            const list = createMockList(brokenAssocs);
+            const game = GlimmindGame.create(list);
+
+            expect(game.state.associations[0].currentCycle).toBe(1);
+            expect(game.state.associations[0].status).toBe('pending');
+            expect(game.state.associations[0].isLearned).toBe(false);
+            expect(game.state.associations[1].currentCycle).toBe(1);
+        });
+
+        it('PASS advances current card from cycle 1→2 when currentCycle was missing', () => {
+            const brokenAssocs: Association[] = [
+                { id: '1', term: 'Hello', definition: ['Hola'] } as any,
+                { id: '2', term: 'Bye', definition: ['Chao'] } as any,
+            ];
+            const list = createMockList(brokenAssocs);
+            const game = GlimmindGame.create(list);
+
+            const currentId = game.currentAssociation?.id;
+            const after = game.processAction({ type: 'PASS' });
+
+            const updatedAssoc = after.state.associations.find(a => a.id === currentId);
+            expect(updatedAssoc?.currentCycle).toBe(2);
+            expect(updatedAssoc?.status).toBe('pending');
+        });
+
+        it('CORRECT marks as learned when currentCycle was missing (globalCycle=1)', () => {
+            const brokenAssocs: Association[] = [
+                { id: '1', term: 'Hello', definition: ['Hola'] } as any,
+                { id: '2', term: 'Bye', definition: ['Chao'] } as any,
+            ];
+            const list = createMockList(brokenAssocs);
+            const game = GlimmindGame.create(list);
+
+            const currentId = game.currentAssociation?.id;
+            const after = game.processAction({ type: 'CORRECT' });
+
+            const updatedAssoc = after.state.associations.find(a => a.id === currentId);
+            expect(updatedAssoc?.isLearned).toBe(true);
+            expect(updatedAssoc?.status).toBe('correct');
+        });
+    });
 });
