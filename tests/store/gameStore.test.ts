@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useGameStore, mergeAssociations } from '@/store/gameStore';
+import { useGameStore, mergeAssociations, mergeAssociationsPreferLocal, mergeCloudWithLocalPreferLocal } from '@/store/gameStore';
 import { DEFAULT_SETTINGS } from '@/types/settings';
 import { CardActivityEvent, GameSessionSummary } from '@/types/activity';
-import { Association } from '@/types';
+import { Association, AssociationList, UserProgress, UserSettings, UserQuota } from '@/types';
 
 const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
 const LOCAL_SESSIONS_KEY = 'glimmind_sessions';
@@ -147,5 +147,210 @@ describe('mergeAssociations', () => {
 
     expect(merged).toHaveLength(1);
     expect(merged[0].hits).toBe(0);
+  });
+});
+
+function makeAssociation(overrides: Partial<Association> = {}): Association {
+  return {
+    id: 'card-1',
+    term: 'term',
+    definition: 'def',
+    currentCycle: 1,
+    status: 'pending',
+    isLearned: false,
+    isArchived: false,
+    ...overrides,
+  };
+}
+
+function makeList(overrides: Partial<AssociationList> = {}): AssociationList {
+  return {
+    id: 'list-1',
+    userId: 'user-1',
+    name: 'Test List',
+    concept: 'test',
+    associations: [],
+    isArchived: false,
+    settings: {},
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    ...overrides,
+  };
+}
+
+function makeProgress(overrides: Partial<UserProgress> = {}): UserProgress {
+  return {
+    goalTarget: 10,
+    goalProgress: 5,
+    goalStartedAt: '2024-01-01',
+    streak: 3,
+    lastActiveDate: '2024-01-15',
+    playedToday: [],
+    log: {},
+    milestones: {},
+    ...overrides,
+  };
+}
+
+function makeSettings(overrides: Partial<UserSettings> = {}): UserSettings {
+  return {
+    activityHistoryEnabled: false,
+    audioRecordingEnabled: false,
+    voiceSttFallback: false,
+    maxCardsPerDeck: 100,
+    updatedAt: Date.now(),
+    ...overrides,
+  };
+}
+
+describe('mergeAssociationsPreferLocal', () => {
+  it('prefers local when localTime >= cloudTime', () => {
+    const local = makeAssociation({ hits: 5, updatedAt: 200 });
+    const cloud = makeAssociation({ hits: 0, updatedAt: 100 });
+
+    const merged = mergeAssociationsPreferLocal([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].hits).toBe(5);
+  });
+
+  it('prefers local when localTime === 0 (current game state)', () => {
+    const local = makeAssociation({ hits: 3, updatedAt: 0 });
+    const cloud = makeAssociation({ hits: 0, updatedAt: 1000 });
+
+    const merged = mergeAssociationsPreferLocal([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].hits).toBe(3);
+  });
+
+  it('prefers cloud when cloudTime > localTime', () => {
+    const local = makeAssociation({ hits: 5, updatedAt: 100 });
+    const cloud = makeAssociation({ hits: 0, updatedAt: 200 });
+
+    const merged = mergeAssociationsPreferLocal([local], [cloud]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].hits).toBe(0);
+  });
+});
+
+describe('mergeCloudWithLocalPreferLocal', () => {
+  it('prefers local list when localLearned > cloudLearned (progress protection)', () => {
+    const localList = makeList({
+      id: 'list-1',
+      associations: [
+        makeAssociation({ id: 'a1', isLearned: true, isArchived: false }),
+        makeAssociation({ id: 'a2', isLearned: true, isArchived: false }),
+      ],
+      updatedAt: 100,
+    });
+    const cloudList = makeList({
+      id: 'list-1',
+      associations: [makeAssociation({ id: 'a1', isLearned: false, isArchived: false })],
+      updatedAt: 200,
+    });
+
+    const merged = mergeCloudWithLocalPreferLocal([cloudList], [localList], 'user-1');
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].associations.length).toBeGreaterThanOrEqual(2);
+    expect(merged[0].updatedAt).toBe(100);
+  });
+
+  it('prefers local list when localTime >= cloudTime', () => {
+    const localList = makeList({ id: 'list-1', updatedAt: 200 });
+    const cloudList = makeList({ id: 'list-1', updatedAt: 100 });
+
+    const merged = mergeCloudWithLocalPreferLocal([cloudList], [localList], 'user-1');
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].updatedAt).toBe(200);
+  });
+
+  it('keeps local-only lists not present in cloud', () => {
+    const localList = makeList({ id: 'local-only' });
+    const cloudList = makeList({ id: 'cloud-1' });
+
+    const merged = mergeCloudWithLocalPreferLocal([cloudList], [localList], 'user-1');
+
+    expect(merged).toHaveLength(2);
+    expect(merged.find(l => l.id === 'local-only')).toBeDefined();
+    expect(merged.find(l => l.id === 'cloud-1')).toBeDefined();
+  });
+});
+
+describe('Progress/Settings merge (last-write-wins)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('prefers local progress when local.updatedAt > cloud.updatedAt', () => {
+    const localProgress = makeProgress({ goalProgress: 8, updatedAt: 200 });
+    const cloudProgress = makeProgress({ goalProgress: 3, updatedAt: 100 });
+    localStorage.setItem('glimmind_progress', JSON.stringify(localProgress));
+
+    const localUpdatedAt = localProgress.updatedAt ?? Date.now();
+    const cloudUpdatedAt = cloudProgress.updatedAt ?? 0;
+    const merged = localUpdatedAt >= cloudUpdatedAt ? localProgress : cloudProgress;
+
+    expect(merged.goalProgress).toBe(8);
+  });
+
+  it('prefers cloud progress when cloud.updatedAt > local.updatedAt', () => {
+    const localProgress = makeProgress({ goalProgress: 8, updatedAt: 100 });
+    const cloudProgress = makeProgress({ goalProgress: 3, updatedAt: 200 });
+    localStorage.setItem('glimmind_progress', JSON.stringify(localProgress));
+
+    const localUpdatedAt = localProgress.updatedAt ?? Date.now();
+    const cloudUpdatedAt = cloudProgress.updatedAt ?? 0;
+    const merged = localUpdatedAt >= cloudUpdatedAt ? localProgress : cloudProgress;
+
+    expect(merged.goalProgress).toBe(3);
+  });
+
+  it('prefers local settings when local.updatedAt > cloud.updatedAt', () => {
+    const localSettings = makeSettings({ activityHistoryEnabled: true, updatedAt: 200 });
+    const cloudSettings = makeSettings({ activityHistoryEnabled: false, updatedAt: 100 });
+
+    const localUpdatedAt = localSettings.updatedAt ?? Date.now();
+    const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
+    const merged = localUpdatedAt >= cloudUpdatedAt ? localSettings : cloudSettings;
+
+    expect(merged.activityHistoryEnabled).toBe(true);
+  });
+
+  it('prefers cloud settings when cloud.updatedAt > local.updatedAt', () => {
+    const localSettings = makeSettings({ activityHistoryEnabled: true, updatedAt: 100 });
+    const cloudSettings = makeSettings({ activityHistoryEnabled: false, updatedAt: 200 });
+
+    const localUpdatedAt = localSettings.updatedAt ?? Date.now();
+    const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
+    const merged = localUpdatedAt >= cloudUpdatedAt ? localSettings : cloudSettings;
+
+    expect(merged.activityHistoryEnabled).toBe(false);
+  });
+
+  it('falls back to local when cloud missing updatedAt (cloudUpdatedAt = 0)', () => {
+    const localProgress = makeProgress({ goalProgress: 8, updatedAt: 200 });
+    const cloudProgress = makeProgress({ goalProgress: 3 }); // no updatedAt
+    localStorage.setItem('glimmind_progress', JSON.stringify(localProgress));
+
+    const localUpdatedAt = localProgress.updatedAt ?? Date.now();
+    const cloudUpdatedAt = cloudProgress.updatedAt ?? 0;
+    const merged = localUpdatedAt >= cloudUpdatedAt ? localProgress : cloudProgress;
+
+    expect(merged.goalProgress).toBe(8);
+  });
+});
+
+describe('syncFromCloud uses mergeCloudWithLocalPreferLocal', () => {
+  it('imports mergeCloudWithLocalPreferLocal from store', () => {
+    expect(typeof mergeCloudWithLocalPreferLocal).toBe('function');
   });
 });

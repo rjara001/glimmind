@@ -1,4 +1,5 @@
 import type { AssociationList } from "../../../types";
+import { computeStateBreakdown } from "../../../utils/progress";
 
 interface RecentListsStripProps {
   lists: AssociationList[];
@@ -14,10 +15,11 @@ export function RecentListsStrip({ lists, onPlay }: RecentListsStripProps) {
       <div className="flex gap-4 overflow-x-auto pb-2">
         {lists.map((list) => {
           const allAssociations = list.associations || [];
-          const archivedCount = allAssociations.filter((a) => a.isArchived).length;
+          const breakdown = computeStateBreakdown(allAssociations);
+          const learnedCount = breakdown.aprendidas;
           const totalCount = allAssociations.length;
           const achievementPercent =
-            totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
+            totalCount > 0 ? Math.round((learnedCount / totalCount) * 100) : 0;
           const isComplete = achievementPercent === 100;
           return (
             <button
@@ -30,7 +32,7 @@ export function RecentListsStrip({ lists, onPlay }: RecentListsStripProps) {
                 <span
                   className={`text-sm font-bold ${isComplete ? "text-emerald-600" : "text-slate-600"}`}
                 >
-                  {archivedCount} / {totalCount}
+                  {learnedCount} / {totalCount}
                 </span>
                 <span
                   className={`text-xs font-medium ${isComplete ? "text-emerald-600" : "text-slate-500"}`}

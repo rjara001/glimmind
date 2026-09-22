@@ -254,12 +254,11 @@ const AppContent: React.FC = () => {
                 : <Auth onLoginDev={handleLoginDev} />
             }
           />
-          <Route
+<Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard
-                  lists={lists}
                   lastPlayedId={lastPlayedId}
                   onCreate={handleCreate}
                   onCreateAndPlay={handleCreateAndPlay}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AssociationList } from "../../../types";
 import { DeleteConfirmationModal } from "../../modals/DeleteConfirmationModal";
+import { computeStateBreakdown } from "../../../utils/progress";
 
 interface ListCardProps {
   list: AssociationList;
@@ -15,11 +16,12 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
 
   const allAssociations = list.associations || [];
   const activeAssociations = allAssociations.filter((a) => !a.isArchived);
-  const archivedCount = allAssociations.filter((a) => a.isArchived).length;
+  const breakdown = computeStateBreakdown(allAssociations);
+  const learnedCount = breakdown.aprendidas;
   const totalCount = allAssociations.length;
   const canPlay = activeAssociations.length > 0;
   const achievementPercent =
-    totalCount > 0 ? Math.round((archivedCount / totalCount) * 100) : 0;
+    totalCount > 0 ? Math.round((learnedCount / totalCount) * 100) : 0;
   const isComplete = achievementPercent === 100;
 
   const handleDeleteClick = () => {
@@ -66,7 +68,7 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
           <span
             className={`text-sm font-bold ${isComplete ? "text-emerald-600" : "text-slate-600"}`}
           >
-            {archivedCount} / {totalCount}
+            {learnedCount} / {totalCount}
           </span>
           <span
             className={`text-xs font-medium px-2 py-0.5 rounded ${isComplete ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}

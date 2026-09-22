@@ -243,6 +243,25 @@ export const GameView: React.FC<GameViewProps> = ({
     return () => clearTimeout(timer);
   }, [feedback, gameState.remainingCount, gameState.isFinished, state.isVoiceActive, state.isEditingCard, actions]);
 
+  // Sync game state to centralized store on unmount or game finish
+  useEffect(() => {
+    const syncToStore = () => {
+      if (gameState.associations.length > 0) {
+        onUpdateAssociations(gameState.associations);
+      }
+    };
+
+    // Sync when game finishes (shows summary)
+    if (gameView === "summary") {
+      syncToStore();
+    }
+
+    // Sync on unmount (user navigates away)
+    return () => {
+      syncToStore();
+    };
+  }, [gameView, gameState.associations, onUpdateAssociations]);
+
   if (gameView === "summary") {
     const restartAction =
       gameState.associations.length === 0
