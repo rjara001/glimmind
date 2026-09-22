@@ -1,8 +1,7 @@
-import type { Association, AssociationList } from "../types";
+import type { Association } from "../types";
 import type { VocabularyResult } from "./youtube-deck";
 
 export interface DashboardProps {
-  lists: AssociationList[];
   lastPlayedId?: string;
   onCreate: (name: string, concept: string, initialAssociations: Association[]) => void;
   onCreateAndPlay: (name: string, concept: string, initialAssociations: Association[]) => void;

@@ -17,7 +17,6 @@ import { UserSettings, DEFAULT_SETTINGS } from '../types/settings';
 import { settingsService } from '../services/settingsService';
 import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { activityService, ActivityQuery } from '../services/activityService';
-import { dashboardService } from '../services/dashboardService';
 import {
   PROGRESS_SAVE_DEBOUNCE_MS,
   ACTIVITY_SAVE_DEBOUNCE_MS,
@@ -253,7 +252,7 @@ function pickLocalOrCloudList(local: AssociationList, cloud: AssociationList): A
   return { ...listData, associations: mergedAssociations, settings: mergeSettings(otherList.settings, listData.settings) };
 }
 
-function mergeCloudWithLocal(
+export function mergeCloudWithLocalPreferLocal(
   cloudLists: AssociationList[],
   localLists: AssociationList[],
   currentUserId: string
@@ -277,11 +276,19 @@ function mergeCloudWithLocal(
       continue;
     }
 
-    const mergedAssociations = mergeAssociations(localList.associations || [], cloudList.associations || []);
+    // Merge associations preferring local when timestamps are newer
+    const mergedAssociations = mergeAssociationsPreferLocal(localList.associations || [], cloudList.associations || []);
     const localTime = getListTimestamp(localList);
     const cloudTime = getListTimestamp(cloudList);
-    const listData = localTime > cloudTime ? localList : cloudList;
-    const otherList = localTime > cloudTime ? cloudList : localList;
+    
+    // PREFER LOCAL if local has learned cards that cloud doesn't (progress protection)
+    const localLearned = localList.associations?.filter(a => a.isLearned && !a.isArchived).length || 0;
+    const cloudLearned = cloudList.associations?.filter(a => a.isLearned && !a.isArchived).length || 0;
+    const hasLocalProgress = localLearned > cloudLearned;
+    const preferLocalList = hasLocalProgress || localTime >= cloudTime;
+    
+    const listData = preferLocalList ? localList : cloudList;
+    const otherList = preferLocalList ? cloudList : localList;
 
     merged.push({ ...listData, associations: mergedAssociations, settings: mergeSettings(otherList.settings, listData.settings) });
   }
@@ -293,6 +300,28 @@ function mergeCloudWithLocal(
   }
 
   return merged;
+}
+
+export function mergeAssociationsPreferLocal(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
+  const byId = new Map<string, Association>();
+  for (const assoc of cloudAssociations) {
+    byId.set(assoc.id, assoc);
+  }
+  for (const assoc of localAssociations) {
+    const existing = byId.get(assoc.id);
+    if (!existing) {
+      byId.set(assoc.id, assoc);
+      continue;
+    }
+    const localTime = getAssociationTimestamp(assoc);
+    const cloudTime = getAssociationTimestamp(existing);
+    // Prefer local if local has no timestamp (current game state) OR local timestamp >= cloud timestamp
+    const preferLocal = localTime === 0 || localTime >= cloudTime;
+    if (preferLocal) {
+      byId.set(assoc.id, assoc);
+    }
+  }
+  return Array.from(byId.values());
 }
 
 interface ResumeSnapshot {
@@ -359,7 +388,6 @@ interface GameStore {
   
   // Actions - Initialization
   loadInitialData: () => Promise<void>;
-  loadDashboardData: () => Promise<void>;
   
   // Actions - Persistence
   syncFromCloud: () => Promise<void>;
@@ -447,7 +475,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
     const updatedLists = lists.map(l =>
-      l.id === listId ? { ...l, associations } : l
+      l.id === listId ? { ...l, associations, updatedAt: Date.now() } : l
     );
     set({
       lists: updatedLists,
@@ -736,26 +764,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Load from cloud only if NOT guest
     if (!isGuest) {
-      console.log('[STORE] Loading from cloud for user:', user.uid, 'cachedListsCount=', get().lists.length);
       if (savedLists && !shouldFetchCloudLists(user.uid)) {
-        console.log('[STORE] Using cached lists (within TTL)');
       } else {
         try {
           backupLocalLists();
-          console.log('[STORE] Fetching cloud lists for user:', user.uid);
           const cloudLists = await listService.fetchListsByUser(user.uid);
           if (requestId !== syncRequestSequence) {
             return;
           }
           markCloudFetch(user.uid);
-          console.log('[STORE] Fetched cloud lists count=', cloudLists.length, 'for user=', user.uid);
-          // For authenticated users, cloud is the source of truth.
-          // Even if cloud returns empty, replace localStorage lists.
+          // For authenticated users, merge cloud with local respecting latest timestamps.
+          // Local changes (from gameplay) have newer updatedAt on associations.
           const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
           const currentLocalLists = get().lists;
-          const merged = mergeCloudWithLocal(flattenedCloud, currentLocalLists, user.uid);
+          
+          // Merge: for each list, pick the version with latest association timestamps
+          const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, currentLocalLists, user.uid);
           const normalizedMerged = withNormalizedVoiceLanguages(merged);
-          console.log('[STORE] Merged lists count=', merged.length, 'changedIds=', changedIds.length);
           set({ lists: normalizedMerged });
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
           if (changedIds.length > 0) {
@@ -764,6 +789,68 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 console.error('[loadInitialData] syncToCloud failed:', error);
               });
             });
+          }
+
+          // Fetch and merge progress, quota, settings for authenticated users
+          try {
+            const [cloudProgressResult, cloudQuotaResult, cloudSettingsResult] = await Promise.allSettled([
+              progressService.fetchProgress(user.uid),
+              quotaService.fetchQuota(user.uid),
+              settingsService.fetchSettings(user.uid),
+            ]);
+
+            // Progress: last-write-wins by updatedAt (fallback: local wins if cloud missing updatedAt)
+            if (cloudProgressResult.status === 'fulfilled' && cloudProgressResult.value) {
+              const cloudProgress = cloudProgressResult.value as UserProgress & { updatedAt?: number };
+              const localProgressRaw = localStorage.getItem(LOCAL_PROGRESS_KEY);
+              const localProgress = localProgressRaw ? JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number } : null;
+              const localUpdatedAt = localProgress?.updatedAt ?? Date.now();
+              const cloudUpdatedAt = cloudProgress.updatedAt ?? 0;
+              const mergedProgress = localUpdatedAt >= cloudUpdatedAt ? localProgress : cloudProgress;
+              if (mergedProgress) {
+                const progressToSave = { ...mergedProgress, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
+                set({ progress: progressToSave });
+                localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progressToSave));
+                // If local was newer, push to cloud in background
+                if (localUpdatedAt > cloudUpdatedAt && user.uid !== GUEST_UID) {
+                  get()._persistProgress(progressToSave);
+                }
+              }
+            } else if (cloudProgressResult.status === 'rejected') {
+              console.warn('[loadInitialData] Failed to fetch cloud progress:', cloudProgressResult.reason);
+            }
+
+            // Quota: cloud always wins (server-authoritative)
+            if (cloudQuotaResult.status === 'fulfilled' && cloudQuotaResult.value) {
+              set({ quota: cloudQuotaResult.value });
+            } else if (cloudQuotaResult.status === 'rejected') {
+              console.warn('[loadInitialData] Failed to fetch cloud quota:', cloudQuotaResult.reason);
+            }
+
+            // Settings: last-write-wins by updatedAt
+            if (cloudSettingsResult.status === 'fulfilled' && cloudSettingsResult.value) {
+              const cloudSettings = cloudSettingsResult.value;
+              const localSettingsRaw = localStorage.getItem('glimmind_settings');
+              const localSettings = localSettingsRaw ? JSON.parse(localSettingsRaw) as UserSettings : null;
+              const localUpdatedAt = localSettings?.updatedAt ?? Date.now();
+              const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
+              const mergedSettings = localUpdatedAt >= cloudUpdatedAt ? localSettings : cloudSettings;
+              if (mergedSettings) {
+                const settingsToSave = { ...mergedSettings, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
+                set({ settings: settingsToSave });
+                settingsService.saveLocalSettings(settingsToSave);
+                // If local was newer, push to cloud in background
+                if (localUpdatedAt > cloudUpdatedAt && user.uid !== GUEST_UID) {
+                  settingsService.saveSettings(user.uid, settingsToSave).catch((err) => {
+                    console.error('[loadInitialData] Failed to sync settings to cloud:', err);
+                  });
+                }
+              }
+            } else if (cloudSettingsResult.status === 'rejected') {
+              console.warn('[loadInitialData] Failed to fetch cloud settings:', cloudSettingsResult.reason);
+            }
+          } catch (error) {
+            console.error('[loadInitialData] Error fetching/merging progress/quota/settings:', error);
           }
         } catch (error) {
           if (requestId !== syncRequestSequence) {
@@ -779,33 +866,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
     } else {
-      console.log('[STORE] Guest mode - using localStorage only');
-    }
-  },
-
-  loadDashboardData: async () => {
-    const { user } = get();
-    if (!user || user.uid === GUEST_UID) return;
-    set({ isLoaded: true, isLoading: false });
-    try {
-      const data = await dashboardService.fetchDashboardData(user.uid);
-      if (data.lists && data.lists.length > 0) {
-        set({ lists: data.lists });
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data.lists));
-      }
-      if (data.progress) {
-        set({ progress: data.progress });
-        localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(data.progress));
-      }
-      if (data.quota) {
-        set({ quota: data.quota });
-      }
-      if (data.settings) {
-        set({ settings: data.settings });
-        settingsService.saveLocalSettings(data.settings);
-      }
-    } catch (error) {
-      console.error('[loadDashboardData] failed:', error);
     }
   },
 
@@ -825,7 +885,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       markCloudFetch(user.uid);
       const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
       const localLists = get().lists;
-      const merged = mergeCloudWithLocal(flattenedCloud, localLists, user.uid);
+      const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, localLists, user.uid);
       const normalizedMerged = withNormalizedVoiceLanguages(merged);
       set({ lists: normalizedMerged });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));

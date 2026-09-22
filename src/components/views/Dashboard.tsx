@@ -25,7 +25,6 @@ import { DashboardEmptyState } from "./dashboard/DashboardEmptyState";
 import { ListGrid } from "./dashboard/ListGrid";
 
 export const Dashboard: React.FC<DashboardProps> = ({
-  lists,
   lastPlayedId,
   onCreate,
   onCreateAndPlay,
@@ -45,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showDeckStore, setShowDeckStore] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
 
+  const lists = useGameStore((state) => state.lists);
   const progress = useGameStore((state) => state.progress);
   const setGoalTarget = useGameStore((state) => state.setGoalTarget);
   const quota = useGameStore((state) => state.quota);

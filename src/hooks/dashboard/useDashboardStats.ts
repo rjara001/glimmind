@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { AssociationList } from "../../types";
 import type { DashboardStats } from "../../types/dashboard";
+import { computeStateBreakdown } from "../../utils/progress";
 
 export function useDashboardStats(lists: AssociationList[]): DashboardStats {
   return useMemo(() => {
@@ -9,7 +10,8 @@ export function useDashboardStats(lists: AssociationList[]): DashboardStats {
     lists.forEach((list) => {
       const allAssociations = list.associations || [];
       totalWords += allAssociations.length;
-      totalLearned += allAssociations.filter((a) => a.isArchived).length;
+      const breakdown = computeStateBreakdown(allAssociations);
+      totalLearned += breakdown.aprendidas;
     });
     return {
       totalWords,

@@ -78,14 +78,34 @@ export function useAppHandlers({
   const handleUpdateAssociations = useCallback(
     (updatedAssociations: Association[]) => {
       if (!currentListId) return;
-      // No sincronizar si estamos en modo crear lista (aún no se guardó)
-      const { createModeList } = useGameStore.getState();
-      if (createModeList) return;
       const currentList = lists.find((l) => l.id === currentListId);
-      if (currentList && JSON.stringify(currentList.associations) === JSON.stringify(updatedAssociations)) {
-        return;
-      }
-      updateAssociations(currentListId, updatedAssociations);
+      if (!currentList) return;
+
+      // Check if there are meaningful changes (compare relevant fields by ID)
+      const prevMap = new Map(currentList.associations.map(a => [a.id, a]));
+      const hasChanges = updatedAssociations.some((a) => {
+        const prev = prevMap.get(a.id);
+        if (!prev) return true; // new association
+        return (
+          prev.isLearned !== a.isLearned ||
+          prev.currentCycle !== a.currentCycle ||
+          prev.status !== a.status ||
+          (prev.hits ?? 0) !== (a.hits ?? 0) ||
+          (prev.misses ?? 0) !== (a.misses ?? 0) ||
+          (prev.timesPlayed ?? 0) !== (a.timesPlayed ?? 0) ||
+          (prev.lastPlayedAt ?? 0) !== (a.lastPlayedAt ?? 0)
+        );
+      });
+
+      if (!hasChanges) return;
+
+      // Ensure updatedAt is set on all associations
+      const withTimestamps = updatedAssociations.map(a => ({
+        ...a,
+        updatedAt: a.updatedAt ?? Date.now()
+      }));
+
+      updateAssociations(currentListId, withTimestamps);
     },
     [currentListId, updateAssociations, lists],
   );
@@ -222,16 +242,17 @@ console.log('pass3');
     async (list: AssociationList) => {
       if (!user) return;
       try {
+        const listWithTimestamp = { ...list, updatedAt: Date.now() };
         await listService.updateList({
-          id: list.id,
-          name: list.name,
-          concept: list.concept,
-          associations: list.associations,
-          settings: list.settings,
+          id: listWithTimestamp.id,
+          name: listWithTimestamp.name,
+          concept: listWithTimestamp.concept,
+          associations: listWithTimestamp.associations,
+          settings: listWithTimestamp.settings,
         });
         const currentLists = useGameStore.getState().lists;
         useGameStore.getState().setLists(
-          currentLists.map((l) => (l.id === list.id ? list : l)),
+          currentLists.map((l) => (l.id === listWithTimestamp.id ? listWithTimestamp : l)),
         );
         showToast("Lista guardada", "success");
       } catch (error) {

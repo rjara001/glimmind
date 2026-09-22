@@ -115,21 +115,44 @@ export function normalizeAssociations(associations: AssociationLike[]): Associat
     }
     changed = true;
     const definitions: string[] = [];
+    let maxHits = 0;
+    let maxMisses = 0;
+    let maxTimesPlayed = 0;
+    let maxCurrentCycle = 1;
+    let isLearned = false;
+    let isArchived = false;
+    let maxLastPlayedAt = 0;
+    let maxUpdatedAt = 0;
+    let minCreatedAt = Infinity;
+    let worstStatus: 'pending' | 'correct' = 'pending';
     for (const association of group) {
       definitions.push(...toDefinitionArray(association.definition));
+      maxHits = Math.max(maxHits, association.hits ?? 0);
+      maxMisses = Math.max(maxMisses, association.misses ?? 0);
+      maxTimesPlayed = Math.max(maxTimesPlayed, association.timesPlayed ?? 0);
+      maxCurrentCycle = Math.max(maxCurrentCycle, association.currentCycle ?? 1);
+      isLearned = isLearned || association.isLearned;
+      isArchived = isArchived || association.isArchived;
+      if (association.lastPlayedAt) maxLastPlayedAt = Math.max(maxLastPlayedAt, association.lastPlayedAt);
+      if (association.updatedAt) maxUpdatedAt = Math.max(maxUpdatedAt, association.updatedAt);
+      if (association.createdAt) minCreatedAt = Math.min(minCreatedAt, association.createdAt);
+      if (association.status === 'correct') worstStatus = 'correct';
     }
     const first = group[0];
     result.push({
       ...first,
       term: first.term.trim(),
       definition: dedupe(definitions),
-      currentCycle: 1,
-      status: "pending",
-      isLearned: false,
-      hits: undefined,
-      misses: undefined,
-      timesPlayed: undefined,
-      lastPlayedAt: undefined,
+      currentCycle: maxCurrentCycle,
+      status: worstStatus,
+      isLearned,
+      isArchived,
+      hits: maxHits > 0 ? maxHits : undefined,
+      misses: maxMisses > 0 ? maxMisses : undefined,
+      timesPlayed: maxTimesPlayed > 0 ? maxTimesPlayed : undefined,
+      lastPlayedAt: maxLastPlayedAt > 0 ? maxLastPlayedAt : undefined,
+      createdAt: minCreatedAt !== Infinity ? minCreatedAt : undefined,
+      updatedAt: maxUpdatedAt > 0 ? maxUpdatedAt : undefined,
     } as Association);
   }
 
