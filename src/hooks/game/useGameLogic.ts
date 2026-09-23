@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Association, AssociationList } from '../../types';
 import { GlimmindGame } from '../../services/gameEngine';
@@ -36,6 +35,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
   const autoRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentAssociationIdRef = useRef<string | undefined>(undefined);
+  const wasRevealedByUserRef = useRef(false);
 
   useEffect(() => {
     if (!sessionIdRef.current) {
@@ -57,6 +57,8 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
 
   const autoRevealSeconds = list.settings.autoRevealAfterSeconds ?? DEFAULT_AUTO_REVEAL_SECONDS;
   const autoAdvanceAttempts = list.settings.autoAdvanceAfterAttempts ?? DEFAULT_AUTO_ADVANCE_ATTEMPTS;
+
+  const isInHistoryMode = gameState.historyIndex !== -1;
 
   const clearAutoRevealTimer = useCallback(() => {
     if (autoRevealTimerRef.current) {
@@ -137,19 +139,29 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     useGameStore.getState().recordActivity(events);
   }, []);
 
+  // Resetear temporizadores y estado de revelado manual al cambiar de tarjeta activa
   useEffect(() => {
     clearAutoRevealTimer();
     clearAutoAdvanceTimer();
     currentAssociationIdRef.current = currentAssociation?.id;
+    wasRevealedByUserRef.current = false;
   }, [currentAssociation?.id, clearAutoRevealTimer, clearAutoAdvanceTimer]);
 
+  // Temporizador de Auto-Reveal (Solo en vivo, tarjeta no revelada con respuesta incorrecta)
   useEffect(() => {
+    if (isInHistoryMode) {
+      clearAutoRevealTimer();
+      return;
+    }
     if (gameState.isFinished || gameState.revealed || gameState.feedback !== 'incorrect') {
       clearAutoRevealTimer();
       return;
     }
     if (autoRevealSeconds <= 0) return;
+
     autoRevealTimerRef.current = setTimeout(() => {
+      const currentGame = gameRef.current;
+      if (currentGame?.state.historyIndex !== -1) return;
       autoRevealTimerRef.current = null;
       const before = gameRef.current;
       if (!before.state.revealed && before.state.feedback === 'incorrect') {
@@ -157,36 +169,66 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
         setGame(prev => prev.reveal());
       }
     }, autoRevealSeconds * 1000);
-    return () => clearAutoRevealTimer();
-  }, [gameState.feedback, gameState.revealed, gameState.isFinished, autoRevealSeconds, clearAutoRevealTimer, emitRevealEvent]);
 
+    return () => clearAutoRevealTimer();
+  }, [gameState.feedback, gameState.revealed, gameState.isFinished, autoRevealSeconds, clearAutoRevealTimer, emitRevealEvent, isInHistoryMode]);
+
+  // Temporizador de Auto-Advance (SOLO en vivo, tarjeta REVELADA explícitamente por el usuario)
   useEffect(() => {
-    if (gameState.isFinished || gameState.revealed || gameState.feedback !== 'incorrect') {
+    if (isInHistoryMode) {
       clearAutoAdvanceTimer();
       return;
     }
-    if (autoAdvanceAttempts <= 0) return;
+    if (gameState.isFinished || autoAdvanceAttempts <= 0) {
+      clearAutoAdvanceTimer();
+      return;
+    }
+
+    // Regla clave: Si la tarjeta no está revelada O NO fue revelada por el usuario, abortar
+    if (!gameState.revealed || !wasRevealedByUserRef.current) {
+      clearAutoAdvanceTimer();
+      return;
+    }
+
     const currentAssocId = currentAssociation?.id;
     if (!currentAssocId) return;
+
     const attemptsForCard = gameState.attempts.filter((a) => a.associationId === currentAssocId);
+    
     if (attemptsForCard.length >= autoAdvanceAttempts) {
       autoAdvanceTimerRef.current = setTimeout(() => {
+        const currentGame = gameRef.current;
+        if (currentGame?.state.historyIndex !== -1) return;
+        if (!wasRevealedByUserRef.current) return;
+
         autoAdvanceTimerRef.current = null;
         const before = gameRef.current;
-        if (!before.state.revealed && before.state.feedback !== 'correct') {
+        if (before.state.revealed && before.state.feedback !== 'correct') {
           const after = before.processAction({ type: 'PASS' });
           emitAnswerEvents(before, after, false);
           setGame(after);
         }
       }, 1000);
     }
+
     return () => clearAutoAdvanceTimer();
-  }, [gameState.attempts, gameState.feedback, gameState.revealed, gameState.isFinished, currentAssociation?.id, autoAdvanceAttempts, clearAutoAdvanceTimer, emitAnswerEvents]);
+  }, [
+    gameState.attempts,
+    gameState.feedback,
+    gameState.revealed,
+    gameState.isFinished,
+    currentAssociation?.id,
+    autoAdvanceAttempts,
+    clearAutoAdvanceTimer,
+    emitAnswerEvents,
+    isInHistoryMode
+  ]);
 
   const actions = useMemo(() => ({
     restart: (overrideList?: AssociationList) => {
       clearAutoRevealTimer();
       clearAutoAdvanceTimer();
+      wasRevealedByUserRef.current = false;
       sessionIdRef.current = crypto.randomUUID();
       sessionStartedAtRef.current = Date.now();
       sessionCardsPlayedRef.current = 0;
@@ -199,6 +241,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     reveal: () => {
       clearAutoRevealTimer();
       clearAutoAdvanceTimer();
+      wasRevealedByUserRef.current = true;
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       emitRevealEvent(before);
@@ -215,6 +258,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     handlePass: () => {
       clearAutoRevealTimer();
       clearAutoAdvanceTimer();
+      wasRevealedByUserRef.current = false;
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       const after = before.processAction({ type: 'PASS' });
@@ -224,6 +268,7 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     handleCorrect: () => {
       clearAutoRevealTimer();
       clearAutoAdvanceTimer();
+      wasRevealedByUserRef.current = false;
       play(gameRef.current.currentAssociation);
       const before = gameRef.current;
       const after = before.processAction({ type: 'CORRECT' });
@@ -247,11 +292,14 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     goBack: () => {
       clearAutoRevealTimer();
       clearAutoAdvanceTimer();
-      const before = gameRef.current;
-      const after = before.goBack();
-      if (after !== before) {
-        setGame(after);
-      }
+      wasRevealedByUserRef.current = false;
+      setGame(prev => prev.goBack());
+    },
+    goForward: () => {
+      clearAutoRevealTimer();
+      clearAutoAdvanceTimer();
+      wasRevealedByUserRef.current = false;
+      setGame(prev => prev.goForward());
     },
   }), [play, emitRevealEvent, emitAnswerEvents, clearAutoRevealTimer, clearAutoAdvanceTimer]);
 
@@ -288,11 +336,11 @@ export const useGameLogic = ({ list }: { list: AssociationList }) => {
     gameState,
     currentAssociation,
     summary: gameState.summary,
-    feedback: gameState.feedback,
-    userInput: gameState.userInput,
-    isRevealed: gameState.revealed,
-    similarity: gameState.similarity,
-    lastAttempt: gameState.lastAttempt,
+    feedback: isInHistoryMode ? 'none' : gameState.feedback,
+    userInput: isInHistoryMode ? '' : gameState.userInput,
+    isRevealed: isInHistoryMode ? true : gameState.revealed,
+    similarity: isInHistoryMode ? null : gameState.similarity,
+    lastAttempt: isInHistoryMode ? '' : gameState.lastAttempt,
     attempts: gameState.attempts,
     sessionRepasos,
     actions,

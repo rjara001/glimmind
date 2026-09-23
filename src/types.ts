@@ -112,6 +112,11 @@ export interface AppUser {
   photoURL: string | null;
 }
 
+export interface HistoryEntry {
+  associationId: string;
+  indexInQueue: number;
+}
+
 export interface GameState {
   listId: string;
   globalCycle: GameCycle;
@@ -127,6 +132,8 @@ export interface GameState {
   lastAttempt: string;
   attempts: Attempt[];
   revealedAssociations: string[];
+  navigationHistory: HistoryEntry[];
+  historyIndex: number;
   mode?: EngineMode;
   expectedAnswers?: string[];
   expectedCount?: number;

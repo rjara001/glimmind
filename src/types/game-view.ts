@@ -126,6 +126,7 @@ export interface CardStageProps {
   onCheckAnswer: () => void;
   onPass: () => void;
   onGoBack: () => void;
+  onGoForward: () => void;
   onReveal: () => void;
   onCorrect: () => void;
   onShowRevealWarning: () => void;

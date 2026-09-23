@@ -19,7 +19,7 @@ function makeAssociation(overrides: Partial<Association> = {}): Association {
 }
 
 describe('normalizeAssociations - progress preservation on duplicate merge', () => {
-  it('preserves max hits/misses/timesPlayed when merging duplicates', () => {
+  it('preserves max hits/misses/timesPlayed when merging duplicates, uses MIN currentCycle', () => {
     const associations: Association[] = [
       makeAssociation({ id: '1', term: 'Hola', hits: 5, misses: 2, timesPlayed: 7, currentCycle: 2 }),
       makeAssociation({ id: '2', term: 'HOLA', hits: 3, misses: 1, timesPlayed: 4, currentCycle: 3 }),
@@ -31,7 +31,7 @@ describe('normalizeAssociations - progress preservation on duplicate merge', () 
     expect(normalized[0].hits).toBe(5);
     expect(normalized[0].misses).toBe(2);
     expect(normalized[0].timesPlayed).toBe(7);
-    expect(normalized[0].currentCycle).toBe(3);
+    expect(normalized[0].currentCycle).toBe(2); // MIN of 2 and 3
   });
 
   it('preserves isLearned/isArchived with OR logic', () => {

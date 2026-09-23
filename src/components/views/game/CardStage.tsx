@@ -61,6 +61,7 @@ export function CardStage(props: CardStageProps) {
     onCheckAnswer,
     onPass,
     onGoBack,
+    onGoForward,
     onReveal,
     onCorrect,
     onShowRevealWarning,
@@ -85,11 +86,15 @@ export function CardStage(props: CardStageProps) {
       <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">Pending:</span>
-          <span className={`text-sm font-bold ${cycleColorClass}`}>{cycleStats.pending}</span>
+          <span className={`text-sm font-bold ${cycleColorClass}`}>
+            {cycleStats.pending}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-500">Correct:</span>
-          <span className="text-sm font-bold text-emerald-600">{cycleStats.correct}</span>
+          <span className="text-sm font-bold text-emerald-600">
+            {cycleStats.correct}
+          </span>
         </div>
       </div>
       <div className="w-full">
@@ -128,19 +133,25 @@ export function CardStage(props: CardStageProps) {
             engineDisclaimer={engineDisclaimer}
             engineFoundAnswers={engineFoundAnswers}
           />
-          {!isPresentationMode && !gameState.isNearComplete && (
-            <CountdownTimer
-              seconds={REVEAL_AUTO_NEXT_SECONDS}
-              isRunning={isCountdownRunning}
-              onComplete={onCountdownComplete}
-              className="absolute bottom-14 right-4 z-40"
-              ariaLabel="Auto avance a la siguiente tarjeta"
-            />
-          )}
+          {!isPresentationMode &&
+            !gameState.isNearComplete &&
+            gameState.historyIndex === -1 && (
+              <CountdownTimer
+                seconds={REVEAL_AUTO_NEXT_SECONDS}
+                isRunning={isCountdownRunning}
+                onComplete={onCountdownComplete}
+                className="absolute bottom-14 right-4 z-40"
+                ariaLabel="Auto avance a la siguiente tarjeta"
+              />
+            )}
           {showEditDeckButton && <EditDeckButton onClick={onEditDeck} />}
         </div>
         {showRevealWarning && (
-          <RevealWarning onTry={onShowRevealWarning} onReveal={onConfirmReveal} inputRef={inputRef} />
+          <RevealWarning
+            onTry={onShowRevealWarning}
+            onReveal={onConfirmReveal}
+            inputRef={inputRef}
+          />
         )}
         {showPracticeControls ? (
           <PracticeModeControls
@@ -163,9 +174,13 @@ export function CardStage(props: CardStageProps) {
           />
         ) : (
           <GameControls
-            onNext={onPass}
+            onNext={gameState.historyIndex !== -1 ? onGoForward : onPass}
             onPrev={onGoBack}
-            canGoBack={gameState.currentIndex > 0}
+            canGoBack={
+              gameState.historyIndex !== -1
+                ? gameState.historyIndex > 0
+                : gameState.currentIndex > 0
+            }
             onCheckAnswer={onCheckAnswer}
             onReveal={onReveal}
             onCorrect={onCorrect}
@@ -177,10 +192,18 @@ export function CardStage(props: CardStageProps) {
             showRevealWarning={showRevealWarning}
             onTryAttempt={onShowRevealWarning}
             onConfirmReveal={onConfirmReveal}
+            globalCycle={gameState.globalCycle}
+            currentCycle={currentCycle}
+            historyIndex={gameState.historyIndex}
           />
         )}
         {isMobile && (
-          <CycleProgress gameState={gameState} cycleColorName={cycleColorName} isMobile={isMobile} cycleMiniStats={cycleMiniStats} />
+          <CycleProgress
+            gameState={gameState}
+            cycleColorName={cycleColorName}
+            isMobile={isMobile}
+            cycleMiniStats={cycleMiniStats}
+          />
         )}
         <AttemptList
           attempts={attempts}

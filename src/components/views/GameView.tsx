@@ -408,6 +408,7 @@ export const GameView: React.FC<GameViewProps> = ({
               onCheckAnswer={gameplay.handleCheckAnswer}
               onPass={actions.handlePass}
               onGoBack={actions.goBack}
+              onGoForward={actions.goForward}
               onReveal={actions.reveal}
               onCorrect={actions.handleCorrect}
               onShowRevealWarning={state.showRevealWarningBanner}

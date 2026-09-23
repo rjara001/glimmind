@@ -150,6 +150,12 @@ exports.splitList = onRequest({ cors: true }, applyRateLimit("splitList", async 
     const data = await listService.divideOriginalListIntoGroupsAndReplaceIt(getDb(), listId, uid, groups);
     console.log('=== splitList ÉXITO ===');
     console.log('ids:', data.ids);
+    
+    // Log progress for each new list
+    for (const newId of data.ids) {
+      await listService.logCloudProgress(getDb(), newId, uid);
+    }
+    
     res.json(data);
   } catch (error) {
     console.log('=== splitList ERROR CATCH ===');
@@ -180,6 +186,7 @@ exports.getList = onRequest({ cors: true }, applyRateLimit("getList", async (req
 
   try {
     const data = await listService.fetchListByIdForUser(getDb(), listId, uid);
+    await listService.logCloudProgress(getDb(), listId, uid);
     res.json(data);
   } catch (error) {
     if (error.message === "List not found") {

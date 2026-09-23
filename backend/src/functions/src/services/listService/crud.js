@@ -29,6 +29,39 @@ function buildMetaDocumentDataForListCreation(meta, newCardsCount) {
   };
 }
 
+function computeProgressSummary(associations) {
+  if (!Array.isArray(associations)) {
+    return '[CLOUD_PROGRESS] No associations array';
+  }
+  const total = associations.length;
+  let active = 0;
+  let archived = 0;
+  const breakdown = { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 };
+  
+  for (const a of associations) {
+    if (a.isArchived) {
+      archived++;
+      continue;
+    }
+    active++;
+    if (a.isLearned) {
+      breakdown.aprendidas++;
+    } else {
+      switch (a.currentCycle) {
+        case 4: breakdown.conocidas++; break;
+        case 3: breakdown.reconocidas++; break;
+        case 2: breakdown.vistas++; break;
+        default: breakdown.nuevas++;
+      }
+    }
+  }
+  
+  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.conocidas + breakdown.aprendidas;
+  const progressPct = totalActive > 0 ? Math.round((breakdown.aprendidas / totalActive) * 100) : 0;
+  
+  return `[CLOUD_PROGRESS] Total: ${total} (Active: ${active}, Archived: ${archived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} C: ${breakdown.conocidas} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
+}
+
 async function loadListOwnershipInfo(db, listId, uid) {
   const docRef = db.collection(COLLECTION_NAME).doc(listId);
   const docSnap = await docRef.get();
@@ -95,6 +128,14 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
       tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, count));
     }
   });
+  
+  // Log cloud progress after successful save
+  const savedDoc = await docRef.get();
+  if (savedDoc.exists) {
+    const savedData = savedDoc.data();
+    console.log(`[CLOUD_SAVE] createList ${docRef.id} ${computeProgressSummary(savedData.associations)}`);
+  }
+  
   return { id: docRef.id };
 }
 
@@ -134,6 +175,14 @@ async function applyUpdatesToListAndAdjustCardCounters(db, listId, uid, updates)
       }
     }
   });
+  
+  // Log cloud progress after successful update
+  const savedDoc = await docRef.get();
+  if (savedDoc.exists) {
+    const savedData = savedDoc.data();
+    console.log(`[CLOUD_SAVE] updateList ${listId} ${computeProgressSummary(savedData.associations)}`);
+  }
+  
   return { success: true };
 }
 
@@ -234,6 +283,24 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
   return { ids: createdIds };
 }
 
+async function logCloudProgress(db, listId, uid) {
+  try {
+    const doc = await db.collection(COLLECTION_NAME).doc(listId).get();
+    if (!doc.exists) {
+      console.log(`[CLOUD_PROGRESS] ${listId}: List not found`);
+      return;
+    }
+    const data = doc.data();
+    if (data.userId && data.userId !== uid) {
+      console.log(`[CLOUD_PROGRESS] ${listId}: Forbidden`);
+      return;
+    }
+    console.log(`[CLOUD_PROGRESS] ${listId} ${computeProgressSummary(data.associations)}`);
+  } catch (error) {
+    console.error(`[CLOUD_PROGRESS] ${listId}: Error`, error.message);
+  }
+}
+
 module.exports = {
   fetchAllListsForUser,
   fetchListByIdForUser,
@@ -241,4 +308,5 @@ module.exports = {
   applyUpdatesToListAndAdjustCardCounters,
   removeListAndDecrementUserCardCount,
   divideOriginalListIntoGroupsAndReplaceIt,
+  logCloudProgress,
 };

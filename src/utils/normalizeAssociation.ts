@@ -118,7 +118,7 @@ export function normalizeAssociations(associations: AssociationLike[]): Associat
     let maxHits = 0;
     let maxMisses = 0;
     let maxTimesPlayed = 0;
-    let maxCurrentCycle = 1;
+    let minCurrentCycle = Infinity;
     let isLearned = false;
     let isArchived = false;
     let maxLastPlayedAt = 0;
@@ -130,7 +130,7 @@ export function normalizeAssociations(associations: AssociationLike[]): Associat
       maxHits = Math.max(maxHits, association.hits ?? 0);
       maxMisses = Math.max(maxMisses, association.misses ?? 0);
       maxTimesPlayed = Math.max(maxTimesPlayed, association.timesPlayed ?? 0);
-      maxCurrentCycle = Math.max(maxCurrentCycle, association.currentCycle ?? 1);
+      minCurrentCycle = Math.min(minCurrentCycle, association.currentCycle ?? 1);
       isLearned = isLearned || association.isLearned;
       isArchived = isArchived || association.isArchived;
       if (association.lastPlayedAt) maxLastPlayedAt = Math.max(maxLastPlayedAt, association.lastPlayedAt);
@@ -138,12 +138,14 @@ export function normalizeAssociations(associations: AssociationLike[]): Associat
       if (association.createdAt) minCreatedAt = Math.min(minCreatedAt, association.createdAt);
       if (association.status === 'correct') worstStatus = 'correct';
     }
+    // If all associations had undefined currentCycle, default to 1
+    if (minCurrentCycle === Infinity) minCurrentCycle = 1;
     const first = group[0];
     result.push({
       ...first,
       term: first.term.trim(),
       definition: dedupe(definitions),
-      currentCycle: maxCurrentCycle,
+      currentCycle: minCurrentCycle,
       status: worstStatus,
       isLearned,
       isArchived,

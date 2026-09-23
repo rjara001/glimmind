@@ -61,6 +61,15 @@ export function computeStateBreakdown(associations: Association[]): StateBreakdo
   return breakdown;
 }
 
+export function summarizeProgress(associations: Association[]): string {
+  const breakdown = computeStateBreakdown(associations);
+  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.conocidas + breakdown.aprendidas;
+  const totalArchived = associations.filter(a => a.isArchived).length;
+  const total = associations.length;
+  const progressPct = totalActive > 0 ? Math.round((breakdown.aprendidas / totalActive) * 100) : 0;
+  return `[PROGRESS] Total: ${total} (Active: ${totalActive}, Archived: ${totalArchived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} C: ${breakdown.conocidas} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
+}
+
 export function mergeBreakdown(
   target: StateBreakdown,
   contribution: StateBreakdown,

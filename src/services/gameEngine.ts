@@ -22,6 +22,8 @@ const INITIAL_GAME_STATE: Omit<GameState, "listId" | "associations"> = {
   lastAttempt: "",
   attempts: [],
   revealedAssociations: [],
+  navigationHistory: [],
+  historyIndex: -1,
 };
 
 export interface GameOptions {
@@ -109,10 +111,16 @@ export class GlimmindGame {
     const associations = list.associations.map((current) => {
       const prev = progressById.get(current.id);
       if (!prev) return current;
+      let restoredCycle = prev.currentCycle ?? 1;
+      // Enforce gating: restored cycle cannot exceed saved globalCycle + 1
+      const maxAllowedCycle = Math.min(savedState.globalCycle + 1, 4);
+      if (restoredCycle > maxAllowedCycle) {
+        restoredCycle = maxAllowedCycle;
+      }
       return {
         ...current,
-        currentCycle: prev.currentCycle ?? 1,
-        status: prev.status ?? 'pending',
+        currentCycle: restoredCycle,
+        status: restoredCycle >= 4 ? 'correct' : (prev.status ?? 'pending'),
         isLearned: prev.isLearned ?? false,
         hits: prev.hits ?? 0,
         misses: prev.misses ?? 0,
@@ -153,12 +161,26 @@ export class GlimmindGame {
       lastAttempt: savedState.lastAttempt,
       attempts,
       revealedAssociations,
+      navigationHistory: savedState.navigationHistory ?? [],
+      historyIndex: savedState.historyIndex ?? -1,
     };
 
     return new GlimmindGame(list, refreshedState, trackingEnabled);
   }
 
   public get currentAssociation(): Association | undefined {
+    // If we're in history mode, return the card from history
+    if (this.state.historyIndex >= 0 && this.state.navigationHistory.length > 0) {
+      const entry = this.state.navigationHistory[this.state.historyIndex];
+      if (entry) {
+        const assoc = this.state.associations.find((a) => a.id === entry.associationId);
+        if (assoc) return assoc;
+        // If the card was deleted, remove the invalid entry from history
+        return this._cleanupInvalidHistoryEntry();
+      }
+    }
+    
+    // Normal live mode
     if (
       this.state.isFinished ||
       !this.state.activeQueue[this.state.currentIndex]
@@ -166,6 +188,48 @@ export class GlimmindGame {
       return undefined;
     const currentId = this.state.activeQueue[this.state.currentIndex];
     return this.state.associations.find((a) => a.id === currentId);
+  }
+
+  /**
+   * Returns true if the card should be displayed as revealed.
+   * In history mode, cards are always revealed.
+   */
+  public get displayRevealed(): boolean {
+    return this.state.historyIndex >= 0 ? true : this.state.revealed;
+  }
+
+  /**
+   * Removes an invalid history entry (card no longer exists) and adjusts historyIndex
+   */
+  private _cleanupInvalidHistoryEntry(): Association | undefined {
+    const history = this.state.navigationHistory;
+    const index = this.state.historyIndex;
+    
+    if (index >= 0 && index < history.length) {
+      const newHistory = [...history];
+      newHistory.splice(index, 1);
+      
+      let newHistoryIndex = this.state.historyIndex;
+      if (newHistoryIndex >= newHistory.length) {
+        newHistoryIndex = newHistory.length - 1;
+      }
+      if (newHistoryIndex < 0 && newHistory.length > 0) {
+        newHistoryIndex = 0;
+      }
+      if (newHistory.length === 0) {
+        newHistoryIndex = -1;
+      }
+      
+      // Note: This is a getter, so we can't return a new game instance.
+      // The cleanup will happen in the next action that creates a new state.
+      // For now, return the first valid card or undefined
+      if (newHistory.length > 0 && newHistoryIndex >= 0) {
+        const entry = newHistory[newHistoryIndex];
+        return this.state.associations.find((a) => a.id === entry.associationId);
+      }
+      return this.currentAssociation; // Fallback to live mode
+    }
+    return undefined;
   }
 
   public updateList(newList: AssociationList): GlimmindGame {
@@ -282,28 +346,68 @@ export class GlimmindGame {
   }
 
   public goBack(): GlimmindGame {
+    // MODO HISTORIAL: Solo cambia historyIndex
+    if (this.state.historyIndex >= 0) {
+      if (this.state.historyIndex === 0) return this; // Ya al inicio
+      
+      return new GlimmindGame(this.initialList, {
+        ...this.state,
+        historyIndex: this.state.historyIndex - 1,
+      }, this.trackingEnabled);
+    }
+    
+    // MODO VIVO: Si hay historial, CAMBIAR A MODO HISTORIAL
+    if (this.state.navigationHistory.length > 0) {
+      return new GlimmindGame(this.initialList, {
+        ...this.state,
+        historyIndex: this.state.navigationHistory.length - 1,
+      }, this.trackingEnabled);
+    }
+    
+    // FALLBACK: Sin historial, navegar cola viva (edge case)
     if (this.state.currentIndex <= 0) return this;
+    
     const newIndex = this.state.currentIndex - 1;
-    const previousId = this.state.activeQueue[newIndex];
-    const revealedAssociations = previousId
-      ? this.state.revealedAssociations.filter((id) => id !== previousId)
-      : this.state.revealedAssociations;
+    const targetId = this.state.activeQueue[newIndex];
+    const targetRevealed = targetId ? this.state.revealedAssociations.includes(targetId) : false;
+    
+    return new GlimmindGame(this.initialList, {
+      ...this.state,
+      currentIndex: newIndex,
+      revealed: targetRevealed,
+      userInput: "",
+    }, this.trackingEnabled);
+  }
+
+  public goForward(): GlimmindGame {
+    // MODO HISTORIAL: Solo cambia historyIndex
+    if (this.state.historyIndex >= 0) {
+      if (this.state.historyIndex < this.state.navigationHistory.length - 1) {
+        // Avanzar dentro del historial
+        return new GlimmindGame(this.initialList, {
+          ...this.state,
+          historyIndex: this.state.historyIndex + 1,
+        }, this.trackingEnabled);
+      } else {
+        // Salir del historial a modo vivo: NO tocar estado vivo
+return new GlimmindGame(this.initialList, {
+      ...this.state,
+      historyIndex: -1,
+    }, this.trackingEnabled);
+      }
+    }
+    
+    // MODO VIVO: Navegar en cola activa
+    if (this.state.currentIndex >= this.state.activeQueue.length - 1) return this;
+    const newIndex = this.state.currentIndex + 1;
+    const targetId = this.state.activeQueue[newIndex];
+    const targetRevealed = targetId ? this.state.revealedAssociations.includes(targetId) : false;
 
     return new GlimmindGame(this.initialList, {
       ...this.state,
       currentIndex: newIndex,
-      revealed: false,
+      revealed: targetRevealed,
       userInput: "",
-      feedback: "none",
-      similarity: null,
-      lastAttempt: "",
-      revealedAssociations,
-      mode: undefined,
-      expectedAnswers: undefined,
-      expectedCount: undefined,
-      foundAnswers: undefined,
-      remainingCount: undefined,
-      isNearComplete: undefined,
     }, this.trackingEnabled);
   }
 
@@ -430,7 +534,8 @@ export class GlimmindGame {
         updatedAt: Date.now(),
       };
     } else if (action.type === "PASS") {
-      const nextCycle = Math.min(currentAssoc.currentCycle + 1, 4) as GameCycle;
+      const maxAllowedCycle = Math.min(this.state.globalCycle + 1, 4);
+      const nextCycle = Math.min(currentAssoc.currentCycle + 1, maxAllowedCycle) as GameCycle;
       associations[assocIndex] = {
         ...currentAssoc,
         currentCycle: nextCycle,
@@ -439,6 +544,20 @@ export class GlimmindGame {
         lastPlayedAt: this.trackingEnabled ? Date.now() : currentAssoc.lastPlayedAt,
         updatedAt: Date.now(),
       };
+    }
+
+    // Add to navigation history when advancing in live mode
+    const isInLiveMode = this.state.historyIndex === -1;
+    let navigationHistory = this.state.navigationHistory;
+    let historyIndex = this.state.historyIndex;
+    
+    if (isInLiveMode) {
+      // Add the current card to history before moving to the next
+      navigationHistory = [
+        ...this.state.navigationHistory,
+        { associationId: currentAssoc.id, indexInQueue: this.state.currentIndex }
+      ];
+      historyIndex = -1; // Stay in live mode
     }
 
     const nextState: GameState = {
@@ -451,6 +570,8 @@ export class GlimmindGame {
       similarity: null,
       lastAttempt: "",
       revealedAssociations,
+      navigationHistory,
+      historyIndex,
       mode: undefined,
       expectedAnswers: undefined,
       expectedCount: undefined,
@@ -479,6 +600,8 @@ export class GlimmindGame {
       globalCycle: nextGlobalCycle,
       activeQueue: shuffle(newQueue),
       currentIndex: 0,
+      navigationHistory: [], // Clear history on cycle change
+      historyIndex: -1,
     };
     return new GlimmindGame(this.initialList, nextState, this.trackingEnabled);
   }
@@ -536,6 +659,15 @@ export class GlimmindGame {
           ...unarchivedAssocs.map(a => a.currentCycle || 1),
         ) as GameCycle
       : 1;
+
+    // Enforce gating: no card can be more than 1 cycle ahead of globalCycle
+    const maxAllowedCycle = Math.min(currentCycle + 1, 4);
+    for (const assoc of initialAssociations) {
+      if (!assoc.isArchived && !assoc.isLearned && assoc.currentCycle > maxAllowedCycle) {
+        assoc.currentCycle = maxAllowedCycle;
+        assoc.status = 'pending';
+      }
+    }
     
     // Calculate summary based on current state of associations
     const summary = GlimmindGame._calculateSummary(initialAssociations);

@@ -7,7 +7,7 @@ const CreateListSchema = z.object({
     id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
-  })).max(2000).optional(),
+  }).passthrough()).max(2000).optional(),
   settings: z.object({
     mode: z.enum(["normal", "reverse", "mixed", "training", "real"]).optional(),
     flipOrder: z.enum(["normal", "reversed"]).optional(),
@@ -28,7 +28,7 @@ const UpdateListSchema = z.object({
     id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
-  })).max(2000).optional(),
+  }).passthrough()).max(2000).optional(),
   settings: z.object({
     mode: z.enum(["normal", "reverse", "mixed", "training", "real"]).optional(),
     flipOrder: z.enum(["normal", "reversed"]).optional(),
@@ -56,7 +56,7 @@ const SplitListSchema = z.object({
       id: z.string().optional(),
       term: z.string().min(1).max(500),
       definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
-    })).min(1).max(2000),
+    }).passthrough()).min(1).max(2000),
   })).min(1).max(50),
 });
 
@@ -166,7 +166,7 @@ const AiGroupSchema = z.object({
     id: z.string().optional(),
     term: z.string().min(1).max(500),
     definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
-  })).min(3).max(2000),
+  }).passthrough()).min(3).max(2000),
 });
 
 function validate(schema) {

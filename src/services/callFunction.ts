@@ -12,13 +12,15 @@ const SECOND_GEN_FUNCTIONS: Record<string, string | undefined> = {
   synthesizeSpeech: isUsingEmulators ? undefined : 'https://us-central1-fladycard-22a3e.cloudfunctions.net',
 };
 
-const USE_CLEAN_URLS = !isUsingEmulators && !env.VITE_FUNCTIONS_BASE;
+// ⚠️ Desactivamos USE_CLEAN_URLS por defecto a menos que esté configurado explícitamente,
+// para asegurar que las llamadas vayan a la URL real de Cloud Functions si no hay proxy.
+const USE_CLEAN_URLS = false; 
 
-async function getToken(): Promise<string | null> {
+async function getToken(forceRefresh = false): Promise<string | null> {
   const currentUser = auth.currentUser;
   if (!currentUser) return null;
   try {
-    return await currentUser.getIdToken();
+    return await currentUser.getIdToken(forceRefresh);
   } catch {
     return null;
   }
@@ -44,10 +46,11 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
     url = `${base}/${functionName}`;
   }
 
-  console.log('[callFunction]', functionName, 'url=', url, 'base=', base, 'isUsingEmulators=', isUsingEmulators);
+  console.log('[callFunction]', functionName, 'url=', url, 'tokenPresent=', !!token);
 
   const response = await fetch(url, {
     method: 'POST',
+    keepalive: true, // ✅ FIX: Permite que la petición sobreviva al cierre de pestaña o navegación
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -81,6 +84,6 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error('Invalid JSON response from server');
+    throw new Error(`Invalid JSON response from server at ${url}: ${text.slice(0, 100)}`);
   }
 }

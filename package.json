@@ -1,11 +1,12 @@
 {
   "name": "glimmind---word-association-master",
   "private": true,
-  "version": "1.31.9",
+  "version": "1.31.10",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "emulators": "firebase emulators:start --only auth,functions,firestore --import .emulator-data --export-on-exit .emulator-data",
+    "emulators:kill": "lsof -ti :4000 -ti :4400 -ti :5001 -ti :8080 -ti :8085 -ti :9000 -ti :9099 -ti :9150 | xargs kill -9 2>/dev/null; echo 'Emulator ports cleared'",
     "prebuild": "node scripts/copy-ml-assets.mjs",
     "build": "vite build",
     "deploy": "npm run build && firebase deploy --only hosting,functions",

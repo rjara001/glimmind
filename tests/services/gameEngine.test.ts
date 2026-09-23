@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { GlimmindGame } from '@/services/gameEngine';
 import { Association, AssociationList } from '@/types';
+import { computeStateBreakdown } from '@/utils/progress';
+import { normalizeAssociations } from '@/utils/normalizeAssociation';
 
 const createMockAssociations = (count: number): Association[] => {
     return Array.from({ length: count }, (_, i) => ({
@@ -132,6 +134,81 @@ describe('GlimmindGame', () => {
             
             expect(game.state.isFinished).toBe(false);
             expect(game.state.globalCycle).toBe(2);
+        });
+    });
+
+    describe('cycle gating: currentCycle ≤ globalCycle + 1', () => {
+        it('FIXED: normalizeAssociations merge uses MIN currentCycle (not MAX)', () => {
+            // Simulate a list with duplicate terms at different cycles (from import/merge)
+            const associations: Association[] = [
+                { id: '1', term: 'Hello', definition: ['Hola'], status: 'pending', currentCycle: 1, isLearned: false, isArchived: false },
+                { id: '2', term: 'Hello', definition: ['Hola'], status: 'pending', currentCycle: 3, isLearned: false, isArchived: false }, // duplicate at cycle 3
+            ];
+            const list = createMockList(associations);
+            
+            // normalizeAssociations merges by term (case-insensitive) and now uses MIN currentCycle
+            const normalized = normalizeAssociations(list.associations);
+            
+            // FIXED: merged card gets cycle 1 (min of 1 and 3)
+            expect(normalized.length).toBe(1);
+            expect(normalized[0].currentCycle).toBe(1);
+            
+            // Create game with normalized data - globalCycle will be 1
+            const game = GlimmindGame.create({ ...list, associations: normalized });
+            
+            // globalCycle = 1 (correct for NUEVA phase)
+            expect(game.state.globalCycle).toBe(1);
+            
+            // Card is at cycle 1 (NUEVA) - respects gating rule
+            const breakdown = computeStateBreakdown(game.state.associations);
+            expect(breakdown.nuevas).toBe(1);
+            expect(breakdown.vistas).toBe(0);
+            expect(breakdown.reconocidas).toBe(0);
+        });
+
+        it('FIXED: restore caps cycles to saved globalCycle + 1', () => {
+            const associations = createMockAssociations(1);
+            associations[0].currentCycle = 3; // saved state with high cycle
+            const list = createMockList(associations);
+            
+            const snapshot = GlimmindGame.create(list).state;
+            snapshot.globalCycle = 1; // but globalCycle reset to 1
+            
+            const restored = GlimmindGame.restore(list, snapshot);
+            
+            // FIXED: restored card capped to globalCycle + 1 = 2
+            expect(restored.state.globalCycle).toBe(1); // uses saved globalCycle
+            expect(restored.state.associations[0].currentCycle).toBe(2); // capped to 2
+            
+            const breakdown = computeStateBreakdown(restored.state.associations);
+            expect(breakdown.vistas).toBe(1); // cycle 2 = VISTA
+            expect(breakdown.reconocidas).toBe(0); // no RECONOCIDA
+        });
+
+        it('gameplay: PASS in globalCycle=1 never creates cycle 3', () => {
+            const associations = createMockAssociations(3);
+            const list = createMockList(associations);
+            let game = GlimmindGame.create(list);
+            
+            // PASS all 3 cards in globalCycle=1
+            game = game.processAction({ type: 'PASS' }); // card 1: 1→2
+            game = game.processAction({ type: 'PASS' }); // card 2: 1→2
+            game = game.processAction({ type: 'PASS' }); // card 3: 1→2, globalCycle→2
+            
+            // Now in globalCycle=2, PASS card 1 again
+            game = game.processAction({ type: 'PASS' }); // card 1: 2→3 (allowed, globalCycle+1=3)
+            
+            // Verify: no card should exceed globalCycle + 1
+            for (const assoc of game.state.associations) {
+                if (!assoc.isArchived && !assoc.isLearned) {
+                    expect(assoc.currentCycle).toBeLessThanOrEqual(game.state.globalCycle + 1);
+                }
+            }
+            
+            const breakdown = computeStateBreakdown(game.state.associations);
+            // At globalCycle=2, max allowed is cycle 3 (RECONOCIDA)
+            expect(breakdown.reconocidas).toBe(1);
+            expect(breakdown.conocidas).toBe(0); // cycle 4 not allowed yet
         });
     });
 

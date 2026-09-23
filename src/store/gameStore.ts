@@ -1,15 +1,16 @@
 import { create } from 'zustand';
 import { AssociationList, Association, AppUser, GameState } from '../types';
 import { listService } from '../services/firestoreService';
-import { progressService } from '../services/progressService';
 import { quotaService } from '../services/quotaService';
 import { isUsingEmulators, auth } from '../firebase';
 import { normalizeAssociations } from '../utils/normalizeAssociation';
 import { backfillAssociationStats, buildListDiffEvents } from '../utils/activity';
 import {
   applyRepaso,
+  computeStateBreakdown,
   createDefaultProgress,
   todayKey,
+  summarizeProgress,
 } from '../utils/progress';
 import { UserProgress, CelebrationEvent, RepasoContext } from '../types/progress';
 import { UserQuota } from '../types/quota';
@@ -18,7 +19,6 @@ import { settingsService } from '../services/settingsService';
 import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { activityService, ActivityQuery } from '../services/activityService';
 import {
-  PROGRESS_SAVE_DEBOUNCE_MS,
   ACTIVITY_SAVE_DEBOUNCE_MS,
   LIST_CACHE_TTL_MS,
   LAST_CLOUD_FETCH_KEY,
@@ -49,26 +49,6 @@ function ensureCacheMatchesEnvironment(): void {
   }
 }
 
-let progressSaveTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingProgress: UserProgress | null = null;
-let pendingUserUid: string | null = null;
-
-function flushProgressCloudSave() {
-  if (progressSaveTimer) {
-    clearTimeout(progressSaveTimer);
-    progressSaveTimer = null;
-  }
-  if (pendingUserUid && pendingProgress) {
-    const uid = pendingUserUid;
-    const progress = pendingProgress;
-    pendingUserUid = null;
-    pendingProgress = null;
-    progressService.saveProgress(uid, progress).catch((error) => {
-      console.error('Error saving progress:', error);
-    });
-  }
-}
-
 let activitySaveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingActivityUid: string | null = null;
 let pendingActivityEvents: CardActivityEvent[] = [];
@@ -92,13 +72,11 @@ function flushActivityCloudSave() {
 
 if (typeof window !== 'undefined') {
   const handleFlush = () => {
-    flushProgressCloudSave();
-    flushActivityCloudSave();
+    flushActivityCloudSave(); // Solo mantenemos activity
   };
   window.addEventListener('beforeunload', handleFlush);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      flushProgressCloudSave();
       flushActivityCloudSave();
     }
   });
@@ -112,6 +90,7 @@ function shouldFetchCloudLists(uid: string): boolean {
 function markCloudFetch(uid: string) {
   localStorage.setItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`, String(Date.now()));
 }
+
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
   if (!list.associations || list.associations.length === 0) {
     return { list, changed: false };
@@ -225,31 +204,31 @@ export function mergeAssociations(localAssociations: Association[], cloudAssocia
     if (localTime > cloudTime) {
       byId.set(assoc.id, assoc);
     } else if (localTime === cloudTime && trackingScore(assoc) >= trackingScore(existing)) {
-      // On equal timestamps prefer the side with more game progress, then local.
       byId.set(assoc.id, assoc);
     }
   }
   return Array.from(byId.values());
 }
 
-function pickLocalOrCloudList(local: AssociationList, cloud: AssociationList): AssociationList {
-  const localCount = local.associations?.length || 0;
-  const cloudCount = cloud.associations?.length || 0;
-
-  if (cloudCount > localCount && cloudCount >= localCount * 2) {
-    return { ...cloud, settings: mergeSettings(local.settings, cloud.settings) };
+export function mergeAssociationsPreferLocal(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
+  const byId = new Map<string, Association>();
+  for (const assoc of cloudAssociations) {
+    byId.set(assoc.id, assoc);
   }
-  if (localCount > cloudCount && localCount >= cloudCount * 2) {
-    return { ...local, settings: mergeSettings(local.settings, cloud.settings) };
+  for (const assoc of localAssociations) {
+    const existing = byId.get(assoc.id);
+    if (!existing) {
+      byId.set(assoc.id, assoc);
+      continue;
+    }
+    const localTime = getAssociationTimestamp(assoc);
+    const cloudTime = getAssociationTimestamp(existing);
+    const preferLocal = localTime === 0 || localTime >= cloudTime;
+    if (preferLocal) {
+      byId.set(assoc.id, assoc);
+    }
   }
-
-  const mergedAssociations = mergeAssociations(local.associations || [], cloud.associations || []);
-  const localTime = getListTimestamp(local);
-  const cloudTime = getListTimestamp(cloud);
-  const listData = localTime >= cloudTime ? local : cloud;
-  const otherList = localTime >= cloudTime ? cloud : local;
-
-  return { ...listData, associations: mergedAssociations, settings: mergeSettings(otherList.settings, listData.settings) };
+  return Array.from(byId.values());
 }
 
 export function mergeCloudWithLocalPreferLocal(
@@ -276,12 +255,10 @@ export function mergeCloudWithLocalPreferLocal(
       continue;
     }
 
-    // Merge associations preferring local when timestamps are newer
     const mergedAssociations = mergeAssociationsPreferLocal(localList.associations || [], cloudList.associations || []);
     const localTime = getListTimestamp(localList);
     const cloudTime = getListTimestamp(cloudList);
     
-    // PREFER LOCAL if local has learned cards that cloud doesn't (progress protection)
     const localLearned = localList.associations?.filter(a => a.isLearned && !a.isArchived).length || 0;
     const cloudLearned = cloudList.associations?.filter(a => a.isLearned && !a.isArchived).length || 0;
     const hasLocalProgress = localLearned > cloudLearned;
@@ -302,31 +279,21 @@ export function mergeCloudWithLocalPreferLocal(
   return merged;
 }
 
-export function mergeAssociationsPreferLocal(localAssociations: Association[], cloudAssociations: Association[]): Association[] {
-  const byId = new Map<string, Association>();
-  for (const assoc of cloudAssociations) {
-    byId.set(assoc.id, assoc);
-  }
-  for (const assoc of localAssociations) {
-    const existing = byId.get(assoc.id);
-    if (!existing) {
-      byId.set(assoc.id, assoc);
-      continue;
-    }
-    const localTime = getAssociationTimestamp(assoc);
-    const cloudTime = getAssociationTimestamp(existing);
-    // Prefer local if local has no timestamp (current game state) OR local timestamp >= cloud timestamp
-    const preferLocal = localTime === 0 || localTime >= cloudTime;
-    if (preferLocal) {
-      byId.set(assoc.id, assoc);
-    }
-  }
-  return Array.from(byId.values());
-}
-
 interface ResumeSnapshot {
   state: GameState;
   sessionRepasos: number;
+}
+
+interface AuditReportEntry {
+  listId: string;
+  nombre: string;
+  estadoCuadre: '✅ CALZA' | '❌ DESCUADRADO';
+  tarjetas: string;
+  aprendidas: string;
+  repasos: string;
+  completado: string;
+  ultimoLocal: string;
+  ultimoCloud: string;
 }
 
 interface GameStore {
@@ -349,7 +316,7 @@ interface GameStore {
   activityRecordingEnabled: boolean;
   resumeState: Record<string, ResumeSnapshot>;
   
-  // Computed (via getters)
+  // Computed
   getCurrentList: () => AssociationList | null;
   
   // Actions - User
@@ -391,7 +358,10 @@ interface GameStore {
   
   // Actions - Persistence
   syncFromCloud: () => Promise<void>;
-  syncToCloud: (listId: string) => Promise<void>;
+  syncToCloud: (listId: string, associations?: Association[]) => Promise<void>;
+
+  // Actions - Audit
+  auditAndReconcile: (listId?: string) => Promise<AuditReportEntry[]>;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -426,15 +396,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ user });
 
-    // Persist only genuine local guests; real users are restored by Firebase Auth.
     if (user && user.uid === GUEST_UID) {
       localStorage.setItem('glimmind_guest_user', JSON.stringify(user));
     } else if (!user) {
       localStorage.removeItem('glimmind_guest_user');
     }
 
-    // When the user changes, reset all user-dependent state so the new
-    // user starts from a clean slate instead of seeing stale data.
     if (isSwitch) {
       set({
         lists: [],
@@ -453,10 +420,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   // Lists actions
   setLists: (lists) => {
-    // Normalize legacy lists missing voice languages so flags/narration never fall back to the globe.
     const normalizedLists = withNormalizedVoiceLanguages(lists);
     set({ lists: normalizedLists });
-    // Persist to localStorage
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedLists));
   },
   
@@ -481,10 +446,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lists: updatedLists,
       currentList: updatedLists.find(l => l.id === listId) || null
     });
-    // Persist to localStorage
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
     if (user && user.uid !== GUEST_UID) {
-      get().syncToCloud(listId).catch((error) => {
+      get().syncToCloud(listId, associations).catch((error) => {
         console.error('[updateAssociations] syncToCloud failed:', error);
       });
     }
@@ -515,7 +479,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
     if (user && user.uid !== GUEST_UID) {
       try {
-        const { listService } = await import('../services/firestoreService');
         await listService.updateList(listId, { history: nextHistory });
       } catch (error) {
         console.error('[markListCompleted] cloud sync failed:', error);
@@ -553,7 +516,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lists: updatedLists,
       currentList: list
     });
-    // Persist
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
   },
 
@@ -569,12 +531,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // For authenticated users, cloud is the source of truth.
-    const cloudProgress = await progressService.fetchProgress(user.uid);
-    const progress = cloudProgress || createDefaultProgress();
+    const savedLocal = localStorage.getItem(LOCAL_PROGRESS_KEY);
+    const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
+    const progress = localProgress || createDefaultProgress();
     set({ progress });
     localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
-    if (cloudProgress === null) {
+    if (localProgress === null) {
       get().setGoalTarget(progress.goalTarget);
     }
   },
@@ -597,7 +559,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // For authenticated users, cloud is the source of truth.
     const cloudSettings = await settingsService.fetchSettings(user.uid);
     const settings = cloudSettings || { ...DEFAULT_SETTINGS, updatedAt: Date.now() };
     set({ settings });
@@ -684,16 +645,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   recordRepaso: (association, listContext) => {
-    const progress = get().progress || createDefaultProgress();
+    const state = get();
+    const progress = state.progress || createDefaultProgress();
     const result = applyRepaso(progress, association, listContext, todayKey());
     if (!result) return;
 
-    set({
-      progress: result.progress,
-      celebration: result.celebration || get().celebration,
-    });
+    if (listContext?.listId) {
+      const updatedLists = state.lists.map((l) => {
+        if (l.id !== listContext.listId) return l;
+        return {
+          ...l,
+          updatedAt: Date.now(),
+          associations: (l.associations || []).map((a) =>
+            a.id === association.id ? { ...a, ...association } : a
+          ),
+        };
+      });
 
-    get()._persistProgress(result.progress);
+      const updatedList = updatedLists.find(l => l.id === listContext.listId);
+      const updatedAssociations = updatedList?.associations || [];
+
+      set({
+        lists: updatedLists,
+        progress: result.progress,
+        celebration: result.celebration || state.celebration,
+      });
+
+      // Sincronizar hacia Firestore leyendo las tarjetas ya mutadas
+      get().syncToCloud(listContext.listId, updatedAssociations).catch((err) =>
+        console.error('[recordRepaso] syncToCloud failed:', err)
+      );
+    } else {
+      set({
+        progress: result.progress,
+        celebration: result.celebration || state.celebration,
+      });
+    }
   },
 
   setGoalTarget: (target) => {
@@ -717,16 +704,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   _persistProgress: (progress) => {
-    const { user } = get();
-    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
-    if (user && user.uid !== GUEST_UID) {
-      if (progressSaveTimer) {
-        clearTimeout(progressSaveTimer);
-      }
-      pendingUserUid = user.uid;
-      pendingProgress = progress;
-      progressSaveTimer = setTimeout(flushProgressCloudSave, PROGRESS_SAVE_DEBOUNCE_MS);
-    }
+    const { lists } = get();
+    const today = todayKey();
+    
+    const allAssociations = lists.flatMap(l => l.associations || []);
+    const globalBreakdown = computeStateBreakdown(allAssociations);
+    
+    const progressToSave: UserProgress & { updatedAt: number } = {
+      ...progress,
+      updatedAt: Date.now(),
+      log: {
+        ...progress.log,
+        [today]: {
+          ...(progress.log[today] || { repasos: 0, byState: { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 } }),
+          byState: globalBreakdown,
+        },
+      },
+    };
+    
+    // Guardar únicamente en almacenamiento local (caché/UI)
+    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progressToSave));
   },
   
   // Initialization
@@ -735,20 +732,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const requestId = ++syncRequestSequence;
     set({ isLoading: true });
 
-    // Clear stale lists from the previous user before loading new data.
     set({ lists: [] });
 
     ensureCacheMatchesEnvironment();
 
     const isGuest = !user || user.uid === GUEST_UID;
 
-    // Load from localStorage first, but only keep lists belonging to the current user.
     const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
       try {
         const parsed = JSON.parse(savedLists);
         const { lists: flattenedParsed } = applyFlattening(parsed);
-        // Filter: guests see all local lists, authenticated users see only their own.
         const filteredLists = isGuest
           ? flattenedParsed
           : flattenedParsed.filter((l: AssociationList) => l.userId === user.uid);
@@ -762,9 +756,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ isLoaded: true, isLoading: false });
 
-    // Load from cloud only if NOT guest
     if (!isGuest) {
       if (savedLists && !shouldFetchCloudLists(user.uid)) {
+        // Cache is fresh
       } else {
         try {
           backupLocalLists();
@@ -773,12 +767,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return;
           }
           markCloudFetch(user.uid);
-          // For authenticated users, merge cloud with local respecting latest timestamps.
-          // Local changes (from gameplay) have newer updatedAt on associations.
           const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
           const currentLocalLists = get().lists;
           
-          // Merge: for each list, pick the version with latest association timestamps
           const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, currentLocalLists, user.uid);
           const normalizedMerged = withNormalizedVoiceLanguages(merged);
           set({ lists: normalizedMerged });
@@ -791,43 +782,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
             });
           }
 
-          // Fetch and merge progress, quota, settings for authenticated users
           try {
-            const [cloudProgressResult, cloudQuotaResult, cloudSettingsResult] = await Promise.allSettled([
-              progressService.fetchProgress(user.uid),
+            const [cloudQuotaResult, cloudSettingsResult] = await Promise.allSettled([
               quotaService.fetchQuota(user.uid),
               settingsService.fetchSettings(user.uid),
             ]);
 
-            // Progress: last-write-wins by updatedAt (fallback: local wins if cloud missing updatedAt)
-            if (cloudProgressResult.status === 'fulfilled' && cloudProgressResult.value) {
-              const cloudProgress = cloudProgressResult.value as UserProgress & { updatedAt?: number };
-              const localProgressRaw = localStorage.getItem(LOCAL_PROGRESS_KEY);
-              const localProgress = localProgressRaw ? JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number } : null;
-              const localUpdatedAt = localProgress?.updatedAt ?? Date.now();
-              const cloudUpdatedAt = cloudProgress.updatedAt ?? 0;
-              const mergedProgress = localUpdatedAt >= cloudUpdatedAt ? localProgress : cloudProgress;
-              if (mergedProgress) {
-                const progressToSave = { ...mergedProgress, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
-                set({ progress: progressToSave });
-                localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progressToSave));
-                // If local was newer, push to cloud in background
-                if (localUpdatedAt > cloudUpdatedAt && user.uid !== GUEST_UID) {
-                  get()._persistProgress(progressToSave);
-                }
-              }
-            } else if (cloudProgressResult.status === 'rejected') {
-              console.warn('[loadInitialData] Failed to fetch cloud progress:', cloudProgressResult.reason);
-            }
+            // Progress is loaded from localStorage only (no progressService)
+            const localProgressRaw = localStorage.getItem(LOCAL_PROGRESS_KEY);
+            const localProgress = localProgressRaw ? JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number } : null;
+            const progress = localProgress || createDefaultProgress();
+            set({ progress });
+            localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
 
-            // Quota: cloud always wins (server-authoritative)
             if (cloudQuotaResult.status === 'fulfilled' && cloudQuotaResult.value) {
               set({ quota: cloudQuotaResult.value });
             } else if (cloudQuotaResult.status === 'rejected') {
               console.warn('[loadInitialData] Failed to fetch cloud quota:', cloudQuotaResult.reason);
             }
 
-            // Settings: last-write-wins by updatedAt
             if (cloudSettingsResult.status === 'fulfilled' && cloudSettingsResult.value) {
               const cloudSettings = cloudSettingsResult.value;
               const localSettingsRaw = localStorage.getItem('glimmind_settings');
@@ -839,56 +812,45 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 const settingsToSave = { ...mergedSettings, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
                 set({ settings: settingsToSave });
                 settingsService.saveLocalSettings(settingsToSave);
-                // If local was newer, push to cloud in background
                 if (localUpdatedAt > cloudUpdatedAt && user.uid !== GUEST_UID) {
-                  settingsService.saveSettings(user.uid, settingsToSave).catch((err) => {
-                    console.error('[loadInitialData] Failed to sync settings to cloud:', err);
+                  settingsService.saveSettings(user.uid, settingsToSave).catch((error) => {
+                    console.error('Error saving settings:', error);
                   });
                 }
               }
             } else if (cloudSettingsResult.status === 'rejected') {
               console.warn('[loadInitialData] Failed to fetch cloud settings:', cloudSettingsResult.reason);
             }
-          } catch (error) {
-            console.error('[loadInitialData] Error fetching/merging progress/quota/settings:', error);
+          } catch (e) {
+            console.error('Error fetching additional cloud data:', e);
           }
-        } catch (error) {
-          if (requestId !== syncRequestSequence) {
-            return;
-          }
-          console.error('Error loading from cloud:', error);
+        } catch (e) {
+          console.error('Error fetching cloud lists:', e);
           const restored = restoreLocalListsFromBackup();
-          if (restored && restored.length > 0) {
-            const normalizedRestored = withNormalizedVoiceLanguages(restored);
-            set({ lists: normalizedRestored });
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedRestored));
+          if (restored) {
+            set({ lists: restored });
           }
         }
       }
-    } else {
     }
   },
 
-  // Sync from cloud
+  // Persistence
   syncFromCloud: async () => {
-    const { user } = get();
+    const { user, lists: localLists } = get();
     if (!user || user.uid === GUEST_UID) return;
-    const requestId = ++syncRequestSequence;
-    
-    set({ isLoading: true });
+
     try {
       backupLocalLists();
       const cloudLists = await listService.fetchListsByUser(user.uid);
-      if (requestId !== syncRequestSequence) {
-        return;
-      }
       markCloudFetch(user.uid);
       const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
-      const localLists = get().lists;
       const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, localLists, user.uid);
       const normalizedMerged = withNormalizedVoiceLanguages(merged);
+
       set({ lists: normalizedMerged });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
+
       if (changedIds.length > 0) {
         changedIds.forEach((listId) => {
           get().syncToCloud(listId).catch((error) => {
@@ -896,114 +858,126 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
         });
       }
-    } catch (error) {
-      if (requestId !== syncRequestSequence) {
-        return;
-      }
-      console.error('Error syncing from cloud:', error);
-      const restored = restoreLocalListsFromBackup();
-      if (restored && restored.length > 0) {
-        const normalizedRestored = withNormalizedVoiceLanguages(restored);
-        set({ lists: normalizedRestored });
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedRestored));
+    } catch (e) {
+      console.error('Error in syncFromCloud:', e);
+    }
+  },
+
+syncToCloud: async (listId: string, associations?: Association[]) => {
+  const { user } = get();
+  if (!user || user.uid === GUEST_UID) return;
+
+  const existingPromise = syncToCloudInFlight.get(listId);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const syncPromise = (async () => {
+    let listToSync: AssociationList | undefined;
+
+    // 1. Prioridad 1: associations pasadas directamente (gameState más fresco)
+    if (associations && associations.length > 0) {
+      const currentLists = get().lists;
+      const baseList = currentLists.find((l) => l.id === listId);
+      if (baseList) {
+        listToSync = { ...baseList, associations, updatedAt: Date.now() };
       }
     }
-    set({ isLoading: false });
-  },
-  
-  // Sync single list to cloud
-  syncToCloud: async (listId) => {
-    const inFlight = syncToCloudInFlight.get(listId);
-    if (inFlight) return inFlight;
 
-    const run = (async () => {
-      const { lists, user } = get();
-      const localList = lists.find(l => l.id === listId);
-      if (!localList || !user || user.uid === GUEST_UID) return;
+    // 2. Prioridad 2: store Zustand (fallback)
+    if (!listToSync) {
+      const currentLists = get().lists;
+      listToSync = currentLists.find((l) => l.id === listId);
+    }
 
-      console.log('[syncToCloud] start listId=', listId, 'localAssocCount=', localList.associations?.length || 0, 'userId=', user.uid);
-
-      const cloudList = await listService.getList(listId);
-      console.log('[syncToCloud] cloudList exists=', !!cloudList, 'cloudAssocCount=', cloudList?.associations?.length || 0);
-
-      if (!cloudList) {
-        console.log('[syncToCloud] cloudList missing, creating with', localList.associations?.length || 0, 'assocs');
-        const newId = await listService.createList({
-          name: localList.name,
-          concept: localList.concept,
-          associations: localList.associations,
-          settings: localList.settings,
-          userId: user.uid,
-          isArchived: false,
-          sourceType: localList.sourceType,
-          sourceUrl: localList.sourceUrl,
-          rawSourceText: localList.rawSourceText,
-          sourceRow: localList.sourceRow,
-        });
-        const freshLists = get().lists;
-        const updatedLists = freshLists.map(l => l.id === listId ? { ...l, id: newId } : l);
-        set({
-          lists: updatedLists,
-          ...(get().currentListId === listId
-            ? { currentListId: newId, currentList: updatedLists.find(l => l.id === newId) ?? null }
-            : {}),
-        });
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
-        return;
-      }
-
-      const listToSave = pickLocalOrCloudList(localList, cloudList);
-      console.log('[syncToCloud] chosen list assocCount=', listToSave.associations?.length || 0, 'updatedAt=', listToSave.updatedAt, 'ttsProvider=', listToSave.settings?.ttsProvider, 'voiceTermId=', listToSave.settings?.voiceTermId);
-
-      try {
-        await listService.updateList(listToSave.id, {
-          name: listToSave.name,
-          concept: listToSave.concept,
-          associations: listToSave.associations,
-          settings: listToSave.settings,
-        });
-      } catch (error) {
-        console.error('[syncToCloud] updateList failed, creating new list:', error);
+    // 3. Prioridad 3: localStorage (último recurso)
+    if (!listToSync) {
+      const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedLists) {
         try {
-          const newId = await listService.createList({
-            name: listToSave.name,
-            concept: listToSave.concept,
-            associations: listToSave.associations,
-            settings: listToSave.settings,
-            userId: user.uid,
-            isArchived: false,
-            sourceType: listToSave.sourceType,
-            sourceUrl: listToSave.sourceUrl,
-            rawSourceText: listToSave.rawSourceText,
-            sourceRow: listToSave.sourceRow,
-          });
-          const freshLists = get().lists;
-          const updatedLists = freshLists.map(l => l.id === listId ? { ...l, id: newId } : l);
-          set({
-            lists: updatedLists,
-            ...(get().currentListId === listId
-              ? { currentListId: newId, currentList: updatedLists.find(l => l.id === newId) ?? null }
-              : {}),
-          });
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
-          return;
-        } catch (createError) {
-          console.error('[syncToCloud] createList also failed:', createError);
-          console.error('Error al sincronizar la lista. Se guardaron los cambios localmente.');
+          const parsed = JSON.parse(savedLists);
+          listToSync = parsed.find((l: AssociationList) => l.id === listId);
+        } catch {
+          // ignore
         }
       }
-    })();
+    }
 
-    syncToCloudInFlight.set(listId, run);
-    run.then(
-      () => {
-        if (syncToCloudInFlight.get(listId) === run) syncToCloudInFlight.delete(listId);
-      },
-      (error) => {
-        if (syncToCloudInFlight.get(listId) === run) syncToCloudInFlight.delete(listId);
-        console.error('[syncToCloud] error:', error);
-      },
-    );
-    return run;
+    if (!listToSync) {
+      console.log(`[syncToCloud] ${listId}: no list found to sync`);
+      return;
+    }
+
+    // Log progress summary
+    const source = associations && associations.length > 0 ? 'gameState' : get().lists.some(l => l.id === listId) ? 'store' : 'localStorage';
+    console.log(`[syncToCloud] ${listId} (source: ${source}) ${summarizeProgress(listToSync.associations || [])}`);
+
+    try {
+      // 4. Intentamos actualizar directamente sin el GET previo
+      await listService.updateList(listId, listToSync);
+      console.log(`[syncToCloud] ${listId}: ✅ synced to cloud`);
+    } catch (error: any) {
+      // Si la lista realmente no existía en la nube (404 / no-found), la creamos
+      if (error?.code === 'not-found' || error?.status === 404) {
+        await listService.createList(listToSync);
+        console.log(`[syncToCloud] ${listId}: ✅ created in cloud`);
+      } else {
+        console.error(`[syncToCloud] ${listId}: ❌ error:`, error);
+      }
+    } finally {
+      syncToCloudInFlight.delete(listId);
+    }
+  })();
+
+  syncToCloudInFlight.set(listId, syncPromise);
+  return syncPromise;
+},
+  // Audit
+  auditAndReconcile: async (listId) => {
+    const { lists, user } = get();
+    const reports: AuditReportEntry[] = [];
+    const targetLists = listId ? lists.filter((l) => l.id === listId) : lists;
+
+    for (const list of targetLists) {
+      let cloudList: AssociationList | null = null;
+      if (user && user.uid !== GUEST_UID) {
+        try {
+          cloudList = await listService.getList(list.id);
+        } catch (e) {
+          console.error(`Audit fetch failed for list ${list.id}:`, e);
+        }
+      }
+
+      const totalCards = list.associations?.length || 0;
+      const learnedCards = list.associations?.filter((a) => a.isLearned && !a.isArchived).length || 0;
+      const totalRepasos = list.associations?.reduce((acc, a) => acc + (a.hits || 0) + (a.misses || 0), 0) || 0;
+
+      const cloudCards = cloudList?.associations?.length || 0;
+      const cloudLearned = cloudList?.associations?.filter((a) => a.isLearned && !a.isArchived).length || 0;
+
+      const calza = totalCards === cloudCards && learnedCards === cloudLearned;
+
+      reports.push({
+        listId: list.id,
+        nombre: list.name || list.concept || 'Sin título',
+        estadoCuadre: calza ? '✅ CALZA' : '❌ DESCUADRADO',
+        tarjetas: `${totalCards} (Cloud: ${cloudCards})`,
+        aprendidas: `${learnedCards} (Cloud: ${cloudLearned})`,
+        repasos: `${totalRepasos}`,
+        completado: list.history?.completedAt ? 'Sí' : 'No',
+        ultimoLocal: new Date(getListTimestamp(list)).toLocaleString(),
+        ultimoCloud: cloudList ? new Date(getListTimestamp(cloudList)).toLocaleString() : 'N/A',
+      });
+    }
+
+    return reports;
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).__GLIMMIND_AUDIT__ = async (listId?: string) => {
+    const report = await useGameStore.getState().auditAndReconcile(listId);
+    console.table(report);
+    return report;
+  };
+}

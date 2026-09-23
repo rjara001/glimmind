@@ -165,6 +165,7 @@ getDashboardData + getPrebuiltDecks = 2 APIs
 | 2026-09-17 | Fix toasts duplicados: "Lista guardada" movido de cleanupAndSave a handleSave en useListEditorActions. Ya no aparece al perder el foco, solo al Guardar mazo (1 toast). | Agent |
 | 2026-09-17 | Fix syncToCloud en create mode: handleUpdateAssociations ahora retorna si createModeList está seteado. Previene getList+appendActivity+updateList al perder foco en editor sin guardar. | Agent |
 | 2026-09-17 | Quitado onBlurRow de ListEditor: ya no guarda ni normaliza al perder el foco. Solo Guardar mazo guarda. | Agent |
+| 2026-09-23 | Agregada función `auditAndReconcile` en gameStore para comparar local vs cloud bajo demanda. Expuesta en `window.__GLIMMIND_AUDIT__(listId?)`. Incluye filtro opcional por listId y comparación de history.completedAt. No afecta APIs de carga de dashboard. | Agent |
 
 ---
 
