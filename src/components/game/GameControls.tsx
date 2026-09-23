@@ -16,10 +16,22 @@ interface GameControlsProps {
   showRevealWarning?: boolean;
   onTryAttempt?: () => void;
   onConfirmReveal?: () => void;
+  globalCycle: number;
+  currentCycle: number;
+  historyIndex: number;
 }
 
-export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canGoBack, onCheckAnswer, onReveal, onCorrect, revealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal }) => {
+export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canGoBack, onCheckAnswer, onReveal, onCorrect, revealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal, globalCycle, currentCycle, historyIndex }) => {
   const isPracticeMode = gameMode === 'training';
+  const isFromFutureCycle = currentCycle > globalCycle;
+  const isInHistoryMode = historyIndex !== -1;
+  const handleNext = () => {
+    if (isInHistoryMode) {
+      onNext();
+    } else if (!isFromFutureCycle) {
+      onNext();
+    }
+  };
 
   const baseButtonClass = "h-12 rounded-2xl font-black uppercase text-[8px] tracking-widest active:scale-90 transition-all flex items-center justify-center";
 
@@ -39,8 +51,8 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
         </button>
 
         <button
-          onClick={onNext}
-          disabled={isTransitioning}
+          onClick={handleNext}
+          disabled={isTransitioning || (isFromFutureCycle && !isInHistoryMode)}
           tabIndex={2}
           className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-2 text-[9px] sm:text-[8px]`}
         >
@@ -50,15 +62,15 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
         {!isPracticeMode && (
           <button
             onClick={onCheckAnswer}
-            disabled={isTransitioning || revealed}
+            disabled={isTransitioning || isFromFutureCycle || revealed || isInHistoryMode}
             tabIndex={3}
-            className={`${baseButtonClass} shadow-sm ${revealed ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-3 text-[9px] sm:text-[8px]`}
+            className={`${baseButtonClass} shadow-sm ${revealed || isInHistoryMode ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-3 text-[9px] sm:text-[8px]`}
           >
             Validar
           </button>
         )}
 
-        {(!isPracticeMode || !revealed) && (
+        {(!isPracticeMode || !revealed) && !isInHistoryMode && (
           <button
             onClick={() => {
               if (showRevealWarning && onConfirmReveal) {
@@ -80,9 +92,9 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
         {isPracticeMode && (
           <button
             onClick={onCorrect}
-            disabled={isTransitioning}
+            disabled={isTransitioning || isInHistoryMode}
             tabIndex={4}
-            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-4 text-[9px] sm:text-[8px]`}
+            className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || isInHistoryMode ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-4 text-[9px] sm:text-[8px]`}
           >
             Correcta
           </button>
