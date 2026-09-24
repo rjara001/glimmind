@@ -4,7 +4,7 @@ const { requireAuth } = require("../utils/helpers");
 const { QuotaExceededError } = require("../utils/helpers");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../utils/constants");
 const listService = require("../services/listService");
-const { GetListsSchema, CreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema } = require("../utils/validation");
+const { GetListsSchema, CreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema, UpdateListFieldsSchema } = require("../utils/validation");
 const { rateLimit } = require("../utils/rateLimit");
 
 function applyRateLimit(fnName, handler) {
@@ -194,6 +194,32 @@ exports.getList = onRequest({ cors: true }, applyRateLimit("getList", async (req
     }
     if (error.message === "Forbidden") {
       return res.status(403).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+}));
+
+exports.updateListFields = onRequest({ cors: true }, applyRateLimit("updateListFields", async (req, res) => {
+  const body = await runValidation(req, res, UpdateListFieldsSchema);
+  if (!body) return;
+
+  const { listId, baseUpdatedAt, deltas } = body;
+
+  const uid = await requireAuth(req, res);
+  if (!uid) return;
+
+  try {
+    const data = await listService.updateListFields(getDb(), listId, uid, baseUpdatedAt, deltas);
+    res.json(data);
+  } catch (error) {
+    if (error.message === "List not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === "Forbidden") {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.code === "aborted") {
+      return res.status(409).json({ error: error.message, code: "aborted" });
     }
     res.status(500).json({ error: error.message });
   }

@@ -86,6 +86,10 @@
         "function": "updateList"
       },
       {
+        "source": "/api/updateListFields",
+        "function": "updateListFields"
+      },
+      {
         "source": "/api/deleteList",
         "function": "deleteList"
       },

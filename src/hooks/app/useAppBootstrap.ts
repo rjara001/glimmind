@@ -15,6 +15,22 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   });
   const didAutoNavigate = useRef(false);
 
+  // Session-end sync listeners (triple: beforeunload, pagehide, visibilitychange)
+  useEffect(() => {
+    const flush = () => useGameStore.getState().flushAllPendingSyncs({ keepalive: true });
+
+    window.addEventListener('beforeunload', flush);
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush();
+    });
+
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
       if (firebaseUser) {

@@ -46,5 +46,13 @@ export const listService = {
   splitList: async (listId: string, groups: { name: string, associations: Association[] }[]): Promise<string[]> => {
     const result = await callFunction<{ ids: string[] }>('splitList', { listId, groups });
     return result.ids;
+  },
+
+  updateListFields: async (listId: string, baseUpdatedAt: number, deltas: Array<{
+    id: string;
+    fields: Record<string, any>;
+    updatedAt: number;
+  }>): Promise<void> => {
+    await callFunction('updateListFields', { listId, baseUpdatedAt, deltas });
   }
 };

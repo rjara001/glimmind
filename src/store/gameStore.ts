@@ -10,7 +10,6 @@ import {
   computeStateBreakdown,
   createDefaultProgress,
   todayKey,
-  summarizeProgress,
 } from '../utils/progress';
 import { UserProgress, CelebrationEvent, RepasoContext } from '../types/progress';
 import { UserQuota } from '../types/quota';
@@ -25,13 +24,15 @@ import {
 } from '../constants/limits';
 import { GUEST_UID } from '../constants/app';
 import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
+import { computeDelta, AssociationDelta, chunkDeltas, mergeCloudWins } from '../utils/syncDelta';
+import { SYNC_CONFIG } from '../constants/syncConfig';
 
 const LOCAL_STORAGE_KEY = 'glimmind_lists';
 const LOCAL_STORAGE_BACKUP_KEY = 'glimmind_lists_backup';
 const LOCAL_PROGRESS_KEY = 'glimmind_progress';
 const CACHE_ENV_KEY = 'glimmind_cache_env';
 const LOCAL_LAST_PLAYED_KEY = 'glimmind_last_played';
-const syncToCloudInFlight = new Map<string, Promise<void>>();
+const PENDING_DELTAS_KEY = 'glimmind_pending_deltas';
 
 function clearLocalCache(): void {
   localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -316,6 +317,12 @@ interface GameStore {
   activityRecordingEnabled: boolean;
   resumeState: Record<string, ResumeSnapshot>;
   
+  // Sync State
+  pendingDeltas: Map<string, AssociationDelta[]>;
+  lastSyncedAt: Map<string, number>;
+  syncInProgress: Set<string>;
+  syncMetrics: SyncMetrics;
+  
   // Computed
   getCurrentList: () => AssociationList | null;
   
@@ -359,9 +366,31 @@ interface GameStore {
   // Actions - Persistence
   syncFromCloud: () => Promise<void>;
   syncToCloud: (listId: string, associations?: Association[]) => Promise<void>;
+  addPendingDelta: (listId: string, deltas: AssociationDelta[]) => void;
+  flushSync: (listId: string, options?: FlushSyncOptions) => Promise<void>;
+  flushAllPendingSyncs: (options?: { keepalive: boolean }) => Promise<void>;
+  getSyncMetrics: () => SyncMetrics;
 
   // Actions - Audit
   auditAndReconcile: (listId?: string) => Promise<AuditReportEntry[]>;
+}
+
+interface SyncMetrics {
+  sessionEndSyncs: number;
+  periodicSyncs: number;
+  manualSyncs: number;
+  failedSyncs: number;
+  conflictsResolved: number;
+  avgDeltasPerSync: number;
+  avgPayloadBytes: number;
+  lastSyncLatencyMs: number;
+}
+
+interface FlushSyncOptions {
+  keepalive?: boolean;
+  deltas?: AssociationDelta[];
+  baseUpdatedAt?: number;
+  conflictRetryCount?: number;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -382,6 +411,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   sessionsLoading: false,
   activityRecordingEnabled: true,
   resumeState: {},
+  
+  // Sync State
+  pendingDeltas: new Map(),
+  lastSyncedAt: new Map(),
+  syncInProgress: new Set(),
+  syncMetrics: {
+    sessionEndSyncs: 0,
+    periodicSyncs: 0,
+    manualSyncs: 0,
+    failedSyncs: 0,
+    conflictsResolved: 0,
+    avgDeltasPerSync: 0,
+    avgPayloadBytes: 0,
+    lastSyncLatencyMs: 0,
+  },
   
   // Computed
   getCurrentList: () => {
@@ -438,6 +482,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (events.length > 0) {
         get().recordActivity(events);
       }
+      
+      // Capture deltas for sync
+      const deltas = computeDelta(prevList.associations, associations);
+      if (deltas.length > 0) {
+        get().addPendingDelta(listId, deltas);
+      }
     }
     const updatedLists = lists.map(l =>
       l.id === listId ? { ...l, associations, updatedAt: Date.now() } : l
@@ -447,11 +497,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentList: updatedLists.find(l => l.id === listId) || null
     });
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
-    if (user && user.uid !== GUEST_UID) {
-      get().syncToCloud(listId, associations).catch((error) => {
-        console.error('[updateAssociations] syncToCloud failed:', error);
-      });
-    }
   },
 
   markListCompleted: async (listId) => {
@@ -736,6 +781,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     ensureCacheMatchesEnvironment();
 
+    // Load persisted pending deltas
+    const savedDeltas = localStorage.getItem(PENDING_DELTAS_KEY);
+    if (savedDeltas) {
+      try {
+        const parsed = JSON.parse(savedDeltas);
+        const pendingDeltasMap = new Map<string, AssociationDelta[]>();
+        Object.entries(parsed).forEach(([listId, deltas]) => {
+          pendingDeltasMap.set(listId, deltas as AssociationDelta[]);
+        });
+        set({ pendingDeltas: pendingDeltasMap });
+      } catch (e) {
+        console.error('Error loading pending deltas:', e);
+      }
+    }
+
     const isGuest = !user || user.uid === GUEST_UID;
 
     const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -853,8 +913,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (changedIds.length > 0) {
         changedIds.forEach((listId) => {
-          get().syncToCloud(listId).catch((error) => {
-            console.error('[syncFromCloud] syncToCloud failed:', error);
+          get().flushSync(listId).catch((error) => {
+            console.error('[syncFromCloud] flushSync failed:', error);
           });
         });
       }
@@ -863,75 +923,194 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-syncToCloud: async (listId: string, associations?: Association[]) => {
-  const { user } = get();
-  if (!user || user.uid === GUEST_UID) return;
-
-  const existingPromise = syncToCloudInFlight.get(listId);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const syncPromise = (async () => {
-    let listToSync: AssociationList | undefined;
-
-    // 1. Prioridad 1: associations pasadas directamente (gameState más fresco)
-    if (associations && associations.length > 0) {
-      const currentLists = get().lists;
-      const baseList = currentLists.find((l) => l.id === listId);
-      if (baseList) {
-        listToSync = { ...baseList, associations, updatedAt: Date.now() };
+  addPendingDelta: (listId, deltas) => {
+    const { pendingDeltas } = get();
+    const existing = pendingDeltas.get(listId) || [];
+    const merged = [...existing, ...deltas];
+    
+    // Deduplicate by id, keeping the latest
+    const byId = new Map<string, AssociationDelta>();
+    for (const delta of merged) {
+      const existingDelta = byId.get(delta.id);
+      if (!existingDelta || delta.updatedAt > existingDelta.updatedAt) {
+        byId.set(delta.id, delta);
       }
     }
+    
+    const newPendingDeltas = new Map(pendingDeltas);
+    newPendingDeltas.set(listId, Array.from(byId.values()));
+    
+    set({ pendingDeltas: newPendingDeltas });
+    
+    // Persist to localStorage
+    const obj = Object.fromEntries(newPendingDeltas);
+    localStorage.setItem(PENDING_DELTAS_KEY, JSON.stringify(obj));
+  },
 
-    // 2. Prioridad 2: store Zustand (fallback)
-    if (!listToSync) {
-      const currentLists = get().lists;
-      listToSync = currentLists.find((l) => l.id === listId);
-    }
-
-    // 3. Prioridad 3: localStorage (último recurso)
-    if (!listToSync) {
-      const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedLists) {
+  flushSync: async (listId, options = {}) => {
+    const { user, pendingDeltas, lastSyncedAt, syncMetrics, lists } = get();
+    const { keepalive = false, deltas: providedDeltas, baseUpdatedAt, conflictRetryCount = 0 } = options as FlushSyncOptions;
+    
+    if (!user || user.uid === GUEST_UID) return;
+    
+    const syncInProgress = get().syncInProgress;
+    if (syncInProgress.has(listId)) return;
+    
+    const deltasToSync = providedDeltas ?? (pendingDeltas.get(listId) || []);
+    if (deltasToSync.length === 0) return;
+    
+    const list = lists.find(l => l.id === listId);
+    if (!list) return;
+    
+    const baseTs = baseUpdatedAt ?? list.updatedAt ?? Date.now();
+    
+    // Mark as in progress
+    const newSyncInProgress = new Set(syncInProgress);
+    newSyncInProgress.add(listId);
+    set({ syncInProgress: newSyncInProgress });
+    
+    const startTime = Date.now();
+    
+    try {
+      // Handle chunking for keepalive
+      if (keepalive) {
+        const chunks = chunkDeltas(deltasToSync, SYNC_CONFIG.keepaliveSafeLimit);
+        for (const chunk of chunks) {
+          await listService.updateListFields(listId, baseTs, chunk);
+        }
+      } else {
+        await listService.updateListFields(listId, baseTs, deltasToSync);
+      }
+      
+      // Success - clear pending deltas for this list
+      const newPendingDeltas = new Map(pendingDeltas);
+      newPendingDeltas.delete(listId);
+      
+      const newLastSyncedAt = new Map(lastSyncedAt);
+      newLastSyncedAt.set(listId, Date.now());
+      
+      // Update metrics
+      const latencyMs = Date.now() - startTime;
+      const totalSyncs = syncMetrics.sessionEndSyncs + syncMetrics.periodicSyncs + syncMetrics.manualSyncs;
+      const newAvgDeltas = totalSyncs > 0 
+        ? (syncMetrics.avgDeltasPerSync * totalSyncs + deltasToSync.length) / (totalSyncs + 1)
+        : deltasToSync.length;
+      const payloadBytes = JSON.stringify({ listId, baseUpdatedAt: baseTs, deltas: deltasToSync }).length;
+      const newAvgPayload = totalSyncs > 0
+        ? (syncMetrics.avgPayloadBytes * totalSyncs + payloadBytes) / (totalSyncs + 1)
+        : payloadBytes;
+      
+      set({
+        pendingDeltas: newPendingDeltas,
+        lastSyncedAt: newLastSyncedAt,
+        syncInProgress: new Set([...newSyncInProgress].filter(id => id !== listId)),
+        syncMetrics: {
+          ...syncMetrics,
+          ...(keepalive ? { sessionEndSyncs: syncMetrics.sessionEndSyncs + 1 } : { periodicSyncs: syncMetrics.periodicSyncs + 1 }),
+          conflictsResolved: syncMetrics.conflictsResolved,
+          avgDeltasPerSync: newAvgDeltas,
+          avgPayloadBytes: newAvgPayload,
+          lastSyncLatencyMs: latencyMs,
+        },
+      });
+      
+      // Persist cleared state
+      const obj = Object.fromEntries(newPendingDeltas);
+      localStorage.setItem(PENDING_DELTAS_KEY, JSON.stringify(obj));
+      
+    } catch (error: any) {
+      // Handle conflict (409/aborted) with retry guard
+      if (error.code === 'aborted' && conflictRetryCount < SYNC_CONFIG.maxConflictRetries) {
+        console.log(`[flushSync] Conflict detected for ${listId}, retry ${conflictRetryCount + 1}/${SYNC_CONFIG.maxConflictRetries}`);
+        
+        // Re-fetch cloud list and merge (LWW)
         try {
-          const parsed = JSON.parse(savedLists);
-          listToSync = parsed.find((l: AssociationList) => l.id === listId);
-        } catch {
-          // ignore
+          const cloudList = await listService.getList(listId);
+          const localList = lists.find(l => l.id === listId);
+          if (localList && cloudList) {
+            const merged = mergeCloudWins({ associations: localList.associations }, { associations: cloudList.associations });
+            const currentLocalAssociations = get().lists.find(l => l.id === listId)?.associations || [];
+            const newDeltas = computeDelta(merged.associations, currentLocalAssociations);
+            
+            // Retry with incremented counter
+            await get().flushSync(listId, {
+              ...options,
+              deltas: newDeltas,
+              baseUpdatedAt: cloudList.updatedAt ?? Date.now(),
+              conflictRetryCount: conflictRetryCount + 1,
+            });
+            
+            // Update conflict metric
+            set({
+              syncMetrics: {
+                ...get().syncMetrics,
+                conflictsResolved: get().syncMetrics.conflictsResolved + 1,
+              },
+            });
+            return;
+          }
+        } catch (e) {
+          console.error('[flushSync] Conflict resolution failed:', e);
         }
       }
+      
+      // Update failed metric
+      set({
+        syncInProgress: new Set([...newSyncInProgress].filter(id => id !== listId)),
+        syncMetrics: {
+          ...syncMetrics,
+          failedSyncs: syncMetrics.failedSyncs + 1,
+        },
+      });
+      
+      console.error(`[flushSync] ${listId}: ❌ error:`, error);
+      
+      // Don't clear pendingDeltas on failure - they'll be retried
     }
+  },
 
-    if (!listToSync) {
-      console.log(`[syncToCloud] ${listId}: no list found to sync`);
-      return;
-    }
+  flushAllPendingSyncs: async (options: { keepalive?: boolean } = {}) => {
+    const { pendingDeltas } = get();
+    const { keepalive = false } = options;
+    
+    const listIds = Array.from(pendingDeltas.keys());
+    if (listIds.length === 0) return;
+    
+    // Update sessionEndSyncs metric
+    const { syncMetrics } = get();
+    set({
+      syncMetrics: {
+        ...syncMetrics,
+        sessionEndSyncs: syncMetrics.sessionEndSyncs + 1,
+      },
+    });
+    
+    // Flush all lists with keepalive
+    await Promise.allSettled(
+      listIds.map(listId => get().flushSync(listId, { keepalive }))
+    );
+  },
 
-    // Log progress summary
-    const source = associations && associations.length > 0 ? 'gameState' : get().lists.some(l => l.id === listId) ? 'store' : 'localStorage';
-    console.log(`[syncToCloud] ${listId} (source: ${source}) ${summarizeProgress(listToSync.associations || [])}`);
-
-    try {
-      // 4. Intentamos actualizar directamente sin el GET previo
-      await listService.updateList(listId, listToSync);
-      console.log(`[syncToCloud] ${listId}: ✅ synced to cloud`);
-    } catch (error: any) {
-      // Si la lista realmente no existía en la nube (404 / no-found), la creamos
-      if (error?.code === 'not-found' || error?.status === 404) {
-        await listService.createList(listToSync);
-        console.log(`[syncToCloud] ${listId}: ✅ created in cloud`);
-      } else {
-        console.error(`[syncToCloud] ${listId}: ❌ error:`, error);
+  getSyncMetrics: () => {
+    return get().syncMetrics;
+  },
+  
+  syncToCloud: async (listId: string, associations?: Association[]) => {
+    // Legacy method - now uses flushSync internally
+    if (associations) {
+      const { lists } = get();
+      const baseList = lists.find(l => l.id === listId);
+      if (baseList) {
+        const deltas = computeDelta(baseList.associations, associations);
+        if (deltas.length > 0) {
+          await get().flushSync(listId, { deltas });
+        }
       }
-    } finally {
-      syncToCloudInFlight.delete(listId);
+    } else {
+      await get().flushSync(listId);
     }
-  })();
+  },
 
-  syncToCloudInFlight.set(listId, syncPromise);
-  return syncPromise;
-},
   // Audit
   auditAndReconcile: async (listId) => {
     const { lists, user } = get();

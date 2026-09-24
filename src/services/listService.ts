@@ -7,6 +7,7 @@ import { activityService } from './activityService';
 import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
 import { QuotaStatus } from '../types/quota';
 import { QuotaExceededError, ListNotFoundError } from '../types/list-service';
+import { AssociationDelta } from '../utils/syncDelta';
 
 export class ListServiceImpl {
   constructor(
@@ -113,6 +114,10 @@ export class ListServiceImpl {
 
   async getList(id: string): Promise<AssociationList | null> {
     return this.firestore.getList(id);
+  }
+
+  async updateListFields(listId: string, baseUpdatedAt: number, deltas: AssociationDelta[]): Promise<void> {
+    await this.firestore.updateListFields(listId, baseUpdatedAt, deltas);
   }
 
   private async checkQuota(userId: string, projectedCards: number): Promise<QuotaStatus> {

@@ -60,6 +60,24 @@ const SplitListSchema = z.object({
   })).min(1).max(50),
 });
 
+const UpdateListFieldsSchema = z.object({
+  listId: z.string().min(1),
+  baseUpdatedAt: z.number().int().min(0),
+  deltas: z.array(z.object({
+    id: z.string().min(1),
+    fields: z.object({
+      isLearned: z.boolean().optional(),
+      currentCycle: z.number().int().min(1).optional(),
+      status: z.enum(["pending", "correct"]).optional(),
+      hits: z.number().int().min(0).optional(),
+      misses: z.number().int().min(0).optional(),
+      timesPlayed: z.number().int().min(0).optional(),
+      lastPlayedAt: z.number().int().min(0).optional(),
+    }).passthrough(),
+    updatedAt: z.number().int().min(0),
+  })).min(1).max(500),
+});
+
 const GetListsSchema = z.object({
   userId: z.string().min(1),
 });
@@ -191,6 +209,7 @@ module.exports = {
   GetListSchema,
   DeleteListSchema,
   SplitListSchema,
+  UpdateListFieldsSchema,
   GetListsSchema,
   GetQuotaSchema,
   UpdateSettingsSchema,

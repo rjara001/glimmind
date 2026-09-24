@@ -301,6 +301,56 @@ async function logCloudProgress(db, listId, uid) {
   }
 }
 
+async function updateListFields(db, listId, uid, baseUpdatedAt, deltas) {
+  const { docRef, oldData } = await loadListOwnershipInfo(db, listId, uid);
+  
+  // Optimistic concurrency check
+  const oldUpdatedAt = oldData.updatedAt?.toMillis?.() ?? oldData.updatedAt ?? 0;
+  if (oldUpdatedAt > baseUpdatedAt) {
+    const error = new Error("Concurrent modification");
+    error.code = "aborted";
+    throw error;
+  }
+  
+  // Build partial updates for associations
+  const updates: Record<string, any> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  
+  for (const delta of deltas) {
+    for (const [field, value] of Object.entries(delta.fields)) {
+      updates[`associations.${delta.id}.${field}`] = value;
+    }
+  }
+  
+  await db.runTransaction(async (tx) => {
+    const currentSnap = await tx.get(docRef);
+    if (!currentSnap.exists) {
+      throw new Error("List not found");
+    }
+    
+    // Re-verify concurrency in transaction
+    const currentData = currentSnap.data();
+    const currentUpdatedAt = currentData.updatedAt?.toMillis?.() ?? currentData.updatedAt ?? 0;
+    if (currentUpdatedAt > baseUpdatedAt) {
+      const error = new Error("Concurrent modification");
+      error.code = "aborted";
+      throw error;
+    }
+    
+    tx.update(docRef, updates);
+  });
+  
+  // Log cloud progress after successful update
+  const savedDoc = await docRef.get();
+  if (savedDoc.exists) {
+    const savedData = savedDoc.data();
+    console.log(`[CLOUD_SAVE] updateListFields ${listId} ${computeProgressSummary(savedData.associations)}`);
+  }
+  
+  return { success: true };
+}
+
 module.exports = {
   fetchAllListsForUser,
   fetchListByIdForUser,
@@ -309,4 +359,5 @@ module.exports = {
   removeListAndDecrementUserCardCount,
   divideOriginalListIntoGroupsAndReplaceIt,
   logCloudProgress,
+  updateListFields,
 };
