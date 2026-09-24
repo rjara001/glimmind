@@ -57,7 +57,24 @@ describe('AttemptAnalysisModal', () => {
 
     expect(screen.getByText('¿Por qué 90%?')).toBeInTheDocument();
     expect(screen.getByText('📊 Desglose del puntaje')).toBeInTheDocument();
-    expect(screen.getByText('🔬 Comparación carácter por carácter')).toBeInTheDocument();
+    expect(screen.getByText('🔬 Comparación palabra por palabra')).toBeInTheDocument();
+  });
+
+  it('renders word-by-word comparison table', () => {
+    render(
+      <AttemptAnalysisModal
+        isOpen={true}
+        onClose={() => {}}
+        attempt={createAttempt()}
+        list={createMockList()}
+        onUpdateExpectedAnswer={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Tu respuesta')).toBeInTheDocument();
+    expect(screen.getByText('Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Estado')).toBeInTheDocument();
+    expect(screen.getAllByText('✅').length).toBeGreaterThan(0);
   });
 
   it('shows typo alert for high similarity with small distance', () => {
@@ -142,5 +159,60 @@ describe('AttemptAnalysisModal', () => {
     fireEvent.click(screen.getByText('Guardar corrección'));
 
     expect(onUpdateExpectedAnswer).toHaveBeenCalledWith('assoc1', 'term', 'if we lived in the mountain corrected');
+  });
+
+  it('expands row to show character-level detail when clicking expand button', () => {
+    render(
+      <AttemptAnalysisModal
+        isOpen={true}
+        onClose={() => {}}
+        attempt={createAttempt({ userInput: 'mountain', expectedAnswer: 'montain' })}
+        list={createMockList({ ignoreArticles: false })}
+        onUpdateExpectedAnswer={() => {}}
+      />,
+    );
+
+    const expandButton = screen.getByText('▼');
+    fireEvent.click(expandButton);
+
+    expect(screen.getByText('Pos')).toBeInTheDocument();
+    expect(screen.getByText('Tu letra')).toBeInTheDocument();
+    // Use getByRole or more specific query for 'Sistema' header
+    const sistemaHeaders = screen.getAllByText('Sistema');
+    expect(sistemaHeaders.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Tipo')).toBeInTheDocument();
+  });
+
+  it('shows correct score breakdown values (regression test)', () => {
+    render(
+      <AttemptAnalysisModal
+        isOpen={true}
+        onClose={() => {}}
+        attempt={createAttempt()}
+        list={createMockList()}
+        onUpdateExpectedAnswer={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Distancia')).toBeInTheDocument();
+    expect(screen.getByText('Caracteres')).toBeInTheDocument();
+    expect(screen.getByText('Diferencias')).toBeInTheDocument();
+    expect(screen.getByText('Umbral')).toBeInTheDocument();
+    expect(screen.getByText('Similitud calculada')).toBeInTheDocument();
+    expect(screen.getByText('95%')).toBeInTheDocument();
+  });
+
+  it('shows words correct summary', () => {
+    render(
+      <AttemptAnalysisModal
+        isOpen={true}
+        onClose={() => {}}
+        attempt={createAttempt()}
+        list={createMockList()}
+        onUpdateExpectedAnswer={() => {}}
+      />,
+    );
+
+    expect(screen.getByText(/palabras correctas/)).toBeInTheDocument();
   });
 });

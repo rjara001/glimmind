@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Attempt, AssociationList } from '../../types';
+import { alignWords, normalize, levenshteinDistance } from '../../utils/wordAlignment';
 
 interface AttemptAnalysisModalProps {
   isOpen: boolean;
@@ -17,12 +18,7 @@ const IGNORED_WORDS = new Set([
 ]);
 
 function normalizeString(s: string, ignoreArticles: boolean): string {
-  const normalized = s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[-–—]+/g, ' ')
-    .replace(/[^\w\s]/gi, '');
+  const normalized = normalize(s);
 
   if (!ignoreArticles) return normalized;
 
@@ -30,29 +26,6 @@ function normalizeString(s: string, ignoreArticles: boolean): string {
     .split(/\s+/)
     .filter((token) => token.length > 0 && !IGNORED_WORDS.has(token))
     .join(' ');
-}
-
-function levenshteinDistance(a: string, b: string): number {
-  const matrix = Array(b.length + 1)
-    .fill(null)
-    .map(() => Array(a.length + 1).fill(null));
-  for (let i = 0; i <= a.length; i += 1) {
-    matrix[0][i] = i;
-  }
-  for (let j = 0; j <= b.length; j += 1) {
-    matrix[j][0] = j;
-  }
-  for (let j = 1; j <= b.length; j += 1) {
-    for (let i = 1; i <= a.length; i += 1) {
-      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
-      matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1,
-        matrix[j - 1][i] + 1,
-        matrix[j - 1][i - 1] + indicator,
-      );
-    }
-  }
-  return matrix[b.length][a.length];
 }
 
 export const AttemptAnalysisModal: React.FC<AttemptAnalysisModalProps> = ({
@@ -67,11 +40,19 @@ export const AttemptAnalysisModal: React.FC<AttemptAnalysisModalProps> = ({
   const [isFixing, setIsFixing] = useState(false);
   const [fixedValue, setFixedValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const ignoreArticles = list.settings.ignoreArticles === true;
   const isReversed = list.settings.flipOrder === 'reversed';
   const threshold = list.settings.threshold * 100;
   const updateField: 'term' | 'definition' = isReversed ? 'term' : 'definition';
+
+  const alignment = useMemo(
+    () => (attempt ? alignWords(attempt.userInput, attempt.expectedAnswer) : null),
+    [attempt]
+  );
+
+  if (!alignment) return null;
 
   const userNormalized = useMemo(
     () => normalizeString(attempt.userInput, ignoreArticles),
@@ -82,26 +63,6 @@ export const AttemptAnalysisModal: React.FC<AttemptAnalysisModalProps> = ({
     [attempt.expectedAnswer, ignoreArticles],
   );
 
-  const comparison = useMemo(() => {
-    const maxLen = Math.max(userNormalized.length, expectedNormalized.length);
-    const chars: { user: string; expected: string; match: boolean }[] = [];
-    for (let i = 0; i < maxLen; i++) {
-      const u = userNormalized[i] || '';
-      const e = expectedNormalized[i] || '';
-      chars.push({
-        user: u,
-        expected: e,
-        match: u === e && u !== '',
-      });
-    }
-    return chars;
-  }, [userNormalized, expectedNormalized]);
-
-  const diffCount = useMemo(
-    () => comparison.filter((c) => !c.match && (c.user || c.expected)).length,
-    [comparison],
-  );
-
   const distance = useMemo(
     () => levenshteinDistance(userNormalized, expectedNormalized),
     [userNormalized, expectedNormalized],
@@ -109,6 +70,11 @@ export const AttemptAnalysisModal: React.FC<AttemptAnalysisModalProps> = ({
   const longerLength = Math.max(userNormalized.length, expectedNormalized.length);
   const computedSimilarity =
     longerLength === 0 ? 100 : Math.round((1 - distance / longerLength) * 100);
+
+  const diffCount = useMemo(
+    () => alignment.words.filter((w) => w.status !== 'correct').length,
+    [alignment],
+  );
 
   const possibleTypo = useMemo(() => {
     if (attempt.similarity >= threshold) return false;
@@ -223,62 +189,125 @@ export const AttemptAnalysisModal: React.FC<AttemptAnalysisModalProps> = ({
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 mb-4">
             <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-3">
-              🔬 Comparación carácter por carácter
+              🔬 Comparación palabra por palabra
             </div>
 
-            <div className="mb-3">
-              <div className="text-[10px] font-bold text-slate-500 mb-1">
-                🎤 Tu respuesta (normalizada)
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {comparison.map((char, i) => (
-                  <span
-                    key={`user-${i}`}
-                    className={`inline-flex items-center justify-center min-w-[28px] h-8 px-1 rounded-md text-sm font-bold ${
-                      char.match
-                        ? 'bg-slate-100 text-slate-700'
-                        : 'bg-amber-100 text-amber-800 border-b-2 border-amber-400'
-                    }`}
-                  >
-                    {char.user || <span className="text-slate-300">·</span>}
-                  </span>
-                ))}
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    <th className="w-8 text-center py-2">#</th>
+                    <th className="text-left py-2 px-3">Tu respuesta</th>
+                    <th className="text-left py-2 px-3">Sistema</th>
+                    <th className="w-40 text-center py-2">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alignment.words.map((word, i) => (
+                    <React.Fragment key={i}>
+                      <tr className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="w-8 text-center py-2 text-slate-500 font-medium">{word.index}</td>
+                        <td className="py-2 px-3 font-mono text-slate-800">
+                          {word.userWord || <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-slate-800">
+                          {word.systemWord || <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black ${
+                                word.status === 'correct'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : word.status === 'similar'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-rose-100 text-rose-700'
+                              }`}
+                            >
+                              {word.status === 'correct' && '✅'}
+                              {word.status === 'similar' && '⚠️'}
+                              {word.status === 'wrong' && '❌'}
+                            </span>
+                            {word.status !== 'correct' && (
+                              <button
+                                onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
+                                className="text-slate-400 hover:text-slate-600 transition font-mono text-xs"
+                                aria-label={expandedIndex === i ? 'Contraer' : 'Expandir'}
+                              >
+                                {expandedIndex === i ? '▲' : '▼'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedIndex === i && word.charDiff.length > 0 && (
+                        <tr>
+                          <td colSpan={4} className="p-0">
+                            <div className="bg-slate-50 border-t border-slate-200 animate-in slide-down-2 duration-200">
+                              <div className="p-3">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-[9px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                        <th className="w-10 text-center py-1">Pos</th>
+                                        <th className="text-left py-1 px-2">Tu letra</th>
+                                        <th className="text-left py-1 px-2">Sistema</th>
+                                        <th className="w-24 text-center py-1">Tipo</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {word.charDiff.map((diff, j) => (
+                                        <tr key={j} className="border-b border-slate-100 last:border-0">
+                                          <td className="w-10 text-center py-1 text-slate-500">{diff.index + 1}</td>
+                                          <td className="py-1 px-2 font-mono">
+                                            {diff.type === 'match' && diff.char}
+                                            {diff.type === 'diff' && diff.userChar}
+                                            {diff.type === 'extra' && diff.char}
+                                            {diff.type === 'missing' && <span className="text-slate-300">—</span>}
+                                          </td>
+                                          <td className="py-1 px-2 font-mono">
+                                            {diff.type === 'match' && diff.char}
+                                            {diff.type === 'diff' && diff.systemChar}
+                                            {diff.type === 'extra' && <span className="text-slate-300">—</span>}
+                                            {diff.type === 'missing' && diff.char}
+                                          </td>
+                                          <td className="py-1 px-2 text-center">
+                                            <span
+                                              className={`inline-flex items-center justify-center w-20 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                diff.type === 'match'
+                                                  ? 'bg-emerald-100 text-emerald-800'
+                                                  : diff.type === 'diff'
+                                                  ? 'bg-amber-100 text-amber-800'
+                                                  : diff.type === 'extra'
+                                                  ? 'bg-rose-100 text-rose-800'
+                                                  : 'bg-rose-50 text-rose-600 border-b-2 border-dotted border-rose-400'
+                                              }`}
+                                            >
+                                              {diff.type === 'match' && '✓'}
+                                              {diff.type === 'diff' && '↔'}
+                                              {diff.type === 'extra' && '+'}
+                                              {diff.type === 'missing' && '−'}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <p className="mt-2 text-xs font-medium text-slate-600">{word.hint}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            <div className="mb-3">
-              <div className="text-[10px] font-bold text-slate-500 mb-1">
-                💾 Respuesta esperada (normalizada)
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {comparison.map((char, i) => (
-                  <span
-                    key={`expected-${i}`}
-                    className={`inline-flex items-center justify-center min-w-[28px] h-8 px-1 rounded-md text-sm font-bold ${
-                      char.match
-                        ? 'bg-slate-100 text-slate-700'
-                        : 'bg-rose-100 text-rose-800 border-b-2 border-rose-400 line-through'
-                    }`}
-                  >
-                    {char.expected || <span className="text-slate-300">·</span>}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 text-[10px] font-medium text-slate-600">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-slate-100 border border-slate-200" />
-                Coinciden
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-amber-100 border-b-2 border-amber-400" />
-                Tu versión
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-rose-100 border-b-2 border-rose-400" />
-                Sistema (typo)
-              </span>
+            <div className="mt-3 text-right text-sm font-medium text-slate-600">
+              {alignment.stats.correct} / {alignment.stats.total} palabras correctas
             </div>
           </div>
 

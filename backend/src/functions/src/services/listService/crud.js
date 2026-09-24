@@ -313,7 +313,7 @@ async function updateListFields(db, listId, uid, baseUpdatedAt, deltas) {
   }
   
   // Build partial updates for associations
-  const updates: Record<string, any> = {
+  const updates = {
     updatedAt: FieldValue.serverTimestamp(),
   };
   

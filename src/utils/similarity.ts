@@ -22,7 +22,7 @@ export const normalize = (str: string): string => {
     .replace(/[^\w\s]/gi, '');
 };
 
-const levenshteinDistance = (a: string, b: string): number => {
+export const levenshteinDistance = (a: string, b: string): number => {
   const matrix = Array.from({ length: a.length + 1 }, () =>
     Array.from({ length: b.length + 1 }, (_, i) => i)
   );
