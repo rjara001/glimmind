@@ -96,11 +96,14 @@ export interface ListDiffOptions {
  */
 export function buildListDiffEvents(options: ListDiffOptions): CardActivityEvent[] {
   const { userId, listId, before, after } = options;
-  const beforeById = new Map(before.map((association) => [association.id, association]));
-  const afterById = new Map(after.map((association) => [association.id, association]));
+  const beforeArray: Association[] = Array.isArray(before) ? before : Object.values(before || {}) as Association[];
+  const afterArray: Association[] = Array.isArray(after) ? after : Object.values(after || {}) as Association[];
+  console.log('[DEBUG] buildListDiffEvents - before:', beforeArray, 'after:', afterArray);
+  const beforeById = new Map(beforeArray.map((association) => [association.id, association]));
+  const afterById = new Map(afterArray.map((association) => [association.id, association]));
   const events: CardActivityEvent[] = [];
 
-  for (const current of after) {
+  for (const current of afterArray) {
     const prev = beforeById.get(current.id);
     if (!prev) {
       events.push(
@@ -165,7 +168,7 @@ export function buildListDiffEvents(options: ListDiffOptions): CardActivityEvent
     }
   }
 
-  for (const prev of before) {
+  for (const prev of beforeArray) {
     if (!afterById.has(prev.id)) {
       events.push(
         createActivityEvent({

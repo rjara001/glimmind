@@ -36,13 +36,15 @@ function extractSyncFields(assoc: Association): AssociationDelta['fields'] {
 }
 
 export function computeDelta(
-  prevAssociations: Association[],
-  nextAssociations: Association[]
+  prevAssociations: Association[] | Record<string, Association>,
+  nextAssociations: Association[] | Record<string, Association>
 ): AssociationDelta[] {
-  const prevMap = new Map(prevAssociations.map((a) => [a.id, a]));
+  const prevArray: Association[] = Array.isArray(prevAssociations) ? prevAssociations : Object.values(prevAssociations || {}) as Association[];
+  const nextArray: Association[] = Array.isArray(nextAssociations) ? nextAssociations : Object.values(nextAssociations || {}) as Association[];
+  const prevMap = new Map(prevArray.map((a) => [a.id, a]));
   const deltas: AssociationDelta[] = [];
 
-  for (const next of nextAssociations) {
+  for (const next of nextArray) {
     const prev = prevMap.get(next.id);
     if (!prev || hasMeaningfulChange(prev, next)) {
       deltas.push({
@@ -57,16 +59,18 @@ export function computeDelta(
 }
 
 export function mergeCloudWins(
-  localList: { associations: Association[] },
-  cloudList: { associations: Association[] }
+  localList: { associations: Association[] | Record<string, Association> },
+  cloudList: { associations: Association[] | Record<string, Association> }
 ): { associations: Association[] } {
-  const cloudMap = new Map(cloudList.associations.map((a) => [a.id, a]));
-  const merged = localList.associations.map((local) => {
+  const localArray: Association[] = Array.isArray(localList.associations) ? localList.associations : Object.values(localList.associations || {}) as Association[];
+  const cloudArray: Association[] = Array.isArray(cloudList.associations) ? cloudList.associations : Object.values(cloudList.associations || {}) as Association[];
+  const cloudMap = new Map(cloudArray.map((a) => [a.id, a]));
+  const merged = localArray.map((local) => {
     const cloud = cloudMap.get(local.id);
     return cloud ?? local;
   });
 
-  const cloudOnly = cloudList.associations.filter((a) => !localList.associations.some((l) => l.id === a.id));
+  const cloudOnly = cloudArray.filter((a) => !localArray.some((l) => l.id === a.id));
   
   return { associations: [...merged, ...cloudOnly] };
 }

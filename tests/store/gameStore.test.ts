@@ -354,3 +354,222 @@ describe('syncFromCloud uses mergeCloudWithLocalPreferLocal', () => {
     expect(typeof mergeCloudWithLocalPreferLocal).toBe('function');
   });
 });
+
+describe('updateAssociations', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    useGameStore.setState({
+      user: { uid: 'dev-user-local', displayName: 'Guest', email: null, photoURL: null },
+      settings: { activityHistoryEnabled: true },
+      activityRecordingEnabled: true,
+      activity: [],
+      activityNextCursor: undefined,
+      activityLoading: false,
+      lists: [],
+      currentList: null,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('handles undefined associations without throwing before.map is not a function (guest mode)', () => {
+    // Set a list with undefined associations (simulating legacy storage data)
+    useGameStore.setState({
+      lists: [
+        {
+          id: 'list-1',
+          userId: 'dev-user-local',
+          name: 'Test List',
+          concept: 'test',
+          associations: undefined, // This would cause the bug
+          isArchived: false,
+          settings: {},
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      currentList: {
+        id: 'list-1',
+        userId: 'dev-user-local',
+        name: 'Test List',
+        concept: 'test',
+        associations: undefined,
+        isArchived: false,
+        settings: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+
+    // This should not throw "before.map is not a function"
+    const newAssociations = [
+      {
+        id: 'card-1',
+        term: 'New Card',
+        definition: 'New Definition',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+    ];
+
+    expect(() => {
+      useGameStore.getState().updateAssociations('list-1', newAssociations);
+    }).not.toThrow();
+
+    // Flush the activity debounce timer
+    vi.advanceTimersByTime(5000);
+
+    // Should generate card_created event and persist to localStorage (guest mode)
+    const saved = JSON.parse(localStorage.getItem('glimmind_activity') || '[]');
+    expect(saved.length).toBe(1);
+    expect(saved[0].type).toBe('card_created');
+    expect(saved[0].cardId).toBe('card-1');
+    expect(saved[0].cardTerm).toBe('New Card');
+  });
+
+  it('generates card_created events for multiple new cards when associations was undefined (guest mode)', () => {
+    useGameStore.setState({
+      lists: [
+        {
+          id: 'list-1',
+          userId: 'dev-user-local',
+          name: 'Test List',
+          concept: 'test',
+          associations: undefined,
+          isArchived: false,
+          settings: {},
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      currentList: {
+        id: 'list-1',
+        userId: 'dev-user-local',
+        name: 'Test List',
+        concept: 'test',
+        associations: undefined,
+        isArchived: false,
+        settings: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+
+    const newAssociations = [
+      {
+        id: 'card-1',
+        term: 'Card 1',
+        definition: 'Definition 1',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+      {
+        id: 'card-2',
+        term: 'Card 2',
+        definition: 'Definition 2',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+      {
+        id: 'card-3',
+        term: 'Card 3',
+        definition: 'Definition 3',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+    ];
+
+    useGameStore.getState().updateAssociations('list-1', newAssociations);
+
+    // Flush the activity debounce timer
+    vi.advanceTimersByTime(5000);
+
+    const saved = JSON.parse(localStorage.getItem('glimmind_activity') || '[]');
+    const createdEvents = saved.filter((e: any) => e.type === 'card_created');
+    expect(createdEvents).toHaveLength(3);
+    expect(createdEvents.map((e: any) => e.cardTerm).sort()).toEqual(['Card 1', 'Card 2', 'Card 3']);
+  });
+
+  it('generates card_updated when term or definition changes from undefined associations (guest mode)', () => {
+    // Start with undefined associations
+    useGameStore.setState({
+      lists: [
+        {
+          id: 'list-1',
+          userId: 'dev-user-local',
+          name: 'Test List',
+          concept: 'test',
+          associations: undefined,
+          isArchived: false,
+          settings: {},
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      currentList: {
+        id: 'list-1',
+        userId: 'dev-user-local',
+        name: 'Test List',
+        concept: 'test',
+        associations: undefined,
+        isArchived: false,
+        settings: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+
+    // First add a card
+    useGameStore.getState().updateAssociations('list-1', [
+      {
+        id: 'card-1',
+        term: 'Original Term',
+        definition: 'Original Definition',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+    ]);
+
+    // Flush the activity debounce timer
+    vi.advanceTimersByTime(5000);
+
+    // Now update the term and definition
+    useGameStore.getState().updateAssociations('list-1', [
+      {
+        id: 'card-1',
+        term: 'Updated Term',
+        definition: 'Updated Definition',
+        currentCycle: 1,
+        status: 'pending',
+        isLearned: false,
+        isArchived: false,
+      },
+    ]);
+
+    // Flush the activity debounce timer
+    vi.advanceTimersByTime(5000);
+
+    const saved = JSON.parse(localStorage.getItem('glimmind_activity') || '[]');
+    const updatedEvents = saved.filter((e: any) => e.type === 'card_updated');
+    expect(updatedEvents).toHaveLength(2);
+    expect(updatedEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'term', before: 'Original Term', after: 'Updated Term' }),
+        expect.objectContaining({ field: 'definition', before: 'Original Definition', after: 'Updated Definition' }),
+      ]),
+    );
+  });
+});

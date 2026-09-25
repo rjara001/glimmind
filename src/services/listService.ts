@@ -62,7 +62,10 @@ export class ListServiceImpl {
       throw new ListNotFoundError(input.id);
     }
 
-    if (input.associations && input.associations.length > existing.associations.length) {
+    console.log('[DEBUG] listService.updateList - existing.associations:', existing.associations, 'type:', typeof existing.associations, 'isArray:', Array.isArray(existing.associations));
+    console.log('[DEBUG] listService.updateList - input.associations:', input.associations, 'type:', typeof input.associations, 'isArray:', Array.isArray(input.associations));
+
+    if (input.associations && input.associations.length > (existing.associations?.length || 0)) {
       const status = await this.checkQuota(existing.userId, input.associations.length);
       if (status.level === 'blocked') {
         throw new QuotaExceededError(status.maxCards);
@@ -70,10 +73,11 @@ export class ListServiceImpl {
     }
 
     if (input.associations) {
+      console.log('[DEBUG] listService.updateList - calling buildListDiffEvents with before:', existing.associations || [], 'after:', input.associations);
       const events = buildListDiffEvents({
         userId: existing.userId,
         listId: input.id,
-        before: existing.associations,
+        before: existing.associations || [],
         after: input.associations,
       });
       await this.activity.recordEvents(existing.userId, events);

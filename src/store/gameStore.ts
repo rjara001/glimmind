@@ -472,11 +472,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   updateAssociations: (listId, associations) => {
     const { lists, user } = get();
     const prevList = lists.find(l => l.id === listId);
+    console.log('[DEBUG] updateAssociations - listId:', listId, 'prevList:', prevList?.id, 'prevList.associations:', prevList?.associations, 'type:', typeof prevList?.associations, 'isArray:', Array.isArray(prevList?.associations));
     if (prevList && user) {
       const events = buildListDiffEvents({
         userId: user.uid,
         listId,
-        before: prevList.associations,
+        before: prevList.associations || [],
         after: associations,
       });
       if (events.length > 0) {
@@ -484,7 +485,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       
       // Capture deltas for sync
-      const deltas = computeDelta(prevList.associations, associations);
+      const deltas = computeDelta(prevList.associations || [], associations);
       if (deltas.length > 0) {
         get().addPendingDelta(listId, deltas);
       }
@@ -1030,7 +1031,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           if (localList && cloudList) {
             const merged = mergeCloudWins({ associations: localList.associations }, { associations: cloudList.associations });
             const currentLocalAssociations = get().lists.find(l => l.id === listId)?.associations || [];
-            const newDeltas = computeDelta(merged.associations, currentLocalAssociations);
+            const newDeltas = computeDelta(merged.associations || [], currentLocalAssociations);
             
             // Retry with incremented counter
             await get().flushSync(listId, {
@@ -1101,7 +1102,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { lists } = get();
       const baseList = lists.find(l => l.id === listId);
       if (baseList) {
-        const deltas = computeDelta(baseList.associations, associations);
+        const deltas = computeDelta(baseList.associations || [], associations);
         if (deltas.length > 0) {
           await get().flushSync(listId, { deltas });
         }
