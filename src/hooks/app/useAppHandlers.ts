@@ -163,7 +163,6 @@ export function useAppHandlers({
         isLearned: false,
         isArchived: false,
       };
-      console.log('[DEBUG] handleAddCard - targetList.associations:', targetList.associations, 'type:', typeof targetList.associations, 'isArray:', Array.isArray(targetList.associations));
       useGameStore
         .getState()
         .updateAssociations(listId, [...(targetList.associations || []), newAssociation]);

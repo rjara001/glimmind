@@ -472,7 +472,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   updateAssociations: (listId, associations) => {
     const { lists, user } = get();
     const prevList = lists.find(l => l.id === listId);
-    console.log('[DEBUG] updateAssociations - listId:', listId, 'prevList:', prevList?.id, 'prevList.associations:', prevList?.associations, 'type:', typeof prevList?.associations, 'isArray:', Array.isArray(prevList?.associations));
     if (prevList && user) {
       const events = buildListDiffEvents({
         userId: user.uid,

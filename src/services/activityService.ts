@@ -93,7 +93,6 @@ export const activityService = {
   },
 
   recordListDiffEvents: async (userId: string, listId: string, before: Association[], after: Association[]): Promise<void> => {
-    console.log('[DEBUG] activityService.recordListDiffEvents - before:', before, 'after:', after, 'before.isArray:', Array.isArray(before));
     const events = buildListDiffEvents({
       userId,
       listId,
