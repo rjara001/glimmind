@@ -14,7 +14,7 @@ const SECOND_GEN_FUNCTIONS: Record<string, string | undefined> = {
 
 // ⚠️ Desactivamos USE_CLEAN_URLS por defecto a menos que esté configurado explícitamente,
 // para asegurar que las llamadas vayan a la URL real de Cloud Functions si no hay proxy.
-const USE_CLEAN_URLS = false; 
+const USE_CLEAN_URLS = env.VITE_USE_CLEAN_URLS !== 'false'; 
 
 async function getToken(forceRefresh = false): Promise<string | null> {
   const currentUser = auth.currentUser;

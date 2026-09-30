@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Association } from "../../../types";
 import type { ImportPreviewData } from "../../../types/import-deck";
-import type { ImportTab } from "../../../hooks/dashboard/useDeckImporter";
+import type { ImportTab, ExtractedKeyword, KeywordExtractionOptions } from "../../../hooks/dashboard/useDeckImporter";
 import type { RefObject } from "react";
 import { BulkImportPanel } from "./BulkImportPanel";
 import { MAX_CARDS_PER_DECK } from "../../../constants/limits";
@@ -30,6 +30,19 @@ interface CreateListFormProps {
   onSubmit: (e: FormEvent) => void;
   maxCardsPerDeck?: number;
   totalCards?: number;
+
+  // Keyword extraction
+  extractText?: string;
+  setExtractText?: (value: string) => void;
+  extractedKeywords?: ExtractedKeyword[];
+  setExtractedKeywords?: (value: ExtractedKeyword[]) => void;
+  selectedKeywords?: Set<string>;
+  toggleKeyword?: (term: string) => void;
+  selectAllKeywords?: () => void;
+  clearSelection?: () => void;
+  isExtracting?: boolean;
+  runExtraction?: (options?: KeywordExtractionOptions) => Promise<void>;
+  getSelectedAssociations?: () => Association[];
 }
 
 export function CreateListForm({
@@ -55,6 +68,16 @@ export function CreateListForm({
   onSubmit,
   maxCardsPerDeck = MAX_CARDS_PER_DECK,
   totalCards = 0,
+  extractText = "",
+  setExtractText,
+  extractedKeywords = [],
+  selectedKeywords = new Set(),
+  toggleKeyword,
+  selectAllKeywords,
+  clearSelection,
+  isExtracting = false,
+  runExtraction,
+  getSelectedAssociations,
 }: CreateListFormProps) {
   const [nameError, setNameError] = useState<string | null>(null);
 
@@ -149,6 +172,16 @@ export function CreateListForm({
             onChooseFile={onChooseFile || (() => {})}
             onFileChange={onFileChange || (() => {})}
             onRemoveUploadedFile={onRemoveUploadedFile || (() => {})}
+            extractText={extractText}
+            setExtractText={setExtractText || (() => {})}
+            extractedKeywords={extractedKeywords}
+            selectedKeywords={selectedKeywords}
+            toggleKeyword={toggleKeyword || (() => {})}
+            selectAllKeywords={selectAllKeywords || (() => {})}
+            clearSelection={clearSelection || (() => {})}
+            isExtracting={isExtracting}
+            runExtraction={runExtraction || (async () => {})}
+            getSelectedAssociations={getSelectedAssociations || (() => [])}
           />
         </div>
 

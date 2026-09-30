@@ -1,10 +1,13 @@
 import { useCallback, useRef, useState, type ChangeEvent, type RefObject } from "react";
-import type { Association } from "../../types";
+import type { Association, FlashcardMetadata } from "../../types";
 import type { ImportPreviewData } from "../../types/import-deck";
+import type { ExtractedKeyword, KeywordExtractionOptions } from "../../types/keyword-extraction";
 import { normalizeAssociations, type AssociationLike } from "../../utils/normalizeAssociation";
 import { parseForPreview } from "../../utils/csv";
+import { extractKeywordsLocal } from "../../services/localKeywordExtraction";
 
-export type ImportTab = "paste" | "upload";
+export type ImportTab = "paste" | "upload" | "extract";
+export type { ExtractedKeyword, KeywordExtractionOptions } from "../../types/keyword-extraction";
 
 export interface DeckImporterState {
   bulkData: string;
@@ -24,11 +27,25 @@ export interface DeckImporterState {
   parseBulkData: (text: string) => Association[];
   resetBulkInputs: () => void;
   removeUploadedFile: () => void;
+
+  // Keyword extraction
+  extractText: string;
+  setExtractText: (value: string) => void;
+  extractedKeywords: ExtractedKeyword[];
+  setExtractedKeywords: (value: ExtractedKeyword[]) => void;
+  selectedKeywords: Set<string>;
+  toggleKeyword: (term: string) => void;
+  selectAllKeywords: () => void;
+  clearSelection: () => void;
+  isExtracting: boolean;
+  runExtraction: (options?: KeywordExtractionOptions) => Promise<void>;
+  getSelectedAssociations: () => Association[];
 }
 
 export function useDeckImporter(
   onImportSuccess: (message: string) => void,
   onImportError: (message: string) => void,
+  existingVocabulary?: string[],
 ): DeckImporterState {
   const [bulkData, setBulkDataState] = useState("");
   const [parsedData, setParsedData] = useState<ImportPreviewData | null>(null);
@@ -39,10 +56,96 @@ export function useDeckImporter(
   const [fileAssociations, setFileAssociations] = useState<Association[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Keyword extraction state
+  const [extractText, setExtractTextState] = useState("");
+  const [extractedKeywords, setExtractedKeywordsState] = useState<ExtractedKeyword[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+  const [isExtracting, setIsExtracting] = useState(false);
+
   const setBulkData = useCallback((value: string) => {
     setBulkDataState(value);
     setParsedData(parseForPreview(value));
   }, []);
+
+  const setExtractText = useCallback((value: string) => {
+    setExtractTextState(value);
+    // Auto-extract on every change (like paste tab)
+    if (value.trim().length >= 50) {
+      setIsExtracting(true);
+      extractKeywordsLocal(value, { existingVocabulary: existingVocabulary ?? [] })
+        .then(result => {
+          setExtractedKeywordsState(result.keywords);
+          setSelectedKeywords(new Set(result.keywords.map(k => k.term)));
+        })
+        .catch(console.error)
+        .finally(() => setIsExtracting(false));
+    } else {
+      setExtractedKeywordsState([]);
+      setSelectedKeywords(new Set());
+    }
+  }, [existingVocabulary]);
+
+  const setExtractedKeywords = useCallback((value: ExtractedKeyword[]) => {
+    setExtractedKeywordsState(value);
+  }, []);
+
+  const toggleKeyword = useCallback((term: string) => {
+    setSelectedKeywords(prev => {
+      const next = new Set(prev);
+      if (next.has(term)) {
+        next.delete(term);
+      } else {
+        next.add(term);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllKeywords = useCallback(() => {
+    setSelectedKeywords(new Set(extractedKeywords.map(k => k.term)));
+  }, [extractedKeywords]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedKeywords(new Set());
+  }, []);
+
+  const runExtraction = useCallback(async (options?: KeywordExtractionOptions) => {
+    const text = extractText.trim();
+    if (!text) return;
+
+    setIsExtracting(true);
+    try {
+      const mergedOptions: KeywordExtractionOptions = {
+        ...options,
+        existingVocabulary: existingVocabulary ?? [],
+      };
+      const result = await extractKeywordsLocal(text, mergedOptions);
+      setExtractedKeywordsState(result.keywords);
+      setSelectedKeywords(new Set(result.keywords.map(k => k.term)));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al extraer keywords";
+      onImportError(message);
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [extractText, onImportError, existingVocabulary]);
+
+  const getSelectedAssociations = useCallback((): Association[] => {
+    return extractedKeywords
+      .filter(kw => selectedKeywords.has(kw.term))
+      .map(kw => ({
+        id: crypto.randomUUID(),
+        term: kw.term,
+        definition: [''],
+        translation: undefined,
+        context: kw.context,
+        metadata: { difficulty: 'intermediate' as const, frequencyRank: 0, tags: ['auto-extracted'] } satisfies FlashcardMetadata,
+        currentCycle: 1,
+        status: 'pending' as const,
+        isLearned: false,
+        isArchived: false,
+      }));
+  }, [extractedKeywords, selectedKeywords]);
 
   const parseBulkData = useCallback((text: string): Association[] => {
     const preview = parseForPreview(text);
@@ -134,5 +237,18 @@ export function useDeckImporter(
     parseBulkData,
     resetBulkInputs,
     removeUploadedFile,
+
+    // Keyword extraction
+    extractText,
+    setExtractText,
+    extractedKeywords,
+    setExtractedKeywords,
+    selectedKeywords,
+    toggleKeyword,
+    selectAllKeywords,
+    clearSelection,
+    isExtracting,
+    runExtraction,
+    getSelectedAssociations,
   };
 }

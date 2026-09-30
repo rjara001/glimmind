@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Association, AssociationList } from "../../types";
 import type { ImportValidationResult } from "../../services/importValidationService";
 import type { AIGroupSuggestion } from "../../services/aiService";
 import type { QuotaStatus } from "../../types/quota";
+import type { ExtractedKeyword, KeywordExtractionOptions } from "../../types/keyword-extraction";
 import { useGameStore } from "../../store/gameStore";
 import { QuotaService } from "../../services/quotaService";
+import { extractKeywordsLocal } from "../../services/localKeywordExtraction";
 
 export interface TableSort {
   field: "term" | "definition";
@@ -67,6 +69,21 @@ export interface ListEditorState {
   hasName: boolean;
   isImporting: boolean;
   setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
+
+  // Keyword extraction
+  extractText: string;
+  setExtractText: (value: string) => void;
+  extractedKeywords: ExtractedKeyword[];
+  setExtractedKeywords: React.Dispatch<React.SetStateAction<ExtractedKeyword[]>>;
+  selectedKeywords: Set<string>;
+  setSelectedKeywords: React.Dispatch<React.SetStateAction<Set<string>>>;
+  toggleKeyword: (term: string) => void;
+  selectAllKeywords: () => void;
+  clearSelection: () => void;
+  isExtracting: boolean;
+  setIsExtracting: React.Dispatch<React.SetStateAction<boolean>>;
+  runExtraction: (options?: KeywordExtractionOptions) => Promise<void>;
+  getSelectedAssociations: () => Association[];
 }
 
 export function useListEditorState(
@@ -94,6 +111,65 @@ export function useListEditorState(
   const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
   const [isImporting, setIsImporting] = useState(false);
+
+  // Keyword extraction state
+  const [extractText, setExtractText] = useState("");
+  const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  const toggleKeyword = useCallback((term: string) => {
+    setSelectedKeywords(prev => {
+      const next = new Set(prev);
+      if (next.has(term)) {
+        next.delete(term);
+      } else {
+        next.add(term);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllKeywords = useCallback(() => {
+    setSelectedKeywords(new Set(extractedKeywords.map(k => k.term)));
+  }, [extractedKeywords]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedKeywords(new Set());
+  }, []);
+
+  const runExtraction = useCallback(async (options?: KeywordExtractionOptions) => {
+    const text = extractText.trim();
+    if (!text) return;
+
+    setIsExtracting(true);
+    try {
+      const result = await extractKeywordsLocal(text, options);
+      setExtractedKeywords(result.keywords);
+      setSelectedKeywords(new Set(result.keywords.map(k => k.term)));
+    } catch (error) {
+      console.error("Error extracting keywords:", error);
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [extractText]);
+
+  const getSelectedAssociations = useCallback((): Association[] => {
+    return extractedKeywords
+      .filter(kw => selectedKeywords.has(kw.term))
+      .map(kw => ({
+        id: crypto.randomUUID(),
+        term: kw.term,
+        definition: [''],
+        translation: undefined,
+        context: kw.context,
+        currentCycle: 1,
+        status: 'pending' as const,
+        isLearned: false,
+        isArchived: false,
+        metadata: { difficulty: 'intermediate' as const, frequencyRank: 0, tags: ['auto-extracted'] },
+      }));
+  }, [extractedKeywords, selectedKeywords]);
 
   const conceptParts = editList.concept.split("/");
   const termHeader = conceptParts[0] || "Term";
@@ -245,6 +321,21 @@ export function useListEditorState(
     setTranslationUsed,
     isImporting,
     setIsImporting,
+
+    // Keyword extraction
+    extractText,
+    setExtractText,
+    extractedKeywords,
+    setExtractedKeywords,
+    selectedKeywords,
+    setSelectedKeywords,
+    toggleKeyword,
+    selectAllKeywords,
+    clearSelection,
+    isExtracting,
+    setIsExtracting,
+    runExtraction,
+    getSelectedAssociations,
   };
 }
 

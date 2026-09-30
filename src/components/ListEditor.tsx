@@ -213,6 +213,16 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           <ListEditorBulkImport
             onBulkAdd={actions.handleBulkAdd}
             onFileName={handleFileName}
+            extractText={state.extractText}
+            setExtractText={state.setExtractText}
+            extractedKeywords={state.extractedKeywords}
+            selectedKeywords={state.selectedKeywords}
+            toggleKeyword={state.toggleKeyword}
+            selectAllKeywords={state.selectAllKeywords}
+            clearSelection={state.clearSelection}
+            isExtracting={state.isExtracting}
+            runExtraction={state.runExtraction}
+            getSelectedAssociations={state.getSelectedAssociations}
           />
         )}
         {state.showImportModal && (
@@ -223,8 +233,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
             setNewConcept={(v) =>
               state.setEditList((c) => ({ ...c, concept: v }))
             }
-            showBulk={false}
-            importTab={"paste"}
             onCancel={() => state.setShowImportModal(false)}
             onSubmit={(_e: FormEvent) => {
               state.setShowImportModal(false);
@@ -235,10 +243,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
                   "success"
                 );
             }}
-            maxCardsPerDeck={
-              useGameStore.getState().settings?.maxCardsPerDeck ?? 50
-            }
-            totalCards={state.editList.associations.length}
           />
         )}
         <ListEditorTranslationBar

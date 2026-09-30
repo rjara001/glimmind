@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import type { Association } from "../../types";
 import type { PrebuiltDeck } from "../../types/prebuilt-deck";
 import type { DashboardProps } from "../../types/dashboard";
@@ -50,21 +50,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const quota = useGameStore((state) => state.quota);
   const isPremium = quota?.tier === "premium";
 
+  const existingVocabulary = useMemo(
+    () => lists.flatMap(list => list.associations?.map(a => a.term) ?? []),
+    [lists]
+  );
+
   const importer = useDeckImporter(
     useCallback(
       (message: string) => showToast(message, "success"),
       [showToast],
     ),
     useCallback((message: string) => alert(message), []),
+    existingVocabulary,
   );
 
   // Auto-set deck name from filename when uploading a file (only if name is empty)
   useEffect(() => {
-    console.log('paso1');
     if (importer.selectedFileName && !newName.trim()) {
-      
       const nameWithoutExt = importer.selectedFileName.replace(/\.[^/.]+$/, "");
-      console.log('nameWithoutExt', nameWithoutExt);
       setNewName(nameWithoutExt);
     }
   }, [importer.selectedFileName, newName]);
@@ -84,7 +87,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     (e: React.FormEvent) => {
       e.preventDefault();
       if (!newName || !newConcept) return;
-      const initialAssocs = [...importer.parseBulkData(importer.bulkData), ...importer.fileAssociations];
+      const initialAssocs = [
+        ...importer.parseBulkData(importer.bulkData),
+        ...importer.fileAssociations,
+        ...importer.getSelectedAssociations(),
+      ];
       onCreate(newName, newConcept, initialAssocs);
       setNewName("");
       setNewConcept("");
@@ -103,7 +110,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleChooseFile = useCallback(() => {
     importer.fileInputRef.current?.click();
-
   }, [importer]);
 
   const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] =>
@@ -213,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         />
       )}
 
-      <DashboardToolbar
+<DashboardToolbar
         onOpenYouTube={handleOpenYouTube}
         onOpenDeckStore={handleOpenDeckStore}
         onCreateEmpty={handleCreateEmpty}
@@ -233,36 +239,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <DashboardSearchBar value={searchTerm} onChange={setSearchTerm} />
 
-      {isCreating && (
-        <CreateListForm
-          newName={newName}
-          setNewName={setNewName}
-          newConcept={newConcept}
-          setNewConcept={setNewConcept}
-          showBulk={importer.showBulk}
-          setShowBulk={importer.setShowBulk}
-          importTab={importer.importTab}
-          setImportTab={importer.setImportTab}
-          bulkData={importer.bulkData}
-          setBulkData={importer.setBulkData}
-          parsedData={importer.parsedData}
-          fileInputRef={importer.fileInputRef}
-          isReadingFile={importer.isReadingFile}
-          selectedFileName={importer.selectedFileName}
-          fileAssociations={importer.fileAssociations}
-          onChooseFile={handleChooseFile}
-          onFileChange={importer.handleFileChange}
-          onRemoveUploadedFile={importer.removeUploadedFile}
-          onCancel={handleCancelCreate}
-          onSubmit={handleSubmitCreate}
-        />
-      )}
-
       {filteredLists.length === 0 ? (
         <DashboardEmptyState
           hasSearchTerm={Boolean(searchTerm)}
           onClearSearch={() => setSearchTerm("")}
-        />
+        />  
       ) : (
         <ListGrid lists={filteredLists} onPlay={onPlay} onEdit={onEdit} onDelete={onDelete} />
       )}

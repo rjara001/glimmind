@@ -46,20 +46,49 @@ const AppContent: React.FC = () => {
     });
   }, [setUser]);
 
+  // Create mode state - holds the draft list before saving
+  const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);
+
   // Wrapper functions to match DashboardProps interface
   const handleCreate = useCallback(
     async (name: string, concept: string, initialAssociations: Association[]) => {
+      console.log('[handleCreate] Starting with:', { name, concept });
       const id = await handlers.handleCreateList(name, concept, initialAssociations);
+      console.log('[handleCreate] Got ID:', id);
       if (id) {
-        useGameStore.getState().setCurrentList(id);
+        const user = useGameStore.getState().user;
+        console.log('[handleCreate] User:', user);
+        if (!user) return;
+        
+        const defaultSettings: AssociationList["settings"] = {
+          mode: "training",
+          flipOrder: "normal",
+          threshold: 0.95,
+          ignoreArticles: true,
+          showHints: true,
+          autoRevealAfterSeconds: 15,
+          autoAdvanceAfterAttempts: 3,
+        };
+        
+        const newList: AssociationList = {
+          id,
+          userId: user.uid,
+          name,
+          concept,
+          associations: initialAssociations,
+          isArchived: false,
+          settings: defaultSettings,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        console.log('[handleCreate] Setting createModeList:', newList);
+        setCreateModeList(newList);
+        console.log('[handleCreate] Navigating to editor');
         navigate('editor');
       }
     },
-    [handlers.handleCreateList, navigate]
+    [handlers.handleCreateList, navigate, setCreateModeList]
   );
-
-  // Create mode state - holds the draft list before saving
-  const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);
 
   const [showQuickAdd, setShowQuickAdd] = React.useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = React.useState(false);
@@ -69,6 +98,13 @@ const AppContent: React.FC = () => {
   const [pendingEditId, setPendingEditId] = React.useState<string | null>(null);
 
   // Navigate to editor in create mode - user will create list on first save
+  const handleCreateAndPlay = useCallback(
+    (name: string, concept: string, initialAssociations: Association[]) => {
+      handlers.handleCreateListAndPlay(name, concept, initialAssociations);
+    },
+    [handlers.handleCreateListAndPlay]
+  );
+
   const handleCreateEmpty = useCallback(() => {
     useGameStore.getState().setCurrentList(null);
     const emptyList: AssociationList = {
@@ -92,14 +128,7 @@ const AppContent: React.FC = () => {
     };
     setCreateModeList(emptyList);
     navigate('editor');
-  }, [navigate]);
-
-  const handleCreateAndPlay = useCallback(
-    (name: string, concept: string, initialAssociations: Association[]) => {
-      handlers.handleCreateListAndPlay(name, concept, initialAssociations);
-    },
-    [handlers.handleCreateListAndPlay]
-  );
+  }, [navigate, setCreateModeList]);
 
   const handleAddDeck = useCallback(
     async (name: string, concept: string, initialAssociations: Association[]) => {
@@ -280,7 +309,9 @@ const AppContent: React.FC = () => {
             path="/editor"
             element={
               <ProtectedRoute>
-                {(createModeList || handlers.currentList) ? (
+                {(() => {
+                  console.log('[Route /editor] createModeList:', createModeList, 'currentList:', handlers.currentList);
+                  return (createModeList || handlers.currentList) ? (
                   <ListEditor
                     list={createModeList || handlers.currentList!}
                     initialEditId={pendingEditId}
@@ -294,7 +325,8 @@ const AppContent: React.FC = () => {
                   />
                 ) : (
                   <Navigate replace to="/dashboard" />
-                )}
+                );
+              })()}
               </ProtectedRoute>
             }
           />
