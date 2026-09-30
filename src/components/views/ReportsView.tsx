@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { GameSummaryView } from '../GameSummaryView';
-import { RankingView } from './RankingView';
 
 interface ReportsViewProps {
   onBack: () => void;
@@ -49,11 +47,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onBack, onGoToSettings
         </button>
       </div>
 
-      {tab === 'summary' ? (
-        <GameSummaryView onGoToSettings={onGoToSettings} />
-      ) : (
-        <RankingView onGoToSettings={onGoToSettings} />
-      )}
+      <div className="bg-gray-50 rounded-xl p-8 text-center">
+        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 002-2V5a2 2 0 012-2h2a2 2 0 002-2V1a2 2 0 012-2h2a2 2 0 012 2v3a2 2 0 002 2h2a2 2 0 002-2V1a2 2 0 012-2h2a2 2 0 012 2v3a2 2 0 002 2h2a2 2 0 012 2v3a2 2 0 01-2 2h-2a2 2 0 01-2 2v3a2 2 0 01-2 2H7a2 2 0 01-2-2v-3a2 2 0 00-2-2H5a2 2 0 00-2 2v3a2 2 0 01-2 2z" />
+        </svg>
+        <h3 className="mt-4 text-lg font-medium text-gray-900">{tab === 'summary' ? 'Resumen de juegos' : 'Ranking de tarjetas'}</h3>
+        <p className="mt-2 text-gray-500">
+          Esta funcionalidad está en desarrollo. Pronto podrás ver tus estadísticas aquí.
+        </p>
+        <button
+          onClick={onGoToSettings}
+          className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
+        >
+          Ir a Configuración
+        </button>
+      </div>
     </div>
   );
 };

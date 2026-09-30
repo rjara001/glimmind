@@ -174,7 +174,7 @@ export const BulkImport: React.FC<BulkImportProps> = ({
             disabled={!canExtract || isExtracting}
             className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
           >
-            {isExtracting ? '🔍 Analizando...' : '🔍 Analizar y Extraer Keywords'}
+            {isExtracting ? '🔍 Analizando...' : '🔍 Analizar y Extraer Vocabulario'}
           </button>
           {hasExtractedKeywords && selectedCount > 0 && (
             <button

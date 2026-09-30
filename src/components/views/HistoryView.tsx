@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { CardActivityEvent, CardActivityType } from '../../types/activity';
 import { LEVEL_LABELS } from '../../utils/activity';
-import { HistoryEmptyState } from '../HistoryEmptyState';
 
 interface HistoryViewProps {
   onBack: () => void;
@@ -131,11 +130,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings
       </div>
 
       {!enabled ? (
-        <HistoryEmptyState
-          title="Historial desactivado"
-          description="Activa el registro de historial en Configuración para empezar a registrar la actividad de tus tarjetas."
-          onGoToSettings={onGoToSettings}
-        />
+        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Historial desactivado</h3>
+          <p className="text-gray-500 mt-2">Activa el registro de historial en Configuración para empezar a registrar la actividad de tus tarjetas.</p>
+          <button
+            onClick={onGoToSettings}
+            className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
+          >
+            Ir a Configuración
+          </button>
+        </div>
       ) : (
         <>
           <div className="mb-6 flex flex-col sm:flex-row gap-3">

@@ -20,7 +20,6 @@ import { DashboardToolbar } from "./dashboard/DashboardToolbar";
 import { RecentListsStrip } from "./dashboard/RecentListsStrip";
 import { BigListsGrid } from "./dashboard/BigListsGrid";
 import { DashboardSearchBar } from "./dashboard/DashboardSearchBar";
-import { CreateListForm } from "./dashboard/CreateListForm";
 import { DashboardEmptyState } from "./dashboard/DashboardEmptyState";
 import { ListGrid } from "./dashboard/ListGrid";
 
