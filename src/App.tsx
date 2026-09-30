@@ -311,22 +311,23 @@ const AppContent: React.FC = () => {
               <ProtectedRoute>
                 {(() => {
                   console.log('[Route /editor] createModeList:', createModeList, 'currentList:', handlers.currentList);
-                  return (createModeList || handlers.currentList) ? (
-                  <ListEditor
-                    list={createModeList || handlers.currentList!}
-                    initialEditId={pendingEditId}
-                    onInitialEditConsumed={() => setPendingEditId(null)}
-                    onSave={onSaveList}
-                    onBack={onBackFromEditor}
-                    onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
-                    onCreateMultiple={handlers.handleCreateMultipleLists}
-                    isCreateMode={!!createModeList}
-                    onCreateList={handlers.handleCreateList}
-                  />
-                ) : (
-                  <Navigate replace to="/dashboard" />
-                );
-              })()}
+                  if (createModeList || handlers.currentList) {
+                    return (
+                      <ListEditor
+                        list={createModeList || handlers.currentList!}
+                        initialEditId={pendingEditId}
+                        onInitialEditConsumed={() => setPendingEditId(null)}
+                        onSave={onSaveList}
+                        onBack={onBackFromEditor}
+                        onBackLabel={isReturningToGame ? 'Volver al juego' : 'Volver al dashboard'}
+                        onCreateMultiple={handlers.handleCreateMultipleLists}
+                        isCreateMode={!!createModeList}
+                        onCreateList={handlers.handleCreateList}
+                      />
+                    );
+                  }
+                  return <Navigate replace to="/dashboard" />;
+                })()}
               </ProtectedRoute>
             }
           />

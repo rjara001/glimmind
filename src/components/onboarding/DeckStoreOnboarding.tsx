@@ -114,7 +114,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   if (error) {
     return (
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 shadow-lg">
-        <h2 className="text-2xl font-bold text-white mb-1">¡Bienvenido a tu Tienda de Barajas! Aqui</h2>
+        <h2 className="text-2xl font-bold text-white mb-1">¡Bienvenido a tu Tienda de Barajas!</h2>
         <p className="text-white/80 text-sm">
           No pudimos cargar el catálogo de decks preconstruidos.
         </p>
