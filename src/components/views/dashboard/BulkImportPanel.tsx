@@ -166,6 +166,14 @@ export function BulkImportPanel({
             rows={6}
           />
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => runExtraction()}
+              disabled={isExtracting || !extractText.trim() || extractText.trim().length < 50}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              🔍 Analizar y Extraer Vocabulario
+            </button>
             {isExtracting && (
               <span className="flex items-center gap-1.5 text-xs text-indigo-600">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
