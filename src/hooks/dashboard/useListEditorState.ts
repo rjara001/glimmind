@@ -36,8 +36,6 @@ export interface ListEditorState {
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
   showBulk: boolean;
   setShowBulk: React.Dispatch<React.SetStateAction<boolean>>;
-  showImportModal: boolean;
-  setShowImportModal: React.Dispatch<React.SetStateAction<boolean>>;
   validationResult: ImportValidationResult | null;
   setValidationResult: React.Dispatch<React.SetStateAction<ImportValidationResult | null>>;
   showValidationScreen: boolean;
@@ -104,7 +102,6 @@ export function useListEditorState(
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
   const [showValidationScreen, setShowValidationScreen] = useState(false);
   const [nameError, setNameError] = useState(false);
@@ -288,8 +285,6 @@ export function useListEditorState(
     setIsSaving,
     showBulk,
     setShowBulk,
-    showImportModal,
-    setShowImportModal,
     validationResult,
     setValidationResult,
     showValidationScreen,

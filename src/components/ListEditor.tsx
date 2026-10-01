@@ -1,10 +1,10 @@
-import React, { useEffect, useCallback, FormEvent } from "react";
+import React, { useEffect, useCallback } from "react";
 import type { AssociationList, Association } from "../types";
 import { SmartGroupModal } from "../components/modals/SmartGroupModal";
 import { useGameStore } from "../store/gameStore";
 import { useToast } from "../components/layout/Toast";
 import { QuotaAlert } from "../components/layout/QuotaAlert";
-import { CreateListForm } from "./views/dashboard/CreateListForm";
+
 import {
   ListEditorHeader,
   ListEditorNameSection,
@@ -96,7 +96,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     isSaving: state.isSaving,
     setIsSaving: state.setIsSaving,
     setNameError: state.setNameError,
-    setShowImportModal: state.setShowImportModal,
     validationResult: state.validationResult,
     setValidationResult: state.setValidationResult,
     setShowValidationScreen: state.setShowValidationScreen,
@@ -225,26 +224,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
             getSelectedAssociations={state.getSelectedAssociations}
           />
         )}
-        {state.showImportModal && (
-          <CreateListForm
-            newName={state.editList.name}
-            setNewName={(v) => state.setEditList((c) => ({ ...c, name: v }))}
-            newConcept={state.editList.concept || ""}
-            setNewConcept={(v) =>
-              state.setEditList((c) => ({ ...c, concept: v }))
-            }
-            onCancel={() => state.setShowImportModal(false)}
-            onSubmit={(_e: FormEvent) => {
-              state.setShowImportModal(false);
-              const saved = actions.cleanupAndSave(state.editList);
-              if (saved)
-                showToast(
-                  `Se guardaron los cambios a "${state.editList.name}"`,
-                  "success"
-                );
-            }}
-          />
-        )}
+        
         <ListEditorTranslationBar
           selectedCount={state.selectedIds.size}
           translationUsed={quotaData.translationUsed}

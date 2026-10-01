@@ -28,7 +28,6 @@ export interface UseListEditorActionsParams {
   isSaving: boolean;
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
   setNameError: React.Dispatch<React.SetStateAction<boolean>>;
-  setShowImportModal: React.Dispatch<React.SetStateAction<boolean>>;
   validationResult: ImportValidationResult | null;
   setValidationResult: React.Dispatch<React.SetStateAction<ImportValidationResult | null>>;
   setShowValidationScreen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -81,7 +80,6 @@ export function useListEditorActions(
     isSaving,
     setIsSaving,
     setNameError,
-    setShowImportModal,
     validationResult,
     setValidationResult,
     setShowValidationScreen,
@@ -430,7 +428,6 @@ export function useListEditorActions(
       const allLists = [...lists.filter((l) => l.id !== editList.id), editList];
       const validationResult = validateImportCards(newAssocs, allLists);
       setValidationResult(validationResult);
-      setShowImportModal(false);
       setShowValidationScreen(true);
     },
     [
@@ -438,7 +435,6 @@ export function useListEditorActions(
       lists,
       showToast,
       setNameError,
-      setShowImportModal,
       setShowValidationScreen,
       setValidationResult,
     ]

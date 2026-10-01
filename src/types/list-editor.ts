@@ -21,7 +21,6 @@ export interface ListEditorState {
   activeTagFilter: string | null;
   isSaving: boolean;
   showBulk: boolean;
-  showImportModal: boolean;
   validationResult: ImportValidationResult | null;
   showValidationScreen: boolean;
   nameError: boolean;
@@ -49,7 +48,6 @@ export interface UseListEditorActionsParams {
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
   setNameError: React.Dispatch<React.SetStateAction<boolean>>;
   setShowBulk: React.Dispatch<React.SetStateAction<boolean>>;
-  setShowImportModal: React.Dispatch<React.SetStateAction<boolean>>;
   setValidationResult: React.Dispatch<React.SetStateAction<ImportValidationResult | null>>;
   setShowValidationScreen: React.Dispatch<React.SetStateAction<boolean>>;
 }

@@ -43,6 +43,39 @@ const DEFAULT_STOPWORDS = new Set([...STOPWORDS_ES, ...STOPWORDS_EN]);
 
 const LEADING_ARTICLES = new Set(['the', 'a', 'an', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas']);
 
+// Phrasal verb endings that are allowed as trailing stopwords
+const PHRASAL_VERB_ENDINGS = new Set([
+  'up', 'down', 'on', 'off', 'in', 'out', 'back', 'over', 'away', 'through',
+  'around', 'about', 'after', 'before', 'between', 'across', 'against', 'along',
+  'among', 'around', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
+  'beyond', 'by', 'despite', 'during', 'except', 'following', 'inside', 'into',
+  'near', 'of', 'off', 'on', 'onto', 'out', 'outside', 'over', 'past', 'since',
+  'through', 'throughout', 'to', 'toward', 'under', 'underneath', 'until', 'up',
+  'upon', 'with', 'within', 'without',
+]);
+
+// Common phrasal verbs and idioms that must be preserved (never deduplicated)
+const MUST_KEEP_IDIOMS = new Set([
+  'skin deep',
+  'looking back',
+  'wink of an eye',
+  'spur of the moment',
+  'coming of age',
+  'piece of cake',
+  'break a leg',
+  'hit the nail on the head',
+  'ball is in your court',
+  'once in a blue moon',
+  'cost an arm and a leg',
+  'hit the sack',
+  'break the ice',
+  'let the cat out of the bag',
+  'see eye to eye',
+  'under the weather',
+  'hit the nail on the head',
+  'piece of cake',
+]);
+
 const tokenize = (text: string): string[] =>
   normalizeText(text)
     .split(/[^a-z0-9]+/)
@@ -76,6 +109,13 @@ const createStopwordsFunctions = (stopwords: Set<string>) => {
       if (!isSentenceStart) return false;
       const contentWords = tokens.filter(t => !stopwords.has(t));
       if (contentWords.length < 2) return false;
+    }
+    // Trailing stopword filter with phrasal verb exceptions
+    if (tokens.length > 1 && stopwords.has(tokens[tokens.length - 1])) {
+      const lastToken = tokens[tokens.length - 1];
+      const isPhrasalVerb = PHRASAL_VERB_ENDINGS.has(lastToken);
+      // Allow trailing stopword if it's a known phrasal verb ending
+      if (!isPhrasalVerb) return false;
     }
     if (tokens.length > 1 && tokens.every(t => stopwords.has(t))) return false;
     const contentWords = tokens.filter(t => !stopwords.has(t));
@@ -116,6 +156,10 @@ const createStopwordsFunctions = (stopwords: Set<string>) => {
       const normalized = kw.term.toLowerCase();
       const kwTokens = normalized.split(' ');
       let shouldSkip = false;
+      
+      // Check if this is a must-keep idiom - never skip these
+      const isMustKeep = MUST_KEEP_IDIOMS.has(normalized);
+      
       for (const existing of result) {
         const existingNorm = existing.term.toLowerCase();
         if (existingNorm.includes(normalized)) {
@@ -125,7 +169,12 @@ const createStopwordsFunctions = (stopwords: Set<string>) => {
         const existingTokens = existingNorm.split(' ');
         const overlap = tokenOverlap(kwTokens, existingTokens);
         if (overlap >= 0.5) {
-          shouldSkip = true;
+          // Never skip if this is a must-keep idiom
+          if (isMustKeep) {
+            shouldSkip = false;
+          } else {
+            shouldSkip = true;
+          }
           break;
         }
       }

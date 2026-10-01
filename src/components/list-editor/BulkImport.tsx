@@ -85,7 +85,12 @@ export const BulkImport: React.FC<BulkImportProps> = ({
   const charCount = extractText.length;
   const wordCount = extractText.trim() ? extractText.trim().split(/\s+/).length : 0;
   const isOverLimit = charCount > 10000;
-  const minSentences = extractText.match(/[^.!?]+[.!?]+/g)?.length ?? 0;
+
+  // Count sentences: first try punctuation-based, then fall back to newlines (like Dashboard's splitIntoSentences)
+  const punctuationSentences = extractText.match(/[^.!?]+[.!?]+/g)?.length ?? 0;
+  const newlineSentences = extractText.trim().split(/\n+/).filter(l => l.trim().length > 0).length;
+  const minSentences = Math.max(punctuationSentences, newlineSentences);
+
   const canExtract = extractText.trim().length >= 50 && minSentences >= 3 && !isExtracting;
 
   const renderKeywordPreview = () => {
