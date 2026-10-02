@@ -16,6 +16,7 @@ import { Auth } from './components/Auth';
 import { useGameStore } from './store/gameStore';
 import { VoskModelProvider } from './context/VoskModelContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FeedbackWidget } from './components/FeedbackWidget';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useNavigation } from './hooks/app/useNavigation';
@@ -463,6 +464,7 @@ const AppWrapper: React.FC = () => {
         <AuthProvider>
           <VoskModelProvider>
             <AppContent />
+            <FeedbackWidget />
           </VoskModelProvider>
         </AuthProvider>
       </BrowserRouter>

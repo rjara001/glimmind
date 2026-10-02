@@ -181,23 +181,25 @@ export const BulkImport: React.FC<BulkImportProps> = ({
           >
             {isExtracting ? '🔍 Analizando...' : '🔍 Analizar y Extraer Vocabulario'}
           </button>
-          {hasExtractedKeywords && selectedCount > 0 && (
+        </div>
+
+        {renderKeywordPreview()}
+
+        {hasExtractedKeywords && selectedCount > 0 && (
+          <div className="flex justify-end mt-4">
             <button
               type="button"
               onClick={() => {
                 const associations = extraction.getSelectedAssociations();
-                // Convert associations to CSV-like text for onBulkAdd
                 const text = associations.map(a => `${a.term},${a.definition[0] || ''},${a.context || ''}`).join('\n');
                 onBulkAdd(text);
               }}
-              className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition"
+              className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition"
             >
-              Crear Mazo ({selectedCount})
+              Process Extract ({selectedCount})
             </button>
-          )}
-        </div>
-
-        {renderKeywordPreview()}
+          </div>
+        )}
       </>
     );
   };
