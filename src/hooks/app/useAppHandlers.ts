@@ -5,6 +5,7 @@ import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
 import { QuotaService } from "../../services/quotaService";
 import { LAST_PLAYED_KEY } from "../../constants/app";
+import { safeSetItem } from "../../utils/localStorage";
 
 type ToastType = "success" | "error" | "info";
 
@@ -107,14 +108,14 @@ export function useAppHandlers({
 
       updateAssociations(currentListId, withTimestamps);
     },
-    [currentListId, updateAssociations, lists],
+[currentListId, updateAssociations, lists],
   );
 
-  const handlePlayList = useCallback(
+const handlePlayList = useCallback(
     (id: string) => {
       // All lists are now real lists (no drafts)
       setCurrentList(id);
-      localStorage.setItem(LAST_PLAYED_KEY, id);
+      safeSetItem(LAST_PLAYED_KEY, id);
       setLastPlayedId(id);
       navigate("game");
     },

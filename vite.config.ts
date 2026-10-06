@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/functions/': {
-            target: 'http://localhost:5001/fladycard-22a3e/us-central1',
+            target: 'http://localhost:9001/fladycard-22a3e/us-central1',
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/functions\//, '/')
           }

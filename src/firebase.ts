@@ -83,8 +83,8 @@ function markEmulatorsConnected(): void {
 if (isUsingEmulators && !hasEmulatorsConnected()) {
   try {
     connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-    connectFirestoreEmulator(db, "localhost", 8080);
-    connectFunctionsEmulator(functions, "localhost", 5001);
+    connectFirestoreEmulator(db, "localhost", 9080);
+    connectFunctionsEmulator(functions, "localhost", 9001);
     markEmulatorsConnected();
     console.log("🔥 Modo local: Emuladores conectados");
   } catch (e) {

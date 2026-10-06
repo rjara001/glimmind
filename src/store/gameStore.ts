@@ -26,6 +26,7 @@ import { GUEST_UID } from '../constants/app';
 import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
 import { computeDelta, AssociationDelta, chunkDeltas, mergeCloudWins } from '../utils/syncDelta';
 import { SYNC_CONFIG } from '../constants/syncConfig';
+import { safeGetItem, safeSetItem, safeRemoveItem, safeStringify } from '../utils/localStorage';
 
 const LOCAL_STORAGE_KEY = 'glimmind_lists';
 const LOCAL_STORAGE_BACKUP_KEY = 'glimmind_lists_backup';
@@ -35,18 +36,18 @@ const LOCAL_LAST_PLAYED_KEY = 'glimmind_last_played';
 const PENDING_DELTAS_KEY = 'glimmind_pending_deltas';
 
 function clearLocalCache(): void {
-  localStorage.removeItem(LOCAL_STORAGE_KEY);
-  localStorage.removeItem(LOCAL_STORAGE_BACKUP_KEY);
-  localStorage.removeItem(LOCAL_PROGRESS_KEY);
-  localStorage.removeItem(LOCAL_LAST_PLAYED_KEY);
-  localStorage.removeItem(LAST_CLOUD_FETCH_KEY);
+  safeRemoveItem(LOCAL_STORAGE_KEY);
+  safeRemoveItem(LOCAL_STORAGE_BACKUP_KEY);
+  safeRemoveItem(LOCAL_PROGRESS_KEY);
+  safeRemoveItem(LOCAL_LAST_PLAYED_KEY);
+  safeRemoveItem(LAST_CLOUD_FETCH_KEY);
 }
 
 function ensureCacheMatchesEnvironment(): void {
   const env = isUsingEmulators ? 'emulator' : 'prod';
-  if (localStorage.getItem(CACHE_ENV_KEY) !== env) {
+  if (safeGetItem(CACHE_ENV_KEY) !== env) {
     clearLocalCache();
-    localStorage.setItem(CACHE_ENV_KEY, env);
+    safeSetItem(CACHE_ENV_KEY, env);
   }
 }
 
@@ -84,12 +85,12 @@ if (typeof window !== 'undefined') {
 }
 
 function shouldFetchCloudLists(uid: string): boolean {
-  const last = Number(localStorage.getItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`) || 0);
+  const last = Number(safeGetItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`) || '0');
   return Date.now() - last > LIST_CACHE_TTL_MS;
 }
 
 function markCloudFetch(uid: string) {
-  localStorage.setItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`, String(Date.now()));
+  safeSetItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`, String(Date.now()));
 }
 
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
@@ -122,14 +123,14 @@ function applyFlattening(lists: AssociationList[]): { lists: AssociationList[]; 
 }
 
 function backupLocalLists(): void {
-  const existing = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const existing = safeGetItem(LOCAL_STORAGE_KEY);
   if (existing) {
-    localStorage.setItem(LOCAL_STORAGE_BACKUP_KEY, existing);
+    safeSetItem(LOCAL_STORAGE_BACKUP_KEY, existing);
   }
 }
 
 function restoreLocalListsFromBackup(): AssociationList[] | null {
-  const backup = localStorage.getItem(LOCAL_STORAGE_BACKUP_KEY);
+  const backup = safeGetItem(LOCAL_STORAGE_BACKUP_KEY);
   if (!backup) return null;
   try {
     const parsed = JSON.parse(backup);
@@ -441,9 +442,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ user });
 
     if (user && user.uid === GUEST_UID) {
-      localStorage.setItem('glimmind_guest_user', JSON.stringify(user));
+      safeStringify('glimmind_guest_user', user);
     } else if (!user) {
-      localStorage.removeItem('glimmind_guest_user');
+      safeRemoveItem('glimmind_guest_user');
     }
 
     if (isSwitch) {
@@ -466,7 +467,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setLists: (lists) => {
     const normalizedLists = withNormalizedVoiceLanguages(lists);
     set({ lists: normalizedLists });
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedLists));
+    safeStringify(LOCAL_STORAGE_KEY, normalizedLists);
   },
   
   updateAssociations: (listId, associations) => {
@@ -496,7 +497,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lists: updatedLists,
       currentList: updatedLists.find(l => l.id === listId) || null
     });
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
+    safeStringify(LOCAL_STORAGE_KEY, updatedLists);
   },
 
   markListCompleted: async (listId) => {
@@ -521,7 +522,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lists: updatedLists,
       currentList: updatedLists.find((l) => l.id === listId) || null,
     });
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
+    safeStringify(LOCAL_STORAGE_KEY, updatedLists);
     if (user && user.uid !== GUEST_UID) {
       try {
         await listService.updateList(listId, { history: nextHistory });
@@ -561,7 +562,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lists: updatedLists,
       currentList: list
     });
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedLists));
+    safeStringify(LOCAL_STORAGE_KEY, updatedLists);
   },
 
   // Progress actions
@@ -570,17 +571,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const isGuest = !user || user.uid === GUEST_UID;
 
     if (isGuest) {
-      const savedLocal = localStorage.getItem(LOCAL_PROGRESS_KEY);
+      const savedLocal = safeGetItem(LOCAL_PROGRESS_KEY);
       const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
       set({ progress: localProgress || createDefaultProgress() });
       return;
     }
 
-    const savedLocal = localStorage.getItem(LOCAL_PROGRESS_KEY);
+    const savedLocal = safeGetItem(LOCAL_PROGRESS_KEY);
     const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
     const progress = localProgress || createDefaultProgress();
     set({ progress });
-    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
+    safeStringify(LOCAL_PROGRESS_KEY, progress);
     if (localProgress === null) {
       get().setGoalTarget(progress.goalTarget);
     }
@@ -738,7 +739,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       goalStartedAt: todayKey(),
     };
     set({ progress: nextProgress });
-    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(nextProgress));
+    safeStringify(LOCAL_PROGRESS_KEY, nextProgress);
     if (user && user.uid !== GUEST_UID) {
       get()._persistProgress(nextProgress);
     }
@@ -768,7 +769,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
     
     // Guardar únicamente en almacenamiento local (caché/UI)
-    localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progressToSave));
+    safeStringify(LOCAL_PROGRESS_KEY, progressToSave);
   },
   
   // Initialization
@@ -782,7 +783,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     ensureCacheMatchesEnvironment();
 
     // Load persisted pending deltas
-    const savedDeltas = localStorage.getItem(PENDING_DELTAS_KEY);
+    const savedDeltas = safeGetItem(PENDING_DELTAS_KEY);
     if (savedDeltas) {
       try {
         const parsed = JSON.parse(savedDeltas);
@@ -798,7 +799,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const isGuest = !user || user.uid === GUEST_UID;
 
-    const savedLists = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const savedLists = safeGetItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
       try {
         const parsed = JSON.parse(savedLists);
@@ -808,7 +809,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           : flattenedParsed.filter((l: AssociationList) => l.userId === user.uid);
         const normalizedParsed = withNormalizedVoiceLanguages(filteredLists);
         set({ lists: normalizedParsed });
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedParsed));
+        safeStringify(LOCAL_STORAGE_KEY, normalizedParsed);
       } catch (e) {
         console.error('Error loading from localStorage:', e);
       }
@@ -833,7 +834,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, currentLocalLists, user.uid);
           const normalizedMerged = withNormalizedVoiceLanguages(merged);
           set({ lists: normalizedMerged });
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
+          safeStringify(LOCAL_STORAGE_KEY, normalizedMerged);
           if (changedIds.length > 0) {
             changedIds.forEach((listId) => {
               get().syncToCloud(listId).catch((error) => {
@@ -849,11 +850,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ]);
 
             // Progress is loaded from localStorage only (no progressService)
-            const localProgressRaw = localStorage.getItem(LOCAL_PROGRESS_KEY);
+            const localProgressRaw = safeGetItem(LOCAL_PROGRESS_KEY);
             const localProgress = localProgressRaw ? JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number } : null;
             const progress = localProgress || createDefaultProgress();
             set({ progress });
-            localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(progress));
+            safeStringify(LOCAL_PROGRESS_KEY, progress);
 
             if (cloudQuotaResult.status === 'fulfilled' && cloudQuotaResult.value) {
               set({ quota: cloudQuotaResult.value });
@@ -863,7 +864,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
             if (cloudSettingsResult.status === 'fulfilled' && cloudSettingsResult.value) {
               const cloudSettings = cloudSettingsResult.value;
-              const localSettingsRaw = localStorage.getItem('glimmind_settings');
+              const localSettingsRaw = safeGetItem('glimmind_settings');
               const localSettings = localSettingsRaw ? JSON.parse(localSettingsRaw) as UserSettings : null;
               const localUpdatedAt = localSettings?.updatedAt ?? Date.now();
               const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
@@ -909,7 +910,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const normalizedMerged = withNormalizedVoiceLanguages(merged);
 
       set({ lists: normalizedMerged });
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedMerged));
+      safeStringify(LOCAL_STORAGE_KEY, normalizedMerged);
 
       if (changedIds.length > 0) {
         changedIds.forEach((listId) => {
@@ -944,7 +945,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     // Persist to localStorage
     const obj = Object.fromEntries(newPendingDeltas);
-    localStorage.setItem(PENDING_DELTAS_KEY, JSON.stringify(obj));
+    safeStringify(PENDING_DELTAS_KEY, obj);
   },
 
   flushSync: async (listId, options = {}) => {
@@ -1016,7 +1017,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       
       // Persist cleared state
       const obj = Object.fromEntries(newPendingDeltas);
-      localStorage.setItem(PENDING_DELTAS_KEY, JSON.stringify(obj));
+      safeStringify(PENDING_DELTAS_KEY, obj);
       
     } catch (error: any) {
       // Handle conflict (409/aborted) with retry guard

@@ -2,6 +2,7 @@ import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { callFunction } from './callFunction';
 import { Association } from '../types';
 import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
+import { safeGetItem, safeStringify } from '../utils/localStorage';
 
 const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
 const LOCAL_SESSIONS_KEY = 'glimmind_sessions';
@@ -22,7 +23,7 @@ export interface ActivityQuery {
 }
 
 function loadLocalActivity(): CardActivityEvent[] {
-  const saved = localStorage.getItem(LOCAL_ACTIVITY_KEY);
+  const saved = safeGetItem(LOCAL_ACTIVITY_KEY);
   if (!saved) return [];
   try {
     const parsed = JSON.parse(saved);
@@ -33,11 +34,11 @@ function loadLocalActivity(): CardActivityEvent[] {
 }
 
 function saveLocalActivity(events: CardActivityEvent[]): void {
-  localStorage.setItem(LOCAL_ACTIVITY_KEY, JSON.stringify(events));
+  safeStringify(LOCAL_ACTIVITY_KEY, events);
 }
 
 function loadLocalSessions(): GameSessionSummary[] {
-  const saved = localStorage.getItem(LOCAL_SESSIONS_KEY);
+  const saved = safeGetItem(LOCAL_SESSIONS_KEY);
   if (!saved) return [];
   try {
     const parsed = JSON.parse(saved);
@@ -48,7 +49,7 @@ function loadLocalSessions(): GameSessionSummary[] {
 }
 
 function saveLocalSessions(sessions: GameSessionSummary[]): void {
-  localStorage.setItem(LOCAL_SESSIONS_KEY, JSON.stringify(sessions));
+  safeStringify(LOCAL_SESSIONS_KEY, sessions);
 }
 
 async function recordEventsInternal(userId: string, events: CardActivityEvent[]): Promise<void> {

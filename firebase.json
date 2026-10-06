@@ -212,17 +212,17 @@
       "port": 9099
     },
     "firestore": {
-      "port": 8080
+      "port": 9080
     },
     "functions": {
-      "port": 5001,
+      "port": 9001,
       "env": {
-        "FIRESTORE_EMULATOR_HOST": "localhost:8080"
+        "FIRESTORE_EMULATOR_HOST": "localhost:9080"
       }
     },
     "ui": {
       "enabled": true,
-      "port": 4000
+      "port": 9000
     },
     "single_project_mode": true
   }

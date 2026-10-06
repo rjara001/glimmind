@@ -4,6 +4,7 @@ import { auth, onAuthStateChanged } from '../../firebase';
 import type { User } from 'firebase/auth';
 import type { AppView } from '../../types/app';
 import { GUEST_ID, LAST_PLAYED_KEY } from '../../constants/app';
+import { safeGetItem, safeRemoveItem } from '../../utils/localStorage';
 
 export function useAppBootstrap(navigate: (view: AppView) => void) {
   const setUser = useGameStore((state) => state.setUser);
@@ -11,7 +12,7 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   const isLoaded = useGameStore((state) => state.isLoaded);
 
   const [lastPlayedId, setLastPlayedId] = useState<string | undefined>(() => {
-    return localStorage.getItem(LAST_PLAYED_KEY) || undefined;
+    return safeGetItem(LAST_PLAYED_KEY) || undefined;
   });
   const didAutoNavigate = useRef(false);
 
@@ -34,12 +35,12 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
       if (firebaseUser) {
-        localStorage.removeItem('glimmind_guest_user');
+        safeRemoveItem('glimmind_guest_user');
         setUser(firebaseUser);
         return;
       }
 
-      const savedGuest = localStorage.getItem('glimmind_guest_user');
+      const savedGuest = safeGetItem('glimmind_guest_user');
       if (savedGuest) {
         try {
           const guest = JSON.parse(savedGuest);
@@ -52,7 +53,7 @@ export function useAppBootstrap(navigate: (view: AppView) => void) {
         }
       }
 
-      localStorage.removeItem('glimmind_guest_user');
+      safeRemoveItem('glimmind_guest_user');
       setUser(null);
     });
     return () => unsubscribe();
