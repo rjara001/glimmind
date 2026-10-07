@@ -1,6 +1,5 @@
 const { getDb, getAuth, FieldValue } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
-const { QuotaExceededError } = require("../utils/helpers");
 const aiService = require("./aiService");
 
 async function handleAiGroup(req, res) {

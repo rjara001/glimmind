@@ -1,7 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { getDb, getAuth } = require("../utils/firebase");
 const { requireAuth } = require("../utils/helpers");
-const { QuotaExceededError } = require("../utils/helpers");
 const userService = require("../services/userService");
 const adminService = require("../services/adminService");
 const { GetQuotaSchema } = require("../utils/validation");
@@ -40,6 +39,25 @@ exports.getQuota = onRequest({ cors: true }, applyRateLimit("default", async (re
 
   const { userId } = body;
 
+  // Handle anonymous users - return default free quota without auth
+  if (!userId || userId === 'anonymous') {
+    const { getMaxCards, getAiDailyLimit } = require("../utils/quotaConfig");
+    const { TRANSLATION_USER_MONTHLY_CHARS } = require("../utils/constants");
+    const freeMaxCards = getMaxCards('free');
+    const freeAiDailyLimit = getAiDailyLimit('free');
+    return res.json({
+      tier: 'free',
+      cardCount: 0,
+      cardQuota: freeMaxCards,
+      aiQuotaDaily: freeAiDailyLimit,
+      aiUsedToday: 0,
+      ytAiUsedToday: 0,
+      ytAiDailyLimit: freeAiDailyLimit,
+      translationCharsUsed: 0,
+      translationCharLimit: TRANSLATION_USER_MONTHLY_CHARS,
+    });
+  }
+
   const uid = await requireAuth(req, res, userId);
   if (!uid) return;
 
@@ -47,7 +65,23 @@ exports.getQuota = onRequest({ cors: true }, applyRateLimit("default", async (re
     const data = await userService.getQuota(getDb(), userId);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[getQuota] Error fetching quota:', error);
+    // Fallback to default free quota instead of 500
+    const { getMaxCards, getAiDailyLimit } = require("../utils/quotaConfig");
+    const { TRANSLATION_USER_MONTHLY_CHARS } = require("../utils/constants");
+    const freeMaxCards = getMaxCards('free');
+    const freeAiDailyLimit = getAiDailyLimit('free');
+    res.json({
+      tier: 'free',
+      cardCount: 0,
+      cardQuota: freeMaxCards,
+      aiQuotaDaily: freeAiDailyLimit,
+      aiUsedToday: 0,
+      ytAiUsedToday: 0,
+      ytAiDailyLimit: freeAiDailyLimit,
+      translationCharsUsed: 0,
+      translationCharLimit: TRANSLATION_USER_MONTHLY_CHARS,
+    });
   }
 }));
 

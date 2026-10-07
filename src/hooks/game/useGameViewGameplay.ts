@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from "react";
+import { FlowTracker } from "../../utils/breadcrumbs";
 import { joinDefinitions, parseDefinitions } from "../../utils/normalizeAssociation";
 import type { Association, AssociationList, Attempt, GameCycle, GameState } from "../../types";
 import { useGameLogic } from "./useGameLogic";
@@ -35,7 +36,7 @@ export interface UseGameViewGameplayArgs {
   isEditingCard: boolean;
   isPracticeMode: boolean;
   actions: ReturnType<typeof useGameLogic>["actions"];
-  onUpdateAssociations: (associations: Association[]) => Promise<void>;
+  onUpdateAssociations: (associations: Association[], tracker?: FlowTracker) => Promise<void>;
   effectTrigger?: (type: EffectType, options?: any) => void;
 }
 
@@ -177,7 +178,7 @@ export function useGameViewGameplay({
       const updatedAssociations = gameState.associations.map((a) =>
         a.id === associationId ? { ...a, [field]: nextValue, updatedAt: Date.now() } : a,
       );
-      await onUpdateAssociations(updatedAssociations);
+      await onUpdateAssociations(updatedAssociations, undefined);
     },
     [gameState.associations, onUpdateAssociations],
   );

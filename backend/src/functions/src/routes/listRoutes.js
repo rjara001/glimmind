@@ -1,7 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { getDb } = require("../utils/firebase");
 const { requireAuth } = require("../utils/helpers");
-const { QuotaExceededError } = require("../utils/helpers");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../utils/constants");
 const listService = require("../services/listService");
 const { GetListsSchema, CreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema, UpdateListFieldsSchema } = require("../utils/validation");

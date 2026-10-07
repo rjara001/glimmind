@@ -11,11 +11,13 @@ import type { CycleMiniStats } from "./cycle-mini-bar-props";
 
 export type GameVoice = ReturnType<typeof useGameVoice>;
 
+import { FlowTracker } from "../utils/breadcrumbs";
+
 export interface GameViewProps {
   list: AssociationList;
   onBack: (updatedAssociations?: Association[]) => void;
-  onUpdateAssociations: (updatedAssociations: Association[]) => Promise<void>;
-  onUpdateList?: (updatedList: AssociationList) => Promise<void>;
+  onUpdateAssociations: (updatedAssociations: Association[], tracker?: FlowTracker) => Promise<void>;
+  onUpdateList?: (updatedList: AssociationList, tracker?: FlowTracker) => Promise<void>;
   onViewList?: (associationId?: string) => void;
   voiceMode?: boolean;
 }

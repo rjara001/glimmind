@@ -74,10 +74,11 @@ export class QuotaService {
 
 export const quotaService = {
   fetchQuota: async (userId: string): Promise<UserQuota | null> => {
-    if (!userId) return null;
+    if (!userId || userId === 'anonymous') return null;
     try {
       return await callFunction<UserQuota>('getQuota', { userId });
     } catch (error) {
+      console.warn('[quotaService.fetchQuota] Failed to fetch quota:', error);
       return null;
     }
   },

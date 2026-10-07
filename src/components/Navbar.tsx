@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserMenu } from './layout/UserMenu';
+import { APP_VERSION } from '../constants/version';
 
 interface NavItem {
   path: string;
@@ -72,6 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
                 </svg>
               </div>
               <span className="text-xl font-black text-slate-900 hidden sm:block">Glimmind</span>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-1 bg-slate-50 rounded-xl p-1">

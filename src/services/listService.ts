@@ -1,3 +1,4 @@
+import { QuotaExceededError, ListNotFoundError } from '../errors/listErrors';
 import { Association, AssociationList, ListSettings } from '../types';
 import { DeckSourceType } from '../types/youtube-deck';
 import { SourceRow } from '../types/source-row';
@@ -6,8 +7,8 @@ import { QuotaService, quotaService } from './quotaService';
 import { activityService } from './activityService';
 import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
 import { QuotaStatus } from '../types/quota';
-import { QuotaExceededError, ListNotFoundError } from '../types/list-service';
 import { AssociationDelta } from '../utils/syncDelta';
+
 
 export class ListServiceImpl {
   constructor(

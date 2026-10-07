@@ -247,7 +247,7 @@ export const GameView: React.FC<GameViewProps> = ({
   useEffect(() => {
     const syncToStore = () => {
       if (gameState.associations.length > 0) {
-        onUpdateAssociations(gameState.associations);
+        onUpdateAssociations(gameState.associations, undefined);
       }
     };
 
@@ -454,12 +454,12 @@ export const GameView: React.FC<GameViewProps> = ({
       {state.showSettings && (
         <SettingsModal
           list={list}
-          onUpdateList={async (updatedList) => {
+          onUpdateList={async (updatedList, tracker) => {
             console.log("Updated list:", updatedList);
             if (onUpdateList) {
-              await onUpdateList(updatedList);
+              await onUpdateList(updatedList, tracker);
             } else {
-              await onUpdateAssociations(updatedList.associations);
+              await onUpdateAssociations(updatedList.associations, tracker);
             }
           }}
           onClose={state.closeSettings}

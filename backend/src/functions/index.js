@@ -2,7 +2,6 @@ const { onRequest } = require("firebase-functions/v2/https");
 // deploy: schema update 2026-09-17
 const { getDb } = require("./src/utils/firebase");
 const { requireAuth } = require("./src/utils/helpers");
-const { QuotaExceededError } = require("./src/utils/helpers");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("./src/utils/constants");
 
 const listService = require("./src/services/listService");
@@ -26,6 +25,7 @@ const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const youtubeDeckRoutes = require("./src/routes/youtubeDeckRoutes");
 const createDeckFromTextRoutes = require("./src/routes/createDeckFromText");
 const translateVocabularyRoutes = require("./src/routes/translateVocabulary");
+const loggingRoutes = require("./src/routes/loggingRoutes");
 
 function loadRoutes(routes) {
   Object.keys(routes).forEach((key) => {
@@ -47,3 +47,4 @@ loadRoutes(dashboardRoutes);
 loadRoutes(youtubeDeckRoutes);
 loadRoutes(createDeckFromTextRoutes);
 loadRoutes(translateVocabularyRoutes);
+loadRoutes(loggingRoutes);

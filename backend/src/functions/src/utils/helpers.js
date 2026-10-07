@@ -102,6 +102,19 @@ async function requireAuthForUser(req, res, expectedUserId) {
   return uid;
 }
 
+function getOptionalAuthUid(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) return null;
+  
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    return payload.uid || null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   QuotaExceededError,
   todayKey,
@@ -110,4 +123,5 @@ module.exports = {
   getOrCreateMeta,
   toMillis,
   requireAuth,
+  getOptionalAuthUid,
 };

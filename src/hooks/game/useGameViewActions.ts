@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { FlowTracker } from "../../utils/breadcrumbs";
 import type { Association, AssociationList, Attempt, GameState, GameSummary } from "../../types";
 import { useGameStore } from "../../store/gameStore";
 import type { GameViewState } from "./useGameViewState";
@@ -19,7 +20,7 @@ export interface UseGameViewActionsArgs {
   voice: { stop: () => void };
   state: GameViewState;
   onBack: (updatedAssociations?: Association[]) => void;
-  onUpdateAssociations: (associations: Association[]) => Promise<void>;
+  onUpdateAssociations: (associations: Association[], tracker?: FlowTracker) => Promise<void>;
   onViewList?: (associationId?: string) => void;
 }
 
@@ -71,7 +72,7 @@ export function useGameViewActions({
           ? { ...a, term: trimmedTerm, definition: [definition.trim()], updatedAt: Date.now() }
           : a,
       );
-      await onUpdateAssociations(updatedAssociations);
+      await onUpdateAssociations(updatedAssociations, undefined);
       actions.updateCurrentAssociation(trimmedTerm, [definition.trim()]);
       state.stopEditingCard();
       if (state.isPresentationMode) practicePlayer.resume();
@@ -138,7 +139,7 @@ export function useGameViewActions({
       });
       const updatedList = { ...list, associations: updatedAssociations };
       try {
-        await onUpdateAssociations(updatedAssociations);
+        await onUpdateAssociations(updatedAssociations, undefined);
         const remainingToPlay = updatedAssociations.filter((a) => !a.isArchived).length;
         if (remainingToPlay === 0) {
           onBack(updatedAssociations);
@@ -163,7 +164,7 @@ export function useGameViewActions({
     }));
     const updatedList = { ...list, associations: resetAssociations };
     try {
-      await onUpdateAssociations(resetAssociations);
+      await onUpdateAssociations(resetAssociations, undefined);
       actions.restart(updatedList);
     } catch (error) {
       console.error("Error during full restart:", error);

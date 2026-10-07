@@ -36,7 +36,13 @@ export const listService = {
   },
 
   updateList: async (listId: string, updates: Partial<AssociationList>): Promise<void> => {
-    await callFunction('updateList', { listId, ...updates });
+    try {
+      await callFunction('updateList', { listId, ...updates });
+    } catch (error) {
+      // If the user is anonymous or the backend fails, don't throw - local update is sufficient
+      console.warn('[firestoreService.updateList] Remote update failed, keeping local changes:', error);
+      // Don't re-throw to allow local-only updates for anonymous users
+    }
   },
 
   deleteList: async (listId: string): Promise<void> => {

@@ -6,6 +6,7 @@ import type {
   GameState,
   VoiceCommandId,
 } from "../../types";
+import { FlowTracker } from "../../utils/breadcrumbs";
 import { joinDefinitions } from "../../utils/normalizeAssociation";
 import { COMMAND_TOAST_MS } from "../../constants/voice";
 import { useGameLogic } from "./useGameLogic";
@@ -29,7 +30,7 @@ export interface UseGameViewEffectsArgs {
   similarity: number | null | undefined;
   isReversed: boolean;
   detectedVoiceCommand: VoiceCommandId | undefined;
-  onUpdateAssociations?: (associations: Association[]) => Promise<void>;
+  onUpdateAssociations?: (associations: Association[], tracker?: FlowTracker) => Promise<void>;
   onCountdownRunningChange: (running: boolean) => void;
   onPresentationModeChange: (active: boolean) => void;
   onAttemptToast: (message: string, kind: "success" | "error") => void;
@@ -188,7 +189,7 @@ export function useGameViewEffects({
     if (onUpdateAssociations && gameState.associations) {
       const current = JSON.stringify(gameState.associations);
       if (current !== loadedAssociationsRef.current) {
-        void onUpdateAssociations(gameState.associations);
+        void onUpdateAssociations(gameState.associations, undefined);
         loadedAssociationsRef.current = current;
       }
     }

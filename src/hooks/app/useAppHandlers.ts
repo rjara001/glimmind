@@ -6,6 +6,8 @@ import type { AppView } from "../../types/app";
 import { QuotaService } from "../../services/quotaService";
 import { LAST_PLAYED_KEY } from "../../constants/app";
 import { safeSetItem } from "../../utils/localStorage";
+import { getCorrelationId, getSessionId } from "../../services/errorReporting";
+import { FlowTracker } from "../../utils/breadcrumbs";
 
 type ToastType = "success" | "error" | "info";
 
@@ -22,7 +24,7 @@ export interface UseAppHandlersReturn {
   handleUpdateAssociations: (updatedAssociations: Association[]) => void;
   handlePlayList: (id: string) => void;
   handleQuickAdd: (listId: string, term: string, definition: string) => void;
-  handleUpdateList: (list: AssociationList) => Promise<void>;
+  handleUpdateList: (list: AssociationList, tracker?: FlowTracker) => Promise<void>;
   handleCreateList: (
     name: string,
     concept: string,
@@ -240,10 +242,16 @@ console.log('pass3');
   );
 
   const handleUpdateList = useCallback(
-    async (list: AssociationList) => {
+    async (list: AssociationList, tracker?: FlowTracker) => {
       if (!user) return;
+      
+      tracker?.add('parent: handleUpdateList started', { listId: list.id });
+
       try {
+        tracker?.add('parent: preparing list with timestamp');
         const listWithTimestamp = { ...list, updatedAt: Date.now() };
+        
+        tracker?.add('parent: calling listService.updateList');
         await listService.updateList({
           id: listWithTimestamp.id,
           name: listWithTimestamp.name,
@@ -251,16 +259,49 @@ console.log('pass3');
           associations: listWithTimestamp.associations,
           settings: listWithTimestamp.settings,
         });
+        
+        tracker?.add('parent: listService.updateList resolved, updating local store');
         const currentLists = useGameStore.getState().lists;
         useGameStore.getState().setLists(
           currentLists.map((l) => (l.id === listWithTimestamp.id ? listWithTimestamp : l)),
         );
+        
+        tracker?.add('parent: local store updated, showing toast');
         showToast("Lista guardada", "success");
-      } catch (error) {
+        
+        tracker?.add('parent: handleUpdateList completed successfully');
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorName = error instanceof Error ? error.name : 'UnknownError';
+        
+        tracker?.add('parent: caught exception', {
+          errorMessage,
+          errorName,
+        });
+        
+        // Check if this is a backend 500 error that we've already handled gracefully
+        const isHandledBackendError = error instanceof Error && 
+          (error.message.includes('500') || error.message.includes('Internal Server Error'));
+        
+        if (error instanceof Error) {
+          (error as any).__flowContext = {
+            flow: 'settings-accept-close',
+            source: 'useAppHandlers.handleUpdateList',
+            listId: list.id,
+            correlationId: getCorrelationId(),
+            sessionId: getSessionId()
+          };
+        }
         showToast(
-          error instanceof Error ? error.message : "Error al guardar",
+          errorMessage,
           "error",
         );
+        
+        // Only re-throw if it's NOT a backend 500 error that we've already handled
+        // Backend 500 errors for anonymous users are handled gracefully in firestoreService
+        if (!isHandledBackendError) {
+          throw error;
+        }
       }
     },
     [user, showToast],

@@ -5,11 +5,23 @@ export class LocalStorageQuotaError extends Error {
   }
 }
 
-function isQuotaExceededError(error: unknown): boolean {
-  if (error instanceof DOMException) {
-    return error.name === 'QuotaExceededError' || error.code === 22;
-  }
-  return false;
+/**
+ * Checks if an error is a quota exceeded error.
+ * Handles cross-browser differences:
+ * - Chrome/Edge: DOMException with name 'QuotaExceededError', code 22
+ * - Firefox: DOMException with name 'NS_ERROR_DOM_QUOTA_REACHED', code 1014
+ * - Safari: DOMException with name 'QuotaExceededError', code 22
+ * - Some browsers may throw plain objects with name/code properties
+ */
+export function isQuotaExceededError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { name?: string; code?: number };
+  return (
+    e.name === 'QuotaExceededError' ||
+    e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    e.code === 22 ||
+    e.code === 1014
+  );
 }
 
 export function safeGetItem(key: string): string | null {
