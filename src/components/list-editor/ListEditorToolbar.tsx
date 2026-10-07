@@ -13,6 +13,7 @@ interface ListEditorToolbarProps {
   onAddRow: () => void;
   isAddRowDisabled: boolean;
   onToggleBulk: () => void;
+  isLoading?: boolean;
 }
 
 export const ListEditorToolbar: React.FC<ListEditorToolbarProps> = ({
@@ -28,6 +29,7 @@ export const ListEditorToolbar: React.FC<ListEditorToolbarProps> = ({
   onAddRow,
   isAddRowDisabled,
   onToggleBulk,
+  isLoading,
 }) => {
   return (
     <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-wrap">
@@ -92,14 +94,25 @@ export const ListEditorToolbar: React.FC<ListEditorToolbarProps> = ({
 
       <button
         onClick={onAddRow}
-        disabled={isAddRowDisabled}
+        disabled={isAddRowDisabled || isLoading}
         className="px-5 py-2.5 rounded-full bg-indigo-600 text-white text-[0.8rem] font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
       >
-        + Añadir tarjeta
+        {isLoading ? (
+          <>
+            <svg className="animate-spin h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Añadiendo...
+          </>
+        ) : (
+          "+ Añadir tarjeta"
+        )}
       </button>
       <button
         onClick={onToggleBulk}
-        className="px-5 py-2.5 rounded-full border border-[#dce2ea] bg-white text-[#1f3347] text-[0.8rem] font-medium hover:bg-[#f1f5f9] transition whitespace-nowrap"
+        disabled={isLoading}
+        className="px-5 py-2.5 rounded-full border border-[#dce2ea] bg-white text-[#1f3347] text-[0.8rem] font-medium hover:bg-[#f1f5f9] transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
       >
         📥 Importar
       </button>

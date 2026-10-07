@@ -39,6 +39,9 @@ interface ListEditorProps {
     associations: Association[],
     settings?: Partial<AssociationList["settings"]>
   ) => Promise<string | null>;
+  isSaving?: boolean;
+  isCreating?: boolean;
+  isSplitting?: boolean;
 }
 
 export const ListEditor: React.FC<ListEditorProps> = ({
@@ -51,6 +54,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({
   onCreateMultiple,
   isCreateMode = false,
   onCreateList,
+  isSaving,
+  isCreating,
+  isSplitting,
 }) => {
   const { showToast } = useToast();
   const quota = useGameStore((state) => state.quota);
@@ -201,6 +207,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
             !isPremium && quotaData.quotaStatus?.level === "blocked"
           }
           onToggleBulk={() => state.setShowBulk((prev) => !prev)}
+          isLoading={isSaving || isCreating || isSplitting}
         />
         <ListEditorTagFilter
           tags={quotaData.uniqueTags}
@@ -241,6 +248,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           onUpdateField={actions.handleUpdateField}
           onUpdateTags={actions.handleUpdateTags}
           onRemoveRow={actions.handleRemoveRow}
+          onBlurRow={actions.handleBlurRow}
           selectable
           autoOpenId={state.autoOpenActiveId}
           selectedIds={state.selectedIds}
@@ -287,6 +295,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
               onUpdateTags={actions.handleUpdateTags}
               onRemoveRow={actions.handleRemoveRow}
               onRestoreRow={actions.handleRestoreRow}
+              onBlurRow={actions.handleBlurRow}
               isArchived
               selectable
               selectedIds={state.selectedArchivedIds}
@@ -309,6 +318,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           hasName={state.hasName}
           onNameFocus={() => document.getElementById("list-name")?.focus()}
           showToast={showToast}
+          isCreating={isCreating}
+          isSplitting={isSplitting}
         />
       </div>
 

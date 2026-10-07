@@ -15,6 +15,7 @@ interface DeckStoreOnboardingProps {
   onCreateCustom: () => void;
   onYouTube: () => void;
   onTextImport: () => void;
+  isLoading?: boolean;
 }
 
 export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
@@ -22,6 +23,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   onCreateCustom,
   onYouTube,
   onTextImport,
+  isLoading: isLoadingProp,
 }) => {
   const { showToast } = useToast();
   // Hook reactivo (no getState)
@@ -38,6 +40,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   });
   const hasFetchedRef = useRef(false);
   const [hasExplored, setHasExplored] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const { result: validationResult, isValidating } = useDeckValidation(selectedDeck, lists);
 
   const handleExplore = useCallback(() => {
@@ -97,12 +100,15 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
 
     setSelectedDeck(null);
     setSelectedCategories({ existing: true, similar: true, new: true });
+    setIsImporting(true);
 
     try {
       await onAddDeck(filteredDeck);
       showToast(`¡Se agregaron ${filteredAssociations.length} tarjetas a tu espacio!`, 'success');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Error al agregar tarjetas', 'error');
+    } finally {
+      setIsImporting(false);
     }
   }, [selectedDeck, validationResult, onAddDeck, selectedCategories, showToast]);
 
@@ -206,6 +212,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
           }
           onAddSelected={handleImportConfirm}
           onBack={handleBackToDecks}
+          isLoading={isLoadingProp || isImporting}
         />
       )}
 

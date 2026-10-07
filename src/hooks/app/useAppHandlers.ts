@@ -19,6 +19,10 @@ interface UseAppHandlersParams {
 
 export interface UseAppHandlersReturn {
   isSyncing: boolean;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+  isSplitting: boolean;
   handleSyncFromCloud: () => Promise<void>;
   currentList: AssociationList | null;
   handleUpdateAssociations: (updatedAssociations: Association[]) => void;
@@ -61,6 +65,10 @@ export function useAppHandlers({
   const currentList = lists.find((l) => l.id === currentListId) || null;
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSplitting, setIsSplitting] = useState(false);
 
   const handleSyncFromCloud = useCallback(async () => {
     if (!user) return;
@@ -90,6 +98,8 @@ export function useAppHandlers({
         const prev = prevMap.get(a.id);
         if (!prev) return true; // new association
         return (
+          prev.term !== a.term ||
+          JSON.stringify(prev.definition) !== JSON.stringify(a.definition) ||
           prev.isLearned !== a.isLearned ||
           prev.currentCycle !== a.currentCycle ||
           prev.status !== a.status ||
@@ -181,12 +191,10 @@ const handlePlayList = useCallback(
       associations: Association[],
       settings?: Partial<AssociationList["settings"]>
     ): Promise<string | null> => {
-      console.log('pass1');
       if (!user) {
         showToast("Debes iniciar sesión para crear listas", "error");
         return null;
       }
-console.log('pass2');
       const defaultSettings: AssociationList["settings"] = {
         mode: "training",
         flipOrder: "normal",
@@ -196,7 +204,7 @@ console.log('pass2');
         autoRevealAfterSeconds: 15,
         autoAdvanceAfterAttempts: 3,
       };
-console.log('pass3');
+      setIsCreating(true);
       try {
         const id = await listService.createList({
           name,
@@ -229,6 +237,8 @@ console.log('pass3');
           "error",
         );
         return null;
+      } finally {
+        setIsCreating(false);
       }
     },
     [user, showToast],
@@ -246,7 +256,8 @@ console.log('pass3');
       if (!user) return;
       
       tracker?.add('parent: handleUpdateList started', { listId: list.id });
-
+      setIsUpdating(true);
+      
       try {
         tracker?.add('parent: preparing list with timestamp');
         const listWithTimestamp = { ...list, updatedAt: Date.now() };
@@ -302,6 +313,8 @@ console.log('pass3');
         if (!isHandledBackendError) {
           throw error;
         }
+      } finally {
+        setIsUpdating(false);
       }
     },
     [user, showToast],
@@ -315,6 +328,7 @@ console.log('pass3');
         showToast("No se puede eliminar una lista sin guardar", "error");
         return;
       }
+      setIsDeleting(true);
       try {
         await listService.deleteList(id);
         // Remove from local store
@@ -331,6 +345,8 @@ console.log('pass3');
         } else {
           showToast(errorMessage, "error");
         }
+      } finally {
+        setIsDeleting(false);
       }
     },
     [user, showToast],
@@ -342,6 +358,7 @@ console.log('pass3');
       realListId?: string
     ) => {
       if (!user || !realListId) return;
+      setIsSplitting(true);
       try {
         await listService.splitList(realListId, groups);
         showToast("Mazos divididos correctamente", "success");
@@ -350,6 +367,8 @@ console.log('pass3');
           error instanceof Error ? error.message : "Error al dividir mazos",
           "error",
         );
+      } finally {
+        setIsSplitting(false);
       }
     },
     [user, showToast],
@@ -388,6 +407,10 @@ console.log('pass3');
 
   return {
     isSyncing,
+    isCreating,
+    isUpdating,
+    isDeleting,
+    isSplitting,
     handleSyncFromCloud,
     currentList,
     handleUpdateAssociations,

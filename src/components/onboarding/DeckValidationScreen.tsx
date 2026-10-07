@@ -19,6 +19,7 @@ export const DeckValidationScreen: React.FC<DeckValidationScreenProps> = ({
   onToggleCategory,
   onAddSelected,
   onBack,
+  isLoading,
 }) => {
   const selectedCount = useMemo(() => {
     return CATEGORY_ORDER.reduce((sum, cat) => {
@@ -104,24 +105,37 @@ export const DeckValidationScreen: React.FC<DeckValidationScreenProps> = ({
           <div className="pt-4 space-y-2">
             <button
               onClick={onAddSelected}
-              disabled={selectedCount === 0}
+              disabled={selectedCount === 0 || isLoading}
               className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex flex-col items-center justify-center gap-1"
             >
-              <span>📤 Agregar tarjetas</span>
-              {deckItems.length > 1 && (
-                <span className="text-[0.65rem] font-normal opacity-85">
-                  {deckItems.map((d) => `"${d.name}" (${d.count})`).join(' · ')}
-                </span>
-              )}
-              {deckItems.length === 1 && (
-                <span className="text-[0.65rem] font-normal opacity-85">
-                  "{deck.name}" ({result.total} tarjetas)
-                </span>
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>Importando...</span>
+                </>
+              ) : (
+                <>
+                  <span>📤 Agregar tarjetas</span>
+                  {deckItems.length > 1 && (
+                    <span className="text-[0.65rem] font-normal opacity-85">
+                      {deckItems.map((d) => `"${d.name}" (${d.count})`).join(' · ')}
+                    </span>
+                  )}
+                  {deckItems.length === 1 && (
+                    <span className="text-[0.65rem] font-normal opacity-85">
+                      "{deck.name}" ({result.total} tarjetas)
+                    </span>
+                  )}
+                </>
               )}
             </button>
             <button
               onClick={onBack}
-              className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition"
+              disabled={isLoading}
+              className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ← Volver al Catálogo
             </button>

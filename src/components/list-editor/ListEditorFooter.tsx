@@ -7,6 +7,8 @@ interface ListEditorFooterProps {
   hasName: boolean;
   onNameFocus: () => void;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
+  isCreating?: boolean;
+  isSplitting?: boolean;
 }
 
 export const ListEditorFooter: React.FC<ListEditorFooterProps> = ({
@@ -16,7 +18,11 @@ export const ListEditorFooter: React.FC<ListEditorFooterProps> = ({
   hasName,
   onNameFocus,
   showToast,
+  isCreating,
+  isSplitting,
 }) => {
+  const isLoading = isSaving || isCreating || isSplitting;
+  
   const handleSaveClick = () => {
     if (!hasName) {
       onNameFocus();
@@ -38,14 +44,20 @@ export const ListEditorFooter: React.FC<ListEditorFooterProps> = ({
       <button
         type="button"
         onClick={handleSaveClick}
-        disabled={isSaving}
+        disabled={isLoading || !hasName}
         className={`flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-[0.8rem] transition shadow-md ${
-          isSaving
+          isLoading
             ? "bg-emerald-600 text-white cursor-wait"
             : "bg-indigo-600 text-white hover:bg-indigo-700"
         }`}
       >
-        {isSaving ? "✅ Guardando..." : "💾 Guardar mazo"}
+        {isLoading && (
+          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {isLoading ? "Guardando..." : "💾 Guardar mazo"}
       </button>
     </div>
   );

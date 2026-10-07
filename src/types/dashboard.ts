@@ -12,6 +12,10 @@ export interface DashboardProps {
   onYouTubeSuccess?: (result: VocabularyResult) => void;
   onTextImport?: () => void;
   onCreateEmpty: () => void;
+  isCreating?: boolean;
+  isUpdating?: boolean;
+  isDeleting?: boolean;
+  isSplitting?: boolean;
 }
 
 export interface DashboardStats {

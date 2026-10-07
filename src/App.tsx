@@ -302,6 +302,10 @@ const AppContent: React.FC = () => {
                   onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
                   onTextImport={() => navigate('text-importer')}
                   onCreateEmpty={handleCreateEmpty}
+                  isCreating={handlers.isCreating}
+                  isUpdating={handlers.isUpdating}
+                  isDeleting={handlers.isDeleting}
+                  isSplitting={handlers.isSplitting}
                 />
               </ProtectedRoute>
             }
@@ -324,6 +328,9 @@ const AppContent: React.FC = () => {
                         onCreateMultiple={handlers.handleCreateMultipleLists}
                         isCreateMode={!!createModeList}
                         onCreateList={handlers.handleCreateList}
+                        isSaving={handlers.isUpdating}
+                        isCreating={handlers.isCreating}
+                        isSplitting={handlers.isSplitting}
                       />
                     );
                   }

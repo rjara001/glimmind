@@ -1,10 +1,9 @@
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState } from "react";
 import type { Association } from "../../types";
 import type { PrebuiltDeck } from "../../types/prebuilt-deck";
 import type { DashboardProps } from "../../types/dashboard";
-import { normalizeAssociations, type AssociationLike } from "../../utils/normalizeAssociation";
+import { normalizeAssociations } from "../../utils/normalizeAssociation";
 import { useGameStore } from "../../store/gameStore";
-import { useToast } from "../layout/Toast";
 import { GoalWidget } from "../layout/GoalWidget";
 import { QuotaAlert } from "../layout/QuotaAlert";
 import { DeckStoreOnboarding } from "../onboarding/DeckStoreOnboarding";
@@ -13,7 +12,6 @@ import { QuotaService } from "../../services/quotaService";
 import { countCards } from "../../utils/quota";
 import { useDashboardStats } from "../../hooks/dashboard/useDashboardStats";
 import { useDashboardLists } from "../../hooks/dashboard/useDashboardLists";
-import { useDeckImporter } from "../../hooks/dashboard/useDeckImporter";
 import { DashboardProgressHero } from "./dashboard/DashboardProgressHero";
 import { DashboardContinueBanner } from "./dashboard/DashboardContinueBanner";
 import { DashboardToolbar } from "./dashboard/DashboardToolbar";
@@ -25,7 +23,6 @@ import { ListGrid } from "./dashboard/ListGrid";
 
 export const Dashboard: React.FC<DashboardProps> = ({
   lastPlayedId,
-  onCreate,
   onCreateAndPlay,
   onAddDeck,
   onDelete,
@@ -34,11 +31,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onYouTubeSuccess,
   onTextImport,
   onCreateEmpty,
+  isCreating: isCreatingProp,
+  isSplitting,
 }) => {
-  const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newConcept, setNewConcept] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeckStore, setShowDeckStore] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
@@ -48,28 +44,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const setGoalTarget = useGameStore((state) => state.setGoalTarget);
   const quota = useGameStore((state) => state.quota);
   const isPremium = quota?.tier === "premium";
-
-  const existingVocabulary = useMemo(
-    () => lists.flatMap(list => list.associations?.map(a => a.term) ?? []),
-    [lists]
-  );
-
-  const importer = useDeckImporter(
-    useCallback(
-      (message: string) => showToast(message, "success"),
-      [showToast],
-    ),
-    useCallback((message: string) => alert(message), []),
-    existingVocabulary,
-  );
-
-  // Auto-set deck name from filename when uploading a file (only if name is empty)
-  useEffect(() => {
-    if (importer.selectedFileName && !newName.trim()) {
-      const nameWithoutExt = importer.selectedFileName.replace(/\.[^/.]+$/, "");
-      setNewName(nameWithoutExt);
-    }
-  }, [importer.selectedFileName, newName]);
 
   const stats = useDashboardStats(lists);
   const { recentLists, bigLists, filteredLists, currentList } = useDashboardLists(
@@ -82,38 +56,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onCreateEmpty();
   }, [onCreateEmpty]);
 
-  const handleSubmitCreate = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!newName || !newConcept) return;
-      const initialAssocs = [
-        ...importer.parseBulkData(importer.bulkData),
-        ...importer.fileAssociations,
-        ...importer.getSelectedAssociations(),
-      ];
-      onCreate(newName, newConcept, initialAssocs);
-      setNewName("");
-      setNewConcept("");
-      importer.resetBulkInputs();
-      setIsCreating(false);
-      importer.setShowBulk(false);
-    },
-    [newName, newConcept, importer, onCreate],
-  );
-
-  const handleCancelCreate = useCallback(() => {
-    setIsCreating(false);
-    importer.resetBulkInputs();
-    importer.setShowBulk(false);
-  }, [importer]);
-
-  const handleChooseFile = useCallback(() => {
-    importer.fileInputRef.current?.click();
-  }, [importer]);
-
   const transformDeckToAssociations = (deck: PrebuiltDeck): Association[] =>
     normalizeAssociations(
-      deck.associations.map<AssociationLike>((a) => ({
+      deck.associations.map((a) => ({
         id: crypto.randomUUID(),
         term: a.term,
         definition: a.definition,
@@ -172,6 +117,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onCreateCustom={handleOnboardingCreateCustom}
           onYouTube={handleOpenYouTube}
           onTextImport={onTextImport ?? (() => {})}
+          isLoading={isCreatingProp}
         />
       </div>
     );
@@ -193,6 +139,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onCreateCustom={handleStoreCreateCustom}
           onYouTube={handleOpenYouTube}
           onTextImport={onTextImport ?? (() => {})}
+          isLoading={isCreatingProp}
         />
       </div>
     );
@@ -224,6 +171,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onCreateEmpty={handleCreateEmpty}
         createDisabled={createDisabled}
         createTitle={createTitle}
+        isCreating={isCreatingProp}
+        isSplitting={isSplitting}
       />
 
       <RecentListsStrip lists={recentLists} onPlay={onPlay} />

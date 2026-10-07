@@ -256,8 +256,11 @@ export function useListEditorActions(
     [setEditList]
   );
 
-  const handleBlurRow = useCallback(() => {
+  const handleBlurRow = useCallback(async () => {
     cleanupAndSave(editList);
+    if (pendingSaveRef.current) {
+      await pendingSaveRef.current;
+    }
   }, [cleanupAndSave, editList]);
 
   const handleRemoveRow = useCallback(

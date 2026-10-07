@@ -45,4 +45,5 @@ export interface DeckValidationScreenProps {
   onToggleCategory: (category: CardCategory) => void;
   onAddSelected: () => void;
   onBack: () => void;
+  isLoading?: boolean;
 }
