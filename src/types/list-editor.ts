@@ -1,5 +1,4 @@
 import type { Association, AssociationList } from '../types';
-import type { AIGroupSuggestion } from '../services/aiService';
 import type { ImportValidationResult } from '../services/importValidationService';
 import type { QuotaStatus } from '../types/quota';
 import type { UserQuota } from '../types/quota';
@@ -24,7 +23,6 @@ export interface ListEditorState {
   validationResult: ImportValidationResult | null;
   showValidationScreen: boolean;
   nameError: boolean;
-  aiSuggestions: AIGroupSuggestion[] | null;
 }
 
 export interface ListEditorActions {

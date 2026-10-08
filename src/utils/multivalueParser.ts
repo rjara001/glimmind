@@ -2,8 +2,9 @@ import { Association } from "../types";
 
 const SLASH_SEPARATOR = "/";
 
-function splitParts(value: string): string[] {
-  return value
+function splitParts(value: string | string[]): string[] {
+  const str = Array.isArray(value) ? value.join(SLASH_SEPARATOR) : value;
+  return str
     .split(SLASH_SEPARATOR)
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
@@ -88,7 +89,7 @@ export function mergeRepeatedTermAssociations(associations: Association[]): Asso
       if (association.multivalues && association.multivalues.length > 0) {
         definitions.push(...association.multivalues);
       } else {
-        definitions.push(association.definition);
+        definitions.push(Array.isArray(association.definition) ? association.definition.join(SLASH_SEPARATOR) : association.definition);
       }
     }
 
@@ -97,7 +98,7 @@ export function mergeRepeatedTermAssociations(associations: Association[]): Asso
       ...first,
       id: crypto.randomUUID(),
       term: first.term.trim(),
-      definition: first.definition.trim(),
+      definition: Array.isArray(first.definition) ? [first.definition[0]] : [first.definition],
       multivalues: dedupeStrings(definitions),
       currentCycle: 1,
       status: 'pending',

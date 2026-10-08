@@ -1,16 +1,11 @@
-  import React, { useState, useEffect, useCallback, useRef } from 'react';
-  import { useVoskModelContext } from '../../context/VoskModelContext';
-  import { VoiceLanguage } from '../../types';
-  import { SettingsModalProps } from '../../types/settings-modal-props';
-  import { isChirpVoiceId } from '../../services/voice/tts/chirpVoices';
-  import { FlowTracker } from '../../utils/breadcrumbs'
+import React, { useState, useEffect, useCallback } from 'react';
+import { useVoskModelContext } from '../../context/VoskModelContext';
+import { VoiceLanguage } from '../../types';
+import { SettingsModalProps } from '../../types/settings-modal-props';
+import { ListSettings } from '../../types';
+import { isChirpVoiceId } from '../../services/voice/tts/chirpVoices';
 
-  import {
-    logSettingsError,
-    logEvent,
-    startCorrelation,
-    clearCorrelation,
-  } from '../../services/errorReporting';
+import { logEvent } from '../../services/errorReporting';
   import { GameModeSection } from './settings/GameModeSection';
   import { VoiceSection } from './settings/VoiceSection';
   import { VoiceCommandsSection } from './settings/VoiceCommandsSection';
@@ -28,9 +23,7 @@
     };
   };
 
-  function normalizeVoiceSettings(
-    settings: Record<string, unknown>
-  ): Record<string, unknown> {
+  function normalizeVoiceSettings(settings: ListSettings): ListSettings {
     const normalized = { ...settings };
 
     if (normalized.ttsProvider === 'chirp') {
@@ -51,13 +44,11 @@
     onClose,
   }) => {
     const [draft, setDraft] = useState(() =>
-      normalizeVoiceSettings((list.settings || {}) as Record<string, unknown>)
+      normalizeVoiceSettings(list.settings || ({} as ListSettings))
     );
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { isReady: isVoskReady } = useVoskModelContext();
-
-    const correlationIdRef = useRef<string>(`settings-${list.id}-${Date.now()}`);
 
     useEffect(() => {
       // 1. Log de apertura del modal
@@ -90,57 +81,34 @@
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const tracker = new FlowTracker();
-    tracker.add('1. handleAccept started');
-
     try {
-      tracker.add('2. normalizing draft', { draft });
       const finalSettings = normalizeVoiceSettings(draft);
-      tracker.add('3. normalized result', { finalSettings });
 
       const updatedList = {
         ...list,
-        settings: finalSettings as Record<string, unknown> as typeof list.settings,
+        settings: finalSettings,
       };
 
-      tracker.add('4. invoking onUpdateList');
-      
-      // Pasamos el tracker a onUpdateList si es posible, o esperamos el resultado
-      await onUpdateList(updatedList, tracker);
+      await onUpdateList(updatedList);
 
-      tracker.add('5. onUpdateList resolved successfully');
-
-      // ENVIAR TRAZA EXITOSA CON TODO EL HISTORIAL DE PASOS
       await logEvent('settings.flow_completed', {
         message: 'Settings flow finished successfully',
-        extra: { trace: tracker.getTrace() },
       });
 
       onClose();
     } catch (error: any) {
-      tracker.add('X. caught exception', {
-        errorMessage: error?.message,
-        errorName: error?.name,
-        errorStack: error?.stack,
-      });
-
-      // Check if this is a backend 500 error that we've already handled gracefully
       const isHandledBackendError = error && 
         typeof error === 'object' &&
         (error.message?.includes('500') || error.message?.includes('Internal Server Error'));
       
       if (!isHandledBackendError) {
-        // ENVIAR TRAZA DE ERROR CON TODO EL HISTORIAL DE PASOS
         await logEvent('settings.flow_failed', {
           message: `Flow failed: ${error?.message || String(error)}`,
           error,
-          extra: { trace: tracker.getTrace() },
         });
       } else {
-        // Log as completed since we handled it gracefully (local update succeeded)
         await logEvent('settings.flow_completed', {
           message: 'Settings flow finished successfully (local-only due to backend error)',
-          extra: { trace: tracker.getTrace() },
         });
       }
     } finally {
@@ -187,9 +155,13 @@
 
           window.speechSynthesis.speak(utterance);
         } catch (err) {
-          await logSettingsError(err, {
-            context: 'playTestVoice',
-            mobileContext: getMobileContext(),
+          await logEvent('settings.tts_error', {
+            message: err instanceof Error ? err.message : 'TTS error',
+            error: err,
+            extra: {
+              context: 'playTestVoice',
+              mobileContext: getMobileContext(),
+            },
           });
         }
       },
@@ -270,26 +242,26 @@
               onTtsProviderChange={(provider: string) =>
                 setDraft({
                   ...draft,
-                  ttsProvider: provider,
+                  ttsProvider: provider as ListSettings['ttsProvider'],
                 })
               }
               sttProvider={sttProvider}
               onSttProviderChange={(provider: string) =>
                 setDraft({
                   ...draft,
-                  sttProvider: provider,
+                  sttProvider: provider as ListSettings['sttProvider'],
                 })
               }
               isVoskReady={isVoskReady}
-              draft={draft}
-              onDraftChange={setDraft}
+              draft={draft as unknown as Record<string, unknown>}
+              onDraftChange={setDraft as unknown as (draft: Record<string, unknown>) => void}
               voices={voices}
               termLabel={termLabel}
               defLabel={defLabel}
               onPlayTestVoice={playTestVoice}
             />
 
-            <VoiceCommandsSection draft={draft} onDraftChange={setDraft} />
+            <VoiceCommandsSection draft={draft as unknown as Record<string, unknown>} onDraftChange={setDraft as unknown as (draft: Record<string, unknown>) => void} />
           </div>
 
           <AnswerValidationSection

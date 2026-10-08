@@ -1,5 +1,3 @@
-import { ChirpVoice } from '../../../types';
-
 export function isChirpVoiceId(voiceId: string | undefined): boolean {
   if (!voiceId) return false;
   const upper = voiceId.toUpperCase();

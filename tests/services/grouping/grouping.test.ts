@@ -1,15 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { clusterBySimilarity, cosineSimilarity } from '@/services/grouping/clustering';
-import { tfidfGrouping } from '@/services/grouping/tfidfGrouping';
-import { aiService } from '@/services/aiService';
-import { semanticGrouping } from '@/services/grouping/semanticGrouping';
-import { Association } from '@//types';
+import { clusterBySimilarity, cosineSimilarity } from '../../../src/services/grouping/clustering';
+import { tfidfGrouping } from '../../../src/services/grouping/tfidfGrouping';
+import type { Association } from '../../../src/types';
 
-vi.mock('./semanticGrouping', () => ({
+let mockSemanticGrouping: ReturnType<typeof vi.fn>;
+
+vi.mock('../../../src/services/grouping/semanticGrouping', () => ({
   semanticGrouping: vi.fn(),
 }));
 
-const mockedSemanticGrouping = vi.mocked(semanticGrouping);
+const { semanticGrouping } = await import('../../../src/services/grouping/semanticGrouping');
+mockSemanticGrouping = semanticGrouping as ReturnType<typeof vi.fn>;
 
 describe('clustering', () => {
   it('computes cosine similarity between unit vectors', () => {
@@ -76,32 +77,7 @@ describe('tfidfGrouping', () => {
   });
 });
 
-describe('aiService.groupAssociations', () => {
-  const associations: Association[] = [
-    { id: '1', term: 'Put off', definition: 'Posponer', currentCycle: 1, status: 'pending', isLearned: false, isArchived: false },
-    { id: '2', term: 'Take off', definition: 'Despegar', currentCycle: 1, status: 'pending', isLearned: false, isArchived: false },
-    { id: '3', term: 'Call off', definition: 'Cancelar', currentCycle: 1, status: 'pending', isLearned: false, isArchived: false },
-  ];
-
-  it('uses semantic grouping when available', async () => {
-    mockedSemanticGrouping.mockResolvedValue([{ groupName: 'Phrasal', indices: [0, 1, 2] }]);
-    const suggestions = await aiService.groupAssociations(associations, 'Phrasal verbs');
-    expect(suggestions).toEqual([{ groupName: 'Phrasal', indices: [0, 1, 2] }]);
-  });
-
-  it('falls back to keyword grouping when semantic grouping is unavailable', async () => {
-    mockedSemanticGrouping.mockResolvedValue(null);
-    const suggestions = await aiService.groupAssociations(associations, 'Phrasal verbs');
-    expect(suggestions.length).toBeGreaterThan(0);
-    expect(suggestions[0].indices).toEqual(expect.arrayContaining([0, 1, 2]));
-  });
-
-  it('returns a single group when there are exactly two associations', async () => {
-    const suggestions = await aiService.groupAssociations(associations.slice(0, 2), 'Phrasal verbs');
-    expect(suggestions).toHaveLength(1);
-    expect(suggestions[0].indices.sort()).toEqual([0, 1]);
-  });
-
+describe('clusterBySimilarity edge cases', () => {
   it('merges small clusters to reach the configured minimum group size', () => {
     const vectors = [
       [1, 0, 0],
@@ -112,5 +88,15 @@ describe('aiService.groupAssociations', () => {
     const suggestions = clusterBySimilarity(vectors, ['A', 'B', 'C', 'D'], 0.5, 4);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0].indices.sort()).toEqual([0, 1, 2, 3]);
+  });
+
+  it('handles empty vectors array', () => {
+    const suggestions = clusterBySimilarity([], [], 0.5);
+    expect(suggestions).toHaveLength(0);
+  });
+
+  it('filters out single vectors below minimum group size', () => {
+    const suggestions = clusterBySimilarity([[1, 0]], ['A'], 0.5);
+    expect(suggestions).toHaveLength(0);
   });
 });

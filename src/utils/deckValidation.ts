@@ -1,4 +1,4 @@
-import { PrebuiltDeck } from '../types';
+import { PrebuiltDeck } from '../types/prebuilt-deck';
 import type { AssociationList } from '../types';
 import { calculateSimilarity, normalize } from './similarity';
 
@@ -10,7 +10,7 @@ export interface SimilarMatch {
 }
 
 export interface CategorizedCard {
-  card: { term: string; definition: string; context: string };
+  card: { term: string; definition: string };
   category: CardCategory;
   similarMatch?: SimilarMatch;
 }
@@ -48,7 +48,7 @@ export function categorizeDeckCards(
     // Exact match?
     if (existingTerms.has(deckTermNorm)) {
       categorized.push({
-        card: { term: card.term, definition: card.definition.join(' | '), context: card.context },
+        card: { term: card.term, definition: card.definition },
         category: 'existing',
       });
       existingCount++;
@@ -69,7 +69,7 @@ export function categorizeDeckCards(
 
     if (bestSimilarity >= 0.80) {
       categorized.push({
-        card: { term: card.term, definition: card.definition.join(' | '), context: card.context },
+        card: { term: card.term, definition: card.definition },
         category: 'similar',
         similarMatch: {
           existingTerm: bestExistingTerm,
@@ -79,7 +79,7 @@ export function categorizeDeckCards(
       similarCount++;
     } else {
       categorized.push({
-        card: { term: card.term, definition: card.definition.join(' | '), context: card.context },
+        card: { term: card.term, definition: card.definition },
         category: 'new',
       });
       newCount++;

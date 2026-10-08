@@ -122,10 +122,6 @@
         "function": "getSessions"
       },
       {
-        "source": "/api/aiGroup",
-        "function": "aiGroup"
-      },
-      {
         "source": "/api/submitDeckToCatalog",
         "function": "submitDeckToCatalog"
       },

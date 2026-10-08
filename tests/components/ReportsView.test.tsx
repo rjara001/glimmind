@@ -23,13 +23,13 @@ describe('ReportsView', () => {
   it('renders the game summary tab by default', () => {
     render(<ReportsView onBack={onBack} onGoToSettings={onGoToSettings} />);
     expect(screen.getByText('Informes')).toBeInTheDocument();
-    expect(screen.getByText('Resumen de juegos desactivado')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Resumen de juegos' })).toBeInTheDocument();
   });
 
   it('switches to the ranking tab when clicked', () => {
     render(<ReportsView onBack={onBack} onGoToSettings={onGoToSettings} />);
     fireEvent.click(screen.getByText('Ranking'));
-    expect(screen.getByText('Ranking desactivado')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Ranking de tarjetas' })).toBeInTheDocument();
   });
 
   it('calls onBack when the back button is clicked', () => {

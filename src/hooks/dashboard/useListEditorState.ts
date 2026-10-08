@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import type { Association, AssociationList } from "../../types";
 import type { ImportValidationResult } from "../../services/importValidationService";
-import type { AIGroupSuggestion } from "../../services/aiService";
 import type { QuotaStatus } from "../../types/quota";
 import type { ExtractedKeyword, KeywordExtractionOptions } from "../../types/keyword-extraction";
 import { useGameStore } from "../../store/gameStore";
@@ -42,8 +41,6 @@ export interface ListEditorState {
   setShowValidationScreen: React.Dispatch<React.SetStateAction<boolean>>;
   nameError: boolean;
   setNameError: React.Dispatch<React.SetStateAction<boolean>>;
-  aiSuggestions: AIGroupSuggestion[] | null;
-  setAiSuggestions: React.Dispatch<React.SetStateAction<AIGroupSuggestion[] | null>>;
   termHeader: string;
   definitionHeader: string;
   contextHeader: string;
@@ -105,7 +102,6 @@ export function useListEditorState(
   const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
   const [showValidationScreen, setShowValidationScreen] = useState(false);
   const [nameError, setNameError] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<AIGroupSuggestion[] | null>(null);
   const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -291,8 +287,6 @@ export function useListEditorState(
     setShowValidationScreen,
     nameError,
     setNameError,
-    aiSuggestions,
-    setAiSuggestions,
     termHeader,
     definitionHeader,
     contextHeader,

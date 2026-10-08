@@ -247,7 +247,7 @@ interface SelectorItemProps {
   onToggle: () => void;
 }
 
-const SelectorItem: React.FC<SelectorItemProps> = ({ category, icon, label, count, badgeText, badgeBg, badgeColor, desc, checked, onToggle }) => (
+const SelectorItem: React.FC<SelectorItemProps> = ({ category: _category, icon, label, count, badgeText, badgeBg, badgeColor, desc, checked, onToggle }) => (
   <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 10, cursor: 'pointer', transition: '0.15s ease' }}>
     <input
       type="checkbox"

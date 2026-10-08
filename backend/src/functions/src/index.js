@@ -1,5 +1,4 @@
 const { appendActivity, getActivity, saveSession, getSessions } = require('./src/routes/activityRoutes');
-const { aiGroup } = require('./src/routes/aiRoutes');
 const { submitDeckToCatalog, moderateDeckPreview } = require('./src/routes/catalogRoutes');
 const { createDeckFromText } = require('./src/routes/createDeckFromText');
 const { getPrebuiltDecks } = require('./src/routes/deckRoutes');
@@ -16,7 +15,6 @@ exports.appendActivity = appendActivity;
 exports.getActivity = getActivity;
 exports.saveSession = saveSession;
 exports.getSessions = getSessions;
-exports.aiGroup = aiGroup;
 exports.submitDeckToCatalog = submitDeckToCatalog;
 exports.moderateDeckPreview = moderateDeckPreview;
 exports.createDeckFromText = createDeckFromText;

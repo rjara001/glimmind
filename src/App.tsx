@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LandingPage } from './components/views/LandingPage';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
 import { ListEditor } from './components/ListEditor';
@@ -8,6 +9,9 @@ import { SettingsView } from './components/views/SettingsView';
 import { HistoryView } from './components/views/HistoryView';
 import { ReportsView } from './components/views/ReportsView';
 import { AdminUsageView } from './components/views/AdminUsageView';
+import { PrivacyPolicy } from './components/views/PrivacyPolicy';
+import { TermsOfService } from './components/views/TermsOfService';
+import { CookiePolicy } from './components/views/CookiePolicy';
 import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { GuestBanner } from './components/layout/GuestBanner';
@@ -277,6 +281,12 @@ const AppContent: React.FC = () => {
 
         <Routes>
           <Route
+            path="/"
+            element={
+              user ? <Navigate to="/dashboard" replace /> : <LandingPage />
+            }
+          />
+          <Route
             path="/login"
             element={
               user
@@ -284,7 +294,7 @@ const AppContent: React.FC = () => {
                 : <Auth onLoginDev={handleLoginDev} />
             }
           />
-<Route
+          <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
@@ -418,8 +428,10 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/cookies" element={<CookiePolicy />} />
+<Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
 

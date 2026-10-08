@@ -2,8 +2,9 @@ import { Association } from "../types";
 
 const SLASH_SEPARATOR = "/";
 
-function splitParts(value: string): string[] {
-  return value
+function splitParts(value: string | string[]): string[] {
+  const str = Array.isArray(value) ? value.join(SLASH_SEPARATOR) : value;
+  return str
     .split(SLASH_SEPARATOR)
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
@@ -14,7 +15,7 @@ function cloneAssociation(association: Association, term: string, definition: st
     ...association,
     id: crypto.randomUUID(),
     term,
-    definition,
+    definition: [definition],
   };
 }
 
@@ -63,7 +64,7 @@ export function flattenAssociations(associations: Association[]): Association[] 
     }
 
     if (hasSingleDefinition) {
-      const singleDefinition = definitions[0] || association.definition;
+      const singleDefinition = definitions[0] || (Array.isArray(association.definition) ? association.definition[0] : association.definition);
       for (const term of terms) {
         flattened.push(cloneAssociation(association, term, singleDefinition));
       }

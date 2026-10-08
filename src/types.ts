@@ -43,6 +43,7 @@ export interface Association {
   lastPlayedAt?: number;
   createdAt?: number;
   updatedAt?: number;
+  multivalues?: string[];
 }
 
 export interface ListSettings {

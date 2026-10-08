@@ -11,8 +11,8 @@ interface NavItem {
 }
 
 interface NavbarProps {
-  onNavigate?: (view: string) => void;
-  onLogout?: () => void;
+  onNavigate: (view: string) => void;
+  onLogout: () => void;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -39,10 +39,6 @@ const NAV_ITEMS: NavItem[] = [
   )},
 ];
 
-interface NavbarProps {
-  onNavigate?: (view: string) => void;
-}
-
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
   const { user } = useAuth();
   const location = useLocation();
@@ -50,9 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
   if (!user) return null;
 
   const handleNavClick = (path: string) => {
-    if (onNavigate) {
-      onNavigate(path.replace('/', ''));
-    }
+    onNavigate(path.replace('/', ''));
   };
 
   return (
@@ -86,13 +80,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       isActive
                         ? 'bg-white text-indigo-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                        : 'text-slate-600 hover:text-indigo-600 hover:bg-white'
                     }`}
                   >
-                    <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>
-                      {item.icon}
-                    </span>
-                    {item.label}
+                    {item.icon}
+                    <span>{item.label}</span>
                   </button>
                 );
               })}

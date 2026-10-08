@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KaldiRecognizer } from 'vosk-browser';
-import { useVoskModelContext } from '@/context/VoskModelContext';
+import { useVoskModelContext } from '../../../context/VoskModelContext';
 
 const SAMPLE_RATE = 16000;
 

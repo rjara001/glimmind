@@ -90,7 +90,6 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
     const filteredAssociations = categorized.map((c) => ({
       term: c.card.term,
       definition: c.card.definition,
-      context: c.card.context,
     }));
 
     const filteredDeck: PrebuiltDeck = {

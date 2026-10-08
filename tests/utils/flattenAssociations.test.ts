@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { flattenAssociations } from '@/utils/flattenAssociations';
-import { Association } from '@/types';
+import { flattenAssociations } from '../../src/utils/flattenAssociations';
+import type { Association } from '../../src/types';
 
-const createAssociation = (term: string, definition: string, overrides: Partial<Association> = {}): Association => ({
+const createAssociation = (term: string, definition: string | string[], overrides: Partial<Association> = {}): Association => ({
   id: crypto.randomUUID(),
   term,
-  definition,
+  definition: Array.isArray(definition) ? definition : [definition],
   currentCycle: 1,
   status: 'pending',
   isLearned: false,
@@ -31,7 +31,7 @@ describe('flattenAssociations', () => {
     const result = flattenAssociations(associations);
 
     expect(result.length).toBe(3);
-    expect(result.map(a => [a.term, a.definition])).toEqual([
+    expect(result.map(a => [a.term, a.definition[0]])).toEqual([
       ['A', 'D'],
       ['B', 'D'],
       ['C', 'D'],
@@ -44,7 +44,7 @@ describe('flattenAssociations', () => {
     const result = flattenAssociations(associations);
 
     expect(result.length).toBe(3);
-    expect(result.map(a => [a.term, a.definition])).toEqual([
+    expect(result.map(a => [a.term, a.definition[0]])).toEqual([
       ['A', 'B'],
       ['A', 'C'],
       ['A', 'D'],
@@ -57,7 +57,7 @@ describe('flattenAssociations', () => {
     const result = flattenAssociations(associations);
 
     expect(result.length).toBe(3);
-    expect(result.map(a => [a.term, a.definition])).toEqual([
+    expect(result.map(a => [a.term, a.definition[0]])).toEqual([
       ['A', '1'],
       ['B', '2'],
       ['C', '3'],
@@ -71,7 +71,7 @@ describe('flattenAssociations', () => {
 
     expect(result).toBe(associations);
     expect(result[0].term).toBe('A/B/C');
-    expect(result[0].definition).toBe('1/2');
+    expect(result[0].definition[0]).toBe('1/2');
   });
 
   it('trims whitespace around slash-separated parts', () => {
@@ -80,7 +80,7 @@ describe('flattenAssociations', () => {
     const result = flattenAssociations(associations);
 
     expect(result.map(a => a.term)).toEqual(['A', 'B', 'C']);
-    expect(result.every(a => a.definition === 'D')).toBe(true);
+    expect(result.every(a => a.definition[0] === 'D')).toBe(true);
   });
 
   it('drops empty parts', () => {
@@ -124,6 +124,6 @@ describe('flattenAssociations', () => {
 
     expect(result.length).toBe(3);
     expect(result[2].term).toBe('X');
-    expect(result[2].definition).toBe('Y');
+    expect(result[2].definition[0]).toBe('Y');
   });
 });

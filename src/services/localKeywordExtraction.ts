@@ -81,15 +81,7 @@ const tokenize = (text: string): string[] =>
     .split(/[^a-z0-9]+/)
     .filter((token) => token.length > 1 && !DEFAULT_STOPWORDS.has(token));
 
-const tokenizeKeepStopwords = (text: string): string[] =>
-  normalizeText(text)
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length > 1);
-
-const isStopword = (token: string): boolean => DEFAULT_STOPWORDS.has(token);
-
 const createStopwordsFunctions = (stopwords: Set<string>) => {
-  const isStopword = (token: string): boolean => stopwords.has(token);
 
   const tokenize = (text: string): string[] =>
     normalizeText(text)

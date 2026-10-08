@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback } from "react";
 import type { AssociationList, Association } from "../types";
-import { SmartGroupModal } from "../components/modals/SmartGroupModal";
 import { useGameStore } from "../store/gameStore";
 import { useToast } from "../components/layout/Toast";
 import { QuotaAlert } from "../components/layout/QuotaAlert";
@@ -322,19 +321,6 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           isSplitting={isSplitting}
         />
       </div>
-
-      {state.aiSuggestions && (
-        <SmartGroupModal
-          originalList={state.editList}
-          suggestions={state.aiSuggestions}
-          onCancel={() => state.setAiSuggestions(null)}
-          onConfirm={(groups) => {
-            if (onCreateMultiple) onCreateMultiple(groups);
-            state.setAiSuggestions(null);
-            onBack();
-          }}
-        />
-      )}
     </div>
   );
 };

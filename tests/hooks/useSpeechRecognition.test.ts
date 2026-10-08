@@ -43,7 +43,9 @@ describe('useSpeechRecognition', () => {
 
   beforeEach(() => {
     mockInstance = createMockInstance();
-    MockConstructor = vi.fn(() => mockInstance);
+    MockConstructor = vi.fn(function() {
+      return mockInstance;
+    });
     (window as any).SpeechRecognition = MockConstructor;
     (window as any).webkitSpeechRecognition = MockConstructor;
   });

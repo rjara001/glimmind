@@ -54,13 +54,13 @@ describe('CycleProgress component', () => {
 
     expect(screen.getByText('Toca para ver detalles')).toBeInTheDocument();
 
-    expect(screen.getByText('📊 Progreso por ciclo')).toBeInTheDocument();
+    expect(screen.getByText('📊 Tú progreso por ciclo')).toBeInTheDocument();
   });
 
   test('does not render the mobile title when isMobile is false', () => {
     render(<CycleProgress gameState={mockGameState} isMobile={false} />);
 
-    expect(screen.queryByText('📊 Progreso por ciclo')).not.toBeInTheDocument();
+    expect(screen.queryByText('📊 Tú progreso por ciclo')).not.toBeInTheDocument();
   });
 
   test('renders desktop vertical sidebar layout when isMobile is false', () => {

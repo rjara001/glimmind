@@ -35,6 +35,9 @@ describe('Buttons Display - Modo Examen (real)', () => {
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={mock.onCorrect}
+          historyIndex={-1}
+          globalCycle={1}
+          currentCycle={1}
         />
       ),
     };
@@ -126,6 +129,9 @@ describe('Buttons Display - Modo Entrenamiento (training)', () => {
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={mock.onCorrect}
+          historyIndex={-1}
+          globalCycle={1}
+          currentCycle={1}
         />
       ),
     };
@@ -192,6 +198,9 @@ describe('Keyboard Shortcuts', () => {
           onCheckAnswer={mock.onCheckAnswer}
           onReveal={mock.onReveal}
           onCorrect={vi.fn()}
+          historyIndex={-1}
+          globalCycle={1}
+          currentCycle={1}
         />
       ),
     };
@@ -245,6 +254,9 @@ describe('Feedback - Training Mode (No Messages)', () => {
         onCheckAnswer={vi.fn()}
         onReveal={vi.fn()}
         onCorrect={mockOnCorrect}
+        historyIndex={-1}
+        globalCycle={1}
+        currentCycle={1}
       />
     );
     

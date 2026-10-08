@@ -8,7 +8,7 @@ export interface SimilarMatch {
 }
 
 export interface CategorizedCard {
-  card: { term: string; definition: string; context: string };
+  card: { term: string; definition: string };
   category: CardCategory;
   similarMatch?: SimilarMatch;
 }

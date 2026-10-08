@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { createModel, Model } from 'vosk-browser';
 
 const MODEL_URL = '/models/vosk-model-small-en-us-0.15.tar.gz';

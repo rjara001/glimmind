@@ -1,22 +1,10 @@
-const { getMaxCards, getAiDailyLimit, QUOTA_CONFIG } = require("./quotaConfig");
+const { getMaxCards, QUOTA_CONFIG } = require("./quotaConfig");
 
 const COLLECTION_NAME = "lists";
 
 const DEFAULT_CARD_QUOTA = getMaxCards('free');
 const PREMIUM_CARD_QUOTA = getMaxCards('premium');
-const DEFAULT_AI_DAILY_QUOTA = getAiDailyLimit('free');
-const PREMIUM_AI_DAILY_QUOTA = getAiDailyLimit('premium');
-const GLOBAL_AI_DAILY_CAP = 200;
 const MAX_CARDS_PER_LIST = QUOTA_CONFIG.maxCardsPerList;
-const MAX_CARDS_PER_AI_REQUEST = 2000;
-const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
-const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-
-const VOCABULARY_GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
-const VOCABULARY_MAX_OUTPUT_TOKENS = 32768;
-const VIDEO_MAX_SECONDS = 3600;
-const VOCABULARY_TERMS_THRESHOLD_COMPACT_CONTEXT = 100;
-const VOCABULARY_TARGET_LANGUAGES = ["es", "de", "fr", "it", "pt", "en"];
 
 const DECK_TIERS = {
   express: { maxTerms: 20, costPercent: 15 },
@@ -24,9 +12,6 @@ const DECK_TIERS = {
   extended: { maxTerms: 80, costPercent: 60 },
   massive: { maxTerms: 150, costPercent: 100 },
 };
-
-const YT_AI_DAILY_LIMIT_FREE = 100;
-const YT_AI_DAILY_LIMIT_PREMIUM = 200;
 
 const MAX_EVENTS_PER_BATCH = 400;
 const MAX_ACTIVITY_PAGE = 200;
@@ -67,20 +52,8 @@ module.exports = {
   COLLECTION_NAME,
   DEFAULT_CARD_QUOTA,
   PREMIUM_CARD_QUOTA,
-  DEFAULT_AI_DAILY_QUOTA,
-  PREMIUM_AI_DAILY_QUOTA,
-  GLOBAL_AI_DAILY_CAP,
   MAX_CARDS_PER_LIST,
-  MAX_CARDS_PER_AI_REQUEST,
-  GEMINI_MODELS,
-  VOCABULARY_GEMINI_MODELS,
-  VOCABULARY_MAX_OUTPUT_TOKENS,
-  VIDEO_MAX_SECONDS,
-  VOCABULARY_TERMS_THRESHOLD_COMPACT_CONTEXT,
-  VOCABULARY_TARGET_LANGUAGES,
   DECK_TIERS,
-  YT_AI_DAILY_LIMIT_FREE,
-  YT_AI_DAILY_LIMIT_PREMIUM,
   MAX_EVENTS_PER_BATCH,
   MAX_ACTIVITY_PAGE,
   MAX_SESSIONS_PAGE,

@@ -1,4 +1,4 @@
-import type { GameCycle, GameState } from '../types';
+import type { GameState } from '../types';
 import type { CycleMiniStats } from './cycle-mini-bar-props';
 
 export interface CycleProgressProps {

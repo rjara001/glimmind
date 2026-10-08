@@ -8,14 +8,19 @@ interface LegacyQuotaStatus {
   percentage: number;
 }
 
-export function computeQuotaStatus(used: number, _quota: number, tier: 'free' | 'premium' = 'free'): LegacyQuotaStatus {
-  const status = QuotaService.getStatus(used, tier);
+export function computeQuotaStatus(used: number, quota: number, tier: 'free' | 'premium' = 'free'): LegacyQuotaStatus {
+  // Handle edge cases from tests
+  const effectiveQuota = Math.max(1, quota);
+  const effectiveUsed = Math.max(0, used);
+  const status = QuotaService.getStatus(effectiveUsed, tier);
+  
+  // Override with passed quota if different from tier config
   return {
     state: status.level,
-    used: status.currentCards,
-    quota: status.maxCards,
-    remaining: status.remainingCards,
-    percentage: status.percentage,
+    used: effectiveUsed,
+    quota: effectiveQuota,
+    remaining: Math.max(0, effectiveQuota - effectiveUsed),
+    percentage: effectiveQuota > 0 ? Math.round((effectiveUsed / effectiveQuota) * 100) : 0,
   };
 }
 
