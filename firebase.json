@@ -198,6 +198,22 @@
         "function": "createYouTubeDeck"
       },
       {
+        "source": "/api/createCheckoutSession",
+        "function": "createCheckoutSession"
+      },
+      {
+        "source": "/api/stripeWebhook",
+        "function": "stripeWebhook"
+      },
+      {
+        "source": "/api/billingPortal",
+        "function": "createBillingPortalSession"
+      },
+      {
+        "source": "/api/getSubscriptionStatus",
+        "function": "getSubscriptionStatus"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

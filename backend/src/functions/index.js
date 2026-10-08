@@ -25,6 +25,7 @@ const youtubeDeckRoutes = require("./src/routes/youtubeDeckRoutes");
 const createDeckFromTextRoutes = require("./src/routes/createDeckFromText");
 const translateVocabularyRoutes = require("./src/routes/translateVocabulary");
 const loggingRoutes = require("./src/routes/loggingRoutes");
+const stripeRoutes = require("./src/routes/stripeRoutes");
 
 function loadRoutes(routes) {
   Object.keys(routes).forEach((key) => {
@@ -46,3 +47,4 @@ loadRoutes(youtubeDeckRoutes);
 loadRoutes(createDeckFromTextRoutes);
 loadRoutes(translateVocabularyRoutes);
 loadRoutes(loggingRoutes);
+loadRoutes(stripeRoutes);

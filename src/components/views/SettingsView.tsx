@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useToast } from '../layout/Toast';
-import { userService } from '../../services/userService';
+import { stripeService } from '../../services/stripe';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -49,20 +49,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
       return;
     }
 
+    if (isPremium) {
+      // Usuario ya es premium -> abrir portal de facturación
+      setIsLoading(true);
+      try {
+        const url = await stripeService.createBillingPortalSession(
+          `${window.location.origin}/settings`
+        );
+        window.location.href = url;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        showToast('Error al abrir portal de facturación: ' + message, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Usuario Free -> iniciar checkout Stripe
     setIsLoading(true);
     try {
-      const result = await userService.setPremium(user.uid);
-      if (result.success) {
-        await loadQuota();
-        const updatedQuota = useGameStore.getState().quota;
-        const isPremiumNow = updatedQuota?.tier === 'premium';
-        setIsPremium(isPremiumNow);
-        showToast(isPremiumNow ? '¡Ahora eres premium!' : 'Estado actualizado.', 'success');
-      } else {
-        showToast('No se pudo actualizar el estado premium.', 'error');
-      }
+      const url = await stripeService.createCheckoutSession(
+        `${window.location.origin}/settings?upgrade=success`,
+        `${window.location.origin}/settings?upgrade=canceled`
+      );
+      window.location.href = url;
     } catch (error) {
-      showToast('Error al actualizar premium.', 'error');
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      showToast('Error al iniciar checkout: ' + message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -244,20 +258,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             )}
           </div>
           <button
-            role="switch"
-            aria-checked={isPremium}
-            aria-label="Modo premium"
             onClick={handleTogglePremium}
             disabled={isLoading}
-            className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-              isPremium ? 'bg-indigo-600' : 'bg-slate-200'
+            className={`px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition active:scale-95 ${
+              isPremium
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200'
+                : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
             } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
           >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                isPremium ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
+            {isLoading
+              ? 'Procesando...'
+              : isPremium
+              ? 'Gestionar suscripción'
+              : 'Actualizar a Premium'}
           </button>
         </div>
       </div>
