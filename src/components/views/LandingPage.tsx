@@ -1,308 +1,290 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import './landing.css';
 
 export const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  const onStart = () => navigate('/login');
+  const onUpgrade = () => navigate('/login');
+  const onDemo = () => document.querySelector('.landing-screenshot-wrap')?.scrollIntoView({ behavior: 'smooth' });
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-indigo-600 via-indigo-700 to-indigo-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter mb-6">
-              Flashcards on steroids for your brain.
-            </h1>
-            <p className="text-lg sm:text-xl text-indigo-100 max-w-3xl mx-auto mb-10 leading-relaxed">
-              Glimmind uses a 4-cycle spaced repetition system with fuzzy matching, voice study mode, and cross-platform sync. 
-              Learn languages faster with science-backed intervals.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to="/login"
-                className="w-full sm:w-auto px-8 py-4 bg-white text-indigo-600 font-black uppercase text-sm tracking-widest rounded-2xl hover:bg-indigo-50 transition shadow-xl shadow-white/10 active:scale-95"
-              >
-                Start Free
-              </Link>
-              <Link
-                to="/login"
-                className="w-full sm:w-auto px-8 py-4 bg-indigo-800 text-white font-black uppercase text-sm tracking-widest rounded-2xl hover:bg-indigo-700 transition border border-indigo-600 active:scale-95"
-              >
-                Watch Demo
-              </Link>
-            </div>
-          </div>
-        </div>
-        
-        {/* Decorative blobs */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4">
-              Why Glimmind?
-            </h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-              Built for serious learners who want results, not gamification.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20 sm:py-28 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4">
-              Simple, fair pricing
-            </h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-              Start free. Upgrade when you need more. No surprises.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <PricingCard 
-              name="Free"
-              price="€0"
-              period="/month"
-              description="Perfect for casual learners"
-              features={[
-                '1,000 active cards',
-                'Unlimited lists',
-                'Exam & Training modes',
-                'Voice study (browser TTS/STT)',
-                'Local-first storage',
-                'Cloud sync (Google OAuth)',
-                'Import from CSV/Text/YouTube',
-              ]}
-              cta="Start Free"
-              variant="outline"
-              href="/login"
-            />
-            <PricingCard 
-              name="Premium"
-              price="€4.99"
-              period="/month"
-              description="For power users & polyglots"
-              features={[
-                '5,000 active cards',
-                'Everything in Free',
-                'Priority cloud sync',
-                'Chirp 3 HD voices (premium TTS)',
-                'Advanced statistics & reports',
-                'Export all data (GDPR)',
-                'Priority support',
-              ]}
-              cta="Upgrade to Premium"
-              variant="filled"
-              href="/login"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-indigo-600 text-white">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl sm:text-4xl font-black mb-6">
-            Ready to learn faster?
-          </h2>
-          <p className="text-lg text-indigo-100 mb-8">
-            Join thousands of learners using spaced repetition that actually works.
+    <div className="landing-root">
+      <div className="landing-hero">
+        <div className="landing-hero-inner">
+          <div className="landing-tag">Sistema de 4 ciclos</div>
+          <h1>Mientras Duolingo te da puntos, <em>Glimmind te hace recordar</em>.</h1>
+          <p className="landing-sub">
+            Sistema de 4 ciclos · Validación difusa · Voz. Aprende el vocabulario que realmente necesitas.
           </p>
-          <Link
-            to="/login"
-            className="inline-block px-8 py-4 bg-white text-indigo-600 font-black uppercase text-sm tracking-widest rounded-2xl hover:bg-indigo-50 transition shadow-xl active:scale-95"
-          >
-            Create your first deck free
-          </Link>
+          <div className="landing-buttons">
+            <button className="landing-btn landing-btn-primary" onClick={onStart}>Empezar gratis</button>
+            <button className="landing-btn landing-btn-secondary" onClick={onDemo}>Ver demo</button>
+          </div>
         </div>
-      </section>
+      </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-300 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div className="md:col-span-2">
-              <Link to="/" className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9 9 4.03 9 9" />
-                    <path d="M12 21c4.97 0 9-4.03 9-9" opacity="0.4" />
-                    <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
-                    <path d="M12 3v2" />
-                    <path d="M12 19v2" />
-                    <path d="M3 12h2" />
-                    <path d="M19 12h2" />
-                  </svg>
-                </div>
-                <span className="text-xl font-black text-white">Glimmind</span>
-              </Link>
-              <p className="text-sm text-slate-400 max-w-xs">
-                Spaced repetition flashcards for language learning. Built with React, Firebase, and science.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/login" className="hover:text-white transition">Dashboard</Link></li>
-                <li><Link to="/login" className="hover:text-white transition">Pricing</Link></li>
-                <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
-                <li><Link to="/terms" className="hover:text-white transition">Terms of Service</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">GitHub</a></li>
-                <li><a href="mailto:hello@glimmind.com" className="hover:text-white transition">Contact</a></li>
-                <li><Link to="/privacy" className="hover:text-white transition">Cookie Policy</Link></li>
-              </ul>
+      <div className="landing-screenshot-wrap">
+        <div className="landing-screenshot">
+          <div className="landing-game-header">
+            <span className="landing-deck-name">Inglés Básico</span>
+            <div className="landing-stats">
+              <span>12 correctas</span>
+              <span>47%</span>
             </div>
           </div>
-          <div className="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
-            © 2026 Glimmind. All rights reserved.
+          <div className="landing-question">
+            <div className="landing-term">I've never really understood why people</div>
+            <div className="landing-hint">c*** m****** a* s****</div>
+          </div>
+          <div className="landing-input-row">
+            <input type="text" placeholder="Escribe tu respuesta..." />
+            <button className="landing-btn-validate">VALIDAR</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="landing-section">
+        <div className="landing-section-head">
+          <div className="landing-section-num">01</div>
+          <h2>Cómo se mueve una palabra</h2>
+        </div>
+        <p className="landing-section-lead">
+          Cuando fallas, la palabra no desaparece. Entra a un ciclo. Y después a otro. Hasta que se queda.
+        </p>
+        <div className="landing-flow">
+          <div className="landing-flow-step landing-nueva">
+            <div className="landing-step-num">STAGE 01</div>
+            <div className="landing-step-name">NUEVA</div>
+            <div className="landing-step-desc">Primera vez que la ves. Si aciertas, queda aprendida.</div>
+          </div>
+          <div className="landing-flow-step landing-vista">
+            <div className="landing-step-num">STAGE 02</div>
+            <div className="landing-step-name">VISTA</div>
+            <div className="landing-step-desc">Fallaste. Otra oportunidad. Si aciertas, se queda aquí.</div>
+          </div>
+          <div className="landing-flow-step landing-reconocida">
+            <div className="landing-step-num">STAGE 03</div>
+            <div className="landing-step-name">RECONOCIDA</div>
+            <div className="landing-step-desc">Fallaste de nuevo. Ya debería sonar. Si aciertas, se queda aquí.</div>
+          </div>
+          <div className="landing-flow-step landing-frecuente">
+            <div className="landing-step-num">STAGE 04</div>
+            <div className="landing-step-name">FRECUENTE</div>
+            <div className="landing-step-desc">La palabra que se resiste. No hay castigo, solo repetición.</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="landing-section">
+        <div className="landing-section-head">
+          <div className="landing-section-num">02</div>
+          <h2>Validación difusa</h2>
+        </div>
+        <p className="landing-section-lead">
+          Si el 80% de los caracteres coincide, cuenta como acierto.
+        </p>
+        <div className="landing-validation">
+          <div className="landing-validation-row">
+            <span className="landing-lbl">Tú</span>
+            <span className="landing-word landing-word-wrong">dividens</span>
+            <span className="landing-score">—</span>
+          </div>
+          <div className="landing-validation-row">
+            <span className="landing-lbl">Sistema</span>
+            <span className="landing-word landing-word-right">dividends</span>
+            <span className="landing-score">93%</span>
+          </div>
+          <div className="landing-validation-row">
+            <span className="landing-lbl">Resultado</span>
+            <span className="landing-word landing-word-right">Acierto</span>
+            <span className="landing-score">≥ 80%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="landing-why">
+        <div className="landing-kicker">Por qué Glimmind</div>
+        <h2>Para quienes quieren recordar, no coleccionar puntos.</h2>
+        <p className="landing-lead">
+          No vas a aprender 5.000 palabras en una semana. Vas a aprender las que necesitas. Y vas a recordarlas.
+        </p>
+
+        <div className="landing-why-grid">
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-blue">🔄</div>
+            <h3>La palabra no desaparece</h3>
+            <p>
+              En otras apps fallas una vez y la palabra se va. Aquí <strong>entra a un ciclo</strong>.
+              Y después a otro. <strong>Hasta que se queda</strong>. Sin intervalos arbitrarios.
+            </p>
+          </div>
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-violet">🎮</div>
+            <h3>Dos formas de practicar</h3>
+            <p>
+              <strong>Modo examen:</strong> escribes la respuesta y el sistema valida.
+              <strong>Modo práctica:</strong> piensas, revelas y te autoevalúas.
+              <em>Cambia cuando quieras.</em>
+            </p>
+          </div>
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-emerald">✅</div>
+            <h3>No te castigamos por un typo</h3>
+            <p>
+              Escribiste <strong>dividens</strong>, el sistema esperaba <strong>dividends</strong>.
+              Coincidencia: <em>93%</em>. Cuenta como acierto. Recordar no es un examen de ortografía.
+            </p>
+          </div>
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-rose">🎙️</div>
+            <h3>Aprende hablando, no solo escribiendo</h3>
+            <p>
+              Practica <strong>manos libres</strong>. Di la respuesta en voz alta y el sistema la escucha.
+              <strong>Funciona sin conexión</strong>. Comandos: revelar, pasar, parar.
+            </p>
+          </div>
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-amber">📱</div>
+            <h3>En tu navegador, tu tablet, tu teléfono</h3>
+            <p>
+              Web, iOS y Android. <strong>El mismo progreso en todos lados</strong>.
+              <em>Funciona offline</em>. Si tienes cuenta, sincroniza.
+            </p>
+          </div>
+          <div className="landing-why-card">
+            <div className="landing-icon landing-icon-slate">🔒</div>
+            <h3>Tus datos se quedan contigo</h3>
+            <p>
+              Todo <strong>vive en tu dispositivo</strong>. La nube es opcional.
+              <em>Sin tracking, sin anuncios, sin vender tus datos.</em>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="landing-pricing">
+        <div className="landing-kicker">Precios</div>
+        <h2>Simple y honesto.</h2>
+        <p className="landing-lead">
+          Empieza gratis. Actualiza cuando lo necesites. Sin sorpresas.
+        </p>
+
+        <div className="landing-plans">
+          <div className="landing-plan landing-plan-free">
+            <div className="landing-plan-name">Free</div>
+            <div className="landing-plan-price">
+              <span className="landing-amount">€0</span>
+              <span className="landing-period">/mes</span>
+            </div>
+            <p className="landing-plan-desc">Para empezar sin compromiso.</p>
+            <ul className="landing-plan-features">
+              <li><span className="landing-check">✓</span><span><strong>1.000 tarjetas</strong> activas</span></li>
+              <li><span className="landing-check">✓</span><span><strong>Mazos ilimitados</strong></span></li>
+              <li><span className="landing-check">✓</span><span>Modo examen y práctica</span></li>
+              <li><span className="landing-check">✓</span><span>Estudio con voz (navegador)</span></li>
+              <li><span className="landing-check">✓</span><span>Tus datos viven en tu dispositivo</span></li>
+              <li><span className="landing-check">✓</span><span>Sincronización con Google</span></li>
+              <li><span className="landing-check">✓</span><span>Importa desde CSV, texto o YouTube</span></li>
+            </ul>
+            <button className="landing-plan-cta landing-plan-cta-free" onClick={onStart}>Empezar gratis</button>
+          </div>
+
+          <div className="landing-plan landing-plan-premium">
+            <div className="landing-plan-badge">Más elegido</div>
+            <div className="landing-plan-name">Premium</div>
+            <div className="landing-plan-price">
+              <span className="landing-amount">€4,99</span>
+              <span className="landing-period">/mes</span>
+            </div>
+            <p className="landing-plan-desc">Para quienes estudian en serio.</p>
+            <ul className="landing-plan-features">
+              <li><span className="landing-check">✓</span><span><strong>5.000 tarjetas</strong> activas</span></li>
+              <li><span className="landing-check">✓</span><span><strong>Todo lo de Free</strong></span></li>
+              <li><span className="landing-check">✓</span><span>Sincronización prioritaria</span></li>
+              <li><span className="landing-check">✓</span><span><strong>Voces HD</strong> (Chirp 3)</span></li>
+              <li><span className="landing-check">✓</span><span>Estadísticas avanzadas</span></li>
+              <li><span className="landing-check">✓</span><span>Exporta todos tus datos</span></li>
+              <li><span className="landing-check">✓</span><span>Soporte prioritario</span></li>
+            </ul>
+            <button className="landing-plan-cta landing-plan-cta-premium" onClick={onUpgrade}>Probar Premium</button>
+          </div>
+        </div>
+
+        <div className="landing-pricing-note">
+          <span className="landing-dot"></span>
+          <span>Sin anuncios. Sin tracking. Sin vender tus datos.</span>
+        </div>
+      </div>
+
+      <div className="landing-closing">
+        <h2>¿Listo para recordar de verdad?</h2>
+        <p>Crea tu primer mazo gratis. Toma menos de un minuto.</p>
+        <button className="landing-btn landing-btn-primary" onClick={onStart}>Crear mi primer mazo →</button>
+      </div>
+
+      <footer className="landing-footer">
+        <div className="landing-footer-top">
+          <div className="landing-footer-brand">
+            <div className="landing-logo">
+              <div className="landing-logo-icon">G</div>
+              <span className="landing-logo-text">Glimmind</span>
+            </div>
+            <p>
+              Flashcards con repetición espaciada para aprender idiomas.
+              Construido con React, Firebase y ciencia.
+            </p>
+            <div className="landing-footer-social">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">GH</a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">X</a>
+              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord">DC</a>
+            </div>
+          </div>
+          <div className="landing-footer-col">
+            <h4>Producto</h4>
+            <ul>
+              <li><a href="/login">Dashboard</a></li>
+              <li><a href="/login">Precios</a></li>
+              <li><a href="/privacy">Novedades</a></li>
+              <li><a href="/terms">Roadmap</a></li>
+            </ul>
+          </div>
+          <div className="landing-footer-col">
+            <h4>Recursos</h4>
+            <ul>
+              <li><a href="/privacy">Documentación</a></li>
+              <li><a href="/terms">Guías</a></li>
+              <li><a href="/cookies">Estado del servicio</a></li>
+              <li><a href="/privacy">Contacto</a></li>
+            </ul>
+          </div>
+          <div className="landing-footer-col">
+            <h4>Legal</h4>
+            <ul>
+              <li><a href="/privacy">Privacidad</a></li>
+              <li><a href="/terms">Términos</a></li>
+              <li><a href="/cookies">Cookies</a></li>
+              <li><a href="/privacy">GDPR</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="landing-footer-bottom">
+          <div className="landing-footer-bottom-inner">
+            <div className="landing-copyright">
+              © 2026 Glimmind. Todos los derechos reservados.
+            </div>
+            <div className="landing-legal">
+              <a href="/privacy">Privacidad</a>
+              <a href="/terms">Términos</a>
+              <a href="/cookies">Cookies</a>
+            </div>
+            <div className="landing-status">
+              <span className="landing-dot"></span>
+              <span>Todos los sistemas operativos</span>
+            </div>
           </div>
         </div>
       </footer>
     </div>
   );
 };
-
-interface Feature {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
-const features: Feature[] = [
-  {
-    title: '4-Cycle Spaced Repetition',
-    description: 'Cards progress through New → Seen → Recognized → Known → Learned based on your actual performance. No arbitrary intervals.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Two Game Modes',
-    description: 'Exam mode: type your answer with fuzzy validation. Training mode: self-evaluate with reveal. Switch anytime.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Fuzzy Answer Validation',
-    description: 'Accent-insensitive Levenshtein distance — essential for Spanish vocabulary. "volver" matches "Volver" at 100%.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Voice Study Mode',
-    description: 'Speak your answers hands-free. Browser STT + Chirp 3 HD TTS + Vosk offline. Voice commands: reveal, pass, stop.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 11-6 0z" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Cross-Platform',
-    description: 'Web (PWA), iOS, and Android via Capacitor. One codebase, native feel everywhere. Works offline.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Local-First + Cloud Sync',
-    description: 'Your data stays on your device. Optional Firebase sync for authenticated users. Google OAuth with guest mode.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-      </svg>
-    ),
-  },
-];
-
-const FeatureCard: React.FC<{ feature: Feature }> = ({ feature }) => (
-  <div className="bg-white rounded-2xl border border-slate-100 p-8 hover:shadow-lg hover:border-indigo-200 transition-all">
-    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 mb-6">
-      {feature.icon}
-    </div>
-    <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-    <p className="text-slate-500 leading-relaxed">{feature.description}</p>
-  </div>
-);
-
-interface PricingCardProps {
-  name: string;
-  price: string;
-  period: string;
-  description: string;
-  features: string[];
-  cta: string;
-  variant: 'outline' | 'filled';
-  href: string;
-}
-
-const PricingCard: React.FC<PricingCardProps> = ({ 
-  name, price, period, description, features, cta, variant, href 
-}) => (
-  <Link 
-    to={href} 
-    className={`relative rounded-2xl p-8 transition-all ${
-      variant === 'filled' 
-        ? 'bg-indigo-600 text-white border border-indigo-600 shadow-xl shadow-indigo-200' 
-        : 'bg-white text-slate-900 border border-slate-200 hover:border-indigo-300 hover:shadow-lg'
-    }`}
-  >
-    {variant === 'filled' && (
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full">
-        Most Popular
-      </div>
-    )}
-    <div className="mb-6">
-      <h3 className="text-xl font-black mb-2">{name}</h3>
-      <div className="flex items-baseline gap-1 mb-2">
-        <span className="text-4xl font-black">{price}</span>
-        <span className="text-sm opacity-70">{period}</span>
-      </div>
-      <p className="text-sm opacity-80">{description}</p>
-    </div>
-    <ul className="space-y-3 mb-8" role="list">
-      {features.map((feature) => (
-        <li key={feature} className="flex items-start gap-3">
-          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <span className="text-sm">{feature}</span>
-        </li>
-      ))}
-    </ul>
-    <span className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest transition active:scale-95 inline-block text-center ${
-      variant === 'filled'
-        ? 'bg-white text-indigo-600 hover:bg-indigo-50 shadow-lg shadow-white/10'
-        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
-    }`}>
-      {cta}
-    </span>
-  </Link>
-);
