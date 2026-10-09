@@ -1,6 +1,7 @@
 import { QUOTA_CONFIG, TierType, QuotaStatus } from '../constants/quotaConfig';
 import { callFunction } from './callFunction';
 import { UserQuota } from '../types/quota';
+import { GUEST_UID } from '../constants/app';
 
 export class QuotaService {
   static getMaxCards(tier: TierType = 'free'): number {
@@ -74,7 +75,7 @@ export class QuotaService {
 
 export const quotaService = {
   fetchQuota: async (userId: string): Promise<UserQuota | null> => {
-    if (!userId || userId === 'anonymous') return null;
+    if (!userId || userId === 'anonymous' || userId === GUEST_UID) return null;
     try {
       return await callFunction<UserQuota>('getQuota', { userId });
     } catch (error) {

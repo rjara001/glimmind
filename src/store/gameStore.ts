@@ -782,9 +782,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     ensureCacheMatchesEnvironment();
 
-    // Load persisted pending deltas
+    const isGuest = !user || user.uid === GUEST_UID;
+
+    // Load persisted pending deltas (real accounts only — guests never sync)
     const savedDeltas = safeGetItem(PENDING_DELTAS_KEY);
-    if (savedDeltas) {
+    if (savedDeltas && !isGuest) {
       try {
         const parsed = JSON.parse(savedDeltas);
         const pendingDeltasMap = new Map<string, AssociationDelta[]>();
@@ -796,8 +798,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         console.error('Error loading pending deltas:', e);
       }
     }
-
-    const isGuest = !user || user.uid === GUEST_UID;
 
     const savedLists = safeGetItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
@@ -925,6 +925,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   addPendingDelta: (listId, deltas) => {
+    const { user } = get();
+    if (!user || user.uid === GUEST_UID) return;
+
     const { pendingDeltas } = get();
     const existing = pendingDeltas.get(listId) || [];
     const merged = [...existing, ...deltas];

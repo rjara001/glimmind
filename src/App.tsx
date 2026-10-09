@@ -42,14 +42,18 @@ const AppContent: React.FC = () => {
 
   const handlers = useAppHandlers({ navigate, showToast, setLastPlayedId });
 
+  const setGameUser = useGameStore((state) => state.setUser);
+
   const handleLoginDev = useCallback(() => {
-    setUser({
+    const guestUser = {
       uid: GUEST_UID,
       displayName: 'Local Guest',
       email: null,
       photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff',
-    });
-  }, [setUser]);
+    };
+    setUser(guestUser);
+    setGameUser(guestUser);
+  }, [setUser, setGameUser]);
 
   // Create mode state - holds the draft list before saving
   const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);

@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { getPeriodicIntervalMs } from '../../constants/syncConfig';
+import { GUEST_UID } from '../../constants/app';
+import type { TierType } from '../../constants/syncConfig';
 
 export function usePeriodicSync() {
-  const { pendingDeltas, flushSync, user } = useGameStore();
-  const tier = user?.uid === 'guest' ? 'free' : 'free'; // TODO: get actual tier from user
+  const { pendingDeltas, flushSync, user, quota } = useGameStore();
+  const tier: TierType = quota?.tier === 'premium' ? 'premium' : 'free';
 
   useEffect(() => {
-    if (!user || user.uid === 'guest') return;
+    if (!user || user.uid === GUEST_UID) return;
 
     const intervalMs = getPeriodicIntervalMs(tier);
     const interval = setInterval(() => {
