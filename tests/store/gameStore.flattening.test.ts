@@ -124,7 +124,8 @@ describe('loadInitialData robustness against malformed cloud data', () => {
     }
 
     it('survives object-shaped associations in localStorage', async () => {
-      seed([malformedList]);
+      // Guests only see lists they own, so the fixture must be guest-owned.
+      seed([{ ...malformedList, userId: GUEST_UID }]);
 
       await useGameStore.getState().loadInitialData();
 

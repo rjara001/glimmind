@@ -72,6 +72,20 @@ function flushActivityCloudSave() {
   }
 }
 
+/**
+ * The pending buffer is module-level, so it survives a user switch. Events
+ * recorded by one account would otherwise be flushed under another account's
+ * uid. Dropping at most one debounce window of activity is the safe trade.
+ */
+function discardPendingActivity() {
+  if (activitySaveTimer) {
+    clearTimeout(activitySaveTimer);
+    activitySaveTimer = null;
+  }
+  pendingActivityUid = null;
+  pendingActivityEvents = [];
+}
+
 if (typeof window !== 'undefined') {
   const handleFlush = () => {
     flushActivityCloudSave(); // Solo mantenemos activity
@@ -459,6 +473,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (isSwitch) {
+      discardPendingActivity();
       set({
         lists: [],
         currentListId: null,
@@ -815,9 +830,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       try {
         const parsed = JSON.parse(savedLists);
         const { lists: flattenedParsed } = applyFlattening(parsed);
-        const filteredLists = isGuest
-          ? flattenedParsed
-          : flattenedParsed.filter((l: AssociationList) => l.userId === user.uid);
+        // Always scope by owner. A guest is an owner like any other: without this
+        // filter, signing in with Google, signing out and entering guest mode
+        // exposed every deck the Google user had on this device.
+        const ownerUid = isGuest ? GUEST_UID : user.uid;
+        const filteredLists = flattenedParsed.filter(
+          (l: AssociationList) => l.userId === ownerUid
+        );
         const normalizedParsed = withNormalizedVoiceLanguages(filteredLists);
         set({ lists: normalizedParsed });
         safeStringify(LOCAL_STORAGE_KEY, normalizedParsed);
