@@ -52,26 +52,82 @@ export const LandingPage: React.FC = () => {
         <p className="landing-section-lead">
           Cuando fallas, la palabra no desaparece. Entra a un ciclo. Y después a otro. Hasta que se queda.
         </p>
-        <div className="landing-flow">
-          <div className="landing-flow-step landing-nueva">
-            <div className="landing-step-num">STAGE 01</div>
-            <div className="landing-step-name">NUEVA</div>
-            <div className="landing-step-desc">Primera vez que la ves. Si aciertas, queda aprendida.</div>
+        <div className="landing-flow-wrap">
+          <div className="landing-flow-arrows" aria-hidden="true">
+            <svg
+              viewBox="0 0 900 110"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+              focusable="false"
+            >
+              <defs>
+                <linearGradient id="landing-arc-1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#f59e0b" />
+                </linearGradient>
+                <linearGradient id="landing-arc-2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#ec4899" />
+                </linearGradient>
+                <linearGradient id="landing-arc-3" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ec4899" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M 108 88 Q 222 16 336 88"
+                fill="none"
+                stroke="url(#landing-arc-1)"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="9 9"
+                opacity="0.9"
+                vectorEffect="non-scaling-stroke"
+              />
+              <path
+                d="M 336 88 Q 450 16 564 88"
+                fill="none"
+                stroke="url(#landing-arc-2)"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="9 9"
+                opacity="0.9"
+                vectorEffect="non-scaling-stroke"
+              />
+              <path
+                d="M 564 88 Q 678 16 792 88"
+                fill="none"
+                stroke="url(#landing-arc-3)"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="9 9"
+                opacity="0.9"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
           </div>
-          <div className="landing-flow-step landing-vista">
-            <div className="landing-step-num">STAGE 02</div>
-            <div className="landing-step-name">VISTA</div>
-            <div className="landing-step-desc">Fallaste. Otra oportunidad. Si aciertas, se queda aquí.</div>
-          </div>
-          <div className="landing-flow-step landing-reconocida">
-            <div className="landing-step-num">STAGE 03</div>
-            <div className="landing-step-name">RECONOCIDA</div>
-            <div className="landing-step-desc">Fallaste de nuevo. Ya debería sonar. Si aciertas, se queda aquí.</div>
-          </div>
-          <div className="landing-flow-step landing-frecuente">
-            <div className="landing-step-num">STAGE 04</div>
-            <div className="landing-step-name">FRECUENTE</div>
-            <div className="landing-step-desc">La palabra que se resiste. No hay castigo, solo repetición.</div>
+
+          <div className="landing-flow">
+            <div className="landing-flow-step landing-nueva">
+              <div className="landing-step-num">STAGE 01</div>
+              <div className="landing-step-name">NUEVA</div>
+              <div className="landing-step-desc">Primera vez que la ves. Si aciertas, queda aprendida.</div>
+            </div>
+            <div className="landing-flow-step landing-vista">
+              <div className="landing-step-num">STAGE 02</div>
+              <div className="landing-step-name">VISTA</div>
+              <div className="landing-step-desc">Fallaste. Otra oportunidad. Si aciertas, se queda aquí.</div>
+            </div>
+            <div className="landing-flow-step landing-reconocida">
+              <div className="landing-step-num">STAGE 03</div>
+              <div className="landing-step-name">RECONOCIDA</div>
+              <div className="landing-step-desc">Fallaste de nuevo. Ya debería sonar. Si aciertas, se queda aquí.</div>
+            </div>
+            <div className="landing-flow-step landing-frecuente">
+              <div className="landing-step-num">STAGE 04</div>
+              <div className="landing-step-name">FRECUENTE</div>
+              <div className="landing-step-desc">La palabra que se resiste. No hay castigo, solo repetición.</div>
+            </div>
           </div>
         </div>
       </div>

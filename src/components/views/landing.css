@@ -245,10 +245,35 @@
   margin-bottom: 40px;
 }
 
+.landing-flow-wrap {
+  position: relative;
+  padding-top: 90px;
+}
+
+.landing-flow-arrows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.landing-flow-arrows svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
 .landing-flow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  position: relative;
+  z-index: 2;
 }
 
 .landing-flow-step {
@@ -289,6 +314,12 @@
 .landing-flow-step.landing-vista { border-top: 3px solid #f59e0b; }
 .landing-flow-step.landing-reconocida { border-top: 3px solid #ec4899; }
 .landing-flow-step.landing-frecuente { border-top: 3px solid #8b5cf6; }
+
+/* Second pass: when a card moves up on hover, the arc above it reads as detached. */
+.landing-flow-step.landing-nueva:hover { box-shadow: 0 12px 32px rgba(59, 130, 246, 0.14); }
+.landing-flow-step.landing-vista:hover { box-shadow: 0 12px 32px rgba(245, 158, 11, 0.14); }
+.landing-flow-step.landing-reconocida:hover { box-shadow: 0 12px 32px rgba(236, 72, 153, 0.14); }
+.landing-flow-step.landing-frecuente:hover { box-shadow: 0 12px 32px rgba(139, 92, 246, 0.14); }
 
 .landing-validation {
   background: white;
@@ -823,6 +854,8 @@
   .landing-hero { padding: 60px 24px 120px; }
   .landing-screenshot-wrap { margin-top: -60px; }
   .landing-flow { grid-template-columns: 1fr 1fr; }
+  .landing-flow-arrows { display: none; }
+  .landing-flow-wrap { padding-top: 0; }
   .landing-section { padding-top: 60px; }
   .landing-section-head { grid-template-columns: 40px 1fr; gap: 16px; }
   .landing-section-head h2 { font-size: 1.5rem; }
