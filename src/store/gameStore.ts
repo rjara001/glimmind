@@ -94,7 +94,14 @@ function markCloudFetch(uid: string) {
 }
 
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
-  if (!list.associations || list.associations.length === 0) {
+  // A truthiness check is not enough: cloud data can hold `associations` as a
+  // non-array, and normalizeAssociations iterates with for...of, which throws on
+  // a non-iterable value and takes down the whole list load.
+  if (!Array.isArray(list.associations) || list.associations.length === 0) {
+    if (!Array.isArray(list.associations) && list.associations != null) {
+      console.warn('[flattenList] ignoring non-array associations for list', list.id);
+      return { list: { ...list, associations: [] }, changed: true };
+    }
     return { list, changed: false };
   }
   const fallbackTimestamp = list.updatedAt
@@ -111,6 +118,10 @@ function flattenList(list: AssociationList): { list: AssociationList; changed: b
 }
 
 function applyFlattening(lists: AssociationList[]): { lists: AssociationList[]; changedIds: string[] } {
+  if (!Array.isArray(lists)) {
+    console.warn('[applyFlattening] ignoring non-array list payload');
+    return { lists: [], changedIds: [] };
+  }
   const changedIds: string[] = [];
   const flattenedLists = lists.map((list) => {
     const result = flattenList(list);
