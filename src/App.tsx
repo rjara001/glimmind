@@ -26,6 +26,7 @@ import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useNavigation } from './hooks/app/useNavigation';
 import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
+import { isFeatureEnabled } from './constants/featureFlags';
 import { splitAssociationsByMax } from './utils/splitAssociations';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
@@ -42,14 +43,18 @@ const AppContent: React.FC = () => {
 
   const handlers = useAppHandlers({ navigate, showToast, setLastPlayedId });
 
+  const setGameUser = useGameStore((state) => state.setUser);
+
   const handleLoginDev = useCallback(() => {
-    setUser({
+    const guestUser = {
       uid: GUEST_UID,
       displayName: 'Local Guest',
       email: null,
       photoURL: 'https://ui-avatars.com/api/?name=Guest&background=10b981&color=fff',
-    });
-  }, [setUser]);
+    };
+    setUser(guestUser);
+    setGameUser(guestUser);
+  }, [setUser, setGameUser]);
 
   // Create mode state - holds the draft list before saving
   const [createModeList, setCreateModeList] = React.useState<AssociationList | null>(null);
@@ -398,7 +403,11 @@ const AppContent: React.FC = () => {
             path="/reports"
             element={
               <ProtectedRoute>
-                <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+                {isFeatureEnabled('reports') ? (
+                  <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )}
               </ProtectedRoute>
             }
           />

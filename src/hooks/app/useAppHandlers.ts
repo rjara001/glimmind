@@ -4,7 +4,7 @@ import { listService } from "../../services/listService";
 import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
 import { QuotaService } from "../../services/quotaService";
-import { LAST_PLAYED_KEY } from "../../constants/app";
+import { GUEST_UID, LAST_PLAYED_KEY } from "../../constants/app";
 import { safeSetItem } from "../../utils/localStorage";
 import { getCorrelationId, getSessionId } from "../../services/errorReporting";
 import { FlowTracker } from "../../utils/breadcrumbs";
@@ -94,7 +94,8 @@ export function useAppHandlers({
 
       // Check if there are meaningful changes (compare relevant fields by ID)
       const prevMap = new Map(currentList.associations.map(a => [a.id, a]));
-      const hasChanges = updatedAssociations.some((a) => {
+      const hasRemovedCards = prevMap.size !== updatedAssociations.length;
+      const hasChanges = hasRemovedCards || updatedAssociations.some((a) => {
         const prev = prevMap.get(a.id);
         if (!prev) return true; // new association
         return (
@@ -206,15 +207,20 @@ const handlePlayList = useCallback(
       };
       setIsCreating(true);
       try {
-        const id = await listService.createList({
-          name,
-          concept,
-          associations,
-          userId: user.uid,
-          settings: { ...defaultSettings, ...settings },
-        });
+        let id: string;
 
-        // Add the new list to the local store
+        if (user.uid === GUEST_UID) {
+          id = crypto.randomUUID();
+        } else {
+          id = await listService.createList({
+            name,
+            concept,
+            associations,
+            userId: user.uid,
+            settings: { ...defaultSettings, ...settings },
+          });
+        }
+
         const newList: AssociationList = {
           id,
           userId: user.uid,
@@ -261,7 +267,18 @@ const handlePlayList = useCallback(
       try {
         tracker?.add('parent: preparing list with timestamp');
         const listWithTimestamp = { ...list, updatedAt: Date.now() };
-        
+
+        if (user.uid === GUEST_UID) {
+          const currentGuestLists = useGameStore.getState().lists;
+          useGameStore.getState().setLists(
+            currentGuestLists.map((l) => (l.id === listWithTimestamp.id ? listWithTimestamp : l)),
+          );
+
+          tracker?.add('parent: guest mode, skipping remote update');
+          showToast("Lista guardada", "success");
+          return;
+        }
+
         tracker?.add('parent: calling listService.updateList');
         await listService.updateList({
           id: listWithTimestamp.id,
@@ -330,17 +347,20 @@ const handlePlayList = useCallback(
       }
       setIsDeleting(true);
       try {
+        if (user.uid === GUEST_UID) {
+          removeListFromLocalStore(id);
+          showToast("Mazo eliminado (modo invitado)", "success");
+          return;
+        }
+
         await listService.deleteList(id);
-        // Remove from local store
-        const currentLists = useGameStore.getState().lists;
-        useGameStore.getState().setLists(currentLists.filter((l) => l.id !== id));
+        removeListFromLocalStore(id);
         showToast("Mazo eliminado", "success");
       } catch (error) {
         // If list doesn't exist in Firestore (e.g., local-only list), still remove from local store
         const errorMessage = error instanceof Error ? error.message : "Error al eliminar";
         if (errorMessage.toLowerCase().includes("not found") || errorMessage.toLowerCase().includes("no existe")) {
-          const currentLists = useGameStore.getState().lists;
-          useGameStore.getState().setLists(currentLists.filter((l) => l.id !== id));
+          removeListFromLocalStore(id);
           showToast("Mazo eliminado (solo local)", "success");
         } else {
           showToast(errorMessage, "error");
@@ -424,4 +444,9 @@ const handlePlayList = useCallback(
     handleCreateListAndPlay,
     handleAddDeck,
   };
+}
+
+function removeListFromLocalStore(listId: string): void {
+  const currentLists = useGameStore.getState().lists;
+  useGameStore.getState().setLists(currentLists.filter((l) => l.id !== listId));
 }

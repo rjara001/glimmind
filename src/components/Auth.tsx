@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth, googleProvider, signInWithPopup, signInWithRedirect, isConfigured } from '../firebase';
 import { useToast } from './layout/Toast';
+import {
+  describeAuthError,
+  isCoopIsolationError,
+  isUserCancellation,
+  shouldUseRedirectFallback,
+} from '../utils/authErrors';
 
 interface AuthProps {
   onLoginDev: () => void;
@@ -23,28 +29,33 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
       await signInWithPopup(auth, googleProvider);
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
+      console.error('[Auth] Google sign-in failed:', err?.code ?? 'unknown', err?.message ?? '');
 
-      if (err?.message?.includes('Cross-Origin-Opener-Policy')) {
+      if (isCoopIsolationError(error)) {
+        showToast(describeAuthError(error), 'error');
+        setIsLoggingIn(false);
         return;
       }
 
-      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+      if (isUserCancellation(error)) {
+        setIsLoggingIn(false);
+        return;
+      }
+
+      if (shouldUseRedirectFallback(error)) {
         try {
           await signInWithRedirect(auth, googleProvider);
           return;
-        } catch {
-          showToast('Could not redirect to Google. Please try again.', 'error');
+        } catch (redirectError: unknown) {
+          const redirectErr = redirectError as { code?: string; message?: string };
+          console.error('[Auth] Google redirect failed:', redirectErr?.code ?? 'unknown', redirectErr?.message ?? '');
+          showToast(describeAuthError(redirectError), 'error');
           setIsLoggingIn(false);
           return;
         }
       }
 
-      if (err?.code === 'auth/popup-closed-by-user') {
-        setIsLoggingIn(false);
-        return;
-      }
-
-      showToast('Google login failed. Please try again.', 'error');
+      showToast(describeAuthError(error), 'error');
       setIsLoggingIn(false);
     }
   };

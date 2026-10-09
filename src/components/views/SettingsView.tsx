@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useGameStore } from '../../store/gameStore';
-import { useToast } from '../layout/Toast';
-import { stripeService } from '../../services/stripe';
+import { isFeatureEnabled } from '../../constants/featureFlags';
+import { GUEST_UID } from '../../constants/app';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -11,21 +11,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
   const settings = useGameStore((state) => state.settings);
   const setSettings = useGameStore((state) => state.setSettings);
   const user = useGameStore((state) => state.user);
-  const quota = useGameStore((state) => state.quota);
   const loadQuota = useGameStore((state) => state.loadQuota);
-  const { showToast } = useToast();
-  const [isPremium, setIsPremium] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.uid && user.uid !== 'dev-user-local') {
+    if (user?.uid && user.uid !== GUEST_UID) {
       loadQuota();
     }
   }, [user?.uid, loadQuota]);
-
-  useEffect(() => {
-    setIsPremium(quota?.tier === 'premium');
-  }, [quota?.tier]);
 
   const handleToggleHistory = () => {
     setSettings({ ...settings, activityHistoryEnabled: !settings.activityHistoryEnabled });
@@ -41,45 +33,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
 
   const handleMaxCardsChange = (value: number) => {
     setSettings({ ...settings, maxCardsPerDeck: value });
-  };
-
-  const handleTogglePremium = async () => {
-    if (!user?.uid || user.uid === 'dev-user-local') {
-      showToast('Inicia sesión para cambiar el estado premium.', 'error');
-      return;
-    }
-
-    if (isPremium) {
-      // Usuario ya es premium -> abrir portal de facturación
-      setIsLoading(true);
-      try {
-        const url = await stripeService.createBillingPortalSession(
-          `${window.location.origin}/settings`
-        );
-        window.location.href = url;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Error desconocido';
-        showToast('Error al abrir portal de facturación: ' + message, 'error');
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    // Usuario Free -> iniciar checkout Stripe
-    setIsLoading(true);
-    try {
-      const url = await stripeService.createCheckoutSession(
-        `${window.location.origin}/settings?upgrade=success`,
-        `${window.location.origin}/settings?upgrade=canceled`
-      );
-      window.location.href = url;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error desconocido';
-      showToast('Error al iniciar checkout: ' + message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -111,8 +64,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             </p>
             {settings.activityHistoryEnabled ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
-                Activo. A partir de ahora se registra la actividad de tus tarjetas y las vistas
-                de Actividad, Resumen de juegos y Ranking estarán disponibles.
+                {isFeatureEnabled('reports') ? (
+                  <>
+                    Activo. A partir de ahora se registra la actividad de tus tarjetas y las
+                    vistas de Actividad, Resumen de juegos y Ranking estarán disponibles.
+                  </>
+                ) : (
+                  <>
+                    Activo. Se registra la actividad de tus tarjetas y la vista de Actividad
+                    estará disponible.
+                  </>
+                )}
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-2">
@@ -238,40 +200,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
           <p className="text-xs text-gray-400 mt-2">
             Valor actual: <span className="font-bold">{settings.maxCardsPerDeck}</span> tarjetas por mazo
           </p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
-        <div className="p-6 flex items-start justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-gray-900">Premium</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {isPremium
-                ? 'Disfrutás de límites ampliados: 5000 tarjetas y 10 usos diarios de IA.'
-                : 'Activá premium para desbloquear 5000 tarjetas y 10 usos diarios de IA.'}
-            </p>
-            {quota && (
-              <p className="text-xs text-gray-400 mt-2">
-                Estado actual: <span className={`font-bold ${isPremium ? 'text-emerald-600' : 'text-slate-500'}`}>{isPremium ? 'Premium' : 'Free'}</span>
-                {' '}· Tarjetas: {quota.cardCount}/{quota.cardQuota} · IA: {quota.aiUsedToday}/{quota.aiQuotaDaily}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={handleTogglePremium}
-            disabled={isLoading}
-            className={`px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition active:scale-95 ${
-              isPremium
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200'
-                : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
-            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
-          >
-            {isLoading
-              ? 'Procesando...'
-              : isPremium
-              ? 'Gestionar suscripción'
-              : 'Actualizar a Premium'}
-          </button>
         </div>
       </div>
     </div>

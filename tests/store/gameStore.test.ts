@@ -573,3 +573,74 @@ describe('updateAssociations', () => {
     );
   });
 });
+
+describe('guest pending deltas (Fix B)', () => {
+  const GUEST = 'dev-user-local';
+
+  beforeEach(() => {
+    localStorage.clear();
+    useGameStore.setState({
+      user: { uid: GUEST, displayName: 'Guest', email: null, photoURL: null },
+      lists: [],
+      currentList: null,
+      pendingDeltas: new Map(),
+      settings: { activityHistoryEnabled: false },
+      activityRecordingEnabled: false,
+      activity: [],
+    });
+  });
+
+  it('addPendingDelta is a no-op for guests', () => {
+    useGameStore.getState().addPendingDelta('list-1', [
+      { id: 'card-1', fields: { term: 'x' }, updatedAt: Date.now() },
+    ]);
+
+    expect(useGameStore.getState().pendingDeltas.size).toBe(0);
+  });
+
+  it('addPendingDelta does not write glimmind_pending_deltas for guests', () => {
+    useGameStore.getState().addPendingDelta('list-1', [
+      { id: 'card-1', fields: { term: 'x' }, updatedAt: Date.now() },
+    ]);
+
+    expect(localStorage.getItem('glimmind_pending_deltas')).toBeNull();
+  });
+
+  it('addPendingDelta still records deltas for real users', () => {
+    useGameStore.setState({
+      user: { uid: 'real-user-1', displayName: 'Real', email: 'a@b.c', photoURL: null },
+    });
+
+    useGameStore.getState().addPendingDelta('list-1', [
+      { id: 'card-1', fields: { term: 'x' }, updatedAt: Date.now() },
+    ]);
+
+    expect(useGameStore.getState().pendingDeltas.size).toBe(1);
+    expect(localStorage.getItem('glimmind_pending_deltas')).not.toBeNull();
+  });
+
+  it('loadInitialData does not rehydrate pending deltas for guests', async () => {
+    localStorage.setItem(
+      'glimmind_pending_deltas',
+      JSON.stringify({ 'list-1': [{ id: 'card-1', fields: { term: 'x' }, updatedAt: 1 }] })
+    );
+
+    await useGameStore.getState().loadInitialData();
+
+    expect(useGameStore.getState().pendingDeltas.size).toBe(0);
+  });
+
+  it('loadInitialData rehydrates pending deltas for real users', async () => {
+    useGameStore.setState({
+      user: { uid: 'real-user-1', displayName: 'Real', email: 'a@b.c', photoURL: null },
+    });
+    localStorage.setItem(
+      'glimmind_pending_deltas',
+      JSON.stringify({ 'list-1': [{ id: 'card-1', fields: { term: 'x' }, updatedAt: 1 }] })
+    );
+
+    await useGameStore.getState().loadInitialData();
+
+    expect(useGameStore.getState().pendingDeltas.size).toBe(1);
+  });
+});

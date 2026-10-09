@@ -259,7 +259,11 @@ export function useListEditorActions(
   const handleBlurRow = useCallback(async () => {
     cleanupAndSave(editList);
     if (pendingSaveRef.current) {
-      await pendingSaveRef.current;
+      try {
+        await pendingSaveRef.current;
+      } catch (error) {
+        console.error('[handleBlurRow] save failed:', error);
+      }
     }
   }, [cleanupAndSave, editList]);
 

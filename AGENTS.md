@@ -607,6 +607,12 @@ firebase emulators:start --only auth,functions,firestore --import .emulator-data
 - If the emulator data is wiped (or after the first empty boot): every authenticated app request returns 401 Unauthorized because the stored ID token points to a uid that no longer exists. The user MUST sign out and sign in again.
 - The `.emulator-data` directory MUST stay in `.gitignore`.
 
+### Guest Mode Architecture
+- Guests (`GUEST_UID`) operate strictly offline/locally via `localStorage`.
+- Never trigger Firebase Cloud Functions, quota checks, or remote API calls for guest users.
+- All guest data (lists, progress, settings) MUST be persisted only in `localStorage` via `gameStore`.
+- When `user.uid === GUEST_UID`, services MUST short-circuit before any `callFunction` invocation.
+
 ---
 
 ## 32. Git Inspection & Refactoring Rules

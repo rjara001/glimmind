@@ -72,6 +72,20 @@ function flushActivityCloudSave() {
   }
 }
 
+/**
+ * The pending buffer is module-level, so it survives a user switch. Events
+ * recorded by one account would otherwise be flushed under another account's
+ * uid. Dropping at most one debounce window of activity is the safe trade.
+ */
+function discardPendingActivity() {
+  if (activitySaveTimer) {
+    clearTimeout(activitySaveTimer);
+    activitySaveTimer = null;
+  }
+  pendingActivityUid = null;
+  pendingActivityEvents = [];
+}
+
 if (typeof window !== 'undefined') {
   const handleFlush = () => {
     flushActivityCloudSave(); // Solo mantenemos activity
@@ -94,7 +108,14 @@ function markCloudFetch(uid: string) {
 }
 
 function flattenList(list: AssociationList): { list: AssociationList; changed: boolean } {
-  if (!list.associations || list.associations.length === 0) {
+  // A truthiness check is not enough: cloud data can hold `associations` as a
+  // non-array, and normalizeAssociations iterates with for...of, which throws on
+  // a non-iterable value and takes down the whole list load.
+  if (!Array.isArray(list.associations) || list.associations.length === 0) {
+    if (!Array.isArray(list.associations) && list.associations != null) {
+      console.warn('[flattenList] ignoring non-array associations for list', list.id);
+      return { list: { ...list, associations: [] }, changed: true };
+    }
     return { list, changed: false };
   }
   const fallbackTimestamp = list.updatedAt
@@ -111,6 +132,10 @@ function flattenList(list: AssociationList): { list: AssociationList; changed: b
 }
 
 function applyFlattening(lists: AssociationList[]): { lists: AssociationList[]; changedIds: string[] } {
+  if (!Array.isArray(lists)) {
+    console.warn('[applyFlattening] ignoring non-array list payload');
+    return { lists: [], changedIds: [] };
+  }
   const changedIds: string[] = [];
   const flattenedLists = lists.map((list) => {
     const result = flattenList(list);
@@ -448,6 +473,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (isSwitch) {
+      discardPendingActivity();
       set({
         lists: [],
         currentListId: null,
@@ -782,9 +808,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     ensureCacheMatchesEnvironment();
 
-    // Load persisted pending deltas
+    const isGuest = !user || user.uid === GUEST_UID;
+
+    // Load persisted pending deltas (real accounts only — guests never sync)
     const savedDeltas = safeGetItem(PENDING_DELTAS_KEY);
-    if (savedDeltas) {
+    if (savedDeltas && !isGuest) {
       try {
         const parsed = JSON.parse(savedDeltas);
         const pendingDeltasMap = new Map<string, AssociationDelta[]>();
@@ -797,16 +825,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
-    const isGuest = !user || user.uid === GUEST_UID;
-
     const savedLists = safeGetItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
       try {
         const parsed = JSON.parse(savedLists);
         const { lists: flattenedParsed } = applyFlattening(parsed);
-        const filteredLists = isGuest
-          ? flattenedParsed
-          : flattenedParsed.filter((l: AssociationList) => l.userId === user.uid);
+        // Always scope by owner. A guest is an owner like any other: without this
+        // filter, signing in with Google, signing out and entering guest mode
+        // exposed every deck the Google user had on this device.
+        const ownerUid = isGuest ? GUEST_UID : user.uid;
+        const filteredLists = flattenedParsed.filter(
+          (l: AssociationList) => l.userId === ownerUid
+        );
         const normalizedParsed = withNormalizedVoiceLanguages(filteredLists);
         set({ lists: normalizedParsed });
         safeStringify(LOCAL_STORAGE_KEY, normalizedParsed);
@@ -925,6 +955,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   addPendingDelta: (listId, deltas) => {
+    const { user } = get();
+    if (!user || user.uid === GUEST_UID) return;
+
     const { pendingDeltas } = get();
     const existing = pendingDeltas.get(listId) || [];
     const merged = [...existing, ...deltas];

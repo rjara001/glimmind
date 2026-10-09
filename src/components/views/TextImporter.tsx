@@ -8,6 +8,7 @@ import { translationService } from '../../services/translationService';
 import { QuotaService } from '../../services/quotaService';
 import { useToast } from '../layout/Toast';
 import { GUEST_UID } from '../../constants/app';
+import { GuestFeatureRequiredError, GUEST_AI_SIGNUP_MESSAGE } from '../../errors/guestErrors';
 
 interface SelectionMenu {
   text: string;
@@ -66,6 +67,12 @@ export const TextImporter: React.FC<TextImporterProps> = ({ onSave, onBack }) =>
       return;
     }
 
+    if (user?.uid === GUEST_UID) {
+      setError(GUEST_AI_SIGNUP_MESSAGE);
+      showToast(GUEST_AI_SIGNUP_MESSAGE, 'error');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
     try {
@@ -80,13 +87,15 @@ export const TextImporter: React.FC<TextImporterProps> = ({ onSave, onBack }) =>
       setDeckTitle(result.title || '');
       setMode('READ_MODE');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al generar vocabulario';
+      const message = err instanceof GuestFeatureRequiredError
+        ? err.message
+        : err instanceof Error ? err.message : 'Error al generar vocabulario';
       setError(message);
       showToast(message, 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [rawText, showToast]);
+  }, [rawText, showToast, user]);
 
   const handleDeleteTerm = useCallback((term: string) => {
     setVocabularyItems((prev) => prev.filter((item) => item.term !== term));
@@ -362,6 +371,15 @@ export const TextImporter: React.FC<TextImporterProps> = ({ onSave, onBack }) =>
                 disabled={isLoading}
               />
             </div>
+
+            {user?.uid === GUEST_UID && !error && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 mb-3">
+                <p className="text-amber-900 text-xs font-semibold">{GUEST_AI_SIGNUP_MESSAGE}</p>
+                <p className="text-amber-700 text-[11px] mt-1">
+                  Podés seguir usando y editando tus barajas en modo invitado; solo la generación con IA necesita cuenta.
+                </p>
+              </div>
+            )}
 
             {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
 
