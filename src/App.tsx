@@ -26,6 +26,7 @@ import { useAppBootstrap } from './hooks/app/useAppBootstrap';
 import { useNavigation } from './hooks/app/useNavigation';
 import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
+import { isFeatureEnabled } from './constants/featureFlags';
 import { splitAssociationsByMax } from './utils/splitAssociations';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
@@ -402,7 +403,11 @@ const AppContent: React.FC = () => {
             path="/reports"
             element={
               <ProtectedRoute>
-                <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+                {isFeatureEnabled('reports') ? (
+                  <ReportsView onBack={goBack} onGoToSettings={() => navigate('settings')} />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )}
               </ProtectedRoute>
             }
           />

@@ -5,6 +5,8 @@ import { useGameStore } from '../../store/gameStore';
 import { FunctionCallError } from '../../services/callFunction';
 import { QuotaService } from '../../services/quotaService';
 import { useToast } from '../layout/Toast';
+import { GUEST_UID } from '../../constants/app';
+import { GuestFeatureRequiredError, GUEST_AI_SIGNUP_MESSAGE } from '../../errors/guestErrors';
 
 const DECK_SIZE_OPTIONS: DeckSizeOption[] = [
   { tier: 'express', label: 'Express', description: 'Rápido', terms: 20, costPercent: 15 },
@@ -52,6 +54,7 @@ interface CreateYouTubeDeckModalProps {
 export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ onClose, onSuccess }) => {
   const { showToast } = useToast();
   const quota = useGameStore((state) => state.quota);
+  const isGuest = useGameStore((state) => state.user?.uid === GUEST_UID);
   const [url, setUrl] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('es');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -132,6 +135,12 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       return;
     }
 
+    if (isGuest) {
+      setError(GUEST_AI_SIGNUP_MESSAGE);
+      showToast(GUEST_AI_SIGNUP_MESSAGE, 'error');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
     try {
@@ -143,6 +152,11 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       await useGameStore.getState().loadQuota();
       onSuccess(result);
     } catch (err) {
+      if (err instanceof GuestFeatureRequiredError) {
+        setError(err.message);
+        showToast(err.message, 'error');
+        return;
+      }
       const callError = err as FunctionCallError;
       if (callError.code === 'SUBTITLES_UNAVAILABLE' || callError.fallbackAvailable) {
         setShowFallback(true);
@@ -153,7 +167,7 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
     } finally {
       setIsLoading(false);
     }
-  }, [url, isValidYouTubeUrl, effectiveMaxTerms, targetLanguage, effectiveLevel, onSuccess]);
+  }, [url, isValidYouTubeUrl, effectiveMaxTerms, targetLanguage, effectiveLevel, onSuccess, isGuest, showToast]);
 
   const handleManualSubmit = useCallback(async () => {
     const trimmedText = manualTranscript.trim();
@@ -161,6 +175,12 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       setError('Pega la transcripción antes de generar la baraja');
       return;
     }
+    if (isGuest) {
+      setError(GUEST_AI_SIGNUP_MESSAGE);
+      showToast(GUEST_AI_SIGNUP_MESSAGE, 'error');
+      return;
+    }
+
     setError(null);
     setIsSubmittingFallback(true);
     try {
@@ -173,11 +193,16 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       await useGameStore.getState().loadQuota();
       onSuccess(result);
     } catch (err) {
+      if (err instanceof GuestFeatureRequiredError) {
+        setError(err.message);
+        showToast(err.message, 'error');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Error al generar la baraja desde la transcripción');
     } finally {
       setIsSubmittingFallback(false);
     }
-  }, [manualTranscript, url, effectiveMaxTerms, targetLanguage, effectiveLevel, onSuccess]);
+  }, [manualTranscript, url, effectiveMaxTerms, targetLanguage, effectiveLevel, onSuccess, isGuest, showToast]);
 
   const quotaBarColor = quotaMessage?.type === 'exhausted' ? 'bg-red-500' : 'bg-indigo-500';
 
@@ -350,6 +375,15 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
                   style={{ width: `${Math.min(100, remainingPercent ?? 0)}%` }}
                 />
               </div>
+            </div>
+          )}
+
+          {isGuest && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-amber-900 text-xs font-semibold">{GUEST_AI_SIGNUP_MESSAGE}</p>
+              <p className="text-amber-700 text-[11px] mt-1">
+                Podés seguir creando y usando barajas en modo invitado; solo la generación con IA necesita cuenta.
+              </p>
             </div>
           )}
 

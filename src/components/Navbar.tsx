@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserMenu } from './layout/UserMenu';
 import { APP_VERSION } from '../constants/version';
+import { isFeatureEnabled } from '../constants/featureFlags';
 
 interface NavItem {
   path: string;
@@ -39,6 +40,10 @@ const NAV_ITEMS: NavItem[] = [
   )},
 ];
 
+const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter(
+  (item) => item.path !== '/reports' || isFeatureEnabled('reports'),
+);
+
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
   const { user } = useAuth();
   const location = useLocation();
@@ -71,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
             </Link>
 
             <div className="hidden md:flex items-center gap-1 bg-slate-50 rounded-xl p-1">
-              {NAV_ITEMS.map((item) => {
+              {VISIBLE_NAV_ITEMS.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <button

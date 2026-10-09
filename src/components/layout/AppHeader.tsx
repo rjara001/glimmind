@@ -1,5 +1,6 @@
 import React from 'react';
 import { APP_VERSION } from '../../constants/version';
+import { isFeatureEnabled } from '../../constants/featureFlags';
 import { UserMenu } from './UserMenu';
 import type { AppUser } from '../../types';
 
@@ -66,12 +67,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         >
           Activity
         </button>
-        <button
-          onClick={() => onNavigate('reports')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'reports' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
-        >
-          Reports
-        </button>
+        {isFeatureEnabled('reports') && (
+          <button
+            onClick={() => onNavigate('reports')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'reports' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
+          >
+            Reports
+          </button>
+        )}
         {isAdmin && (
           <button
             onClick={() => onNavigate('admin')}

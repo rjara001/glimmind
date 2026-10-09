@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useToast } from '../layout/Toast';
 import { stripeService } from '../../services/stripe';
+import { isFeatureEnabled } from '../../constants/featureFlags';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -111,8 +112,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             </p>
             {settings.activityHistoryEnabled ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
-                Activo. A partir de ahora se registra la actividad de tus tarjetas y las vistas
-                de Actividad, Resumen de juegos y Ranking estarán disponibles.
+                {isFeatureEnabled('reports') ? (
+                  <>
+                    Activo. A partir de ahora se registra la actividad de tus tarjetas y las
+                    vistas de Actividad, Resumen de juegos y Ranking estarán disponibles.
+                  </>
+                ) : (
+                  <>
+                    Activo. Se registra la actividad de tus tarjetas y la vista de Actividad
+                    estará disponible.
+                  </>
+                )}
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-2">
