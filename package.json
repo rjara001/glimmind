@@ -1,7 +1,7 @@
 {
   "name": "glimmind---word-association-master",
   "private": true,
-  "version": "1.34.17",
+  "version": "1.34.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
