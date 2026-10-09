@@ -40,4 +40,47 @@ describe('SettingsView', () => {
     fireEvent.click(toggle);
     expect(useGameStore.getState().settings.activityHistoryEnabled).toBe(false);
   });
+
+  describe('Premium section removed', () => {
+    it('does not render the Premium heading', () => {
+      renderWithToast(<SettingsView onBack={onBack} />);
+      expect(screen.queryByText('Premium')).not.toBeInTheDocument();
+    });
+
+    it('does not render the upgrade CTA', () => {
+      renderWithToast(<SettingsView onBack={onBack} />);
+      expect(screen.queryByText('Actualizar a Premium')).not.toBeInTheDocument();
+      expect(screen.queryByText('Gestionar suscripción')).not.toBeInTheDocument();
+    });
+
+    it('does not render the premium upsell copy', () => {
+      renderWithToast(<SettingsView onBack={onBack} />);
+      expect(screen.queryByText(/desbloquear 5000 tarjetas/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/límites ampliados/i)).not.toBeInTheDocument();
+    });
+
+    it('does not show the quota status line', () => {
+      useGameStore.setState({
+        quota: {
+          tier: 'premium',
+          cardCount: 12,
+          cardQuota: 5000,
+          aiQuotaDaily: 10,
+          aiUsedToday: 3,
+          ytAiUsedToday: 0,
+          ytAiDailyLimit: 10,
+          translationCharLimit: 1000,
+          translationCharUsed: 0,
+        },
+      });
+      renderWithToast(<SettingsView onBack={onBack} />);
+      expect(screen.queryByText(/Estado actual:/)).not.toBeInTheDocument();
+    });
+
+    it('still renders the other settings sections', () => {
+      renderWithToast(<SettingsView onBack={onBack} />);
+      expect(screen.getByText('Registro de historial')).toBeInTheDocument();
+      expect(screen.getByText('Máximo de tarjetas por mazo')).toBeInTheDocument();
+    });
+  });
 });
