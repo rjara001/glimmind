@@ -65,6 +65,10 @@ const db = getFirestore(app);
 const functions = getFunctions(app, 'us-central1');
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
+// Without this, Google silently reuses the active browser session, so after
+// signing out the user lands straight back in the previous account instead of
+// being offered the account chooser.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
 const useEmulatorsFlag = env.VITE_USE_EMULATORS === 'true';
