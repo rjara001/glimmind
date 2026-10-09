@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import './landing.css';
+import { LandingDemo } from './LandingDemo';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,25 +25,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="landing-screenshot-wrap">
-        <div className="landing-screenshot">
-          <div className="landing-game-header">
-            <span className="landing-deck-name">Inglés Básico</span>
-            <div className="landing-stats">
-              <span>12 correctas</span>
-              <span>47%</span>
-            </div>
-          </div>
-          <div className="landing-question">
-            <div className="landing-term">I've never really understood why people</div>
-            <div className="landing-hint">c*** m****** a* s****</div>
-          </div>
-          <div className="landing-input-row">
-            <input type="text" placeholder="Escribe tu respuesta..." />
-            <button className="landing-btn-validate">VALIDAR</button>
-          </div>
-        </div>
-      </div>
+      <LandingDemo />
 
       <div className="landing-section">
         <div className="landing-section-head">
