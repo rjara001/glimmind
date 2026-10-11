@@ -28,14 +28,38 @@ describe("stripeConfig", () => {
       expect(() => stripeConfig.getStripeSecretKey()).toThrow("STRIPE_SECRET_KEY not set");
     });
 
-    test("accepts a live secret key now that live mode is in effect", () => {
+    test("accepts a live secret key in production now that live mode is in effect", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       expect(stripeConfig.getStripeSecretKey()).toBe(LIVE_SECRET);
     });
 
     test("accepts a restricted live secret key", () => {
       process.env.STRIPE_SECRET_KEY = RESTRICTED_LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       expect(stripeConfig.getStripeSecretKey()).toBe(RESTRICTED_LIVE_SECRET);
+    });
+
+    // The Functions emulator resolves declared secrets from Secret Manager, so
+    // after switching the project to live credentials a local run picks up the
+    // real key. A real card typed at localhost would then charge real money.
+    test("refuses a live secret key inside the Functions emulator", () => {
+      process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      process.env.FUNCTIONS_EMULATOR = "true";
+      expect(() => stripeConfig.getStripeSecretKey()).toThrow(/charges real money/i);
+    });
+
+    test("allows a live key in the emulator only when explicitly overridden", () => {
+      process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      process.env.FUNCTIONS_EMULATOR = "true";
+      process.env.STRIPE_ALLOW_LIVE_IN_EMULATOR = "true";
+      expect(stripeConfig.getStripeSecretKey()).toBe(LIVE_SECRET);
+    });
+
+    test("allows a test key inside the emulator", () => {
+      process.env.STRIPE_SECRET_KEY = TEST_SECRET;
+      process.env.FUNCTIONS_EMULATOR = "true";
+      expect(stripeConfig.getStripeSecretKey()).toBe(TEST_SECRET);
     });
 
     test("rejects a key with an unknown prefix", () => {
@@ -52,7 +76,14 @@ describe("stripeConfig", () => {
 
     test("is false for a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       expect(stripeConfig.isTestMode()).toBe(false);
+    });
+
+    test("is true for a test key inside the emulator", () => {
+      process.env.STRIPE_SECRET_KEY = TEST_SECRET;
+      process.env.FUNCTIONS_EMULATOR = "true";
+      expect(stripeConfig.isTestMode()).toBe(true);
     });
   });
 
@@ -112,11 +143,13 @@ describe("stripeConfig", () => {
 
     test("builds a client from a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       expect(stripeConfig.getStripe().getApiField("version")).toBe(stripeConfig.STRIPE_API_VERSION);
     });
 
     test("rejects a test price paired with a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       process.env.STRIPE_PRICE_ID = "price_test_only_123";
       process.env.STRIPE_TEST_PRICE_IDS = "price_test_only_123";
       expect(() => stripeConfig.getPriceId()).toThrow(/Prices are per-account/);
@@ -124,6 +157,7 @@ describe("stripeConfig", () => {
 
     test("allows a live price paired with a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      delete process.env.FUNCTIONS_EMULATOR;
       process.env.STRIPE_PRICE_ID = "price_live_123";
       process.env.STRIPE_TEST_PRICE_IDS = "price_test_only_123";
       expect(stripeConfig.getPriceId()).toBe("price_live_123");
