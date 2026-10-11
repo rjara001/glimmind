@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { LandingPage } from './components/views/LandingPage';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
@@ -28,6 +28,7 @@ import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
 import { isFeatureEnabled } from './constants/featureFlags';
 import { splitAssociationsByMax } from './utils/splitAssociations';
+import { NEXT_PATH_QUERY, resolveNextPath } from './utils/redirect';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
@@ -38,6 +39,7 @@ import type { VocabularySourceMeta } from './components/modals/VocabularyPreview
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
   const { user, logout, setUser } = useAuth();
+  const [searchParams] = useSearchParams();
   const { view, navigate, goBack, isReturningToGame } = useNavigation();
   const { lastPlayedId, setLastPlayedId } = useAppBootstrap(navigate);
 
@@ -295,7 +297,7 @@ const AppContent: React.FC = () => {
             path="/login"
             element={
               user
-                ? <Navigate to="/dashboard" replace />
+                ? <Navigate to={resolveNextPath(searchParams.get(NEXT_PATH_QUERY))} replace />
                 : <Auth onLoginDev={handleLoginDev} />
             }
           />

@@ -1,37 +1,34 @@
-const QUOTA_CONFIG = {
-  tiers: {
-    free: {
-      maxCards: 1000,
-      aiDailyLimit: 100,
-    },
-    premium: {
-      maxCards: 5000,
-      aiDailyLimit: 1000,
-    },
-  },
-  thresholds: {
-    warningRatio: 0.80,
-    dangerRatio: 0.95,
-    blockRatio: 1.00,
-  },
-  maxCardsPerList: 5000,
-};
+const PLANS = require("../config/plans.json");
 
-const TIER_TYPE = Object.freeze(['free', 'premium']);
-const QUOTA_LEVEL = Object.freeze(['ok', 'warning', 'danger', 'blocked']);
+// Single source of truth for plan limits. Values live in config/plans.json so
+// they can be tuned without editing code.
+//
+// NOTE: src/config/plans.json must stay byte-identical to
+// backend/src/functions/src/config/plans.json. The two build pipelines cannot
+// share one file (Firebase only deploys backend/src/functions/, and vite.config.ts
+// sets root to src/), so tests/config/plansDrift.test.ts fails when they diverge.
+
+const TIER_TYPE = Object.freeze(Object.keys(PLANS.tiers));
+const QUOTA_LEVEL = Object.freeze(["ok", "warning", "danger", "blocked"]);
 
 function resolveTier(tier) {
-  return TIER_TYPE.includes(tier) ? tier : 'free';
+  return TIER_TYPE.includes(tier) ? tier : "free";
+}
+
+function getTierConfig(tier) {
+  return PLANS.tiers[resolveTier(tier)];
 }
 
 function getMaxCards(tier) {
-  const resolved = resolveTier(tier);
-  return QUOTA_CONFIG.tiers[resolved].maxCards;
+  return getTierConfig(tier).maxCards;
 }
 
 function getAiDailyLimit(tier) {
-  const resolved = resolveTier(tier);
-  return QUOTA_CONFIG.tiers[resolved].aiDailyLimit;
+  return getTierConfig(tier).aiDailyLimit;
+}
+
+function getTierLabel(tier) {
+  return getTierConfig(tier).label;
 }
 
 function getStatus(currentCards, tier) {
@@ -39,13 +36,13 @@ function getStatus(currentCards, tier) {
   const usageRatio = currentCards / maxCards;
   const percentage = Math.round(usageRatio * 100);
 
-  let level = 'ok';
-  if (usageRatio >= QUOTA_CONFIG.thresholds.blockRatio) {
-    level = 'blocked';
-  } else if (usageRatio >= QUOTA_CONFIG.thresholds.dangerRatio) {
-    level = 'danger';
-  } else if (usageRatio >= QUOTA_CONFIG.thresholds.warningRatio) {
-    level = 'warning';
+  let level = "ok";
+  if (usageRatio >= PLANS.thresholds.blockRatio) {
+    level = "blocked";
+  } else if (usageRatio >= PLANS.thresholds.dangerRatio) {
+    level = "danger";
+  } else if (usageRatio >= PLANS.thresholds.warningRatio) {
+    level = "warning";
   }
 
   return {
@@ -54,35 +51,37 @@ function getStatus(currentCards, tier) {
     usageRatio,
     percentage,
     level,
-    isAiBlocked: level === 'danger' || level === 'blocked',
-    isManualBlocked: level === 'blocked',
+    isAiBlocked: level === "danger" || level === "blocked",
+    isManualBlocked: level === "blocked",
     remainingCards: Math.max(0, maxCards - currentCards),
   };
 }
 
 function canAddCards(currentCards, cardsToAdd, tier) {
   const maxCards = getMaxCards(tier);
-  return (currentCards + cardsToAdd) <= maxCards;
+  return currentCards + cardsToAdd <= maxCards;
 }
 
 function canUseAI(currentCards, tier) {
-  const status = getStatus(currentCards, tier);
-  return !status.isAiBlocked;
+  return !getStatus(currentCards, tier).isAiBlocked;
 }
 
 function getEffectiveQuota(currentCards, tier) {
   const maxCards = getMaxCards(tier);
-  if (tier === 'free' && currentCards > maxCards) {
+  if (tier === "free" && currentCards > maxCards) {
     return Math.max(maxCards, currentCards);
   }
   return maxCards;
 }
 
 module.exports = {
-  QUOTA_CONFIG,
+  PLANS,
+  QUOTA_CONFIG: PLANS,
   TIER_TYPE,
   QUOTA_LEVEL,
   resolveTier,
+  getTierConfig,
+  getTierLabel,
   getMaxCards,
   getAiDailyLimit,
   getStatus,
