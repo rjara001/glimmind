@@ -931,6 +931,60 @@ If the output contains errors, the agent MUST NOT claim success.
 
 ---
 
+## 44. Park Secondary Findings in docs/issues/
+
+### Required
+
+When investigation surfaces work that is **not part of the current task**, agents MUST NOT:
+
+- fix it opportunistically (violates §12 Scope Control), nor
+- leave it in chat where it is lost, nor
+- mix it into the deliverable being discussed
+
+Agents MUST write it to `docs/issues/YYYY-MM-DD-<slug>.md` and mention the file path
+when reporting.
+
+### What counts as parking
+
+Any finding that is real but not what the user asked for: latent bugs, dead code,
+hygiene, documentation drift, missing instrumentation, cost risks.
+
+### File format
+
+Each file MUST be concise:
+
+1. **What** — one paragraph, the defect
+2. **Impact** — with numbers where they exist
+3. **Evidence** — `path:line` references an agent can verify
+4. **Fix** — the change, in a few lines
+
+No execution plan, no rollout schedule. It is a work queue, not a plan.
+
+### Boundary with business decisions
+
+If resolving an issue requires a product or pricing decision, the file MUST point to
+`docs/BUSINESS_MODEL.md` and MUST NOT decide it. Business decisions belong there
+alone.
+
+> Gating Chirp 3 HD is a bug: the selector offers it to free users.
+> Whether Chirp 3 HD *belongs* in Premium is a business decision.
+
+### Index
+
+`docs/issues/README.md` lists every parked item by priority. Agents MUST update it
+when adding or resolving an issue.
+
+### Example of Failure
+
+```
+// Agent investigating a Stripe config found three unrelated bugs,
+// fixed all three inline, and shipped them in the same commit.
+// User: "why did this take so long and what changed?"
+// Reality: 2 commits of unrelated changes nobody reviewed
+```
+
+---
+
 ## Quick Reference - Before Saying "Done"
 
 ```
@@ -939,6 +993,7 @@ If the output contains errors, the agent MUST NOT claim success.
 3. ls <new-file>             -> must exist
 4. grep -r "<fn>" src/       -> all call sites updated
 5. git diff                  -> no stray code
+6. found something unrelated -> it is in docs/issues/, not in the diff
 ```
 
 If any of these fail, the task is NOT done.
