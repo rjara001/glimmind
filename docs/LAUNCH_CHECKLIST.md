@@ -346,7 +346,6 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 | Secret | Purpose |
 |--------|---------|
 | `GEMINI_API_KEY` | (Removed if no AI) |
-| `DEEPL_API_KEY` | Translation service |
 | `ADMIN_UIDS` | Comma-separated UIDs for admin functions |
 | `STRIPE_SECRET_KEY` | Stripe server-side key (currently `sk_live_…`) |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`whsec_` of the live endpoint) |

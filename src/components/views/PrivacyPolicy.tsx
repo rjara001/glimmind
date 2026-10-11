@@ -52,7 +52,8 @@ export const PrivacyPolicy: React.FC = () => (
             <li><strong>Firebase (Google):</strong> Authentication, Firestore, Storage, Functions, Hosting</li>
             <li><strong>Google Cloud TTS/STT:</strong> Voice synthesis & recognition (Chirp 3 HD, browser fallback)</li>
             <li><strong>Vosk:</strong> Offline speech recognition (runs locally in browser)</li>
-            <li><strong>DeepL:</strong> Translation service (optional, for card translation)</li>
+            <li><strong>Google Cloud Translation:</strong> Card translation (Premium only)</li>
+            <li><strong>Google Gemini:</strong> Vocabulary extraction for AI deck generation (Premium only)</li>
           </ul>
           <p className="text-slate-600 mt-3">These processors only access data necessary to provide their specific service.</p>
         </section>

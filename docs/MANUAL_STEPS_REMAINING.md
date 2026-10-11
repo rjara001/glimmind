@@ -137,7 +137,7 @@ If using custom domain (e.g., `glimmind.com`):
 | Zod input validation | ✅ All Cloud Functions validated |
 | Rate limiting | ✅ Per-function limits (AI: 10/min, TTS: 30/min, etc.) |
 | CSP + Security headers | ✅ HSTS, X-Frame-Options, CSP, Permissions-Policy deployed |
-| Secret Manager | ✅ GEMINI_API_KEY, DEEPL_API_KEY, ADMIN_UIDS in Secret Manager |
+| Secret Manager | ✅ GEMINI_API_KEY, ADMIN_UIDS in Secret Manager (DeepL removed 2026-10-11) |
 | Firestore Rules tests | ✅ 8/8 passing (user isolation, auth, anon) |
 | Function unit tests | ✅ 19/19 passing (validation, rate limiting) |
 | GDPR delete/export | ✅ `/api/deleteUserAccount` & `/api/exportUserData` deployed |

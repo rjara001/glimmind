@@ -137,8 +137,9 @@ The Functions emulator reads declared secrets from Secret Manager too, so local
 and production resolve the same values. That is why the secrets are not duplicated
 in `.env` — doing so breaks the deploy.
 
-`DEEPL_API_KEY` is still in `backend/src/functions/.env` because it is not a
-declared secret. That is correct and does not conflict.
+The backend `.env` no longer holds any credentials: Stripe keys are declared
+secrets in Secret Manager, and `DEEPL_API_KEY` was removed with DeepL on
+2026-10-11.
 
 ---
 

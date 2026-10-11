@@ -46,7 +46,6 @@ const GOOGLE_STT_RECOGNIZE_URL = `https://eu-speech.googleapis.com/v2/projects/$
 const GOOGLE_VOICES_URL = "https://texttospeech.googleapis.com/v1/voices";
 const GOOGLE_METADATA_TOKEN_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 const GOOGLE_TRANSLATE_URL = `https://translation.googleapis.com/v3/projects/${GCP_PROJECT_ID}/locations/global:translateText`;
-const DEEPL_FREE_URL = "https://api-free.deepl.com/v2/translate";
 
 module.exports = {
   COLLECTION_NAME,
@@ -80,5 +79,4 @@ module.exports = {
   GOOGLE_VOICES_URL,
   GOOGLE_METADATA_TOKEN_URL,
   GOOGLE_TRANSLATE_URL,
-  DEEPL_FREE_URL,
 };
