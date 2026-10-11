@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11
 **Author:** Agent
-**Status:** Pending approval — not started
+**Status:** Complete — implemented and deployed. See `2026-10-11-stripe-sandbox-to-live.md` for the deploy, the bugs found on the way out, and the switch to live mode.
 
 ---
 
@@ -33,12 +33,13 @@ touching code.
 | Plan limits | Configurable JSON, not hardcoded |
 | Premium AI daily limit | **Kept at 1000** for now; tunable later via the JSON |
 
-### Not decided (blocking Phase 3 and Phase 6)
+### Decisions since written
 
-- **Refunds.** With a lifetime product, if a customer is refunded, is premium
-  revoked? Recommendation: **do not revoke** — a €4.99 refund dispute costs more
-  in support and chargeback fees than the revenue. Needs confirmation.
-- **Sequencing.** Phases 1+3 unblock charging; legal copy can land last.
+- **Refunds.** Resolved: premium **is** revoked on a full refund
+  (`charge.refunded`); partial refunds leave premium in place.
+- **Sequencing.** Resolved: shipped in full.
+- **Live mode.** Resolved: Stripe went live on 2026-10-11. See
+  `2026-10-11-stripe-sandbox-to-live.md`.
 
 ---
 

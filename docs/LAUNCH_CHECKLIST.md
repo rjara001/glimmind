@@ -205,6 +205,10 @@ Remove `/api/aiGroup` rewrite from `firebase.json`
    - Publishable key (client)
    - Secret key (server → Secret Manager)
 
+> **Stripe is in LIVE mode since 2026-10-11.** Premium is a one-time €4.99
+> purchase and production charges real money. Full state, credentials, safety
+> net and troubleshooting: `docs/plans/2026-10-11-stripe-sandbox-to-live.md`.
+
 ### 5.2 Cloud Functions for Stripe
 
 **Required functions:**
@@ -344,67 +348,54 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 | `GEMINI_API_KEY` | (Removed if no AI) |
 | `DEEPL_API_KEY` | Translation service |
 | `ADMIN_UIDS` | Comma-separated UIDs for admin functions |
-| `STRIPE_SECRET_KEY` | Stripe server-side key (test mode, `sk_test_`) |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`whsec_`) |
-| `STRIPE_PRICE_ID` | Test-mode one-time price (`price_...`). No fallback literal |
+| `STRIPE_SECRET_KEY` | Stripe server-side key (currently `sk_live_…`) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`whsec_` of the live endpoint) |
+| `STRIPE_PRICE_ID` | Live one-time price (`price_1UPTTHCCE67J3dcORO2Z1VYw`). No fallback literal |
+| `STRIPE_TEST_PRICE_IDS` | Optional. Comma-separated test price ids, so a live key paired with a test price fails loudly |
+
+> Stripe credentials live **only** in Secret Manager, never in
+> `backend/src/functions/.env`. firebase-tools injects that file as *plain* env
+> vars on deploy, and a plain var colliding with a declared secret fails the whole
+> deploy. The Functions emulator resolves declared secrets from Secret Manager
+> too, so local and production read the same values.
 
 ---
 
-## 9.1 Stripe Sandbox (test mode only)
+## 9.1 Stripe — live mode
 
-This integration is pinned to Stripe **test mode**. `stripeConfig.js` throws on
-any `sk_live_` / `rk_live_` secret, so the production API cannot be reached
-through these functions even by accident.
+Premium is a **one-time €4.99 purchase** and production is on **live** Stripe
+since 2026-10-11. Full runbook, current credential values, the safety net in
+`stripeConfig.js` and the debugging history:
+`docs/plans/2026-10-11-stripe-sandbox-to-live.md`.
 
-### Local setup
+### Before testing anything locally
 
-1. Copy the templates:
-   - `cp .env.example .env.local` (frontend)
-   - `cp backend/src/functions/.env.example backend/src/functions/.env` (backend)
+```bash
+npm run emulators          # terminal 1
+npm run stripe:listen      # terminal 2 — leave it running
+npm run dev                # terminal 3
+```
 
-> **`.env` del backend es el único lugar con las claves de Stripe.** Las
-> funciones Stripe no declaran `secrets: [...]` a propósito: un secreto
-> declarado hace que el Functions emulator lo busque en GCP Secret Manager
-> (donde el proyecto tiene una clave **live**) e ignore el `.env`. Sin la
-> declaración, el emulator nunca toca GCP.
-> Coste: una función desplegada ya no recibe estos valores de Secret Manager.
-> Si el billing pasa a live, hay que redeclarar los secretos **y** agregar
-> `.secret.local` para el desarrollo local, en el mismo cambio.
+`stripe listen` is mandatory: Stripe cannot reach localhost, so without it the
+payment succeeds and no webhook ever arrives. This is the single most common
+reason a working purchase still shows Plan gratuito, and it happened three times
+on this project.
 
-2. Get the test keys from <https://dashboard.stripe.com/test/apikeys> and set
-   `STRIPE_SECRET_KEY=sk_test_...` plus `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...`.
+The success toast is **not** proof of payment. `SettingsView` shows it from the
+`?upgrade=success` URL parameter, which Stripe redirects to as soon as checkout
+completes, before the webhook lands. Confirm with `firebase functions:log` or by
+checking `users/{uid}/meta/main.tier`.
 
-3. Create a **test-mode** one-time price
-   (dashboard > Products > Pricing) and set `STRIPE_PRICE_ID=price_...`.
-   There is no hardcoded fallback: a literal price ID cannot be verified as
-   test mode, so a missing secret fails loudly instead of charging a real price.
+### Testing against live
 
-4. Get the webhook signing secret from the Stripe CLI. Start the emulators
-   first (`npm run emulators`), then in a **second terminal**:
+The emulator refuses to start with a live key, because the emulator resolves
+secrets from Secret Manager and a real card typed at localhost would charge real
+money. To test locally, rotate the three secrets to their sandbox values first —
+see §6 of `2026-10-11-stripe-sandbox-to-live.md` — and rotate back afterwards.
 
-   ```bash
-   npm run stripe:listen
-   ```
-
-   That script already carries the right port (9001 — 5001 belongs to another
-   project) and the right event list. Do not retype it by hand.
-
-   Port **9001**, not 5001: the 2026-10-02 port migration moved glimmind's
-   Functions emulator to 9000-9099 and 5001 now belongs to another project.
-   Stripe CLI 1.53+ also requires `--events` or it refuses to start.
-
-   Keep this running for the whole test. Without it Stripe cannot reach
-   localhost, no webhook arrives, and the user pays without ever becoming
-   premium. This is the single most common reason a working purchase still shows
-   Plan gratuito, and it has happened three times on this project. The success toast is **not** proof of payment — `SettingsView` shows
-   it based on the `?upgrade=success` URL parameter, which Stripe redirects to
-   as soon as checkout completes, before the webhook lands. Always confirm with
-   `firebase functions:log` or by checking `users/{uid}/meta/main.tier`.
-
-   Copy the printed `whsec_...` into `STRIPE_WEBHOOK_SECRET`. Until you do, the
-   endpoint returns 500 with a message telling you to run `stripe listen`.
-
-5. Pay with the test card `4242 4242 4242 4242`, any future expiry, any CVC.
+Note: the test card `4242 4242 4242 4242` does not exist in live mode. Testing
+the live path requires a real €4.99 charge; refunding it from the dashboard
+triggers `charge.refunded`, which revokes premium automatically.
 
 ### Deploying secrets
 
@@ -414,12 +405,12 @@ firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 firebase functions:secrets:set STRIPE_PRICE_ID
 ```
 
-### If you later need live mode
+### Switching between sandbox and live
 
-There is intentionally no `STRIPE_ALLOW_LIVEMODE` flag (AGENTS.md §32 forbids
-parallel modes). Going live is a deliberate change: rotate the keys to `sk_live_`,
-update the webhook endpoint signing secret, and remove the guards in
-`stripeConfig.js` as part of that same change.
+There is intentionally no mode flag (AGENTS.md §32 forbids parallel modes).
+Switching is always the same three `firebase functions:secrets:set` calls plus a
+redeploy, with values from §1 of `2026-10-11-stripe-sandbox-to-live.md`. Both
+states are reachable without touching code.
 
 ---
 
