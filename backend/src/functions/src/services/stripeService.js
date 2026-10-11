@@ -10,16 +10,37 @@ const { getMaxCards, getAiDailyLimit } = require('../utils/quotaConfig');
 const PREMIUM_TIER = 'premium';
 const FREE_TIER = 'free';
 
+// Stripe scopes customer ids per account: cus_... created with test keys does
+// not exist under live keys and vice versa. A user who started a checkout under
+// one account keeps a dangling id after switching, and every later checkout
+// fails with "No such customer". Only that specific failure is swallowed;
+// anything else (auth, network, rate limit) must still surface.
+function isMissingCustomer(error) {
+  return Boolean(error) && (
+    error.code === 'resource_missing' ||
+    /no such customer/i.test(error.message || '')
+  );
+}
+
 async function getOrCreateStripeCustomer(db, uid, email) {
   const metaRef = metaRefFor(db, uid);
   const snap = await metaRef.get();
   const meta = snap.exists ? snap.data() : {};
 
+  const stripe = getStripe();
+
   if (meta.stripeCustomerId) {
-    return meta.stripeCustomerId;
+    try {
+      await stripe.customers.retrieve(meta.stripeCustomerId);
+      return meta.stripeCustomerId;
+    } catch (error) {
+      if (!isMissingCustomer(error)) throw error;
+      console.warn(
+        `[stripe] stale customer ${meta.stripeCustomerId} discarded for ${uid}: ${error.message}`
+      );
+    }
   }
 
-  const stripe = getStripe();
   const customer = await stripe.customers.create({
     email,
     metadata: { firebaseUid: uid }
@@ -154,8 +175,17 @@ async function resolveUidForCharge(db, charge) {
   if (!customerId) return null;
 
   const stripe = getStripe();
-  const customer = await stripe.customers.retrieve(customerId);
-  return customer?.deleted ? null : customer?.metadata?.firebaseUid || null;
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    return customer?.deleted ? null : customer?.metadata?.firebaseUid || null;
+  } catch (error) {
+    // Same cross-account problem as in getOrCreateStripeCustomer: a charge from
+    // the other account cannot be resolved here. Skip it rather than 500-ing the
+    // whole webhook batch.
+    if (!isMissingCustomer(error)) throw error;
+    return null;
+  }
 }
 
 module.exports = {

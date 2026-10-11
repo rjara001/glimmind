@@ -269,6 +269,57 @@ describe('stripeService (backend)', () => {
     });
   });
 
+  // Stripe scopes customer ids per account. Switching between test and live
+  // keys leaves every prior customer id dangling, and reusing one made every
+  // checkout fail with "No such customer".
+  describe('stale customer from another Stripe account', () => {
+    function missingCustomerError() {
+      return Object.assign(new Error("No such customer: 'cus_old'"), {
+        code: 'resource_missing',
+        type: 'StripeInvalidRequestError',
+      });
+    }
+
+    it('discards a stored customer that no longer exists and creates a new one', async () => {
+      const service = await loadService();
+      firestoreState.users[UID] = { meta: { main: { stripeCustomerId: 'cus_old' } } };
+      stripeMock.customers.retrieve.mockRejectedValue(missingCustomerError());
+
+      await service.createCheckoutSession(fakeDb(), UID, 'a@b.com', PRICE_ID, SUCCESS_URL, CANCEL_URL);
+
+      expect(stripeMock.customers.create).toHaveBeenCalledTimes(1);
+      expect(stripeMock.checkout.sessions.create.mock.calls[0][0].customer).toBe('cus_123');
+      expect(metaDoc().stripeCustomerId).toBe('cus_123');
+    });
+
+    it('reuses the stored customer when it still exists', async () => {
+      const service = await loadService();
+      firestoreState.users[UID] = { meta: { main: { stripeCustomerId: 'cus_ok' } } };
+      stripeMock.customers.retrieve.mockResolvedValue({ id: 'cus_ok' });
+
+      await service.createCheckoutSession(fakeDb(), UID, 'a@b.com', PRICE_ID, SUCCESS_URL, CANCEL_URL);
+
+      expect(stripeMock.customers.create).not.toHaveBeenCalled();
+      expect(stripeMock.checkout.sessions.create.mock.calls[0][0].customer).toBe('cus_ok');
+    });
+
+    it('does not swallow unrelated Stripe failures', async () => {
+      const service = await loadService();
+      firestoreState.users[UID] = { meta: { main: { stripeCustomerId: 'cus_ok' } } };
+      // An auth or network error must not be mistaken for a missing customer and
+      // silently rotate the stored id.
+      stripeMock.customers.retrieve.mockRejectedValue(
+        new Error('Invalid API Key provided: sk_test_***')
+      );
+
+      await expect(
+        service.createCheckoutSession(fakeDb(), UID, 'a@b.com', PRICE_ID, SUCCESS_URL, CANCEL_URL)
+      ).rejects.toThrow(/Invalid API Key/);
+
+      expect(stripeMock.customers.create).not.toHaveBeenCalled();
+    });
+  });
+
 
   describe('handleStripeWebhook', () => {
     it('grants premium on a paid checkout.session.completed', async () => {
