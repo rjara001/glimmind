@@ -28,19 +28,19 @@ describe("stripeConfig", () => {
       expect(() => stripeConfig.getStripeSecretKey()).toThrow("STRIPE_SECRET_KEY not set");
     });
 
-    test("rejects a live secret key", () => {
+    test("accepts a live secret key now that live mode is in effect", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
-      expect(() => stripeConfig.getStripeSecretKey()).toThrow(/live key/i);
+      expect(stripeConfig.getStripeSecretKey()).toBe(LIVE_SECRET);
     });
 
-    test("rejects a restricted live secret key", () => {
+    test("accepts a restricted live secret key", () => {
       process.env.STRIPE_SECRET_KEY = RESTRICTED_LIVE_SECRET;
-      expect(() => stripeConfig.getStripeSecretKey()).toThrow(/live key/i);
+      expect(stripeConfig.getStripeSecretKey()).toBe(RESTRICTED_LIVE_SECRET);
     });
 
     test("rejects a key with an unknown prefix", () => {
       process.env.STRIPE_SECRET_KEY = "not_a_stripe_key";
-      expect(() => stripeConfig.getStripeSecretKey()).toThrow(/must start with sk_test_/);
+      expect(() => stripeConfig.getStripeSecretKey()).toThrow(/must start with sk_test_ or sk_live_/);
     });
   });
 
@@ -50,9 +50,9 @@ describe("stripeConfig", () => {
       expect(stripeConfig.isTestMode()).toBe(true);
     });
 
-    test("throws instead of reporting false for a live key", () => {
+    test("is false for a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
-      expect(() => stripeConfig.isTestMode()).toThrow(/live key/i);
+      expect(stripeConfig.isTestMode()).toBe(false);
     });
   });
 
@@ -80,16 +80,19 @@ describe("stripeConfig", () => {
 
   describe("getPriceId", () => {
     test("returns the price id when set", () => {
+      process.env.STRIPE_SECRET_KEY = TEST_SECRET;
       process.env.STRIPE_PRICE_ID = "price_1T18EXC1GrRMJ6MVtest";
       expect(stripeConfig.getPriceId()).toBe("price_1T18EXC1GrRMJ6MVtest");
     });
 
     test("throws when STRIPE_PRICE_ID is missing", () => {
+      process.env.STRIPE_SECRET_KEY = TEST_SECRET;
       delete process.env.STRIPE_PRICE_ID;
       expect(() => stripeConfig.getPriceId()).toThrow("STRIPE_PRICE_ID not set");
     });
 
     test("throws when the price id has an unexpected prefix", () => {
+      process.env.STRIPE_SECRET_KEY = TEST_SECRET;
       process.env.STRIPE_PRICE_ID = "prod_123";
       expect(() => stripeConfig.getPriceId()).toThrow(/must start with price_/);
     });
@@ -107,9 +110,23 @@ describe("stripeConfig", () => {
       expect(stripeConfig.getStripe()).toBe(stripeConfig.getStripe());
     });
 
-    test("refuses to build a client from a live key", () => {
+    test("builds a client from a live key", () => {
       process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
-      expect(() => stripeConfig.getStripe()).toThrow(/live key/i);
+      expect(stripeConfig.getStripe().getApiField("version")).toBe(stripeConfig.STRIPE_API_VERSION);
+    });
+
+    test("rejects a test price paired with a live key", () => {
+      process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      process.env.STRIPE_PRICE_ID = "price_test_only_123";
+      process.env.STRIPE_TEST_PRICE_IDS = "price_test_only_123";
+      expect(() => stripeConfig.getPriceId()).toThrow(/Prices are per-account/);
+    });
+
+    test("allows a live price paired with a live key", () => {
+      process.env.STRIPE_SECRET_KEY = LIVE_SECRET;
+      process.env.STRIPE_PRICE_ID = "price_live_123";
+      process.env.STRIPE_TEST_PRICE_IDS = "price_test_only_123";
+      expect(stripeConfig.getPriceId()).toBe("price_live_123");
     });
   });
 });

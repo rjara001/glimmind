@@ -1,8 +1,10 @@
 const Stripe = require("stripe");
 
-// Stripe issues test and live credentials under different prefixes. Every
-// helper below refuses anything that is not test mode, so a stray production
-// key cannot reach the Stripe API through these functions.
+// Stripe issues test and live credentials under different prefixes. Live mode is
+// in effect as of 2026-10-11, so both are accepted here. The guards that remain
+// only catch a malformed key, never a legitimate one: mixing a live secret key
+// with a test price id (or the reverse) produces confusing downstream errors
+// from Stripe, so the pair is validated together.
 const STRIPE_TEST_SECRET_PREFIX = "sk_test_";
 const STRIPE_LIVE_SECRET_PREFIXES = ["sk_live_", "rk_live_"];
 const STRIPE_WEBHOOK_SECRET_PREFIX = "whsec_";
@@ -20,17 +22,30 @@ function getStripeSecretKey() {
     throw new Error("STRIPE_SECRET_KEY not set");
   }
 
-  if (STRIPE_LIVE_SECRET_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-    throw new Error(
-      "STRIPE_SECRET_KEY is a live key. This project runs in Stripe test mode only."
-    );
-  }
+  const isTest = key.startsWith(STRIPE_TEST_SECRET_PREFIX);
+  const isLive = STRIPE_LIVE_SECRET_PREFIXES.some((prefix) => key.startsWith(prefix));
 
-  if (!key.startsWith(STRIPE_TEST_SECRET_PREFIX)) {
-    throw new Error("STRIPE_SECRET_KEY must start with sk_test_ (test mode only)");
+  if (!isTest && !isLive) {
+    throw new Error("STRIPE_SECRET_KEY must start with sk_test_ or sk_live_");
   }
 
   return key;
+}
+
+// A price id only exists in the account that created it. Pairing a live key with
+// a test price fails at checkout with "No such price", so catch it here instead.
+function assertPriceMatchesAccount(priceId) {
+  const key = getStripeSecretKey();
+  const isLiveKey = STRIPE_LIVE_SECRET_PREFIXES.some((prefix) => key.startsWith(prefix));
+
+  if (!isLiveKey) return;
+
+  const testPriceIds = process.env.STRIPE_TEST_PRICE_IDS;
+  if (testPriceIds && testPriceIds.split(",").map((p) => p.trim()).includes(priceId)) {
+    throw new Error(
+      "STRIPE_PRICE_ID is a test price but STRIPE_SECRET_KEY is live. Prices are per-account."
+    );
+  }
 }
 
 function getWebhookSecret() {
@@ -58,13 +73,15 @@ function getPriceId() {
 
   if (!priceId) {
     throw new Error(
-      "STRIPE_PRICE_ID not set. Use the price ID of the one-time premium price (Stripe test dashboard)."
+      "STRIPE_PRICE_ID not set. Use the price ID of the one-time premium price for the account the secret key belongs to."
     );
   }
 
   if (!priceId.startsWith("price_")) {
     throw new Error("STRIPE_PRICE_ID must start with price_");
   }
+
+  assertPriceMatchesAccount(priceId);
 
   return priceId;
 }
@@ -89,6 +106,7 @@ function resetStripeClient() {
 
 module.exports = {
   STRIPE_TEST_SECRET_PREFIX,
+  STRIPE_LIVE_SECRET_PREFIXES,
   STRIPE_WEBHOOK_SECRET_PREFIX,
   STRIPE_API_VERSION,
   WEBHOOK_SECRET_PLACEHOLDER,
