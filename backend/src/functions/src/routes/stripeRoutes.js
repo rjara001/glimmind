@@ -3,7 +3,7 @@ const { getDb, getAuth } = require("../utils/firebase");
 const { requireAuth } = require("../utils/helpers");
 const stripeService = require("../services/stripeService");
 const { rateLimit } = require("../utils/rateLimit");
-const Stripe = require('stripe');
+const { getStripe, getWebhookSecret, getPriceId } = require("../utils/stripeConfig");
 
 function applyRateLimit(fnName, handler) {
   const limiter = rateLimit(fnName);
@@ -15,10 +15,28 @@ function applyRateLimit(fnName, handler) {
   };
 }
 
-const PRICE_ID = 'price_1UOKzMCCE67J3dcOBzkWLf18';
+// SECRETS AND SANDBOX — read before changing any key.
+//
+// These Stripe values are declared secrets so the deployed functions receive
+// them from Secret Manager, exactly like GEMINI_API_KEY and ADMIN_UIDS do in
+// the other routes. The Functions emulator resolves declared secrets from
+// Secret Manager too, which is why `.env` alone is NOT enough locally.
+//
+// That previously pointed the emulator at a LIVE key and charged real money on
+// every test checkout. The fix was not to drop the declaration, it was to put
+// SANDBOX values in Secret Manager. So the invariant is:
+//
+//   GCP Secret Manager holds STRIPE_SECRET_KEY=sk_test_..., STRIPE_PRICE_ID=<test
+//   one-time price>, STRIPE_WEBHOOK_SECRET=<test endpoint secret>, and .env
+//   matches. utils/stripeConfig.js throws on any sk_live_/rk_live_ value, so a
+//   live key is caught on the first request either way.
+//
+// Going live means rotating all three in Secret Manager and creating a one-time
+// price in the live account. Do not "fix" this by deleting the declarations —
+// that is what makes the emulator silently diverge from production.
 
 // 1. Create Checkout Session (callable via /api/createCheckoutSession)
-exports.createCheckoutSession = onRequest({ cors: true, secrets: ['STRIPE_SECRET_KEY'] }, 
+exports.createCheckoutSession = onRequest({ cors: true, secrets: ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID'] },
   applyRateLimit('createCheckoutSession', async (req, res) => {
     const uid = await requireAuth(req, res);
     if (!uid) return;
@@ -29,22 +47,27 @@ exports.createCheckoutSession = onRequest({ cors: true, secrets: ['STRIPE_SECRET
         return res.status(400).json({ error: 'successUrl and cancelUrl required' });
       }
 
-      const db = require('../utils/firebase').getDb();
-      const auth = require('../utils/firebase').getAuth();
+      const priceId = getPriceId();
+      // requireAuth already verified this token, so the uid is authoritative.
       const token = await getAuth().verifyIdToken(req.headers.authorization.slice(7));
       const email = token.email;
 
       const url = await stripeService.createCheckoutSession(
-        require('../utils/firebase').getDb(),
+        getDb(),
         uid,
         email,
-        PRICE_ID,
+        priceId,
         successUrl,
         cancelUrl
       );
 
       res.json({ url });
     } catch (error) {
+      // Already premium is a client-state problem, not a server fault: 400 keeps
+      // it out of error reporting and lets the UI show a real message.
+      if (error.code === 'ALREADY_PREMIUM') {
+        return res.status(400).json({ error: error.message, code: 'ALREADY_PREMIUM' });
+      }
       console.error('[createCheckoutSession] Error:', error);
       res.status(500).json({ error: error.message });
     }
@@ -57,9 +80,18 @@ exports.stripeWebhook = onRequest({
   timeoutSeconds: 60,
   memory: '256MiB'
 }, async (req, res) => {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+  // Misconfiguration (missing secret, live key, placeholder whsec_) is a 500,
+  // not a 400: the request itself is well formed, our credentials are not.
+  let stripe;
+  let webhookSecret;
+  try {
+    stripe = getStripe();
+    webhookSecret = getWebhookSecret();
+  } catch (err) {
+    console.error('[stripeWebhook] Configuration error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+
   const sig = req.headers['stripe-signature'];
   let event;
   
@@ -77,48 +109,4 @@ exports.stripeWebhook = onRequest({
     console.error('[stripeWebhook] Handler error:', error);
     res.status(500).json({ error: 'Webhook handler failed' });
   }
-});
-
-// 3. Billing Portal (for manage subscription)
-exports.createBillingPortalSession = onRequest({ cors: true, secrets: ['STRIPE_SECRET_KEY'] }, 
-  applyRateLimit('billingPortal', async (req, res) => {
-    const uid = await requireAuth(req, res);
-    if (!uid) return;
-
-    const { returnUrl } = req.body;
-    if (!returnUrl) return res.status(400).json({ error: 'returnUrl required' });
-
-    try {
-      const url = await stripeService.createBillingPortalSession(
-        require('../utils/firebase').getDb(),
-        uid,
-        returnUrl
-      );
-      res.json({ url });
-    } catch (error) {
-      console.error('[createBillingPortalSession] Error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  }));
-
-// 4. Get Subscription Status (for UI)
-exports.getSubscriptionStatus = onRequest({ cors: true }, async (req, res) => {
-  const uid = await requireAuth(req, res);
-  if (!uid) return;
-
-  const db = require('../utils/firebase').getDb();
-  const metaRef = require('../utils/helpers').metaRefFor(db, uid);
-  const snap = await metaRef.get();
-  
-  if (!snap.exists) return res.json({ tier: 'free' });
-  
-  const meta = snap.data();
-  res.json({
-    tier: meta.tier || 'free',
-    stripeCustomerId: meta.stripeCustomerId,
-    stripeSubscriptionId: meta.stripeSubscriptionId,
-    stripeSubscriptionStatus: meta.stripeSubscriptionStatus,
-    stripePriceId: meta.stripePriceId,
-    stripeCurrentPeriodEnd: meta.stripeCurrentPeriodEnd,
-  });
 });

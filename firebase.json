@@ -206,14 +206,6 @@
         "function": "stripeWebhook"
       },
       {
-        "source": "/api/billingPortal",
-        "function": "createBillingPortalSession"
-      },
-      {
-        "source": "/api/getSubscriptionStatus",
-        "function": "getSubscriptionStatus"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -194,12 +194,12 @@ Remove `/api/aiGroup` rewrite from `firebase.json`
 
 1. **Products → Add product:**
    - Name: `Glimmind Premium`
-   - Price: €4.99/month recurring
+   - Price: €4.99 one-time (no recurring price)
    - Metadata: `tier: premium`
 
 2. **Webhooks → Add endpoint:**
    - URL: `https://us-central1-fladycard-22a3e.cloudfunctions.net/stripeWebhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - Events: `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`
 
 3. **Get keys:**
    - Publishable key (client)
@@ -211,10 +211,12 @@ Remove `/api/aiGroup` rewrite from `firebase.json`
 
 | Function | Purpose |
 |----------|---------|
-| `createCheckoutSession` | Creates Stripe Checkout session, returns URL |
-| `stripeWebhook` | Handles Stripe events, updates Firestore tier |
-| `manageSubscription` | Creates Billing Portal session |
-| `getSubscriptionStatus` | Returns current tier for UI |
+| `createCheckoutSession` | Creates a one-time Stripe Checkout session, returns URL |
+| `stripeWebhook` | Handles `checkout.session.completed`, `payment_intent.succeeded` and `charge.refunded`, updates Firestore tier |
+
+Removed: `manageSubscription` and `getSubscriptionStatus`. Premium is a
+one-time purchase, so there is no billing portal to open and the tier comes from
+`getQuota` (both were dead code with zero production call sites).
 
 **Backend structure:**
 ```
@@ -225,8 +227,12 @@ backend/src/functions/src/services/stripeService.js
 ### 5.3 Frontend Integration
 
 **Landing page / Settings page:**
-- "Upgrade to Premium" button → calls `createCheckoutSession` → redirects to Stripe Checkout
+- "Actualizar a Premium" button → calls `createCheckoutSession` → redirects to Stripe Checkout
 - Success → webhook updates `users/{uid}/meta/main.tier = "premium"`
+- Premium users see no purchase CTA: the plan is lifetime, nothing to manage or renew
+- On return the client polls `getQuota` every 1.5s (15s cap) until the tier flips, because
+  Stripe redirects back before the webhook lands. The success toast is shown only once
+  confirmed; on timeout it says the plan is still being activated
 
 ---
 
@@ -328,7 +334,7 @@ VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 VITE_FUNCTIONS_BASE=https://us-central1-fladycard-22a3e.cloudfunctions.net
-VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ### Backend (Secret Manager)
@@ -338,8 +344,82 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
 | `GEMINI_API_KEY` | (Removed if no AI) |
 | `DEEPL_API_KEY` | Translation service |
 | `ADMIN_UIDS` | Comma-separated UIDs for admin functions |
-| `STRIPE_SECRET_KEY` | Stripe server-side key |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `STRIPE_SECRET_KEY` | Stripe server-side key (test mode, `sk_test_`) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`whsec_`) |
+| `STRIPE_PRICE_ID` | Test-mode one-time price (`price_...`). No fallback literal |
+
+---
+
+## 9.1 Stripe Sandbox (test mode only)
+
+This integration is pinned to Stripe **test mode**. `stripeConfig.js` throws on
+any `sk_live_` / `rk_live_` secret, so the production API cannot be reached
+through these functions even by accident.
+
+### Local setup
+
+1. Copy the templates:
+   - `cp .env.example .env.local` (frontend)
+   - `cp backend/src/functions/.env.example backend/src/functions/.env` (backend)
+
+> **`.env` del backend es el único lugar con las claves de Stripe.** Las
+> funciones Stripe no declaran `secrets: [...]` a propósito: un secreto
+> declarado hace que el Functions emulator lo busque en GCP Secret Manager
+> (donde el proyecto tiene una clave **live**) e ignore el `.env`. Sin la
+> declaración, el emulator nunca toca GCP.
+> Coste: una función desplegada ya no recibe estos valores de Secret Manager.
+> Si el billing pasa a live, hay que redeclarar los secretos **y** agregar
+> `.secret.local` para el desarrollo local, en el mismo cambio.
+
+2. Get the test keys from <https://dashboard.stripe.com/test/apikeys> and set
+   `STRIPE_SECRET_KEY=sk_test_...` plus `VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...`.
+
+3. Create a **test-mode** one-time price
+   (dashboard > Products > Pricing) and set `STRIPE_PRICE_ID=price_...`.
+   There is no hardcoded fallback: a literal price ID cannot be verified as
+   test mode, so a missing secret fails loudly instead of charging a real price.
+
+4. Get the webhook signing secret from the Stripe CLI. Start the emulators
+   first (`npm run emulators`), then in a **second terminal**:
+
+   ```bash
+   npm run stripe:listen
+   ```
+
+   That script already carries the right port (9001 — 5001 belongs to another
+   project) and the right event list. Do not retype it by hand.
+
+   Port **9001**, not 5001: the 2026-10-02 port migration moved glimmind's
+   Functions emulator to 9000-9099 and 5001 now belongs to another project.
+   Stripe CLI 1.53+ also requires `--events` or it refuses to start.
+
+   Keep this running for the whole test. Without it Stripe cannot reach
+   localhost, no webhook arrives, and the user pays without ever becoming
+   premium. This is the single most common reason a working purchase still shows
+   Plan gratuito, and it has happened three times on this project. The success toast is **not** proof of payment — `SettingsView` shows
+   it based on the `?upgrade=success` URL parameter, which Stripe redirects to
+   as soon as checkout completes, before the webhook lands. Always confirm with
+   `firebase functions:log` or by checking `users/{uid}/meta/main.tier`.
+
+   Copy the printed `whsec_...` into `STRIPE_WEBHOOK_SECRET`. Until you do, the
+   endpoint returns 500 with a message telling you to run `stripe listen`.
+
+5. Pay with the test card `4242 4242 4242 4242`, any future expiry, any CVC.
+
+### Deploying secrets
+
+```bash
+firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+firebase functions:secrets:set STRIPE_PRICE_ID
+```
+
+### If you later need live mode
+
+There is intentionally no `STRIPE_ALLOW_LIVEMODE` flag (AGENTS.md §32 forbids
+parallel modes). Going live is a deliberate change: rotate the keys to `sk_live_`,
+update the webhook endpoint signing secret, and remove the guards in
+`stripeConfig.js` as part of that same change.
 
 ---
 
