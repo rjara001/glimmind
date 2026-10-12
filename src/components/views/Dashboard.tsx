@@ -29,7 +29,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onEdit,
   onPlay,
   onYouTubeSuccess,
-  onTextImport,
   onCreateEmpty,
   isCreating: isCreatingProp,
   isSplitting,
@@ -115,8 +114,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <DeckStoreOnboarding
           onAddDeck={handleOnboardingAddDeck}
           onCreateCustom={handleOnboardingCreateCustom}
-          onYouTube={handleOpenYouTube}
-          onTextImport={onTextImport ?? (() => {})}
           isLoading={isCreatingProp}
         />
       </div>
@@ -137,8 +134,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <DeckStoreOnboarding
           onAddDeck={handleStoreAddDeck}
           onCreateCustom={handleStoreCreateCustom}
-          onYouTube={handleOpenYouTube}
-          onTextImport={onTextImport ?? (() => {})}
           isLoading={isCreatingProp}
         />
       </div>

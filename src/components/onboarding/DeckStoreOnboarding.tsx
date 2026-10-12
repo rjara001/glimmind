@@ -13,16 +13,12 @@ import type { CardCategory } from '../../services/importValidationService';
 interface DeckStoreOnboardingProps {
   onAddDeck: (deck: PrebuiltDeck) => Promise<void>;
   onCreateCustom: () => void;
-  onYouTube: () => void;
-  onTextImport: () => void;
   isLoading?: boolean;
 }
 
 export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   onAddDeck,
   onCreateCustom,
-  onYouTube,
-  onTextImport,
   isLoading: isLoadingProp,
 }) => {
   const { showToast } = useToast();
@@ -217,8 +213,6 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
 
       <CustomCreationSection
         onCreateCustom={onCreateCustom}
-        onYouTube={onYouTube}
-        onTextImport={onTextImport}
       />
     </div>
   );

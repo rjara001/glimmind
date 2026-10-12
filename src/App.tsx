@@ -32,7 +32,6 @@ import { NEXT_PATH_QUERY, resolveNextPath } from './utils/redirect';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
 import { CreateYouTubeDeckModal } from './components/modals/CreateYouTubeDeckModal';
-import { TextImporter } from './components/views/TextImporter';
 import type { VocabularyResult } from './types/youtube-deck';
 import type { VocabularySourceMeta } from './components/modals/VocabularyPreview';
 
@@ -106,7 +105,6 @@ const AppContent: React.FC = () => {
   const [showYouTubeModal, setShowYouTubeModal] = React.useState(false);
   const [youtubePreviewResult, setYoutubePreviewResult] = React.useState<VocabularyResult | null>(null);
   const [pendingYouTube, setPendingYouTube] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
-  const [pendingTextImport, setPendingTextImport] = React.useState<{ chunks: Association[][]; deckNames: string[]; sourceMeta: VocabularySourceMeta } | null>(null);
   const [pendingEditId, setPendingEditId] = React.useState<string | null>(null);
 
   // Navigate to editor in create mode - user will create list on first save
@@ -219,50 +217,6 @@ const AppContent: React.FC = () => {
     }
   }, [view, pendingYouTube, user, lists, handlers, setCurrentList]);
 
-  React.useEffect(() => {
-    if (view === 'editor' && pendingTextImport) {
-      (async () => {
-        const { chunks, deckNames, sourceMeta: _sourceMeta } = pendingTextImport;
-        const settings = useGameStore.getState().settings;
-        const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
-
-        const allAssociations = chunks.flat();
-        const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
-          allAssociations,
-          maxCardsPerDeck,
-          deckNames[0] || 'Importado'
-        );
-
-        const defaultSettings = {
-          mode: 'training' as const,
-          flipOrder: 'normal' as const,
-          threshold: 0.95,
-          ignoreArticles: true,
-          showHints: true,
-          autoRevealAfterSeconds: 15,
-          autoAdvanceAfterAttempts: 3,
-        };
-
-        let firstId: string | null = null;
-        for (let i = 0; i < splitChunks.length; i++) {
-          const id = await handlers.handleCreateList(
-            splitDeckNames[i],
-            'value1 / value2',
-            splitChunks[i],
-            defaultSettings,
-          );
-          if (i === 0) firstId = id;
-          if (!id) break;
-        }
-
-        if (firstId) {
-          setCurrentList(firstId);
-        }
-        setPendingTextImport(null);
-      })();
-    }
-  }, [view, pendingTextImport, user, lists, handlers, setCurrentList]);
-
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -317,7 +271,6 @@ const AppContent: React.FC = () => {
                   }}
                   onPlay={handlers.handlePlayList}
                   onYouTubeSuccess={(result) => setYoutubePreviewResult(result)}
-                  onTextImport={() => navigate('text-importer')}
                   onCreateEmpty={handleCreateEmpty}
                   isCreating={handlers.isCreating}
                   isUpdating={handlers.isUpdating}
@@ -418,24 +371,6 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['owner', 'admin']}>
                 <AdminUsageView onBack={goBack} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/text-importer"
-            element={
-              <ProtectedRoute>
-                <TextImporter
-                  onSave={(associations, sourceMeta) => {
-                    setPendingTextImport({
-                      chunks: [associations],
-                      deckNames: [sourceMeta.title || 'Importado'],
-                      sourceMeta,
-                    });
-                    navigate('editor');
-                  }}
-                  onBack={goBack}
-                />
               </ProtectedRoute>
             }
           />

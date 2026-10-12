@@ -10,7 +10,6 @@ export interface DashboardProps {
   onEdit: (id: string) => void;
   onPlay: (id: string) => void;
   onYouTubeSuccess?: (result: VocabularyResult) => void;
-  onTextImport?: () => void;
   onCreateEmpty: () => void;
   isCreating?: boolean;
   isUpdating?: boolean;
