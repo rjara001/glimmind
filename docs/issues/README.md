@@ -9,7 +9,9 @@ belongs in [`../BUSINESS_MODEL.md`](../BUSINESS_MODEL.md).
 
 Filed from the Stripe sandbox-to-live work and the business-model review
 (2026-10-11), and from the metering review that produced
-[`../SERVICE_CATALOG.md`](../SERVICE_CATALOG.md) (2026-10-12).
+[`../SERVICE_CATALOG.md`](../SERVICE_CATALOG.md) (2026-10-12). Three more were
+parked while implementing the atomic quota fix in
+[`../plans/2026-10-12-cuotas-atomicas.md`](../plans/2026-10-12-cuotas-atomicas.md).
 
 ---
 
@@ -26,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
+Counts as of 2026-10-12: **2 P0 · 9 P1 · 11 P2 · 7 done · 3 backlog**.
 
 ---
 
@@ -37,7 +39,6 @@ Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
 | [`P0/2026-10-11-vosk-descarga-innecesaria.md`](P0/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Fixed in 1.37.0, pending deploy |
 | [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium has no card limit at all. One payment buys unbounded Firestore writes |
 | [`P0/2026-10-12-rutas-ia-sin-rate-limit.md`](P0/2026-10-12-rutas-ia-sin-rate-limit.md) | The metered routes have no rate limit; `aiGroup` is defined but unused |
-| [`P0/2026-10-12-cuotas-no-atomicas.md`](P0/2026-10-12-cuotas-no-atomicas.md) | Quotas are checked then written, so concurrent requests multiply the allowance |
 
 ## P1 — behavioural bugs
 
@@ -50,6 +51,8 @@ Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
 | [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
 | [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
+| [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
+| [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
 
 ## P2 — debt, dead code, hygiene
 
@@ -65,6 +68,7 @@ Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
 | [`P2/2026-10-12-codigo-muerto-en-zona-de-creacion.md`](P2/2026-10-12-codigo-muerto-en-zona-de-creacion.md) | 500 lines of React no user path can reach, in the deck-creation zone |
 | [`P2/2026-10-12-deploy-de-github-actions-roto.md`](P2/2026-10-12-deploy-de-github-actions-roto.md) | The Actions deploy has failed on every run since 2026-10-07 |
 | [`P2/2026-08-24-chirp-tts-cutoff-instrumentation.md`](P2/2026-08-24-chirp-tts-cutoff-instrumentation.md) | Chirp phrases cut short; instrumented, 4 hypotheses still undiscriminated |
+| [`P2/2026-10-12-yt-ai-limits-obsoletas.md`](P2/2026-10-12-yt-ai-limits-obsoletas.md) | `YT_AI_DAILY_LIMIT_PREMIUM` says 200, `plans.json` says 1000, nothing reads it |
 
 ## done — resolved
 
@@ -76,6 +80,7 @@ Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
 | [`done/2026-08-24-tts-watchdog-cutoff.md`](done/2026-08-24-tts-watchdog-cutoff.md) | Browser TTS cutoff; text chunking plus watchdog shipped |
 | [`done/2026-08-24-similarity-montains-typo.md`](done/2026-08-24-similarity-montains-typo.md) | Closed as **not a bug**: the stored answer was misspelled `montains` |
 | [`done/2026-10-11-vosk-descarga-innecesaria.md`](done/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors; now loaded on demand in 1.37.1 |
+| [`done/2026-10-12-cuotas-no-atomicas.md`](done/2026-10-12-cuotas-no-atomicas.md) | All four meters reserve before spending and refund on failure; the realised ceiling is the quota again |
 
 ## backlog — not defects
 

@@ -1,4 +1,4 @@
-const { getDb } = require("../utils/firebase");
+const { snapshotNumber } = require("../utils/meteredQuota");
 const {
   TRANSLATION_GLOBAL_MONTHLY_CHARS,
   TRANSLATION_USER_MONTHLY_CHARS,
@@ -17,90 +17,88 @@ function buildTranslationQuotaDocumentRefs(db, uid, monthKey) {
   return { globalRef, userRef };
 }
 
-async function fetchTranslationQuotaDocuments(db, uid, monthKey) {
+function userTranslationLimit(tierData) {
+  return tierData && tierData.tier === "premium"
+    ? TRANSLATION_PREMIUM_USER_MONTHLY_CHARS
+    : TRANSLATION_USER_MONTHLY_CHARS;
+}
+
+function quotaError(message, code, used, limit) {
+  const error = new Error(message);
+  error.code = code;
+  error.used = used;
+  error.limit = limit;
+  return error;
+}
+
+/**
+ * Both counters as one literal.
+ *
+ * reserveQuota compares and increments them inside a single transaction, so
+ * concurrent requests can no longer each pass the check against the same
+ * starting figure.
+ */
+function buildTranslationQuotaSpec(db, uid, monthKey, incomingChars) {
   const { globalRef, userRef } = buildTranslationQuotaDocumentRefs(db, uid, monthKey);
-  const [globalSnap, userSnap] = await Promise.all([globalRef.get(), userRef.get()]);
 
-  const globalData = globalSnap.exists
-    ? globalSnap.data()
-    : { currentMonth: monthKey, totalCharactersTranslated: 0, totalCalls: 0 };
-
-  const userData = userSnap.exists
-    ? userSnap.data()
-    : { userId: uid, currentMonth: monthKey, charactersTranslated: 0, callCount: 0 };
-
-  return { globalRef, userRef, globalData, userData };
-}
-
-function assertGlobalTranslationQuotaHasCapacity(globalData, incomingChars) {
-  const currentTotal = globalData.totalCharactersTranslated || 0;
-  if (currentTotal + incomingChars > TRANSLATION_GLOBAL_MONTHLY_CHARS) {
-    const error = new Error("Límite global mensual de traducción alcanzado.");
-    error.code = "TRANSLATION_GLOBAL_QUOTA_EXCEEDED";
-    throw error;
-  }
-}
-
-async function assertUserTranslationQuotaHasCapacity(db, uid, userData, incomingChars) {
-  const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
-  const metaSnap = await metaRef.get();
-  const userTier = metaSnap.exists ? metaSnap.data().tier || "free" : "free";
-  const userLimit =
-    userTier === "premium" ? TRANSLATION_PREMIUM_USER_MONTHLY_CHARS : TRANSLATION_USER_MONTHLY_CHARS;
-
-  const currentUserTotal = userData.charactersTranslated || 0;
-  if (currentUserTotal + incomingChars > userLimit) {
-    const error = new Error(
-      `Has alcanzado tu límite mensual de traducciones (${userLimit} caracteres).`
-    );
-    error.code = "TRANSLATION_USER_QUOTA_EXCEEDED";
-    throw error;
-  }
-
-  return { userTier, userLimit };
-}
-
-async function persistTranslationQuotaUsage(
-  db,
-  globalRef,
-  userRef,
-  globalData,
-  userData,
-  incomingChars,
-  monthKey
-) {
-  const batch = db.batch();
-
-  batch.set(
-    globalRef,
-    {
-      currentMonth: monthKey,
-      totalCharactersTranslated: (globalData.totalCharactersTranslated || 0) + incomingChars,
-      totalCalls: (globalData.totalCalls || 0) + 1,
-    },
-    { merge: true }
-  );
-
-  batch.set(
-    userRef,
-    {
-      userId: userData.userId,
-      currentMonth: monthKey,
-      charactersTranslated: (userData.charactersTranslated || 0) + incomingChars,
-      callCount: (userData.callCount || 0) + 1,
-      lastTranslationAt: new Date(),
-    },
-    { merge: true }
-  );
-
-  await batch.commit();
+  return {
+    tierRef: db.collection("users").doc(uid).collection("meta").doc("main"),
+    counters: [
+      {
+        id: "globalChars",
+        ref: globalRef,
+        field: "totalCharactersTranslated",
+        periodField: "currentMonth",
+        periodValue: monthKey,
+        delta: incomingChars,
+        limit: TRANSLATION_GLOBAL_MONTHLY_CHARS,
+        onExceed(used, limit) {
+          return quotaError(
+            "Límite global mensual de traducción alcanzado.",
+            "TRANSLATION_GLOBAL_QUOTA_EXCEEDED",
+            used,
+            limit
+          );
+        },
+        write(_next, snapshot) {
+          return {
+            currentMonth: monthKey,
+            totalCalls: snapshotNumber(snapshot, "totalCalls") + 1,
+          };
+        },
+      },
+      {
+        id: "userChars",
+        ref: userRef,
+        field: "charactersTranslated",
+        periodField: "currentMonth",
+        periodValue: monthKey,
+        delta: incomingChars,
+        limit: userTranslationLimit,
+        onExceed(used, limit) {
+          return quotaError(
+            `Has alcanzado tu límite mensual de traducciones (${limit} caracteres).`,
+            "TRANSLATION_USER_QUOTA_EXCEEDED",
+            used,
+            limit
+          );
+        },
+        write(_next, snapshot) {
+          return {
+            userId: uid,
+            currentMonth: monthKey,
+            callCount: snapshotNumber(snapshot, "callCount") + 1,
+            lastTranslationAt: new Date(),
+          };
+        },
+      },
+    ],
+  };
 }
 
 module.exports = {
   resolveCurrentMonthKey,
   buildTranslationQuotaDocumentRefs,
-  fetchTranslationQuotaDocuments,
-  assertGlobalTranslationQuotaHasCapacity,
-  assertUserTranslationQuotaHasCapacity,
-  persistTranslationQuotaUsage,
+  buildTranslationQuotaSpec,
+  userTranslationLimit,
 };

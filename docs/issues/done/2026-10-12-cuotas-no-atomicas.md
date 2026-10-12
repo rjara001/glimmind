@@ -1,5 +1,8 @@
 # Metered quotas are checked and then written, never reserved
 
+**Resolved:** 2026-10-12, in 1.37.2. See
+[`../../plans/2026-10-12-cuotas-atomicas.md`](../../plans/2026-10-12-cuotas-atomicas.md).
+
 ## What
 
 Every metered quota — AI decks, cloud TTS, cloud STT, translation — follows the

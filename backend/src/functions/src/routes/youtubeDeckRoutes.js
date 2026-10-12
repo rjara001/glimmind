@@ -1,8 +1,9 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { getDb, getAuth, FieldValue } = require("../utils/firebase");
+const { getDb, getAuth } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
 const { YouTubeTranscriptProvider } = require("../services/transcriptProvider");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
+const { runAiDeckWithQuota } = require("../services/aiDeckQuota");
 const { QuotaService } = require("../services/quotaService");
 const {
   extractVideoId,
@@ -14,9 +15,6 @@ const {
 } = require("../utils/vocabularyHelpers");
 const {
   DECK_TIERS,
-  YT_AI_DAILY_LIMIT_FREE,
-  YT_AI_DAILY_LIMIT_PREMIUM,
-  GLOBAL_AI_DAILY_CAP,
 } = require("../utils/constants");
 
 // Bump when extraction logic changes so stale cached results are ignored.
@@ -125,29 +123,17 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
   const metaRef = metaRefFor(db, uid);
   const metaSnap = await metaRef.get();
   const meta = metaSnap.exists ? metaSnap.data() : {};
-  const ytAiDailyLimit = QuotaService.getAiDailyLimit(meta.tier);
-  const usedToday = meta.ytAiDateKey === today ? (meta.ytAiUsedToday || 0) : 0;
-  const quotaInfo = buildQuotaInfo(usedToday, ytAiDailyLimit);
+  const quotaInfo = buildQuotaInfo(
+    meta.ytAiDateKey === today ? (meta.ytAiUsedToday || 0) : 0,
+    QuotaService.getAiDailyLimit(meta.tier)
+  );
 
   const cacheKey = `${NLP_CACHE_VERSION}_${videoId}_en_${maxTerms}_${targetLanguage}_${level}`;
   const cached = await getCachedResult(db, cacheKey);
   if (cached) {
+    // Cache hits stay free. The reservation below must not move above this
+    // return, or every replay would charge the user again.
     return res.json({ ...cached, quota: quotaInfo });
-  }
-
-  if (tier.costPercent > quotaInfo.remainingPoints) {
-    return res.status(429).json({
-      error: `Tu cuota diaria de IA restante (${quotaInfo.remainingPercent}%) no alcanza para este tamaño (${tier.costPercent}%). Elige un tamaño menor.`,
-      quota: quotaInfo,
-    });
-  }
-
-  const globalRef = db.collection("usage").doc("global");
-  const globalSnap = await globalRef.get();
-  const globalData = globalSnap.exists ? globalSnap.data() : { dateKey: today, aiCalls: 0 };
-  const globalCalls = globalData.dateKey === today ? (globalData.aiCalls || 0) : 0;
-  if (globalCalls >= GLOBAL_AI_DAILY_CAP) {
-    return res.status(429).json({ error: "El servicio de IA alcanzó su límite diario. Intenta mañana." });
   }
 
   const transcriptResult = await YouTubeTranscriptProvider.getTranscript({ url, videoId });
@@ -188,65 +174,66 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
     return res.status(500).json({ error: "El servicio de IA no está configurado." });
   }
 
-  let vocabularyResult;
+  // Reserved inside one transaction before Gemini is called, and refunded if it
+  // throws. Placed after the cache lookup above so cache hits stay free.
   try {
-    vocabularyResult = await extractVocabulary({
-      apiKey,
-      segments: transcriptResult.segments,
-      maxTerms,
-      targetLanguage,
-      level,
+    const outcome = await runAiDeckWithQuota(db, metaRef, today, tier.costPercent, async () => {
+      const vocabularyResult = await extractVocabulary({
+        apiKey,
+        segments: transcriptResult.segments,
+        maxTerms,
+        targetLanguage,
+        level,
+      });
+
+      if (vocabularyResult.items.length === 0) {
+        const emptyError = new Error("No items extracted");
+        emptyError.code = "NO_ITEMS";
+        throw emptyError;
+      }
+
+      const rawSourceText = transcriptResult.segments.map((s) => String(s.text || "")).join(" ");
+      const videoTitle = (await fetchYouTubeVideoTitle(videoId)) || `YouTube Video ${videoId}`;
+
+      const responseBody = {
+        video: {
+          id: videoId,
+          title: videoTitle,
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+        },
+        source: 'youtube_auto',
+        sourceType: 'youtube_auto',
+        sourceUrl: url,
+        rawSourceText,
+        title: vocabularyResult.title,
+        sourceRow: {
+          sourceType: 'youtube_auto',
+          sourceUrl: url,
+          videoId,
+          videoTitle,
+          rawSourceText,
+        },
+        items: vocabularyResult.items,
+        wasTruncated: vocabularyResult.wasTruncated,
+      };
+
+      await setCachedResult(db, cacheKey, responseBody);
+      return responseBody;
     });
+
+    res.json({ ...outcome.result, quota: outcome.quota });
   } catch (error) {
-    console.error('[createYouTubeDeck] vocabulary extraction failed:', error.message);
+    console.error('[createYouTubeDeck] failed:', error.message);
+
+    if (error.code === 'AI_QUOTA_EXCEEDED' || error.code === 'AI_GLOBAL_CAP_REACHED') {
+      return res.status(429).json({ error: error.message, quota: error.quota || undefined });
+    }
+
+    if (error.code === 'NO_ITEMS') {
+      return res.status(502).json({ error: "No se pudieron extraer términos del video. Inténtalo de nuevo o elige un tamaño de baraja menor." });
+    }
+
     const mapped = mapGeminiError(error);
     return res.status(mapped.status).json({ error: mapped.error, ...(mapped.detail ? { detail: mapped.detail } : {}) });
   }
-
-  if (vocabularyResult.items.length === 0) {
-    return res.status(502).json({ error: "No se pudieron extraer términos del video. Inténtalo de nuevo o elige un tamaño de baraja menor." });
-  }
-
-  const rawSourceText = transcriptResult.segments.map((s) => String(s.text || "")).join(" ");
-
-  const videoTitle = (await fetchYouTubeVideoTitle(videoId)) || `YouTube Video ${videoId}`;
-
-  const responseBody = {
-    video: {
-      id: videoId,
-      title: videoTitle,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-    },
-    source: 'youtube_auto',
-    sourceType: 'youtube_auto',
-    sourceUrl: url,
-    rawSourceText,
-    title: vocabularyResult.title,
-    sourceRow: {
-      sourceType: 'youtube_auto',
-      sourceUrl: url,
-      videoId,
-      videoTitle,
-      rawSourceText,
-    },
-    items: vocabularyResult.items,
-    wasTruncated: vocabularyResult.wasTruncated,
-  };
-
-  if (vocabularyResult.items.length > 0) {
-    await setCachedResult(db, cacheKey, responseBody);
-  }
-
-  const newUsedToday = usedToday + tier.costPercent;
-  await metaRef.set({
-    ytAiUsedToday: newUsedToday,
-    ytAiDateKey: today,
-    updatedAt: FieldValue.serverTimestamp(),
-  }, { merge: true });
-  await globalRef.set({ dateKey: today, aiCalls: globalCalls + 1 }, { merge: true });
-
-  res.json({
-    ...responseBody,
-    quota: buildQuotaInfo(newUsedToday, ytAiDailyLimit),
-  });
 });

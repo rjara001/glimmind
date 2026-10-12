@@ -1,5 +1,9 @@
-const { getDb } = require("../../utils/firebase");
-const { CHIRP_TTS_GLOBAL_LIMIT, CHIRP_TTS_USER_LIMIT, CHIRP_TTS_PREMIUM_USER_LIMIT } = require("../../utils/constants");
+const { snapshotNumber } = require("../../utils/meteredQuota");
+const {
+  CHIRP_TTS_GLOBAL_LIMIT,
+  CHIRP_TTS_USER_LIMIT,
+  CHIRP_TTS_PREMIUM_USER_LIMIT,
+} = require("../../utils/constants");
 
 function resolveCurrentMonthKey() {
   const d = new Date();
@@ -24,80 +28,79 @@ function buildTtsQuotaDocumentRefs(db, uid, monthKey) {
   return { globalRef, userRef };
 }
 
-async function fetchTtsQuotaDocuments(db, uid, monthKey) {
+function userTtsLimit(tierData) {
+  return tierData && tierData.tier === "premium"
+    ? CHIRP_TTS_PREMIUM_USER_LIMIT
+    : CHIRP_TTS_USER_LIMIT;
+}
+
+function quotaError(message, code, used, limit) {
+  const error = new Error(message);
+  error.code = code;
+  error.used = used;
+  error.limit = limit;
+  return error;
+}
+
+/**
+ * Both counters as one literal.
+ *
+ * reserveQuota compares and increments them inside a single transaction, so
+ * concurrent requests can no longer each pass the check against the same
+ * starting figure.
+ */
+function buildTtsQuotaSpec(db, uid, monthKey, charCount) {
   const { globalRef, userRef } = buildTtsQuotaDocumentRefs(db, uid, monthKey);
-  const [globalSnap, userSnap] = await Promise.all([
-    globalRef.get(),
-    userRef.get(),
-  ]);
 
-  const globalData = globalSnap.exists
-    ? globalSnap.data()
-    : { monthKey: monthKey, charsUsed: 0, totalCalls: 0 };
-
-  const userData = userSnap.exists
-    ? userSnap.data()
-    : { monthKey: monthKey, charsUsed: 0, callCount: 0 };
-
-  return { globalRef, userRef, globalData, userData };
-}
-
-function assertGlobalTtsQuotaHasCapacity(globalData, charCount) {
-  if (globalData.charsUsed >= CHIRP_TTS_GLOBAL_LIMIT) {
-    const error = new Error(
-      "El servicio de voz alcanzó su límite mensual global. Intenta el próximo mes."
-    );
-    error.code = "GLOBAL_QUOTA_EXCEEDED";
-    throw error;
-  }
-}
-
-async function assertUserTtsQuotaHasCapacity(db, uid, userData, charCount) {
-  const metaRef = db.collection("users").doc(uid).collection("meta").doc("main");
-  const metaSnap = await metaRef.get();
-  const userTier = metaSnap.exists ? (metaSnap.data().tier || 'free') : 'free';
-  const userLimit = userTier === 'premium' ? CHIRP_TTS_PREMIUM_USER_LIMIT : CHIRP_TTS_USER_LIMIT;
-
-  if (userData.charsUsed >= userLimit) {
-    const error = new Error(
-      `Llegaste a tu límite mensual de voz (${userLimit} caracteres). Vuelve el próximo mes.`
-    );
-    error.code = "USER_QUOTA_EXCEEDED";
-    throw error;
-  }
-}
-
-async function persistTtsQuotaUsage(db, globalRef, userRef, globalData, userData, charCount, monthKey) {
-  const batch = db.batch();
-
-  batch.set(
-    globalRef,
-    {
-      monthKey: monthKey,
-      charsUsed: globalData.charsUsed + charCount,
-      totalCalls: (globalData.totalCalls || 0) + 1,
-    },
-    { merge: true }
-  );
-
-  batch.set(
-    userRef,
-    {
-      monthKey: monthKey,
-      charsUsed: userData.charsUsed + charCount,
-      callCount: (userData.callCount || 0) + 1,
-    },
-    { merge: true }
-  );
-
-  await batch.commit();
+  return {
+    tierRef: db.collection("users").doc(uid).collection("meta").doc("main"),
+    counters: [
+      {
+        id: "globalCharsUsed",
+        ref: globalRef,
+        field: "charsUsed",
+        periodField: "monthKey",
+        periodValue: monthKey,
+        delta: charCount,
+        limit: CHIRP_TTS_GLOBAL_LIMIT,
+        onExceed(used, limit) {
+          return quotaError(
+            "El servicio de voz alcanzó su límite mensual global. Intenta el próximo mes.",
+            "GLOBAL_QUOTA_EXCEEDED",
+            used,
+            limit
+          );
+        },
+        write(_next, snapshot) {
+          return { monthKey, totalCalls: snapshotNumber(snapshot, "totalCalls") + 1 };
+        },
+      },
+      {
+        id: "userCharsUsed",
+        ref: userRef,
+        field: "charsUsed",
+        periodField: "monthKey",
+        periodValue: monthKey,
+        delta: charCount,
+        limit: userTtsLimit,
+        onExceed(used, limit) {
+          return quotaError(
+            `Llegaste a tu límite mensual de voz (${limit} caracteres). Vuelve el próximo mes.`,
+            "USER_QUOTA_EXCEEDED",
+            used,
+            limit
+          );
+        },
+        write(_next, snapshot) {
+          return { monthKey, callCount: snapshotNumber(snapshot, "callCount") + 1 };
+        },
+      },
+    ],
+  };
 }
 
 module.exports = {
   resolveCurrentMonthKey,
   buildTtsQuotaDocumentRefs,
-  fetchTtsQuotaDocuments,
-  assertGlobalTtsQuotaHasCapacity,
-  assertUserTtsQuotaHasCapacity,
-  persistTtsQuotaUsage,
+  buildTtsQuotaSpec,
 };

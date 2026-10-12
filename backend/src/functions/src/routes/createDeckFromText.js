@@ -1,21 +1,17 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { getDb, getAuth, FieldValue } = require("../utils/firebase");
+const { getDb, getAuth } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
-const { QuotaService } = require("../services/quotaService");
+const { runAiDeckWithQuota } = require("../services/aiDeckQuota");
 const {
   extractVideoId,
   fetchYouTubeVideoTitle,
   resolveTier,
-  buildQuotaInfo,
   isValidTargetLanguage,
   mapGeminiError,
 } = require("../utils/vocabularyHelpers");
 const {
   DECK_TIERS,
-  YT_AI_DAILY_LIMIT_FREE,
-  YT_AI_DAILY_LIMIT_PREMIUM,
-  GLOBAL_AI_DAILY_CAP,
 } = require("../utils/constants");
 
 const ALLOWED_LEVELS = new Set(["b1", "b2c1"]);
@@ -66,49 +62,10 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
   const db = getDb();
   const today = todayKey();
   const metaRef = metaRefFor(db, uid);
-  const metaSnap = await metaRef.get();
-  const meta = metaSnap.exists ? metaSnap.data() : {};
-  const ytAiDailyLimit = QuotaService.getAiDailyLimit(meta.tier);
-  const usedToday = meta.ytAiDateKey === today ? (meta.ytAiUsedToday || 0) : 0;
-  const quotaInfo = buildQuotaInfo(usedToday, ytAiDailyLimit);
-
-  if (tier.costPercent > quotaInfo.remainingPoints) {
-    return res.status(429).json({
-      error: `Tu cuota diaria de IA restante (${quotaInfo.remainingPercent}%) no alcanza para este tamaño (${tier.costPercent}%). Elige un tamaño menor.`,
-      quota: quotaInfo,
-    });
-  }
-
-  const globalRef = db.collection("usage").doc("global");
-  const globalSnap = await globalRef.get();
-  const globalData = globalSnap.exists ? globalSnap.data() : { dateKey: today, aiCalls: 0 };
-  const globalCalls = globalData.dateKey === today ? (globalData.aiCalls || 0) : 0;
-  if (globalCalls >= GLOBAL_AI_DAILY_CAP) {
-    return res.status(429).json({ error: "El servicio de IA alcanzó su límite diario. Intenta mañana." });
-  }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "El servicio de IA no está configurado." });
-  }
-
-  let vocabularyResult;
-  try {
-    vocabularyResult = await extractVocabulary({
-      apiKey,
-      segments: [{ text: text.trim(), start: 0, duration: 0 }],
-      maxTerms,
-      targetLanguage,
-      level,
-    });
-  } catch (error) {
-    console.error('[createDeckFromText] vocabulary extraction failed:', error.message);
-    const mapped = mapGeminiError(error);
-    return res.status(mapped.status).json({ error: mapped.error, ...(mapped.detail ? { detail: mapped.detail } : {}) });
-  }
-
-  if (vocabularyResult.items.length === 0) {
-    return res.status(502).json({ error: "No se pudieron extraer términos del texto. Revisa la transcripción e inténtalo de nuevo." });
   }
 
   const isManualFromUrl = typeof videoUrl === 'string' && videoUrl.trim().length > 0;
@@ -127,34 +84,58 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
     };
   }
 
-  const responseBody = {
-    video,
-    source: sourceType,
-    sourceType,
-    sourceUrl: isManualFromUrl ? videoUrl.trim() : undefined,
-    rawSourceText: text.trim(),
-    title: vocabularyResult.title,
-    sourceRow: {
-      sourceType,
-      ...(isManualFromUrl ? { sourceUrl: videoUrl.trim() } : {}),
-      ...(videoId ? { videoId } : {}),
-      ...(videoTitle ? { videoTitle } : {}),
-      rawSourceText: text.trim(),
-    },
-    items: vocabularyResult.items,
-    wasTruncated: vocabularyResult.wasTruncated,
-  };
+  // Reserved inside one transaction before Gemini is called, and refunded if it
+  // throws. Concurrent requests can no longer each pass the check against the
+  // same starting figure.
+  try {
+    const outcome = await runAiDeckWithQuota(db, metaRef, today, tier.costPercent, async () => {
+      const vocabularyResult = await extractVocabulary({
+        apiKey,
+        segments: [{ text: text.trim(), start: 0, duration: 0 }],
+        maxTerms,
+        targetLanguage,
+        level,
+      });
 
-  const newUsedToday = usedToday + tier.costPercent;
-  await metaRef.set({
-    ytAiUsedToday: newUsedToday,
-    ytAiDateKey: today,
-    updatedAt: FieldValue.serverTimestamp(),
-  }, { merge: true });
-  await globalRef.set({ dateKey: today, aiCalls: globalCalls + 1 }, { merge: true });
+      if (vocabularyResult.items.length === 0) {
+        const emptyError = new Error("No se pudieron extraer términos del texto.");
+        emptyError.code = "NO_ITEMS";
+        throw emptyError;
+      }
 
-  res.json({
-    ...responseBody,
-    quota: buildQuotaInfo(newUsedToday, ytAiDailyLimit),
-  });
+      return {
+        video,
+        source: sourceType,
+        sourceType,
+        sourceUrl: isManualFromUrl ? videoUrl.trim() : undefined,
+        rawSourceText: text.trim(),
+        title: vocabularyResult.title,
+        sourceRow: {
+          sourceType,
+          ...(isManualFromUrl ? { sourceUrl: videoUrl.trim() } : {}),
+          ...(videoId ? { videoId } : {}),
+          ...(videoTitle ? { videoTitle } : {}),
+          rawSourceText: text.trim(),
+        },
+        items: vocabularyResult.items,
+        wasTruncated: vocabularyResult.wasTruncated,
+      };
+    });
+    res.json({ ...outcome.result, quota: outcome.quota });
+  } catch (error) {
+    console.error('[createDeckFromText] failed:', error.message);
+
+    if (error.code === 'AI_QUOTA_EXCEEDED' || error.code === 'AI_GLOBAL_CAP_REACHED') {
+      return res.status(429).json({ error: error.message, quota: error.quota || undefined });
+    }
+
+    if (error.code === 'NO_ITEMS') {
+      return res.status(502).json({
+        error: "No se pudieron extraer términos del texto. Revisa la transcripción e inténtalo de nuevo.",
+      });
+    }
+
+    const mapped = mapGeminiError(error);
+    return res.status(mapped.status).json({ error: mapped.error, ...(mapped.detail ? { detail: mapped.detail } : {}) });
+  }
 });

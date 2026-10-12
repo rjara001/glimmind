@@ -26,31 +26,26 @@ async function handleTranscribeExistingAudio(req, res) {
 
   console.error('[transcribeExistingAudio] request', { uid, audioDuration: audioSeconds });
 
-  let result;
-  try {
-    result = await sttService.sendAudioToChirpRecognizer(audioContent, languageCode);
-  } catch (error) {
-    console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
-    if (error.code === 'RATE_LIMITED') {
-      return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
+let result;
+    try {
+      result = await sttService.transcribeWithQuota(getDb(), uid, audioSeconds, () =>
+        sttService.sendAudioToChirpRecognizer(audioContent, languageCode)
+      );
+    } catch (error) {
+      console.error('[transcribeExistingAudio] failed', { uid, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message, code: error.code });
+      }
+      if (error.code === 'RATE_LIMITED') {
+        return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
+      }
+      if (error.code === 'NO_SPEECH') {
+        return res.status(200).json({ noSpeech: true, message: 'No speech detected in stored audio (service handler).' });
+      }
+      return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
     }
-    if (error.code === 'NO_SPEECH') {
-      return res.status(200).json({ noSpeech: true, message: 'No speech detected in stored audio (service handler).' });
-    }
-    return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
-  }
 
-  try {
-    await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
-  } catch (error) {
-    console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
-    if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-      return res.status(429).json({ error: error.message, code: error.code });
-    }
-    return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
-  }
-
-  res.json({ transcript: result.transcript, metadata: result.metadata });
+    res.json({ transcript: result.transcript, metadata: result.metadata });
 }
 
 module.exports = { handleTranscribeExistingAudio };

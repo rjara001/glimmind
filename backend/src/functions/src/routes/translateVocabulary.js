@@ -4,16 +4,12 @@ const { sendAuthenticatedRequest } = require("../utils/googleApiClient");
 const {
   GCP_PROJECT_ID,
   GOOGLE_TRANSLATE_URL,
-  TRANSLATION_GLOBAL_MONTHLY_CHARS,
-  TRANSLATION_USER_MONTHLY_CHARS,
-  TRANSLATION_PREMIUM_USER_MONTHLY_CHARS,
 } = require("../utils/constants");
+const { runMeteredCall } = require("../utils/meteredQuota");
 const {
   resolveCurrentMonthKey,
-  fetchTranslationQuotaDocuments,
-  assertGlobalTranslationQuotaHasCapacity,
-  assertUserTranslationQuotaHasCapacity,
-  persistTranslationQuotaUsage,
+  buildTranslationQuotaSpec,
+  userTranslationLimit,
 } = require("../services/translationQuota");
 
 exports.translateVocabulary = onRequest({ cors: true, timeoutSeconds: 120, memory: "512MiB" }, async (req, res) => {
@@ -51,32 +47,25 @@ exports.translateVocabulary = onRequest({ cors: true, timeoutSeconds: 120, memor
   const incomingCharCount = translationCards.reduce((sum, c) => sum + c.term.length, 0);
   const db = getDb();
   const monthKey = resolveCurrentMonthKey();
+  const spec = buildTranslationQuotaSpec(db, uid, monthKey, incomingCharCount);
 
-  let quotaDocs;
-  try {
-    quotaDocs = await fetchTranslationQuotaDocuments(db, uid, monthKey);
-  } catch (error) {
-    console.error("[translateVocabulary] quota fetch failed:", error.message);
-    return res.status(500).json({ error: "Error al leer cuotas de traducción." });
-  }
+  let userUsedChars = 0;
+  let userLimitChars = 0;
 
   try {
-    assertGlobalTranslationQuotaHasCapacity(quotaDocs.globalData, incomingCharCount);
-    const userQuota = await assertUserTranslationQuotaHasCapacity(db, uid, quotaDocs.userData, incomingCharCount);
-
-    const translations = await translateCards(translationCards, targetLang, sourceLang);
-
-    await persistTranslationQuotaUsage(
+    // Reserved before the call and refunded if it throws, so concurrent batches
+    // can no longer each pass the check against the same starting figure.
+    const translations = await runMeteredCall(
       db,
-      quotaDocs.globalRef,
-      quotaDocs.userRef,
-      quotaDocs.globalData,
-      quotaDocs.userData,
-      incomingCharCount,
-      monthKey
+      spec,
+      () => translateCards(translationCards, targetLang, sourceLang),
+      (committed, tierData) => {
+        // The committed figure is what was actually charged, not a stale
+        // pre-call read, so what is reported back matches the reservation.
+        userUsedChars = committed.userChars;
+        userLimitChars = userTranslationLimit(tierData);
+      }
     );
-
-    const userRemainingChars = Math.max(0, userQuota.userLimit - (quotaDocs.userData.charactersTranslated || 0) - incomingCharCount);
 
     res.json({
       translations: translationCards.map((card, idx) => ({
@@ -84,7 +73,7 @@ exports.translateVocabulary = onRequest({ cors: true, timeoutSeconds: 120, memor
         translated: translations[idx] || card.term,
       })),
       consumedChars: incomingCharCount,
-      userRemainingChars,
+      userRemainingChars: Math.max(0, userLimitChars - userUsedChars),
       quotaExceeded: false,
     });
   } catch (error) {
@@ -101,14 +90,14 @@ exports.translateVocabulary = onRequest({ cors: true, timeoutSeconds: 120, memor
     }
 
     if (error.code === "TRANSLATION_USER_QUOTA_EXCEEDED") {
-      const userLimit = TRANSLATION_USER_MONTHLY_CHARS;
-      const userRemainingChars = Math.max(0, userLimit - (quotaDocs.userData.charactersTranslated || 0));
+      // error.limit comes from the reservation, which resolves it from the
+      // caller's tier. This path used to report the free limit for everyone.
       return res.status(429).json({
         error: error.message,
         quotaExceeded: true,
         scope: "user",
         consumedChars: 0,
-        userRemainingChars: userRemainingChars,
+        userRemainingChars: Math.max(0, error.limit - error.used),
       });
     }
 

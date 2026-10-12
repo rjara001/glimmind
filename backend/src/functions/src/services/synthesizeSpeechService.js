@@ -24,11 +24,8 @@ async function handleSynthesizeSpeech(req, res) {
     return res.status(401).json({ error: 'Unauthorized', reason: error.message });
   }
 
-  const charCount = text.length;
-
   try {
-    await chirpTtsService.verifyUserHasRemainingTtsQuota(getDb(), uid, charCount);
-    const audioContent = await chirpTtsService.sendTextToChirpSynthesizer(text, voiceId, rate, pitch);
+    const audioContent = await chirpTtsService.synthesizeWithQuota(getDb(), uid, text, voiceId, rate, pitch);
     res.json({ audioContent });
   } catch (error) {
     console.error('[synthesizeSpeech] failed:', error.message);

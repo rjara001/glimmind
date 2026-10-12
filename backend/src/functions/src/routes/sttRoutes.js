@@ -34,9 +34,14 @@ exports.transcribeSpeech = onRequest(
 
     let transcript;
     try {
-      transcript = await sttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode);
+      transcript = await sttService.transcribeWithQuota(getDb(), uid, audioSeconds, () =>
+        sttService.sendAudioToGoogleSpeechRecognition(audioContent, encoding, sampleRateHertz, languageCode)
+      );
     } catch (error) {
-      console.error('[transcribeSpeech] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      console.error('[transcribeSpeech] failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'RATE_LIMITED') {
         return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
       }
@@ -44,16 +49,6 @@ exports.transcribeSpeech = onRequest(
         return res.status(200).json({ noSpeech: true, message: 'No speech detected in the live recording.' });
       }
       return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
-    }
-
-    try {
-      await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
-    } catch (error) {
-      console.error('[transcribeSpeech] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message, code: error.code });
-      }
-      return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
     }
 
     res.json({ transcript });
@@ -88,9 +83,14 @@ exports.transcribeExistingAudio = onRequest(
 
     let result;
     try {
-      result = await sttService.sendAudioToGoogleSpeechRecognitionRecognize(audioContent, languageCode);
+      result = await sttService.transcribeWithQuota(getDb(), uid, audioSeconds, () =>
+        sttService.sendAudioToGoogleSpeechRecognitionRecognize(audioContent, languageCode)
+      );
     } catch (error) {
-      console.error('[transcribeExistingAudio] STT failed', { uid, audioSeconds, code: error.code, message: error.message });
+      console.error('[transcribeExistingAudio] failed', { uid, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'RATE_LIMITED') {
         return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
       }
@@ -98,16 +98,6 @@ exports.transcribeExistingAudio = onRequest(
         return res.status(200).json({ noSpeech: true, message: 'No speech detected in the stored audio.' });
       }
       return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
-    }
-
-    try {
-      await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
-    } catch (error) {
-      console.error('[transcribeExistingAudio] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message, code: error.code });
-      }
-      return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
     }
 
     res.json({ transcript: result.transcript, metadata: result.metadata });
@@ -164,9 +154,14 @@ exports.transcribeChirp3 = onRequest(
     let result;
     try {
       const normalizedLanguageCode = normalizeChirp3LanguageCode(languageCode);
-      result = await sttService.sendAudioToChirpRecognizer(audioContent, normalizedLanguageCode);
+      result = await sttService.transcribeWithQuota(getDb(), uid, audioSeconds, () =>
+        sttService.sendAudioToChirpRecognizer(audioContent, normalizedLanguageCode)
+      );
     } catch (error) {
-      console.error('[transcribeChirp3] STT failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      console.error('[transcribeChirp3] failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
+        return res.status(429).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'RATE_LIMITED') {
         return res.status(503).json({ error: 'El servicio de STT está temporalmente saturado. Intenta en unos minutos.' });
       }
@@ -174,16 +169,6 @@ exports.transcribeChirp3 = onRequest(
         return res.status(200).json({ noSpeech: true, message: 'No speech detected in the live recording.' });
       }
       return res.status(502).json({ error: 'Error al transcribir la voz.', detail: error.message });
-    }
-
-    try {
-      await sttService.verifyUserHasRemainingSttQuota(getDb(), uid, audioSeconds);
-    } catch (error) {
-      console.error('[transcribeChirp3] quota failed after success', { uid, audioSeconds, code: error.code, message: error.message });
-      if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
-        return res.status(429).json({ error: error.message, code: error.code });
-      }
-      return res.status(502).json({ error: 'Error al registrar la transcripción.', detail: error.message });
     }
 
     res.json({ transcript: result.transcript, metadata: result.metadata });
