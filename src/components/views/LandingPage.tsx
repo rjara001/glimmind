@@ -1,12 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import './landing.css';
 import { LandingDemo } from './LandingDemo';
+import { LandingValidationAnalysis } from './LandingValidationAnalysis';
+import { PREMIUM_LANDING_NEXT_PATH, PREMIUM_LANDING_NEXT_QUERY } from '../../constants/premium';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   const onStart = () => navigate('/login');
-  const onUpgrade = () => navigate('/login');
+  // Stripe checkout requires a valid ID token, and this page only renders for
+  // signed-out visitors (App.tsx redirects authenticated users to /dashboard).
+  // So the button routes through login, which forwards to SettingsView where
+  // the real checkout is triggered.
+  const onUpgrade = () => navigate(`/login?${PREMIUM_LANDING_NEXT_QUERY}=${PREMIUM_LANDING_NEXT_PATH}`);
   const onDemo = () => document.querySelector('.landing-screenshot-wrap')?.scrollIntoView({ behavior: 'smooth' });
 
   return (
@@ -121,25 +127,10 @@ export const LandingPage: React.FC = () => {
           <h2>Validación difusa</h2>
         </div>
         <p className="landing-section-lead">
-          Si el 80% de los caracteres coincide, cuenta como acierto.
+          Si el 80% de los caracteres coincide, cuenta como acierto. Y cuando no llegas, te decimos{' '}
+          <strong>exactamente dónde fallaste</strong>.
         </p>
-        <div className="landing-validation">
-          <div className="landing-validation-row">
-            <span className="landing-lbl">Tú</span>
-            <span className="landing-word landing-word-wrong">dividens</span>
-            <span className="landing-score">—</span>
-          </div>
-          <div className="landing-validation-row">
-            <span className="landing-lbl">Sistema</span>
-            <span className="landing-word landing-word-right">dividends</span>
-            <span className="landing-score">93%</span>
-          </div>
-          <div className="landing-validation-row">
-            <span className="landing-lbl">Resultado</span>
-            <span className="landing-word landing-word-right">Acierto</span>
-            <span className="landing-score">≥ 80%</span>
-          </div>
-        </div>
+        <LandingValidationAnalysis />
       </div>
 
       <div className="landing-why">
@@ -214,7 +205,7 @@ export const LandingPage: React.FC = () => {
             <div className="landing-plan-name">Free</div>
             <div className="landing-plan-price">
               <span className="landing-amount">€0</span>
-              <span className="landing-period">/mes</span>
+              <span className="landing-period">para siempre</span>
             </div>
             <p className="landing-plan-desc">Para empezar sin compromiso.</p>
             <ul className="landing-plan-features">
@@ -234,9 +225,9 @@ export const LandingPage: React.FC = () => {
             <div className="landing-plan-name">Premium</div>
             <div className="landing-plan-price">
               <span className="landing-amount">€4,99</span>
-              <span className="landing-period">/mes</span>
+              <span className="landing-period">una vez</span>
             </div>
-            <p className="landing-plan-desc">Para quienes estudian en serio.</p>
+            <p className="landing-plan-desc">Para quienes estudian en serio. Pagás una sola vez.</p>
             <ul className="landing-plan-features">
               <li><span className="landing-check">✓</span><span><strong>5.000 tarjetas</strong> activas</span></li>
               <li><span className="landing-check">✓</span><span><strong>Todo lo de Free</strong></span></li>

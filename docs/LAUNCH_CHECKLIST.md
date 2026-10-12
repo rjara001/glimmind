@@ -194,16 +194,20 @@ Remove `/api/aiGroup` rewrite from `firebase.json`
 
 1. **Products → Add product:**
    - Name: `Glimmind Premium`
-   - Price: €4.99/month recurring
+   - Price: €4.99 one-time (no recurring price)
    - Metadata: `tier: premium`
 
 2. **Webhooks → Add endpoint:**
    - URL: `https://us-central1-fladycard-22a3e.cloudfunctions.net/stripeWebhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - Events: `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`
 
 3. **Get keys:**
    - Publishable key (client)
    - Secret key (server → Secret Manager)
+
+> **Stripe is in LIVE mode since 2026-10-11.** Premium is a one-time €4.99
+> purchase and production charges real money. Full state, credentials, safety
+> net and troubleshooting: `docs/plans/2026-10-11-stripe-sandbox-to-live.md`.
 
 ### 5.2 Cloud Functions for Stripe
 
@@ -211,10 +215,12 @@ Remove `/api/aiGroup` rewrite from `firebase.json`
 
 | Function | Purpose |
 |----------|---------|
-| `createCheckoutSession` | Creates Stripe Checkout session, returns URL |
-| `stripeWebhook` | Handles Stripe events, updates Firestore tier |
-| `manageSubscription` | Creates Billing Portal session |
-| `getSubscriptionStatus` | Returns current tier for UI |
+| `createCheckoutSession` | Creates a one-time Stripe Checkout session, returns URL |
+| `stripeWebhook` | Handles `checkout.session.completed`, `payment_intent.succeeded` and `charge.refunded`, updates Firestore tier |
+
+Removed: `manageSubscription` and `getSubscriptionStatus`. Premium is a
+one-time purchase, so there is no billing portal to open and the tier comes from
+`getQuota` (both were dead code with zero production call sites).
 
 **Backend structure:**
 ```
@@ -225,8 +231,12 @@ backend/src/functions/src/services/stripeService.js
 ### 5.3 Frontend Integration
 
 **Landing page / Settings page:**
-- "Upgrade to Premium" button → calls `createCheckoutSession` → redirects to Stripe Checkout
+- "Actualizar a Premium" button → calls `createCheckoutSession` → redirects to Stripe Checkout
 - Success → webhook updates `users/{uid}/meta/main.tier = "premium"`
+- Premium users see no purchase CTA: the plan is lifetime, nothing to manage or renew
+- On return the client polls `getQuota` every 1.5s (15s cap) until the tier flips, because
+  Stripe redirects back before the webhook lands. The success toast is shown only once
+  confirmed; on timeout it says the plan is still being activated
 
 ---
 
@@ -328,7 +338,7 @@ VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
 VITE_FUNCTIONS_BASE=https://us-central1-fladycard-22a3e.cloudfunctions.net
-VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
 ### Backend (Secret Manager)
@@ -336,10 +346,70 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
 | Secret | Purpose |
 |--------|---------|
 | `GEMINI_API_KEY` | (Removed if no AI) |
-| `DEEPL_API_KEY` | Translation service |
 | `ADMIN_UIDS` | Comma-separated UIDs for admin functions |
-| `STRIPE_SECRET_KEY` | Stripe server-side key |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `STRIPE_SECRET_KEY` | Stripe server-side key (currently `sk_live_…`) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`whsec_` of the live endpoint) |
+| `STRIPE_PRICE_ID` | Live one-time price (`price_1UPTTHCCE67J3dcORO2Z1VYw`). No fallback literal |
+| `STRIPE_TEST_PRICE_IDS` | Optional. Comma-separated test price ids, so a live key paired with a test price fails loudly |
+
+> Stripe credentials live **only** in Secret Manager, never in
+> `backend/src/functions/.env`. firebase-tools injects that file as *plain* env
+> vars on deploy, and a plain var colliding with a declared secret fails the whole
+> deploy. The Functions emulator resolves declared secrets from Secret Manager
+> too, so local and production read the same values.
+
+---
+
+## 9.1 Stripe — live mode
+
+Premium is a **one-time €4.99 purchase** and production is on **live** Stripe
+since 2026-10-11. Full runbook, current credential values, the safety net in
+`stripeConfig.js` and the debugging history:
+`docs/plans/2026-10-11-stripe-sandbox-to-live.md`.
+
+### Before testing anything locally
+
+```bash
+npm run emulators          # terminal 1
+npm run stripe:listen      # terminal 2 — leave it running
+npm run dev                # terminal 3
+```
+
+`stripe listen` is mandatory: Stripe cannot reach localhost, so without it the
+payment succeeds and no webhook ever arrives. This is the single most common
+reason a working purchase still shows Plan gratuito, and it happened three times
+on this project.
+
+The success toast is **not** proof of payment. `SettingsView` shows it from the
+`?upgrade=success` URL parameter, which Stripe redirects to as soon as checkout
+completes, before the webhook lands. Confirm with `firebase functions:log` or by
+checking `users/{uid}/meta/main.tier`.
+
+### Testing against live
+
+The emulator refuses to start with a live key, because the emulator resolves
+secrets from Secret Manager and a real card typed at localhost would charge real
+money. To test locally, rotate the three secrets to their sandbox values first —
+see §6 of `2026-10-11-stripe-sandbox-to-live.md` — and rotate back afterwards.
+
+Note: the test card `4242 4242 4242 4242` does not exist in live mode. Testing
+the live path requires a real €4.99 charge; refunding it from the dashboard
+triggers `charge.refunded`, which revokes premium automatically.
+
+### Deploying secrets
+
+```bash
+firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+firebase functions:secrets:set STRIPE_PRICE_ID
+```
+
+### Switching between sandbox and live
+
+There is intentionally no mode flag (AGENTS.md §32 forbids parallel modes).
+Switching is always the same three `firebase functions:secrets:set` calls plus a
+redeploy, with values from §1 of `2026-10-11-stripe-sandbox-to-live.md`. Both
+states are reachable without touching code.
 
 ---
 

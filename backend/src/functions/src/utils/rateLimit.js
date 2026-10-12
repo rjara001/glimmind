@@ -11,6 +11,7 @@ const RATE_LIMITS = {
   appendActivity: { requests: 100, windowMs: 60000 },
   updateProgress: { requests: 120, windowMs: 60000 },
   updateSettings: { requests: 10, windowMs: 60000 },
+  createCheckoutSession: { requests: 5, windowMs: 60000 },
 };
 
 const memoryStore = new Map();

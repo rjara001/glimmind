@@ -1,1 +1,1 @@
-export type AppView = 'dashboard' | 'game' | 'editor' | 'activity' | 'reports' | 'settings' | 'admin' | 'text-importer';
+export type AppView = 'dashboard' | 'game' | 'editor' | 'activity' | 'reports' | 'settings' | 'admin';

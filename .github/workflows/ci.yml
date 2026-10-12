@@ -26,6 +26,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # tests/services/stripeWebhook.test.ts resolves stripe and firebase-admin
+      # from backend/src/functions/index.js, so the backend's own node_modules
+      # must exist or the suite fails to load.
+      - name: Install backend dependencies
+        working-directory: backend/src/functions
+        run: npm ci
+
       - name: Run tests
         run: npx vitest run
 

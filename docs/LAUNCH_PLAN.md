@@ -118,7 +118,7 @@ npm run build
 **Provider:** Stripe (recommended) or Paddle (handles EU VAT)
 
 **Plans:**
-| Feature | Free | Premium (€4.99/mo or €49/yr) |
+| Feature | Free | Premium (€4.99 one-time) |
 |---------|------|------------------------------|
 | Active cards | 1,000 | 5,000 |
 | Lists | Unlimited | Unlimited |
@@ -130,10 +130,9 @@ npm run build
 
 **Implementation:**
 - [ ] Stripe account setup (test mode)
-- [ ] `stripe-webhook` Cloud Function for `checkout.session.completed`, `customer.subscription.updated/deleted`
+- [ ] `stripe-webhook` Cloud Function for `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`
 - [ ] `createCheckoutSession` callable function (client → function → Stripe → return session URL)
-- [ ] `manageSubscription` callable function (billing portal)
-- [ ] `getSubscriptionStatus` callable function
+- [x] No billing portal and no `getSubscriptionStatus`: premium is a one-time purchase, so there is nothing to manage or query
 - [ ] Premium badge in UI (Navbar, Settings, Dashboard)
 - [ ] Upgrade flow: Settings → "Upgrade to Premium" → Stripe Checkout → webhook updates Firestore `users/{uid}/meta/main.tier = "premium"`
 - [ ] Downgrade/cancel: Stripe Billing Portal
@@ -152,7 +151,7 @@ npx tsc --noEmit
 npx vitest run
 npm run build
 # Manual: landing page loads, pricing clicks → Stripe Checkout (test), webhook → premium tier in Firestore
-# Manual: cancel subscription → downgrade after grace period
+# Manual: full refund → downgrade to free tier via charge.refunded
 ```
 
 ---

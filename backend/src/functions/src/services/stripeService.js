@@ -1,119 +1,198 @@
-const Stripe = require('stripe');
-const { getDb, getAuth } = require('../utils/firebase');
-const { metaRefFor } = require('../utils/helpers');
+const { getDb, getAuth, FieldValue } = require('../utils/firebase');
+const { metaRefFor, getOrCreateMeta } = require('../utils/helpers');
+const { getStripe } = require('../utils/stripeConfig');
+const { getMaxCards, getAiDailyLimit } = require('../utils/quotaConfig');
 
-let stripe = null;
-function getStripe() {
-  if (!stripe) {
-    const key = process.env.STRIPE_SECRET_KEY;
-    if (!key) throw new Error('STRIPE_SECRET_KEY not set');
-    stripe = new Stripe(key, { apiVersion: '2024-06-20' });
-  }
-  return stripe;
+// Premium is a ONE-TIME purchase, not a subscription. There is no renewal and
+// no downgrade, so the only path into premium is a paid Checkout session and the
+// only path out is a refund. Anything subscription-shaped below is deliberate.
+
+const PREMIUM_TIER = 'premium';
+const FREE_TIER = 'free';
+
+// Stripe scopes customer ids per account: cus_... created with test keys does
+// not exist under live keys and vice versa. A user who started a checkout under
+// one account keeps a dangling id after switching, and every later checkout
+// fails with "No such customer". Only that specific failure is swallowed;
+// anything else (auth, network, rate limit) must still surface.
+function isMissingCustomer(error) {
+  return Boolean(error) && (
+    error.code === 'resource_missing' ||
+    /no such customer/i.test(error.message || '')
+  );
 }
 
 async function getOrCreateStripeCustomer(db, uid, email) {
   const metaRef = metaRefFor(db, uid);
   const snap = await metaRef.get();
   const meta = snap.exists ? snap.data() : {};
-  
-  if (meta.stripeCustomerId) {
-    return meta.stripeCustomerId;
-  }
-  
+
   const stripe = getStripe();
+
+  if (meta.stripeCustomerId) {
+    try {
+      await stripe.customers.retrieve(meta.stripeCustomerId);
+      return meta.stripeCustomerId;
+    } catch (error) {
+      if (!isMissingCustomer(error)) throw error;
+      console.warn(
+        `[stripe] stale customer ${meta.stripeCustomerId} discarded for ${uid}: ${error.message}`
+      );
+    }
+  }
+
   const customer = await stripe.customers.create({
     email,
     metadata: { firebaseUid: uid }
   });
-  
-  await metaRef.update({ stripeCustomerId: customer.id });
+
+  // getOrCreateMeta, not metaRefFor: update() throws NOT_FOUND when the meta doc
+  // does not exist yet, and a bare set() would create it without the tier and
+  // quota defaults that getOrCreateMeta writes.
+  const { ref } = await getOrCreateMeta(db, uid);
+  await ref.update({ stripeCustomerId: customer.id });
   return customer.id;
 }
 
+async function isPremium(db, uid) {
+  const metaRef = metaRefFor(db, uid);
+  const snap = await metaRef.get();
+  return snap.exists && snap.data().tier === PREMIUM_TIER;
+}
+
 async function createCheckoutSession(db, uid, email, priceId, successUrl, cancelUrl) {
+  // Lifetime means one purchase, forever. Refuse before touching Stripe so an
+  // already-premium user cannot be charged twice by a stale page or a retry.
+  if (await isPremium(db, uid)) {
+    const error = new Error('Esta cuenta ya es Premium');
+    error.code = 'ALREADY_PREMIUM';
+    throw error;
+  }
+
   const customerId = await getOrCreateStripeCustomer(db, uid, email);
-  
+
   const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
+    mode: 'payment',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    subscription_data: {
+    // session.metadata is the primary path back to the uid. payment_intent_data
+    // duplicates it onto the PaymentIntent so payment_intent.succeeded can still
+    // identify the buyer if the session is ever retrieved without metadata.
+    metadata: { firebaseUid: uid },
+    payment_intent_data: {
       metadata: { firebaseUid: uid }
     },
-    allow_promotion_codes: true,
     billing_address_collection: 'auto',
   });
-  
+
   return session.url;
 }
 
+async function activatePremium(db, uid, details = {}) {
+  // getOrCreateMeta guarantees the doc exists, so update() cannot fail with
+  // NOT_FOUND for a user who pays before ever loading their quota.
+  const { ref } = await getOrCreateMeta(db, uid);
+
+  await ref.update({
+    tier: PREMIUM_TIER,
+    // Keep the stored quotas in sync with the tier. Without this, getQuota
+    // returns { tier: 'premium', cardQuota: <free value> }.
+    cardQuota: getMaxCards(PREMIUM_TIER),
+    aiQuotaDaily: getAiDailyLimit(PREMIUM_TIER),
+    premiumActivatedAt: FieldValue.serverTimestamp(),
+    ...(details.paymentIntentId ? { stripePaymentIntentId: details.paymentIntentId } : {}),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+}
+
+async function revokePremium(db, uid, details = {}) {
+  const { ref } = await getOrCreateMeta(db, uid);
+
+  await ref.update({
+    tier: FREE_TIER,
+    cardQuota: getMaxCards(FREE_TIER),
+    aiQuotaDaily: getAiDailyLimit(FREE_TIER),
+    premiumRevokedAt: FieldValue.serverTimestamp(),
+    ...(details.reason ? { premiumRevokedReason: details.reason } : {}),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+}
+
 async function handleStripeWebhook(db, event) {
-  const stripe = getStripe();
-  
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
+
+      // Only a completed, paid session grants premium. payment_status can still
+      // be 'unpaid' for delayed payment methods.
+      if (session.payment_status !== 'paid') break;
+
       const uid = session.metadata?.firebaseUid;
-      if (!uid) return;
-      
-      const subscription = await stripe.subscriptions.retrieve(session.subscription);
-      await updateSubscriptionStatus(db, uid, subscription);
+      if (!uid) break;
+
+      await activatePremium(db, uid, {
+        paymentIntentId: session.payment_intent?.id || session.payment_intent,
+      });
       break;
     }
-    case 'customer.subscription.updated':
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object;
-      const uid = subscription.metadata?.firebaseUid;
-      if (!uid) return;
-      
-      await updateSubscriptionStatus(db, uid, subscription);
+
+    case 'payment_intent.succeeded': {
+      // Redundant with checkout.session.completed on purpose: that event can be
+      // missed (the CLI tunnel was not running, a listener dropped it). This one
+      // fires independently and carries the same firebaseUid.
+      const intent = event.data.object;
+      const uid = intent.metadata?.firebaseUid;
+      if (!uid) break;
+
+      await activatePremium(db, uid, { paymentIntentId: intent.id });
       break;
     }
-    case 'invoice.payment_failed': {
-      // Opcional: notificar al usuario
+
+    case 'charge.refunded': {
+      // Premium is a lifetime purchase, so a full refund gives it back. A
+      // partial refund leaves premium in place; only fully refunded charges
+      // downgrade. Without this, refunding is free premium.
+      const charge = event.data.object;
+      if (!charge.refunded) break;
+
+      const uid = await resolveUidForCharge(db, charge);
+      if (!uid) break;
+
+      await revokePremium(db, uid, { reason: 'refunded' });
       break;
     }
   }
 }
 
-async function updateSubscriptionStatus(db, uid, subscription) {
-  const metaRef = metaRefFor(db, uid);
-  const status = subscription.status; // active, trialing, past_due, canceled, incomplete, incomplete_expired, past_due, unpaid
-  const isActive = ['active', 'trialing'].includes(status);
-  
-  await metaRef.update({
-    stripeSubscriptionId: subscription.id,
-    stripeSubscriptionStatus: status,
-    stripePriceId: subscription.items.data[0]?.price.id,
-    stripeCurrentPeriodEnd: subscription.current_period_end * 1000, // ms
-    tier: isActive ? 'premium' : 'free',
-    updatedAt: require('../utils/firebase').FieldValue.serverTimestamp(),
-  });
-}
+// Charges carry no firebaseUid, so walk back through the customer to find it.
+async function resolveUidForCharge(db, charge) {
+  if (charge.metadata?.firebaseUid) return charge.metadata.firebaseUid;
 
-async function createBillingPortalSession(db, uid, returnUrl) {
-  const metaRef = metaRefFor(db, uid);
-  const snap = await metaRef.get();
-  const meta = snap.data();
-  
-  if (!meta.stripeCustomerId) throw new Error('No Stripe customer');
-  
+  const customerId = typeof charge.customer === 'object' ? charge.customer?.id : charge.customer;
+  if (!customerId) return null;
+
   const stripe = getStripe();
-  const session = await stripe.billingPortal.sessions.create({
-    customer: meta.stripeCustomerId,
-    return_url: returnUrl,
-  });
-  
-  return session.url;
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    return customer?.deleted ? null : customer?.metadata?.firebaseUid || null;
+  } catch (error) {
+    // Same cross-account problem as in getOrCreateStripeCustomer: a charge from
+    // the other account cannot be resolved here. Skip it rather than 500-ing the
+    // whole webhook batch.
+    if (!isMissingCustomer(error)) throw error;
+    return null;
+  }
 }
 
 module.exports = {
   createCheckoutSession,
   handleStripeWebhook,
-  createBillingPortalSession,
+  activatePremium,
+  revokePremium,
+  isPremium,
   getOrCreateStripeCustomer,
 };

@@ -44,12 +44,12 @@ export const TermsOfService: React.FC = () => (
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-slate-900 mb-4">4. Subscriptions & Billing</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-4">4. Purchases & Billing</h2>
           <ul className="space-y-3 text-slate-600">
             <li><strong>Free tier:</strong> 1,000 active cards, all core features</li>
-            <li><strong>Premium (€4.99/month):</strong> 5,000 cards, premium voices, priority sync, advanced stats</li>
-            <li><strong>Billing:</strong> Handled via Stripe. Cancel anytime; access continues until period ends</li>
-            <li><strong>Refunds:</strong> Per Stripe policy; contact support for exceptional cases</li>
+            <li><strong>Premium (€4.99 one-time):</strong> 5,000 cards, premium voices, priority sync, advanced stats</li>
+            <li><strong>Billing:</strong> Handled via Stripe. Premium is a single purchase; it does not renew and is never charged again</li>
+            <li><strong>Refunds:</strong> Per Stripe policy; contact support for exceptional cases. A refunded purchase downgrades the account to the free tier</li>
             <li><strong>Price changes:</strong> 30 days notice before any price increase</li>
           </ul>
         </section>
@@ -87,7 +87,7 @@ export const TermsOfService: React.FC = () => (
 
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-4">8. Limitation of Liability</h2>
-          <p className="text-slate-600">To the maximum extent permitted by law, Glimmind shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or loss of data, profits, or goodwill. Our total liability shall not exceed the amount you paid in the preceding 12 months (or €10 if free tier).</p>
+          <p className="text-slate-600">To the maximum extent permitted by law, Glimmind shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or loss of data, profits, or goodwill. Our total liability shall not exceed the amount you paid for the service (or €10 if free tier).</p>
         </section>
 
         <section>

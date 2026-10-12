@@ -1,9 +1,14 @@
-// CRITICAL: Set FIRESTORE_EMULATOR_HOST BEFORE any requires ONLY in emulator mode.
-// The Admin SDK reads this env var at module load time.
-// The Firebase CLI may rewrite "localhost" to "127.0.0.1" when loading .env,
-// so we set it explicitly here to ensure we connect to the same host as the seed script.
-if (process.env.FUNCTIONS_EMULATOR === "true") {
-  process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+// CRITICAL: FIRESTORE_EMULATOR_HOST must be set BEFORE any requires, only in
+// emulator mode. The Admin SDK reads this env var at module load time.
+//
+// Do NOT hardcode the port here. firebase.json already declares
+// emulators.functions.env.FIRESTORE_EMULATOR_HOST and keeps it in sync with
+// emulators.firestore.port; this file used to force localhost:8080, which
+// survived the 2026-10-02 port migration (8080 -> 9080) and silently pointed
+// every function at a different project's Firestore emulator. Only fill it in
+// when nothing else set it, and match firebase.json's firestore port.
+if (process.env.FUNCTIONS_EMULATOR === "true" && !process.env.FIRESTORE_EMULATOR_HOST) {
+  process.env.FIRESTORE_EMULATOR_HOST = "localhost:9080";
 }
 
 const { initializeApp } = require("firebase-admin/app");

@@ -1,0 +1,20 @@
+{
+  "tiers": {
+    "free": {
+      "label": "Plan gratuito",
+      "maxCards": 1000,
+      "aiDailyLimit": 100
+    },
+    "premium": {
+      "label": "Plan Premium",
+      "maxCards": 5000,
+      "aiDailyLimit": 1000
+    }
+  },
+  "thresholds": {
+    "warningRatio": 0.8,
+    "dangerRatio": 0.95,
+    "blockRatio": 1.0
+  },
+  "maxCardsPerList": 5000
+}

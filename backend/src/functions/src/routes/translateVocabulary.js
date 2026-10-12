@@ -15,7 +15,6 @@ const {
   assertUserTranslationQuotaHasCapacity,
   persistTranslationQuotaUsage,
 } = require("../services/translationQuota");
-const { translateWithDeepL } = require("../services/deeplService");
 
 exports.translateVocabulary = onRequest({ cors: true, timeoutSeconds: 120, memory: "512MiB" }, async (req, res) => {
   const authHeader = req.headers.authorization;
@@ -130,20 +129,12 @@ function normalizeCards(cards, texts) {
   return [];
 }
 
+// Google Cloud Translation v3 is the only translation engine. DeepL was the
+// primary until 2026-10-11 and was removed: it never produced a translation in
+// production, its free tier (500k chars/mo) is identical to Google's and is
+// closed to new signups, and maintaining two engines for one allowance is not
+// justified. See docs/BUSINESS_MODEL.md.
 async function translateCards(cards, targetLang, sourceLang = "en") {
-  // Primary: DeepL API Free
-  try {
-    const deeplResult = await translateWithDeepL(cards, targetLang, sourceLang);
-    if (deeplResult) {
-      console.log("[translateVocabulary] translated via DeepL");
-      return deeplResult;
-    }
-  } catch (error) {
-    console.warn("[translateVocabulary] DeepL failed, falling back to Google:", error.message);
-  }
-
-  // Fallback: Google Translate v3
-  console.log("[translateVocabulary] using Google Translate fallback");
   return translateWithGoogle(cards, targetLang, sourceLang);
 }
 

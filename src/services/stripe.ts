@@ -4,15 +4,8 @@ export interface CheckoutSessionResponse {
   url: string;
 }
 
-export interface SubscriptionStatus {
-  tier: 'free' | 'premium';
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripeSubscriptionStatus?: string;
-  stripePriceId?: string;
-  stripeCurrentPeriodEnd?: number;
-}
-
+// Premium is a one-time purchase. There is no subscription to query and no
+// billing portal to open, so the tier is read from getQuota (meta.tier) instead.
 export const stripeService = {
   createCheckoutSession: async (successUrl: string, cancelUrl: string): Promise<string> => {
     const response = await callFunction<{ url: string }>('createCheckoutSession', {
@@ -20,23 +13,5 @@ export const stripeService = {
       cancelUrl,
     });
     return response.url;
-  },
-
-  createBillingPortalSession: async (returnUrl: string): Promise<string> => {
-    const response = await callFunction<{ url: string }>('createBillingPortalSession', {
-      returnUrl,
-    });
-    return response.url;
-  },
-
-  getSubscriptionStatus: async (): Promise<{
-    tier: 'free' | 'premium';
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeSubscriptionStatus?: string;
-    stripePriceId?: string;
-    stripeCurrentPeriodEnd?: number;
-  }> => {
-    return callFunction('getSubscriptionStatus', {});
   },
 };

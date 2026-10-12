@@ -28,6 +28,11 @@ dist-ssr
 .firebase/
 .firebaserc
 .env
+# `.env` above only matches the exact filename; copies such as .env.local.backup
+# or .env.backup were being committed. Ignore the whole family.
+.env*.backup
+.env.*
+!.env.example
 
 # Generated ML assets (copied from node_modules by scripts/copy-ml-assets.mjs)
 /src/public/onnx/
