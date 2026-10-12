@@ -253,7 +253,7 @@ will appear, confirming the watchdog as the root cause.
 - **Code changes:** only `useSpeechSynthesis.ts` was modified. No changes to Chirp, `useGameVoice`, `useVoiceSession`, or any other file.
 - **Next step:** reproduce the issue in the browser, capture the console output, and analyze whether `[TTS][WATCHDOG]` appears in the failing cases. If it does, the fix will involve adjusting the watchdog formula or philosophy. If it does not, investigate `[TTS][ERROR]` or external `[TTS][CANCEL]` paths.
 - **Follow-up:** the browser-path fix shipped (chunking + generous per-chunk watchdog). Cutoffs reported while using the Chirp provider are tracked separately in
-  [2026-08-24-chirp-tts-cutoff-instrumentation.md](./2026-08-24-chirp-tts-cutoff-instrumentation.md).
+  [2026-08-24-chirp-tts-cutoff-instrumentation.md](../P2/2026-08-24-chirp-tts-cutoff-instrumentation.md).
 
 ---
 

@@ -13,45 +13,88 @@ Filed from the Stripe sandbox-to-live work and the business-model review
 
 ---
 
+## Structure
+
+Priority lives in the path. A file's folder is its state; nothing inside it
+duplicates the priority in prose.
+
+| Folder | Meaning |
+|---|---|
+| [`P0/`](P0/) | Bleeding money, or broken right now |
+| [`P1/`](P1/) | Behavioural bugs |
+| [`P2/`](P2/) | Debt, dead code, hygiene |
+| [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
+| [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
+
+Counts as of 2026-10-12: **4 P0 · 7 P1 · 10 P2 · 5 done · 3 backlog**.
+
+---
+
 ## P0 — bleeding money or broken right now
 
 | Issue | Impact |
 |---|---|
-| [2026-10-11-constants-rotos-ia-caida.md](2026-10-11-constants-rotos-ia-caida.md) | AI deck generation was dead in production. 11 exports deleted from `constants.js`. Fixed 2026-10-12 |
-| [2026-10-11-vosk-descarga-innecesaria.md](2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Caps the service at ~12 users/month |
-| [2026-10-12-premium-sin-limite-de-tarjetas.md](2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium has no card limit at all. One payment buys unbounded Firestore writes |
-| [2026-10-12-rutas-ia-sin-rate-limit.md](2026-10-12-rutas-ia-sin-rate-limit.md) | The two Gemini routes have no rate limit; `aiGroup` is defined but unused |
-| [2026-10-12-cuotas-no-atomicas.md](2026-10-12-cuotas-no-atomicas.md) | Quotas are checked then written, so concurrent requests multiply the allowance |
+| [`P0/2026-10-11-vosk-descarga-innecesaria.md`](P0/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Caps the service at ~12 users/month |
+| [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium has no card limit at all. One payment buys unbounded Firestore writes |
+| [`P0/2026-10-12-rutas-ia-sin-rate-limit.md`](P0/2026-10-12-rutas-ia-sin-rate-limit.md) | The metered routes have no rate limit; `aiGroup` is defined but unused |
+| [`P0/2026-10-12-cuotas-no-atomicas.md`](P0/2026-10-12-cuotas-no-atomicas.md) | Quotas are checked then written, so concurrent requests multiply the allowance |
 
 ## P1 — behavioural bugs
 
 | Issue | Impact |
 |---|---|
-| [2026-10-11-quota-exceeded-error-sin-importar.md](2026-10-11-quota-exceeded-error-sin-importar.md) | `ReferenceError` on the quota-error path of create/edit/split list |
-| [2026-10-11-log-client-error-sin-rewrite.md](2026-10-11-log-client-error-sin-rewrite.md) | Every client error is lost; one wasted request each |
-| [2026-10-11-huecos-de-gating-premium.md](2026-10-11-huecos-de-gating-premium.md) | Paid features reachable from the free tier |
-| [2026-10-12-sin-tope-de-mazos-por-usuario.md](2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
-| [2026-10-12-audio-base64-en-firestore.md](2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
-| [2026-10-12-sync-config-sin-conectar.md](2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
+| [`P1/2026-10-11-quota-exceeded-error-sin-importar.md`](P1/2026-10-11-quota-exceeded-error-sin-importar.md) | `ReferenceError` on the quota-error path of create/edit/split list |
+| [`P1/2026-10-11-log-client-error-sin-rewrite.md`](P1/2026-10-11-log-client-error-sin-rewrite.md) | Every client error is lost; one wasted request each |
+| [`P1/2026-10-11-huecos-de-gating-premium.md`](P1/2026-10-11-huecos-de-gating-premium.md) | Paid features reachable from the free tier |
+| [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
+| [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
+| [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
+| [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
 
 ## P2 — debt, dead code, hygiene
 
 | Issue | Impact |
 |---|---|
-| [2026-10-11-codigo-muerto-y-endpoints-sin-uso.md](2026-10-11-codigo-muerto-y-endpoints-sin-uso.md) | 5 unused services, 4 endpoints with no callers, 83 MB dead WASM |
-| [2026-10-11-cuotas-invisibles-al-usuario.md](2026-10-11-cuotas-invisibles-al-usuario.md) | Users only learn their limits from a 429 |
-| [2026-10-11-bugs-menores.md](2026-10-11-bugs-menores.md) | Quota misreported to premium, dropped deltas, reload re-pays first card |
-| [2026-10-11-higiene-build-y-tests.md](2026-10-11-higiene-build-y-tests.md) | Clean build can 404 the voice model; jest hangs; outdated dependency |
-| [2026-10-11-deuda-de-documentacion.md](2026-10-11-deuda-de-documentacion.md) | `LAUNCH_PLAN` and the API doc contradict the code |
-| [2026-10-11-sin-instrumentacion-de-costos.md](2026-10-11-sin-instrumentacion-de-costos.md) | No per-user cost logging, so limits cannot be validated |
-| [2026-10-12-lista-tts-voces-sin-auth.md](2026-10-12-lista-tts-voces-sin-auth.md) | `listTtsVoices` needs no authentication and answers any origin |
-| [2026-10-12-codigo-muerto-en-zona-de-creacion.md](2026-10-12-codigo-muerto-en-zona-de-creacion.md) | 500 lines of React no user path can reach, in the deck-creation zone |
-| [2026-10-12-deploy-de-github-actions-roto.md](2026-10-12-deploy-de-github-actions-roto.md) | The Actions deploy has failed on every run since 2026-10-07; a secret it needs was never created |
+| [`P2/2026-10-11-codigo-muerto-y-endpoints-sin-uso.md`](P2/2026-10-11-codigo-muerto-y-endpoints-sin-uso.md) | 5 unused services, 4 endpoints with no callers, 83 MB dead WASM |
+| [`P2/2026-10-11-cuotas-invisibles-al-usuario.md`](P2/2026-10-11-cuotas-invisibles-al-usuario.md) | Users only learn their limits from a 429 |
+| [`P2/2026-10-11-bugs-menores.md`](P2/2026-10-11-bugs-menores.md) | Quota misreported to premium, dropped deltas, reload re-pays first card |
+| [`P2/2026-10-11-higiene-build-y-tests.md`](P2/2026-10-11-higiene-build-y-tests.md) | Clean build can 404 the voice model; jest hangs; outdated dependency |
+| [`P2/2026-10-11-deuda-de-documentacion.md`](P2/2026-10-11-deuda-de-documentacion.md) | `LAUNCH_PLAN` and the API doc contradict the code |
+| [`P2/2026-10-11-sin-instrumentacion-de-costos.md`](P2/2026-10-11-sin-instrumentacion-de-costos.md) | No per-user cost logging, so limits cannot be validated |
+| [`P2/2026-10-12-lista-tts-voces-sin-auth.md`](P2/2026-10-12-lista-tts-voces-sin-auth.md) | `listTtsVoices` needs no authentication and answers any origin |
+| [`P2/2026-10-12-codigo-muerto-en-zona-de-creacion.md`](P2/2026-10-12-codigo-muerto-en-zona-de-creacion.md) | 500 lines of React no user path can reach, in the deck-creation zone |
+| [`P2/2026-10-12-deploy-de-github-actions-roto.md`](P2/2026-10-12-deploy-de-github-actions-roto.md) | The Actions deploy has failed on every run since 2026-10-07 |
+| [`P2/2026-08-24-chirp-tts-cutoff-instrumentation.md`](P2/2026-08-24-chirp-tts-cutoff-instrumentation.md) | Chirp phrases cut short; instrumented, 4 hypotheses still undiscriminated |
 
----
+## done — resolved
 
-## Older entries
+| Issue | Resolution |
+|---|---|
+| [`done/2026-10-11-constants-rotos-ia-caida.md`](done/2026-10-11-constants-rotos-ia-caida.md) | AI generation was dead; 11 exports restored to `constants.js` on 2026-10-12 |
+| [`done/2026-08-25-narration-language-and-globe-fix.md`](done/2026-08-25-narration-language-and-globe-fix.md) | Narration language and voice flags |
+| [`done/2026-08-27-gemini-vocabulary-extraction.md`](done/2026-08-27-gemini-vocabulary-extraction.md) | Python NLP backend replaced by Gemini |
+| [`done/2026-08-24-tts-watchdog-cutoff.md`](done/2026-08-24-tts-watchdog-cutoff.md) | Browser TTS cutoff; text chunking plus watchdog shipped |
+| [`done/2026-08-24-similarity-montains-typo.md`](done/2026-08-24-similarity-montains-typo.md) | Closed as **not a bug**: the stored answer was misspelled `montains` |
 
-Nine issues filed before 2026-10-11 predate this index and are not yet
-catalogued here: `2026-08-07-card-activity-history.md` through
-`2026-08-27-gemini-vocabulary-extraction.md`. Add them on next touch.
+## backlog — not defects
+
+These three are feature specs and diagnostic logs that were filed here but never
+described a defect. They are kept in place until they are either turned into real
+tickets or moved to [`../plans/`](../plans/). See "Not defects" below.
+
+| File | What it is |
+|---|---|
+| [`backlog/2026-08-07-card-activity-history.md`](backlog/2026-08-07-card-activity-history.md) | 137-line feature spec. `Status: Approved` |
+| [`backlog/2026-09-04-auto-split-deck-feature.md`](backlog/2026-09-04-auto-split-deck-feature.md) | Feature doc for deck auto-split |
+| [`backlog/2026-08-11-voice-study-mode-diagnostics.md`](backlog/2026-08-11-voice-study-mode-diagnostics.md) | Diagnostic log. Contains one unfiled defect, see below |
+
+### One unfiled defect inside the voice diagnostics log
+
+`backlog/2026-08-11-voice-study-mode-diagnostics.md` records this, still open,
+and still marked `DO NOT touch — user decision`:
+
+> `store/gameStore.ts:683-691`: `syncToCloud` calls `listService.updateList(...)`
+> when the cloud list is missing, but `updateList` requires the list to exist →
+> `404 {"error":"List not found"}`. It should call `createList`.
+
+Not filed as a ticket yet. It affects normal Study mode as well as voice mode.

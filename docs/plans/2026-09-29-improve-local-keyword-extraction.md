@@ -644,5 +644,5 @@ Future evaluations (separate decisions):
 ## 22. Related Documents
 
 * `docs/plans/2026-08-26-nlp-vocabulary-improvements.md` — Python NLP pipeline improvements (backend)
-* `docs/issues/2026-08-27-gemini-vocabulary-extraction.md` — YouTube vocabulary extraction via Gemini (cloud)
+* `docs/issues/done/2026-08-27-gemini-vocabulary-extraction.md` — YouTube vocabulary extraction via Gemini (cloud)
 * `docs/dashboard-api-trigger-analysis.md` — API trigger documentation (must be updated per AGENTS.md rule 33)

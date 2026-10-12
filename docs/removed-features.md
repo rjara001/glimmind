@@ -45,7 +45,7 @@ destinations the toolbar and the editor already had.
 2. **2026-10-12 — the real defect first.** Deleting the code before fixing the
    constants would have removed the only way to test the fix, so the eleven
    deleted exports of `constants.js` were restored before any deletion happened.
-   See [`issues/2026-10-11-constants-rotos-ia-caida.md`](issues/2026-10-11-constants-rotos-ia-caida.md).
+   See [`issues/done/2026-10-11-constants-rotos-ia-caida.md`](issues/done/2026-10-11-constants-rotos-ia-caida.md).
 3. **2026-10-12 — deletion.** With no remaining entry point and the constants
    verified, the component, route, state and effect were removed.
 
@@ -72,4 +72,4 @@ Restore in the reverse order: re-add the route and component, then re-add
 `onTextImport` to the prop chain. Note that the flow needs a real `GEMINI_API_KEY`
 to work, and that the Gemini model list restored from history is unverified —
 see the "Still open" note in
-[`issues/2026-10-11-constants-rotos-ia-caida.md`](issues/2026-10-11-constants-rotos-ia-caida.md).
+[`issues/done/2026-10-11-constants-rotos-ia-caida.md`](issues/done/2026-10-11-constants-rotos-ia-caida.md).

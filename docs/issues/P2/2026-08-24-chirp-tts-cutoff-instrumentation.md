@@ -3,11 +3,11 @@
 Date: 2026-08-24
 Status: Instrumented — awaiting runtime evidence
 Scope: Chirp TTS path (`useChirpTTS`) plus provider selection (`useSpeechSynthesis`)
-Related: [2026-08-24-tts-watchdog-cutoff.md](./2026-08-24-tts-watchdog-cutoff.md)
+Related: [2026-08-24-tts-watchdog-cutoff.md](../done/2026-08-24-tts-watchdog-cutoff.md)
 
 ## Context
 
-The previous issue ([tts-watchdog-cutoff](./2026-08-24-tts-watchdog-cutoff.md)) diagnosed the
+The previous issue ([tts-watchdog-cutoff](../done/2026-08-24-tts-watchdog-cutoff.md)) diagnosed the
 watchdog timer as the cause of cutoffs on the **browser** TTS path. The fix (text chunking +
 generous per-chunk watchdog) shipped and works for that path.
 

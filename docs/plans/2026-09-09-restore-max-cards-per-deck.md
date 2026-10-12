@@ -7,7 +7,7 @@
 - Quedaron imports rotos en:
   - `src/utils/splitAssociations.ts` (usa `MAX_CARDS_PER_DECK` como default)
   - `src/hooks/dashboard/useAssociationManipulation.ts` (importa la constante pero no la usa)
-- `docs/issues/2026-09-04-auto-split-deck-feature.md` documenta el límite en 150 como comportamiento esperado.
+- `docs/issues/backlog/2026-09-04-auto-split-deck-feature.md` documenta el límite en 150 como comportamiento esperado.
 - No existe implementación de `maxCardsPerDeck` en `UserSettings` a pesar de que el mismo issue lo menciona.
 
 ## Historial
@@ -42,7 +42,7 @@ Mover `MAX_CARDS_PER_DECK` a `src/types/settings.ts` como `maxCardsPerDeck: numb
 
 - Requiere actualizar `splitAssociations.ts` para recibir el valor desde el hook o store.
 - Requiere UI en SettingsView para editar el valor.
-- Más trabajo, pero cumple con lo documentado en `docs/issues/2026-09-04-auto-split-deck-feature.md`.
+- Más trabajo, pero cumple con lo documentado en `docs/issues/backlog/2026-09-04-auto-split-deck-feature.md`.
 
 ## Pasos sugeridos (Opción A)
 
@@ -50,7 +50,7 @@ Mover `MAX_CARDS_PER_DECK` a `src/types/settings.ts` como `maxCardsPerDeck: numb
 2. Verificar que `src/utils/splitAssociations.ts` compile correctamente.
 3. Decidir si `useAssociationManipulation.ts` debe seguir importando la constante o si se elimina el import.
 4. Correr build y tests.
-5. Documentar en `docs/issues/2026-09-04-auto-split-deck-feature.md` que el límite actual es 150 y quién lo define.
+5. Documentar en `docs/issues/backlog/2026-09-04-auto-split-deck-feature.md` que el límite actual es 150 y quién lo define.
 
 ## Preguntas abiertas
 

@@ -7,6 +7,11 @@ If a rule conflicts with generated code, the rule MUST take precedence.
 
 ## 1. Language Policy
 
+### Agent Communication Language
+- When communicating with the user (explanations, plans, reports, status summaries), agents MUST use **neutral Spanish** exclusively.
+- Regionalisms, slang, and colloquialisms (e.g., Argentineisms, local idioms) are strictly prohibited.
+- Technical terminology (functions, hooks, services, routes, commits, types) must remain in English as used in the codebase.
+
 ### Required Language
 - All code MUST be written in English.
 - All comments MUST be written in English.
@@ -941,13 +946,34 @@ When investigation surfaces work that is **not part of the current task**, agent
 - leave it in chat where it is lost, nor
 - mix it into the deliverable being discussed
 
-Agents MUST write it to `docs/issues/YYYY-MM-DD-<slug>.md` and mention the file path
-when reporting.
+Agents MUST write it to `docs/issues/<priority>/YYYY-MM-DD-<slug>.md` and mention
+the full path when reporting.
+
+### Priority lives in the path
+
+The folder is the state. Agents MUST NOT restate the priority in the filename or
+duplicate it in prose inside the file.
+
+| Folder | Meaning |
+|---|---|
+| `P0/` | Bleeding money, or broken right now |
+| `P1/` | Behavioural bugs |
+| `P2/` | Debt, dead code, hygiene |
+| `done/` | Resolved. Files move here rather than being deleted |
+| `backlog/` | Not a defect. Specs and diagnostics filed here by mistake |
+
+Moving a file between folders is the status change. Agents MUST NOT delete a
+resolved issue.
 
 ### What counts as parking
 
 Any finding that is real but not what the user asked for: latent bugs, dead code,
 hygiene, documentation drift, missing instrumentation, cost risks.
+
+### What does not count
+
+A feature spec, a design document, or a diagnostic log is not a defect. It goes
+to `docs/plans/`. Agents MUST NOT file non-defects as issues to inflate the queue.
 
 ### File format
 
@@ -971,7 +997,7 @@ alone.
 
 ### Index
 
-`docs/issues/README.md` lists every parked item by priority. Agents MUST update it
+`docs/issues/README.md` lists every parked item by folder. Agents MUST update it
 when adding or resolving an issue.
 
 ### Example of Failure
@@ -981,6 +1007,73 @@ when adding or resolving an issue.
 // fixed all three inline, and shipped them in the same commit.
 // User: "why did this take so long and what changed?"
 // Reality: 2 commits of unrelated changes nobody reviewed
+```
+
+---
+
+## 45. Mandatory Feature Mapping
+
+### Contextual Traceability
+
+Agents MUST NOT treat any task, bug fix, audit, or discussion as floating or isolated.
+- Every topic addressed in an interaction MUST be explicitly mapped to its corresponding system feature.
+- When presenting progress, status, or plans, agents MUST use structured tracking tables detailing the feature, current state, metrics, and pending items.
+- Reference the authoritative feature structure to ensure alignment before proposing modifications.
+
+### Feature Identification
+
+Before acting, the agent MUST identify the feature under discussion and cite its
+real entry points, verified against the source tree:
+
+| Field | Requirement |
+|---|---|
+| Feature name | Stable identifier used across interactions |
+| Root paths | Actual files and directories that implement it |
+| Entry points | Components, hooks, or routes that trigger it |
+| State | `active`, `partial`, `blocked`, or `dead` |
+| Metrics | Counts that can be measured: files, routes, tests, open issues |
+| Pending | Concrete outstanding items, or `none` |
+
+### Prohibited
+
+Agents MUST NOT:
+- Discuss a topic without naming the feature it belongs to.
+- Infer a feature's structure from an abstract index or prior assumption instead of reading the code.
+- Report metrics that were not counted from the repository.
+- Mix a feature's code with the code of a different feature without stating the boundary.
+
+### Verification Before Mapping
+
+Feature claims MUST be verified against the real project before being presented:
+
+| Claim | Verification command |
+|---|---|
+| A file exists | `ls <path>` or the read of the file |
+| A directory exists | `ls -1 src/<dir>` |
+| A function has a signature | read the file, then `grep -r "<fn>" src/` |
+| A route exists | read the route table, e.g. `src/App.tsx` |
+| A count is accurate | `find` / `ls` piped to `wc -l` |
+| Current behaviour | `git log`, `git diff`, and the source file |
+
+### Required Report Shape
+
+Progress, audit, and status reports MUST use a table as the first block:
+
+```
+| Feature | Root path | State | Metrics | Pending |
+|---|---|---|---|---|
+| Game Engine | src/services/gameEngine.ts | active | 10 hooks, 16 components | none |
+```
+
+Prose explanations MUST follow the table, never replace it.
+
+### Example of Failure
+
+```
+// Agent fixes a bug in the voice recorder and reports it without a feature map.
+// User: "what area of the product is this?"
+// Reality: the change touched src/hooks/voice/useAudioRecorder.ts, which is
+// inside the Voice feature, and nothing said so
 ```
 
 ---

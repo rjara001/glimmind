@@ -478,7 +478,7 @@ voiceCommands: cloud.voiceCommands ?? local.voiceCommands,
 
 ## Diagnostics & Resolved Bugs
 
-Source: `docs/issues/2026-08-11-voice-study-mode-diagnostics.md`
+Source: `docs/issues/backlog/2026-08-11-voice-study-mode-diagnostics.md`
 
 ### Resolved bugs
 
