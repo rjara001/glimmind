@@ -4,6 +4,8 @@
 **Status:** Founding document. This governs plan design, limits, pricing and
 marketing copy. Decisions made here are not to be revisited case by case.
 **Price:** Premium is a one-time €4.99 purchase (no subscription).
+**Companion document:** [`SERVICE_CATALOG.md`](SERVICE_CATALOG.md) lists every
+action a user can perform and what each one costs.
 
 ---
 
