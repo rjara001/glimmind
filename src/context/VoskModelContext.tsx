@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { createModel, Model } from 'vosk-browser';
 
 const MODEL_URL = '/models/vosk-model-small-en-us-0.15.tar.gz';
@@ -8,6 +8,7 @@ interface VoskModelContextType {
   isReady: boolean;
   isLoading: boolean;
   error: string | null;
+  load: () => Promise<Model | null>;
 }
 
 const VoskModelContext = createContext<VoskModelContextType>({
@@ -15,6 +16,7 @@ const VoskModelContext = createContext<VoskModelContextType>({
   isReady: false,
   isLoading: false,
   error: null,
+  load: async () => null,
 });
 
 export const VoskModelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -23,39 +25,37 @@ export const VoskModelProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasStartedFetching = useRef(false);
+  const loadPromiseRef = useRef<Promise<Model | null> | null>(null);
 
-  useEffect(() => {
-    if (hasStartedFetching.current) return;
-    hasStartedFetching.current = true;
+  const load = useCallback((): Promise<Model | null> => {
+    if (loadPromiseRef.current) return loadPromiseRef.current;
 
-    const initVosk = async () => {
-      console.log('[Vosk Engine] 🚀 Descargando modelo en segundo plano al inicio...');
-      console.time('[Vosk Engine] TIEMPO CARGA MODELO');
-      setIsLoading(true);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const loadedModel = await createModel(MODEL_URL);
-        
-        console.log('[Vosk Engine] ✅ Modelo descargado y listo en memoria.');
-        console.timeEnd('[Vosk Engine] TIEMPO CARGA MODELO');
-        
+    const promise = createModel(MODEL_URL).then(
+      (loadedModel) => {
         setModel(loadedModel);
         setIsReady(true);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error desconocido descargando Vosk';
-        console.error('[Vosk Engine] ❌ Error:', msg);
-        setError(msg);
-      } finally {
         setIsLoading(false);
-      }
-    };
+        return loadedModel;
+      },
+      (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Unknown error loading the Vosk model';
+        console.error('[Vosk Engine] Failed to load model:', msg);
+        setError(msg);
+        setIsLoading(false);
+        loadPromiseRef.current = null;
+        return null;
+      },
+    );
 
-    initVosk();
+    loadPromiseRef.current = promise;
+    return promise;
   }, []);
 
   return (
-    <VoskModelContext.Provider value={{ model, isReady, isLoading, error }}>
+    <VoskModelContext.Provider value={{ model, isReady, isLoading, error, load }}>
       {children}
     </VoskModelContext.Provider>
   );

@@ -30,8 +30,9 @@ export function useVoskWordMatch({
 }: UseVoskWordMatchOptions) {
   const [isListening, setIsListening] = useState(false);
   const [partial, setPartial] = useState('');
+  const [isPreparing, setIsPreparing] = useState(false);
 
-  const { model, isReady, isLoading } = useVoskModelContext();
+  const { model, isReady, isLoading, load } = useVoskModelContext();
 
   const recognizerRef = useRef<KaldiRecognizer | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -78,7 +79,19 @@ export function useVoskWordMatch({
   const start = useCallback(async () => {
     if (recognizerRef.current) return;
 
-    if (!isReady || !model) {
+    // The model is loaded on demand: a user who already has Vosk selected never
+    // opens Settings, so the first recording request has to trigger the download.
+    let activeModel = model;
+    if (!activeModel) {
+      setIsPreparing(true);
+      try {
+        activeModel = await load();
+      } finally {
+        setIsPreparing(false);
+      }
+    }
+
+    if (!activeModel) {
       const msg = 'El modelo Vosk de inglés aún no está listo.';
       onErrorRef.current?.(msg);
       return;
@@ -96,10 +109,10 @@ export function useVoskWordMatch({
       // 2. Si tenemos palabras esperadas válidas, se las pasamos en formato JSON
       if (cleanEnglishWords.length > 0) {
         console.log('[Vosk English] Gramática acotada:', cleanEnglishWords);
-        recognizer = new model.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(cleanEnglishWords));
+        recognizer = new activeModel.KaldiRecognizer(SAMPLE_RATE, JSON.stringify(cleanEnglishWords));
       } else {
         console.log('[Vosk English] Sin palabras esperadas, modo abierto.');
-        recognizer = new model.KaldiRecognizer(SAMPLE_RATE);
+        recognizer = new activeModel.KaldiRecognizer(SAMPLE_RATE);
       }
 
       recognizerRef.current = recognizer;
@@ -175,7 +188,7 @@ export function useVoskWordMatch({
       onErrorRef.current?.(errorMsg);
       cleanup();
     }
-  }, [isReady, model, cleanup]);
+  }, [model, load, cleanup]);
 
   const stop = useCallback(() => {
     cleanup();
@@ -187,7 +200,7 @@ export function useVoskWordMatch({
 
   return {
     isListening,
-    isModelLoading: isLoading,
+    isModelLoading: isLoading || isPreparing,
     isModelReady: isReady,
     partial,
     start,

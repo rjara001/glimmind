@@ -144,7 +144,6 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
                 { value: 'chiptt', label: 'Chiptt' },
                 { value: 'vosk', label: 'Vosk' },
               ]}
-              disabled={!isVoskReady && sttProvider === 'vosk'}
             />
             {sttProvider === 'chiptt' && (
               <p className="text-[10px] text-slate-400 mt-1.5">

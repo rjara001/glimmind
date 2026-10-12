@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11
 **Priority:** P0
-**Status:** Not fixed
+**Status:** Resolved in 1.37.1, deployed 2026-10-12
 
 ## What
 
@@ -53,3 +53,39 @@ instead of ~1.2 GB, which moves the ceiling to roughly 5,000 users/month.
 Also set a long `Cache-Control` on `/models/**` in `firebase.json` — Firebase
 Hosting defaults to `max-age=3600`, so returning users re-download the whole
 model daily.
+
+## Resolution — 2026-10-12 (1.37.0)
+
+The unconditional `useEffect(..., [])` is gone. `VoskModelContext` now exposes
+a `load()` that is only called from two places:
+
+- `src/components/modals/SettingsModal.tsx` — when the user picks Vosk in the
+  STT provider selector.
+- `src/hooks/voice/stt/useVoskWordMatch.ts:78` — on `start()`, because a user
+  who already has `sttProvider: 'vosk'` saved never opens Settings and would
+  otherwise hit a dead end.
+
+`load()` is idempotent while in flight and clears its promise on failure so a
+retry is possible. `firebase.json` now serves `/models/**/*.tar.gz` with
+`Cache-Control: public, max-age=31536000, immutable`.
+
+`VoiceSection.tsx:147` previously passed `disabled={!isVoskReady &&
+sttProvider === 'vosk'}` to the provider toggle, which froze all three buttons
+for the whole download. That would have trapped the user in a provider they
+could not leave, so the prop was removed.
+
+Covered by `tests/hooks/voskModelContext.test.tsx` (6 tests), including one that
+asserts `createModel` is not called on mount.
+
+Two corrections to the evidence above: the provider is mounted at
+`src/App.tsx:430`, not `:495`; and the served file is
+`src/public/models/…`, because `vite.config.ts` sets `root: 'src'`.
+
+Verified in production after deploying, on the project's own hosting domain:
+
+```
+$ curl -sI https://fladycard-22a3e.web.app/models/vosk-model-small-en-us-0.15.tar.gz
+content-length: 41185049
+content-type: application/gzip
+cache-control: public, max-age=31536000, immutable
+```

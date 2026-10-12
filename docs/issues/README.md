@@ -26,7 +26,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-12: **4 P0 · 7 P1 · 10 P2 · 5 done · 3 backlog**.
+Counts as of 2026-10-12: **3 P0 · 7 P1 · 10 P2 · 6 done · 3 backlog**.
 
 ---
 
@@ -34,7 +34,7 @@ Counts as of 2026-10-12: **4 P0 · 7 P1 · 10 P2 · 5 done · 3 backlog**.
 
 | Issue | Impact |
 |---|---|
-| [`P0/2026-10-11-vosk-descarga-innecesaria.md`](P0/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Caps the service at ~12 users/month |
+| [`P0/2026-10-11-vosk-descarga-innecesaria.md`](P0/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Fixed in 1.37.0, pending deploy |
 | [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium has no card limit at all. One payment buys unbounded Firestore writes |
 | [`P0/2026-10-12-rutas-ia-sin-rate-limit.md`](P0/2026-10-12-rutas-ia-sin-rate-limit.md) | The metered routes have no rate limit; `aiGroup` is defined but unused |
 | [`P0/2026-10-12-cuotas-no-atomicas.md`](P0/2026-10-12-cuotas-no-atomicas.md) | Quotas are checked then written, so concurrent requests multiply the allowance |
@@ -75,6 +75,7 @@ Counts as of 2026-10-12: **4 P0 · 7 P1 · 10 P2 · 5 done · 3 backlog**.
 | [`done/2026-08-27-gemini-vocabulary-extraction.md`](done/2026-08-27-gemini-vocabulary-extraction.md) | Python NLP backend replaced by Gemini |
 | [`done/2026-08-24-tts-watchdog-cutoff.md`](done/2026-08-24-tts-watchdog-cutoff.md) | Browser TTS cutoff; text chunking plus watchdog shipped |
 | [`done/2026-08-24-similarity-montains-typo.md`](done/2026-08-24-similarity-montains-typo.md) | Closed as **not a bug**: the stored answer was misspelled `montains` |
+| [`done/2026-10-11-vosk-descarga-innecesaria.md`](done/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors; now loaded on demand in 1.37.1 |
 
 ## backlog — not defects
 

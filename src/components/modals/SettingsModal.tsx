@@ -48,7 +48,7 @@ import { logEvent } from '../../services/errorReporting';
     );
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { isReady: isVoskReady } = useVoskModelContext();
+    const { isReady: isVoskReady, load: loadVoskModel } = useVoskModelContext();
 
     useEffect(() => {
       // 1. Log de apertura del modal
@@ -246,12 +246,14 @@ import { logEvent } from '../../services/errorReporting';
                 })
               }
               sttProvider={sttProvider}
-              onSttProviderChange={(provider: string) =>
+              onSttProviderChange={(provider: string) => {
                 setDraft({
                   ...draft,
                   sttProvider: provider as ListSettings['sttProvider'],
-                })
-              }
+                });
+                // The Vosk model is 41 MB, so it only downloads once the user opts in.
+                if (provider === 'vosk') void loadVoskModel();
+              }}
               isVoskReady={isVoskReady}
               draft={draft as unknown as Record<string, unknown>}
               onDraftChange={setDraft as unknown as (draft: Record<string, unknown>) => void}
