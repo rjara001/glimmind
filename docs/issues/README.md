@@ -46,6 +46,7 @@ Filed from the Stripe sandbox-to-live work and the business-model review
 | [2026-10-11-sin-instrumentacion-de-costos.md](2026-10-11-sin-instrumentacion-de-costos.md) | No per-user cost logging, so limits cannot be validated |
 | [2026-10-12-lista-tts-voces-sin-auth.md](2026-10-12-lista-tts-voces-sin-auth.md) | `listTtsVoices` needs no authentication and answers any origin |
 | [2026-10-12-codigo-muerto-en-zona-de-creacion.md](2026-10-12-codigo-muerto-en-zona-de-creacion.md) | 500 lines of React no user path can reach, in the deck-creation zone |
+| [2026-10-12-deploy-de-github-actions-roto.md](2026-10-12-deploy-de-github-actions-roto.md) | The Actions deploy has failed on every run since 2026-10-07; a secret it needs was never created |
 
 ---
 
