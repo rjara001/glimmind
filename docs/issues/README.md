@@ -28,16 +28,15 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-13: **2 P0 · 12 P1 · 12 P2 · 7 done · 3 backlog**.
+Counts as of 2026-10-13: **0 P0 · 12 P1 · 13 P2 · 9 done · 3 backlog**.
 
 ---
 
 ## P0 — bleeding money or broken right now
 
-| Issue | Impact |
-|---|---|
-| [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium bypasses the 5000-card ceiling through `updateList` and `splitList`. `scripts/repro-p0-curl.sh` |
-| [`P0/2026-10-12-rutas-ia-sin-rate-limit.md`](P0/2026-10-12-rutas-ia-sin-rate-limit.md) | The metered routes have no rate limit; `aiGroup` is defined but unused |
+None open. Both were resolved on 2026-10-13 and moved to
+[`done/`](done/): [`premium-sin-limite-de-tarjetas`](done/2026-10-12-premium-sin-limite-de-tarjetas.md)
+and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 
 ## P1 — behavioural bugs
 
@@ -72,6 +71,7 @@ Counts as of 2026-10-13: **2 P0 · 12 P1 · 12 P2 · 7 done · 3 backlog**.
 | [`P2/2026-08-24-chirp-tts-cutoff-instrumentation.md`](P2/2026-08-24-chirp-tts-cutoff-instrumentation.md) | Chirp phrases cut short; instrumented, 4 hypotheses still undiscriminated |
 | [`P2/2026-10-12-yt-ai-limits-obsoletas.md`](P2/2026-10-12-yt-ai-limits-obsoletas.md) | `YT_AI_DAILY_LIMIT_PREMIUM` says 200, `plans.json` says 1000, nothing reads it |
 | [`P2/2026-10-12-create-list-campos-opcionales.md`](P2/2026-10-12-create-list-campos-opcionales.md) | The schema calls `concept`/`settings` optional; omitting either returns 500 |
+| [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
 
 ## done — resolved
 
@@ -84,6 +84,8 @@ Counts as of 2026-10-13: **2 P0 · 12 P1 · 12 P2 · 7 done · 3 backlog**.
 | [`done/2026-08-24-similarity-montains-typo.md`](done/2026-08-24-similarity-montains-typo.md) | Closed as **not a bug**: the stored answer was misspelled `montains` |
 | [`done/2026-10-11-vosk-descarga-innecesaria.md`](done/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors; now loaded on demand in 1.37.1 |
 | [`done/2026-10-12-cuotas-no-atomicas.md`](done/2026-10-12-cuotas-no-atomicas.md) | All four meters reserve before spending and refund on failure; the realised ceiling is the quota again |
+| [`done/2026-10-12-premium-sin-limite-de-tarjetas.md`](done/2026-10-12-premium-sin-limite-de-tarjetas.md) | `updateList` and `splitList` now assert the card ceiling inside their transactions; `scripts/repro-p0-curl.sh` exits 0 |
+| [`done/2026-10-12-rutas-ia-sin-rate-limit.md`](done/2026-10-12-rutas-ia-sin-rate-limit.md) | Both AI deck routes now run under `aiGroup` (10/min); `scripts/repro-p0-ai-rate-limit.sh` exits 0 |
 
 ## backlog — not defects
 

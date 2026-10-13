@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproduces docs/issues/P0/2026-10-12-premium-sin-limite-de-tarjetas.md
+# Reproduces docs/issues/done/2026-10-12-premium-sin-limite-de-tarjetas.md
 # using nothing but curl, jq and python3, so every HTTP status is visible.
 #
 #   Terminal 1:  npm run emulators

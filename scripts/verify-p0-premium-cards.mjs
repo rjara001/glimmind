@@ -1,4 +1,4 @@
-// Reproduces docs/issues/P0/2026-10-12-premium-sin-limite-de-tarjetas.md
+// Reproduces docs/issues/done/2026-10-12-premium-sin-limite-de-tarjetas.md
 //
 //   Terminal 1:  npm run emulators
 //   Terminal 2:  node scripts/verify-p0-premium-cards.mjs

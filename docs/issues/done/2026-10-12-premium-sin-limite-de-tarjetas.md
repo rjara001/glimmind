@@ -1,5 +1,11 @@
 # Premium users can exceed the card ceiling through updateList and splitList
 
+**Resolved:** 2026-10-13, in `af04407` (v1.38.0). `assertCardQuotaHasRoom` is
+now called inside the transactions of all three routes
+(`crud.js:114`, `crud.js:157`, `crud.js:245`). Verified with
+`scripts/repro-p0-curl.sh` against the emulators: the ceiling held on
+createList, updateList and splitList, exit code 0.
+
 ## What
 
 `plans.json` declares `maxCards: 5000` for Premium. `createList` enforces it,

@@ -18,7 +18,7 @@ and the 500 message is a Firestore SDK string.
 - The web client is unaffected: `ListServiceImpl.createList` declares both as
   required and always sends them.
 - Found while reproducing
-  [`../P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](../P0/2026-10-12-premium-sin-limite-de-tarjetas.md).
+  [`../done/2026-10-12-premium-sin-limite-de-tarjetas.md`](../done/2026-10-12-premium-sin-limite-de-tarjetas.md).
   The first four probe requests all failed on this before the quota behaviour
   could be measured.
 
