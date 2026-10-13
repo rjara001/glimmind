@@ -1,9 +1,8 @@
 const { getDb } = require("../../utils/firebase");
-const { getOrCreateMeta, metaDefaults, metaRefFor, QuotaExceededError } = require("../../utils/helpers");
+const { getOrCreateMeta, metaDefaults, metaRefFor } = require("../../utils/helpers");
 const { FieldValue } = require("../../utils/firebase");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../../utils/constants");
-const { QuotaService } = require("../quotaService");
-const { validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
+const { assertCardQuotaHasRoom, validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
 function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
   return {
@@ -112,10 +111,7 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
     const currentCardCount = currentMeta.cardCount || 0;
     const currentTier = currentMeta.tier || "free";
 
-    if (!QuotaService.canAddCards(currentCardCount, count, currentTier)) {
-      const effectiveQuota = QuotaService.getEffectiveQuota(currentCardCount, currentTier);
-      throw new QuotaExceededError(`Llegaste a tu límite de ${effectiveQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
-    }
+    assertCardQuotaHasRoom(currentTier, currentCardCount, count);
 
     tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }));
     
@@ -158,6 +154,7 @@ async function applyUpdatesToListAndAdjustCardCounters(db, listId, uid, updates)
     const metaSnap = await tx.get(metaRef);
     const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     validateUserCardQuotaNotExceeded(currentMeta, currentDelta);
+    assertCardQuotaHasRoom(currentMeta.tier || "free", currentMeta.cardCount || 0, currentDelta);
     
     tx.update(docRef, {
       ...updates,
@@ -245,6 +242,7 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
     const metaSnap = await tx.get(metaRef);
     const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     validateUserCardQuotaNotExceeded(meta, delta);
+    assertCardQuotaHasRoom(meta.tier || "free", meta.cardCount || 0, delta);
 
     const newRefs = [];
     for (const group of groups) {
