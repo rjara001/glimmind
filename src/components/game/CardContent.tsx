@@ -69,6 +69,7 @@ export const CardContent: React.FC<CardContentProps> = ({
             <input
               ref={inputRef}
               type="text"
+              aria-label="Tu respuesta"
               tabIndex={1}
               value={userInput}
               onChange={(e) => onUserInput(e.target.value)}

@@ -9,6 +9,8 @@ import {
   AuthError,
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import { GUEST_ID } from '../constants/app';
+import { safeGetItem, safeRemoveItem } from '../utils/localStorage';
 import type { AppUser } from '../types';
 
 interface AuthContextValue {
@@ -50,8 +52,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
+          safeRemoveItem('glimmind_guest_user');
           setUser(mapFirebaseUser(firebaseUser));
         } else {
+          // Guests are local-only: restore the persisted guest session so a
+          // page reload does not bounce protected routes back to /login.
+          // Mirrors the restore done in useAppBootstrap for gameStore.
+          const savedGuest = safeGetItem('glimmind_guest_user');
+          if (savedGuest) {
+            try {
+              const guest = JSON.parse(savedGuest) as AppUser | null;
+              if (guest && guest.uid === GUEST_ID) {
+                setUser(guest);
+                setLoading(false);
+                return;
+              }
+            } catch {
+              // Ignore corrupted guest data
+            }
+          }
           setUser(null);
         }
         setLoading(false);

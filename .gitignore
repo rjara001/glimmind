@@ -42,3 +42,9 @@ dist-ssr
 
 # Firebase emulator persisted data (auth, firestore, storage)
 /.emulator-data/
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

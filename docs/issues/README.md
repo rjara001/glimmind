@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-13: **0 P0 · 12 P1 · 13 P2 · 9 done · 3 backlog**.
+Counts as of 2026-10-13: **0 P0 · 14 P1 · 14 P2 · 9 done · 3 backlog**.
 
 ---
 
@@ -54,6 +54,8 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P1/2026-10-12-activity-falla-y-descarta-la-edicion.md`](P1/2026-10-12-activity-falla-y-descarta-la-edicion.md) | `appendActivity` is awaited before the list write, so its failure drops the user's edit |
 | [`P1/2026-10-12-quota-fallback-free.md`](P1/2026-10-12-quota-fallback-free.md) | A failed `getQuota` falls back to tier `free`, so a Premium user is blocked at 1000 with a free-tier message |
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
+| [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
+| [`P1/2026-10-13-prebuiltdeck-sin-guard-guest.md`](P1/2026-10-13-prebuiltdeck-sin-guard-guest.md) | prebuiltDeckService has no guest guard, trapping guests in DeckStoreOnboarding |
 
 ## P2 — debt, dead code, hygiene
 
@@ -72,6 +74,7 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P2/2026-10-12-yt-ai-limits-obsoletas.md`](P2/2026-10-12-yt-ai-limits-obsoletas.md) | `YT_AI_DAILY_LIMIT_PREMIUM` says 200, `plans.json` says 1000, nothing reads it |
 | [`P2/2026-10-12-create-list-campos-opcionales.md`](P2/2026-10-12-create-list-campos-opcionales.md) | The schema calls `concept`/`settings` optional; omitting either returns 500 |
 | [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
+| [`P2/2026-10-13-settingsmodal-log-sin-guard-guest.md`](P2/2026-10-13-settingsmodal-log-sin-guard-guest.md) | SettingsModal calls logEvent with no guest guard |
 
 ## done — resolved
 

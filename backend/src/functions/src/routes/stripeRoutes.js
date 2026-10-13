@@ -19,17 +19,14 @@ function applyRateLimit(fnName, handler) {
 //
 // These Stripe values are declared secrets so the deployed functions receive
 // them from Secret Manager, exactly like GEMINI_API_KEY and ADMIN_UIDS do in
-// the other routes. The Functions emulator resolves declared secrets from
-// Secret Manager too, which is why `.env` alone is NOT enough locally.
+// the other routes. Locally, the Functions emulator reads .secret.local first
+// (this directory); if a key is present there it never queries Secret Manager.
+// Production always reads Secret Manager.
 //
-// That previously pointed the emulator at a LIVE key and charged real money on
-// every test checkout. The fix was not to drop the declaration, it was to put
-// SANDBOX values in Secret Manager. So the invariant is:
-//
-//   GCP Secret Manager holds STRIPE_SECRET_KEY=sk_test_..., STRIPE_PRICE_ID=<test
-//   one-time price>, STRIPE_WEBHOOK_SECRET=<test endpoint secret>, and .env
-//   matches. utils/stripeConfig.js throws on any sk_live_/rk_live_ value, so a
-//   live key is caught on the first request either way.
+// Secret Manager currently holds LIVE credentials (sk_live_). The emulator
+// guard in utils/stripeConfig.js blocks live keys unless
+// STRIPE_ALLOW_LIVE_IN_EMULATOR=true, so a real card typed at localhost is
+// refused by default.
 //
 // Going live means rotating all three in Secret Manager and creating a one-time
 // price in the live account. Do not "fix" this by deleting the declarations —

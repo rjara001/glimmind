@@ -1,7 +1,7 @@
 {
   "name": "glimmind---word-association-master",
   "private": true,
-  "version": "1.38.1",
+  "version": "1.38.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,6 +16,8 @@
     "deploy": "npm run build && firebase deploy --only hosting,functions",
     "preview": "vite preview",
     "test": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
     "android:build": "npm run build && npx cap sync android",
     "android:run": "npx cap run android",
     "ios:build": "npm run build && npx cap sync ios",
@@ -39,6 +41,7 @@
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
+    "@playwright/test": "^1.64.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.14.0",
