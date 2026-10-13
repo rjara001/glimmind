@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-13: **0 P0 · 14 P1 · 14 P2 · 9 done · 3 backlog**.
+Counts as of 2026-10-13: **0 P0 · 15 P1 · 14 P2 · 9 done · 3 backlog**.
 
 ---
 
@@ -56,6 +56,7 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
 | [`P1/2026-10-13-prebuiltdeck-sin-guard-guest.md`](P1/2026-10-13-prebuiltdeck-sin-guard-guest.md) | prebuiltDeckService has no guest guard, trapping guests in DeckStoreOnboarding |
+| [`P1/2026-10-13-updatelistfields-400-invalid-body.md`](P1/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas fail zod validation on every load, so those lists never sync |
 
 ## P2 — debt, dead code, hygiene
 
