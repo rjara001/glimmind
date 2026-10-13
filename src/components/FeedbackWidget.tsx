@@ -1,40 +1,47 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { GUEST_UID } from '../constants/app';
+import type { MyfeedinWindow } from '../types/feedback-widget';
 
-// En desarrollo el widget se sirve desde el dev server de feedbacker, que hace
-// de proxy hacia el emulador de Cloud Functions. En produccion, desde Firebase Hosting.
-const WIDGET_SRC = import.meta.env.DEV
-  ? 'http://localhost:3001/widget.js'
-  : 'https://ema-test-226120.web.app/widget.js';
-const PROJECT_ID = 'eWw0vE9ztIKc3A3lrEKE';
+const WIDGET_SRC = 'https://myfeedin.com/widget.js';
+const PROJECT_ID = 'Tr3zskqgT2MchZXwwkP9';
 const SCRIPT_ID = 'glimmind-feedback-widget';
+const WIDGET_NODE_ID = 'myfeedin-widget';
+const MODAL_NODE_ID = 'myfeedin-modal';
+const INIT_FLAG = '__MyfeedinInitialized';
 
 /**
- * Carga el widget de feedback de myfeedin.com.
+ * Loads the myfeedin.com feedback widget.
  *
- * El widget se inyecta siempre (visitantesanonimosincluded), pero el atributo
- * `data-user-email` solo se envia cuando hay una sesion real de Firebase: en ese
- * caso el widget oculta el campo de email y lo rellena por el, de modo que nunca
- * se pide el correo a un usuario que ya esta identificado.
+ * The script is always injected (anonymous visitors included), but the
+ * `data-user-email` attribute is only set when there is a real Firebase
+ * session: in that case the widget hides the email field and fills it in,
+ * so an already identified user is never asked for their email.
  *
- * El usuario invitado (GUEST_UID) es local y no tiene email, asi que cae en el
- * caso anonimo: el widget le pregunta el correo.
+ * The guest user (GUEST_UID) is local and has no email, so it falls into the
+ * anonymous path and the widget asks for one.
+ *
+ * widget.js only initializes once per page load (guarded by
+ * `window.__MyfeedinInitialized`), so the flag is cleared before every
+ * injection; otherwise a re-injection after a sign-in/sign-out would keep the
+ * previous session email.
  */
 export const FeedbackWidget: React.FC = () => {
   const { user, loading } = useAuth();
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
-    // Esperamos a que Firebase resuelva la sesion para no inyectar el script con
-    // el email equivocado (o sin email) y tener que recargarlo.
+    // Wait for Firebase to resolve the session so the script is not injected
+    // with the wrong email (or none) and has to be reloaded.
     if (loading) return;
 
-    const hasRealUser = Boolean(user && user.uid !== GUEST_UID && user.email);
-    const email = hasRealUser ? (user!.email as string).trim() : '';
+    const email =
+      user && user.uid !== GUEST_UID && user.email ? user.email.trim() : '';
 
-    const existing = document.getElementById(SCRIPT_ID);
-    if (existing) existing.remove();
+    document.getElementById(SCRIPT_ID)?.remove();
+    document.getElementById(WIDGET_NODE_ID)?.remove();
+    document.getElementById(MODAL_NODE_ID)?.remove();
+    delete (window as MyfeedinWindow)[INIT_FLAG];
 
     const script = document.createElement('script');
     script.id = SCRIPT_ID;
@@ -48,13 +55,11 @@ export const FeedbackWidget: React.FC = () => {
     scriptRef.current = script;
 
     return () => {
-      if (scriptRef.current) {
-        scriptRef.current.remove();
-        scriptRef.current = null;
-      }
-      // El widget deja nodos en el DOM; se limpian al recargar/reinyectar.
-      document.getElementById('feedbacker-widget')?.remove();
-      document.getElementById('feedbacker-modal')?.remove();
+      scriptRef.current?.remove();
+      scriptRef.current = null;
+      // The widget leaves DOM nodes behind; they are cleaned on re-injection.
+      document.getElementById(WIDGET_NODE_ID)?.remove();
+      document.getElementById(MODAL_NODE_ID)?.remove();
     };
   }, [user?.uid, user?.email, loading]);
 
