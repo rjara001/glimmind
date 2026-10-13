@@ -98,4 +98,20 @@ function rateLimit(functionName) {
   };
 }
 
-module.exports = { rateLimit, RATE_LIMITS };
+// Enforces the tier before the handler runs. Eight route files define this
+// helper locally; new routes must import it from here instead of copying it.
+// On a refusal the limiter answers 429 itself and the handler never runs.
+function applyRateLimit(functionName, handler) {
+  const limiter = rateLimit(functionName);
+  return async (req, res) => {
+    await new Promise((resolve, reject) => {
+      limiter(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    return handler(req, res);
+  };
+}
+
+module.exports = { rateLimit, applyRateLimit, RATE_LIMITS };

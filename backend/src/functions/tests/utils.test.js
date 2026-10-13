@@ -345,6 +345,24 @@ describe("Rate limiting", () => {
     expect(rateLimit.RATE_LIMITS.synthesizeSpeech.requests).toBe(30);
     expect(rateLimit.RATE_LIMITS.createList).toBeDefined();
   });
+
+  test("applyRateLimit returns a function and runs the handler under the tier", async () => {
+    const handler = vi.fn(async () => "handled");
+    const wrapped = rateLimit.applyRateLimit("aiGroup", handler);
+    expect(typeof wrapped).toBe("function");
+
+    const req = { headers: { authorization: "Bearer faketoken" } };
+    const res = {
+      headers: {},
+      set(values) { Object.assign(this.headers, values); },
+      status() { return this; },
+      json() { return this; },
+    };
+
+    const result = await wrapped(req, res);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(result).toBe("handled");
+  });
 });
 
 describe("Validation middleware", () => {

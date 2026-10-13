@@ -3,6 +3,7 @@ const { getDb, getAuth } = require("../utils/firebase");
 const { metaRefFor, todayKey } = require("../utils/helpers");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
 const { runAiDeckWithQuota } = require("../services/aiDeckQuota");
+const { applyRateLimit } = require("../utils/rateLimit");
 const {
   extractVideoId,
   fetchYouTubeVideoTitle,
@@ -17,7 +18,7 @@ const {
 const ALLOWED_LEVELS = new Set(["b1", "b2c1"]);
 const MAX_MANUAL_TEXT_LENGTH = 200000;
 
-exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 300, memory: "512MiB" }, async (req, res) => {
+async function handleCreateDeckFromText(req, res) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -138,4 +139,9 @@ exports.createDeckFromText = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"]
     const mapped = mapGeminiError(error);
     return res.status(mapped.status).json({ error: mapped.error, ...(mapped.detail ? { detail: mapped.detail } : {}) });
   }
-});
+}
+
+exports.createDeckFromText = onRequest(
+  { cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 300, memory: "512MiB" },
+  applyRateLimit("aiGroup", handleCreateDeckFromText)
+);

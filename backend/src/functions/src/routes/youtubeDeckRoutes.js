@@ -5,6 +5,7 @@ const { YouTubeTranscriptProvider } = require("../services/transcriptProvider");
 const { extractVocabulary } = require("../services/vocabularyExtractionService");
 const { runAiDeckWithQuota } = require("../services/aiDeckQuota");
 const { QuotaService } = require("../services/quotaService");
+const { applyRateLimit } = require("../utils/rateLimit");
 const {
   extractVideoId,
   fetchYouTubeVideoTitle,
@@ -77,7 +78,7 @@ async function setCachedResult(db, cacheKey, result, ttlMs = 24 * 60 * 60 * 1000
   }
 }
 
-exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 300, memory: "512MiB" }, async (req, res) => {
+async function handleCreateYouTubeDeck(req, res) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -236,4 +237,9 @@ exports.createYouTubeDeck = onRequest({ cors: true, secrets: ["GEMINI_API_KEY"],
     const mapped = mapGeminiError(error);
     return res.status(mapped.status).json({ error: mapped.error, ...(mapped.detail ? { detail: mapped.detail } : {}) });
   }
-});
+}
+
+exports.createYouTubeDeck = onRequest(
+  { cors: true, secrets: ["GEMINI_API_KEY"], timeoutSeconds: 300, memory: "512MiB" },
+  applyRateLimit("aiGroup", handleCreateYouTubeDeck)
+);
