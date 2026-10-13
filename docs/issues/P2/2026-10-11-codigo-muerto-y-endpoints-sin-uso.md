@@ -59,5 +59,9 @@ or make `semanticGrouping` reachable. Update
 or delete the `getProgress`/`updateProgress`/`getSessions`/`getDashboardData`
 routes and their rewrites.
 
+Note (2026-10-13): the dashboard-analysis document was corrected to describe the
+real bootstrap (`loadInitialData` only; no `getProgress`; no `loadDashboardData`).
+The dead services, endpoints and hooks above are still open.
+
 Note: `vitest` includes only `src/**` and `tests/**`, so deleting these will not
 break the frontend suite. The backend Jest suite does not cover them either.

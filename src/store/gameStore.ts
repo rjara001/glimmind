@@ -23,6 +23,12 @@ import {
   LAST_CLOUD_FETCH_KEY,
 } from '../constants/limits';
 import { GUEST_UID } from '../constants/app';
+import {
+  BootstrapStatus,
+  BootstrapPart,
+  LoadPhase,
+  createInitialBootstrapStatus,
+} from '../types/bootstrap-status';
 import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
 import { computeDelta, AssociationDelta, chunkDeltas, mergeCloudWins } from '../utils/syncDelta';
 import { SYNC_CONFIG } from '../constants/syncConfig';
@@ -41,6 +47,16 @@ function clearLocalCache(): void {
   safeRemoveItem(LOCAL_PROGRESS_KEY);
   safeRemoveItem(LOCAL_LAST_PLAYED_KEY);
   safeRemoveItem(LAST_CLOUD_FETCH_KEY);
+  // The per-uid markers (glimmind_last_cloud_fetch_<uid>) must go too: leaving
+  // them behind kept the list TTL fresh after the cache was wiped, so
+  // getLists was skipped and the dashboard rendered with no decks.
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`${LAST_CLOUD_FETCH_KEY}_`))
+      .forEach((key) => safeRemoveItem(key));
+  } catch {
+    // localStorage unavailable: nothing to clear
+  }
 }
 
 function ensureCacheMatchesEnvironment(): void {
@@ -149,9 +165,16 @@ function applyFlattening(lists: AssociationList[]): { lists: AssociationList[]; 
 
 function backupLocalLists(): void {
   const existing = safeGetItem(LOCAL_STORAGE_KEY);
-  if (existing) {
-    safeSetItem(LOCAL_STORAGE_BACKUP_KEY, existing);
+  if (!existing) return;
+  try {
+    const parsed = JSON.parse(existing);
+    // Never clobber a good backup with an empty or corrupt cache: the restore
+    // path depends on the backup holding real decks.
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+  } catch {
+    return;
   }
+  safeSetItem(LOCAL_STORAGE_BACKUP_KEY, existing);
 }
 
 function restoreLocalListsFromBackup(): AssociationList[] | null {
@@ -306,6 +329,121 @@ export function mergeCloudWithLocalPreferLocal(
   return merged;
 }
 
+function setBootstrapPhase(
+  part: BootstrapPart,
+  phase: LoadPhase,
+  options?: { error?: string | null; listsSyncAt?: number | null }
+): void {
+  useGameStore.setState((state) => ({
+    bootstrapStatus: {
+      ...state.bootstrapStatus,
+      [part]: phase,
+      ...(options?.error !== undefined ? { error: options.error } : {}),
+      ...(options?.listsSyncAt !== undefined ? { listsSyncAt: options.listsSyncAt } : {}),
+    },
+  }));
+}
+
+function getLastCloudFetch(uid: string): number | null {
+  const last = Number(safeGetItem(`${LAST_CLOUD_FETCH_KEY}_${uid}`) || '0');
+  return last > 0 ? last : null;
+}
+
+// getLists: the priority call of the bootstrap. It runs first, merges the
+// cloud decks into the local cache and drives the visible lists spinner.
+async function fetchCloudListsForBootstrap(uid: string, requestId: number): Promise<void> {
+  setBootstrapPhase('lists', 'loading');
+  try {
+    backupLocalLists();
+    const cloudLists = await listService.fetchListsByUser(uid);
+    if (requestId !== syncRequestSequence) return;
+    markCloudFetch(uid);
+    const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
+    const currentLocalLists = useGameStore.getState().lists;
+    const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, currentLocalLists, uid);
+    const normalizedMerged = withNormalizedVoiceLanguages(merged);
+    useGameStore.setState({ lists: normalizedMerged });
+    safeStringify(LOCAL_STORAGE_KEY, normalizedMerged);
+    setBootstrapPhase('lists', 'loaded', { error: null, listsSyncAt: Date.now() });
+
+    if (changedIds.length > 0) {
+      setBootstrapPhase('sync', 'loading');
+      const results = await Promise.allSettled(
+        changedIds.map((listId) => useGameStore.getState().syncToCloud(listId))
+      );
+      if (requestId !== syncRequestSequence) return;
+      const failed = results.some((result) => result.status === 'rejected');
+      setBootstrapPhase('sync', failed ? 'error' : 'loaded');
+    } else {
+      setBootstrapPhase('sync', 'loaded');
+    }
+  } catch (error) {
+    if (requestId !== syncRequestSequence) return;
+    console.error('Error fetching cloud lists:', error);
+    const restored = restoreLocalListsFromBackup();
+    if (restored) {
+      useGameStore.setState({ lists: restored });
+    }
+    setBootstrapPhase('lists', 'error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+// getQuota: independent of getLists so the quota UI activates on its own.
+async function fetchQuotaForBootstrap(uid: string, requestId: number): Promise<void> {
+  setBootstrapPhase('quota', 'loading');
+  try {
+    const quota = await quotaService.fetchQuota(uid);
+    if (requestId !== syncRequestSequence) return;
+    if (quota) {
+      useGameStore.setState({ quota });
+      setBootstrapPhase('quota', 'loaded');
+    } else {
+      setBootstrapPhase('quota', 'error');
+    }
+  } catch (error) {
+    if (requestId !== syncRequestSequence) return;
+    console.warn('[bootstrap] Failed to fetch quota:', error);
+    setBootstrapPhase('quota', 'error');
+  }
+}
+
+// getSettings: independent of getLists so the settings UI activates on its own.
+async function fetchSettingsForBootstrap(uid: string, requestId: number): Promise<void> {
+  setBootstrapPhase('settings', 'loading');
+  try {
+    const cloudSettings = await settingsService.fetchSettings(uid);
+    if (requestId !== syncRequestSequence) return;
+    if (cloudSettings) {
+      const localSettingsRaw = safeGetItem('glimmind_settings');
+      const localSettings = localSettingsRaw ? (JSON.parse(localSettingsRaw) as UserSettings) : null;
+      const localUpdatedAt = localSettings?.updatedAt ?? Date.now();
+      const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
+      const mergedSettings = localUpdatedAt >= cloudUpdatedAt ? localSettings : cloudSettings;
+      if (mergedSettings) {
+        const settingsToSave = { ...mergedSettings, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
+        useGameStore.setState({ settings: settingsToSave });
+        settingsService.saveLocalSettings(settingsToSave);
+        if (localUpdatedAt > cloudUpdatedAt) {
+          settingsService.saveSettings(uid, settingsToSave).catch((saveError) => {
+            console.error('Error saving settings:', saveError);
+          });
+        }
+      }
+      setBootstrapPhase('settings', 'loaded');
+    } else {
+      // No settings document in the cloud yet: local defaults are the source
+      // of truth, nothing failed.
+      setBootstrapPhase('settings', 'loaded');
+    }
+  } catch (error) {
+    if (requestId !== syncRequestSequence) return;
+    console.warn('[bootstrap] Failed to fetch settings:', error);
+    setBootstrapPhase('settings', 'error');
+  }
+}
+
 interface ResumeSnapshot {
   state: GameState;
   sessionRepasos: number;
@@ -331,6 +469,7 @@ interface GameStore {
   currentList: AssociationList | null;
   isLoaded: boolean;
   isLoading: boolean;
+  bootstrapStatus: BootstrapStatus;
   progress: UserProgress | null;
   celebration: CelebrationEvent | null;
   quota: UserQuota | null;
@@ -388,6 +527,7 @@ interface GameStore {
   
   // Actions - Initialization
   loadInitialData: () => Promise<void>;
+  retryBootstrapPart: (part: BootstrapPart) => Promise<void>;
   
   // Actions - Persistence
   syncFromCloud: () => Promise<void>;
@@ -427,6 +567,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentList: null,
   isLoaded: false,
   isLoading: false,
+  bootstrapStatus: createInitialBootstrapStatus(),
   progress: null,
   celebration: null,
   quota: null,
@@ -485,6 +626,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         sessions: [],
         isLoaded: false,
         isLoading: false,
+        bootstrapStatus: createInitialBootstrapStatus(),
       });
     }
   },
@@ -804,11 +946,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const requestId = ++syncRequestSequence;
     set({ isLoading: true });
 
+    // Auth has not resolved yet: hydrate nothing and persist nothing. Filtering
+    // the decks by GUEST_UID here and writing the result back wiped the signed
+    // in user's local cache on every page refresh, so the dashboard showed no
+    // decks whenever the list TTL was still fresh.
+    if (!user) {
+      set({ isLoaded: true, isLoading: false });
+      return;
+    }
+
     set({ lists: [] });
 
     ensureCacheMatchesEnvironment();
 
-    const isGuest = !user || user.uid === GUEST_UID;
+    const isGuest = user.uid === GUEST_UID;
 
     // Load persisted pending deltas (real accounts only — guests never sync)
     const savedDeltas = safeGetItem(PENDING_DELTAS_KEY);
@@ -825,6 +976,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
+    let hydratedCount = 0;
     const savedLists = safeGetItem(LOCAL_STORAGE_KEY);
     if (savedLists) {
       try {
@@ -838,6 +990,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           (l: AssociationList) => l.userId === ownerUid
         );
         const normalizedParsed = withNormalizedVoiceLanguages(filteredLists);
+        hydratedCount = normalizedParsed.length;
         set({ lists: normalizedParsed });
         safeStringify(LOCAL_STORAGE_KEY, normalizedParsed);
       } catch (e) {
@@ -847,82 +1000,69 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ isLoaded: true, isLoading: false });
 
-    if (!isGuest) {
-      if (savedLists && !shouldFetchCloudLists(user.uid)) {
-        // Cache is fresh
-      } else {
-        try {
-          backupLocalLists();
-          const cloudLists = await listService.fetchListsByUser(user.uid);
-          if (requestId !== syncRequestSequence) {
-            return;
-          }
-          markCloudFetch(user.uid);
-          const { lists: flattenedCloud, changedIds } = applyFlattening(cloudLists);
-          const currentLocalLists = get().lists;
-          
-          const merged = mergeCloudWithLocalPreferLocal(flattenedCloud, currentLocalLists, user.uid);
-          const normalizedMerged = withNormalizedVoiceLanguages(merged);
-          set({ lists: normalizedMerged });
-          safeStringify(LOCAL_STORAGE_KEY, normalizedMerged);
-          if (changedIds.length > 0) {
-            changedIds.forEach((listId) => {
-              get().syncToCloud(listId).catch((error) => {
-                console.error('[loadInitialData] syncToCloud failed:', error);
-              });
-            });
-          }
+    if (isGuest) {
+      // Guests are local-only: the hydration above is all there is to load.
+      setBootstrapPhase('lists', 'loaded');
+      setBootstrapPhase('quota', 'loaded');
+      setBootstrapPhase('settings', 'loaded');
+      setBootstrapPhase('sync', 'loaded');
+      return;
+    }
 
-          try {
-            const [cloudQuotaResult, cloudSettingsResult] = await Promise.allSettled([
-              quotaService.fetchQuota(user.uid),
-              settingsService.fetchSettings(user.uid),
-            ]);
+    // Progress comes from localStorage only (no progressService call).
+    try {
+      const localProgressRaw = safeGetItem(LOCAL_PROGRESS_KEY);
+      const localProgress = localProgressRaw
+        ? (JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number })
+        : null;
+      const progress = localProgress || createDefaultProgress();
+      set({ progress });
+      safeStringify(LOCAL_PROGRESS_KEY, progress);
+    } catch (e) {
+      console.error('Error loading progress:', e);
+    }
 
-            // Progress is loaded from localStorage only (no progressService)
-            const localProgressRaw = safeGetItem(LOCAL_PROGRESS_KEY);
-            const localProgress = localProgressRaw ? JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number } : null;
-            const progress = localProgress || createDefaultProgress();
-            set({ progress });
-            safeStringify(LOCAL_PROGRESS_KEY, progress);
+    // getLists fires first (priority); getQuota and getSettings run in parallel
+    // and do not depend on it. An empty local cache always counts as a miss so
+    // decks wiped by the old bootstrap heal instead of staying empty behind a
+    // fresh TTL.
+    const shouldFetchLists = hydratedCount === 0 || shouldFetchCloudLists(user.uid);
+    const listsPromise = shouldFetchLists
+      ? fetchCloudListsForBootstrap(user.uid, requestId)
+      : (setBootstrapPhase('lists', 'loaded', {
+          error: null,
+          listsSyncAt: getLastCloudFetch(user.uid),
+        }),
+        Promise.resolve());
 
-            if (cloudQuotaResult.status === 'fulfilled' && cloudQuotaResult.value) {
-              set({ quota: cloudQuotaResult.value });
-            } else if (cloudQuotaResult.status === 'rejected') {
-              console.warn('[loadInitialData] Failed to fetch cloud quota:', cloudQuotaResult.reason);
-            }
+    await Promise.allSettled([
+      listsPromise,
+      fetchQuotaForBootstrap(user.uid, requestId),
+      fetchSettingsForBootstrap(user.uid, requestId),
+    ]);
+  },
 
-            if (cloudSettingsResult.status === 'fulfilled' && cloudSettingsResult.value) {
-              const cloudSettings = cloudSettingsResult.value;
-              const localSettingsRaw = safeGetItem('glimmind_settings');
-              const localSettings = localSettingsRaw ? JSON.parse(localSettingsRaw) as UserSettings : null;
-              const localUpdatedAt = localSettings?.updatedAt ?? Date.now();
-              const cloudUpdatedAt = cloudSettings.updatedAt ?? 0;
-              const mergedSettings = localUpdatedAt >= cloudUpdatedAt ? localSettings : cloudSettings;
-              if (mergedSettings) {
-                const settingsToSave = { ...mergedSettings, updatedAt: Math.max(localUpdatedAt, cloudUpdatedAt) };
-                set({ settings: settingsToSave });
-                settingsService.saveLocalSettings(settingsToSave);
-                if (localUpdatedAt > cloudUpdatedAt && user.uid !== GUEST_UID) {
-                  settingsService.saveSettings(user.uid, settingsToSave).catch((error) => {
-                    console.error('Error saving settings:', error);
-                  });
-                }
-              }
-            } else if (cloudSettingsResult.status === 'rejected') {
-              console.warn('[loadInitialData] Failed to fetch cloud settings:', cloudSettingsResult.reason);
-            }
-          } catch (e) {
-            console.error('Error fetching additional cloud data:', e);
-          }
-        } catch (e) {
-          console.error('Error fetching cloud lists:', e);
-          const restored = restoreLocalListsFromBackup();
-          if (restored) {
-            set({ lists: restored });
-          }
-        }
+  retryBootstrapPart: async (part) => {
+    const { user } = get();
+    if (!user || user.uid === GUEST_UID) return;
+    const requestId = syncRequestSequence;
+    if (part === 'sync') {
+      setBootstrapPhase('sync', 'loading');
+      try {
+        await get().flushAllPendingSyncs();
+        setBootstrapPhase('sync', 'loaded');
+      } catch (error) {
+        console.error('[retryBootstrapPart] flush failed:', error);
+        setBootstrapPhase('sync', 'error');
       }
+      return;
+    }
+    if (part === 'lists') {
+      await fetchCloudListsForBootstrap(user.uid, requestId);
+    } else if (part === 'quota') {
+      await fetchQuotaForBootstrap(user.uid, requestId);
+    } else if (part === 'settings') {
+      await fetchSettingsForBootstrap(user.uid, requestId);
     }
   },
 

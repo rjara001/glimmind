@@ -5,11 +5,10 @@ export const listService = {
 
   fetchListsByUser: async (userId: string): Promise<AssociationList[]> => {
     if (!userId) return [];
-    try {
-      return await callFunction<AssociationList[]>('getLists', { userId });
-    } catch (error) {
-      return [];
-    }
+    // Errors propagate: swallowing them made loadInitialData treat a failed
+    // fetch as an empty account, persist [] and seal the list TTL via
+    // markCloudFetch, leaving the dashboard without decks for minutes.
+    return await callFunction<AssociationList[]>('getLists', { userId });
   },
 
   createList: async (list: Omit<AssociationList, 'id'>): Promise<string> => {

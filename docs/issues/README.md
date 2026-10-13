@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-12: **2 P0 · 9 P1 · 11 P2 · 7 done · 3 backlog**.
+Counts as of 2026-10-13: **2 P0 · 12 P1 · 12 P2 · 7 done · 3 backlog**.
 
 ---
 
@@ -36,8 +36,7 @@ Counts as of 2026-10-12: **2 P0 · 9 P1 · 11 P2 · 7 done · 3 backlog**.
 
 | Issue | Impact |
 |---|---|
-| [`P0/2026-10-11-vosk-descarga-innecesaria.md`](P0/2026-10-11-vosk-descarga-innecesaria.md) | 41.2 MB downloaded by 100% of visitors. Fixed in 1.37.0, pending deploy |
-| [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium has no card limit at all. One payment buys unbounded Firestore writes |
+| [`P0/2026-10-12-premium-sin-limite-de-tarjetas.md`](P0/2026-10-12-premium-sin-limite-de-tarjetas.md) | Premium bypasses the 5000-card ceiling through `updateList` and `splitList`. `scripts/repro-p0-curl.sh` |
 | [`P0/2026-10-12-rutas-ia-sin-rate-limit.md`](P0/2026-10-12-rutas-ia-sin-rate-limit.md) | The metered routes have no rate limit; `aiGroup` is defined but unused |
 
 ## P1 — behavioural bugs
@@ -53,6 +52,9 @@ Counts as of 2026-10-12: **2 P0 · 9 P1 · 11 P2 · 7 done · 3 backlog**.
 | [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
 | [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
+| [`P1/2026-10-12-activity-falla-y-descarta-la-edicion.md`](P1/2026-10-12-activity-falla-y-descarta-la-edicion.md) | `appendActivity` is awaited before the list write, so its failure drops the user's edit |
+| [`P1/2026-10-12-quota-fallback-free.md`](P1/2026-10-12-quota-fallback-free.md) | A failed `getQuota` falls back to tier `free`, so a Premium user is blocked at 1000 with a free-tier message |
+| [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 
 ## P2 — debt, dead code, hygiene
 
@@ -69,6 +71,7 @@ Counts as of 2026-10-12: **2 P0 · 9 P1 · 11 P2 · 7 done · 3 backlog**.
 | [`P2/2026-10-12-deploy-de-github-actions-roto.md`](P2/2026-10-12-deploy-de-github-actions-roto.md) | The Actions deploy has failed on every run since 2026-10-07 |
 | [`P2/2026-08-24-chirp-tts-cutoff-instrumentation.md`](P2/2026-08-24-chirp-tts-cutoff-instrumentation.md) | Chirp phrases cut short; instrumented, 4 hypotheses still undiscriminated |
 | [`P2/2026-10-12-yt-ai-limits-obsoletas.md`](P2/2026-10-12-yt-ai-limits-obsoletas.md) | `YT_AI_DAILY_LIMIT_PREMIUM` says 200, `plans.json` says 1000, nothing reads it |
+| [`P2/2026-10-12-create-list-campos-opcionales.md`](P2/2026-10-12-create-list-campos-opcionales.md) | The schema calls `concept`/`settings` optional; omitting either returns 500 |
 
 ## done — resolved
 

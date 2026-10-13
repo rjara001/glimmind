@@ -19,29 +19,35 @@ AppWrapper
       -> Effect 2: cuando user cambia -> dispara 4 funciones async
       -> Effect 3: si isLoaded + user + lastPlayedId -> navigate('game')
 
-### Fase 2: APIs disparadas simultáneamente (Effect 2)
+### Fase 2: Bootstrap (loadInitialData)
 
-Para usuario autenticado, 4 APIs se disparan en paralelo cuando se detecta el usuario:
+`useAppBootstrap` dispara **una sola** función async: `loadInitialData()` (única llamada en `src/hooks/app/useAppBootstrap.ts:62-64`). No existen `loadProgress`/`loadQuota`/`loadSettings` en el store; el progreso se rehidrata desde localStorage (sin API).
 
-| # | Funcion | API | Objetivo |
-|---|---------|-----|----------|
-| 1 | loadInitialData() | getLists | Cargar todas las listas del usuario desde la nube (o cache local si esta dentro del TTL) |
-| 2 | loadProgress() | getProgress | Cargar progreso del usuario (repasos realizados, niveles, streak) |
-| 3 | loadQuota() | getQuota | Cargar cuota del usuario (tier, tarjetas usadas, limites) |
-| 4 | loadSettings() | getSettings | Cargar configuracion del usuario (modo, idioma voz, etc.) |
+Para usuario autenticado, `loadInitialData` (src/store/gameStore.ts:944) dispara en paralelo:
 
-Ubicacion en codigo:
-- loadInitialData -> src/store/gameStore.ts:703
-- loadProgress -> src/store/gameStore.ts:531
-- loadQuota -> src/store/gameStore.ts:552
-- loadSettings -> src/store/gameStore.ts:561
-- Disparadas desde -> src/hooks/app/useAppBootstrap.ts:45-50
+| # | Funcion (helper) | API | Condicion | Objetivo |
+|---|------------------|-----|-----------|----------|
+| 1 | fetchCloudListsForBootstrap (gameStore.ts:354) | getLists | Local vacio O TTL vencido (`shouldFetchCloudLists`, gameStore.ts:117) | Poblar la grilla de mazos. **Se dispara primero**; sus errores pasan a `bootstrapStatus.lists` y NO sellan el TTL |
+| 2 | fetchQuotaForBootstrap (gameStore.ts:394) | getQuota | Siempre (usuarios reales) | QuotaAlert + habilitar/deshabilitar crear listas |
+| 3 | fetchSettingsForBootstrap (gameStore.ts:413) | getSettings | Siempre (usuarios reales) | Preferencias de UI (idioma voz, etc.) |
 
-Objetivo de cada una:
-- getLists -> Poblar la grilla de listas del dashboard
-- getProgress -> Mostrar meta diaria, progreso, streak en GoalWidget
-- getQuota -> Mostrar alertas de limite en QuotaAlert, habilitar/deshabilitar crear listas
-- getSettings -> Configurar preferencias de UI (modo, idioma, etc.)
+Los tres se ejecutan con `Promise.allSettled` (sin await secuencial entre ellos); getLists se invoca primero para priorizarla. Cada resultado se registra en `bootstrapStatus` (src/types/bootstrap-status.ts) con fases `idle | loading | loaded | error`, y los errores de cada llamada se propagan al store (`fetchListsByUser` ya no traga errores).
+
+El TTL por usuario se guarda en `glimmind_last_cloud_fetch_<uid>` (`clearLocalCache` ahora tambien borra esas claves, ver F3).
+
+### Visibilidad en UI (spinner por llamada)
+
+`bootstrapStatus` se consume en Dashboard:
+
+| Elemento | Fuente | Mientras loading | Si error |
+|----------|--------|------------------|----------|
+| Spinner "Cargando mazos…" | `lists` + cache vacia | `role="status"` (reemplaza onboarding) | Alert "No se pudieron actualizar tus mazos" + boton Reintentar |
+| SyncChip "Actualizando mazos…" / "Mazos sincronizados" | `lists` | chip con spinner | chip "Mazos sin actualizar" + Reintentar |
+| SyncChip ajustes / sincronizacion | `settings` / `sync` | chips con spinner | chips con Reintentar |
+| QuotaAlert "Calculando limites…" | `quota` (prop loading) | spinner + Nueva Lista deshabilitado | alerta de error + Reintentar |
+| DashboardToolbar chip | `quota` | "Calculando limites…" | — |
+
+Reintentos: `retryBootstrapPart(part)` (gameStore.ts:1045) reejecuta solo la llamada pedida.
 
 ### Fase 3: Dashboard renderiza
 
@@ -96,23 +102,22 @@ Problema: Este flujo se dispara en montaje aunque los datos no hayan cambiado. u
 
 ## Resumen de APIs por escenario
 
-### Escenario A: Usuario con listas existentes (ve dashboard) - ACTUAL
-getLists + getProgress + getQuota + getSettings = 4 APIs paralelas
+### Escenario A: Usuario real, cache local presente y TTL vigente
+getQuota + getSettings = 2 APIs (getLists se omite; se renderiza al instante con spinner por parte)
 
-### Escenario A: Usuario con listas existentes (ve dashboard) - DESPUES
-getDashboardData = 1 API
+### Escenario A2: Usuario real, cache local presente y TTL vencido
+getLists + getQuota + getSettings = 3 APIs en paralelo (getLists primero)
 
-### Escenario B: Usuario con listas existentes + auto-navigacion a /game - ACTUAL
-getLists + getProgress + getQuota + getSettings + getList + updateList = 6 APIs
+### Escenario A3: Usuario real SIN cache local (el bug "mazos no cargan")
+getLists + getQuota + getSettings = 3 APIs en paralelo; getLists se fuerza aunque el TTL este fresco
 
-### Escenario B: Usuario con listas existentes + auto-navigacion a /game - DESPUES
-getDashboardData + getList + updateList = 3 APIs
+### Escenario B: Usuario real + auto-navegacion a /game
+Mismas 2-3 APIs del dashboard + getList + updateList en /game
 
-### Escenario C: Usuario nuevo (primera vez, ve dashboard) - ACTUAL
-getLists + getProgress + getQuota + getSettings + getPrebuiltDecks = 5 APIs
+### Escenario C: Guest (GUEST_UID)
+0 APIs (todo local via localStorage; fases de bootstrapStatus en 'loaded')
 
-### Escenario C: Usuario nuevo (primera vez, ve dashboard) - DESPUES
-getDashboardData + getPrebuiltDecks = 2 APIs
+### Nota: en desarrollo (React StrictMode) el montaje es doble y los efectos pueden duplicar cada llamada.
 
 ---
 
@@ -130,19 +135,24 @@ getDashboardData + getPrebuiltDecks = 2 APIs
 
 | Archivo | Lineas | Descripcion |
 |---------|--------|-------------|
-| src/hooks/app/useAppBootstrap.ts | 45-63 | Disparador principal de carga inicial |
-| src/store/gameStore.ts | 703-782 | loadInitialData() con getLists + cache logic |
-| src/store/gameStore.ts | 531-550 | loadProgress() |
-| src/store/gameStore.ts | 552-559 | loadQuota() |
-| src/store/gameStore.ts | 561-575 | loadSettings() |
+| src/hooks/app/useAppBootstrap.ts | 62-64 | Disparador principal de carga inicial (solo loadInitialData) |
+| src/store/gameStore.ts | 944-1043 | loadInitialData() — getLists primero, luego getQuota + getSettings en paralelo (allSettled) |
+| src/store/gameStore.ts | 1045-1067 | retryBootstrapPart() — reintento individual por parte |
+| src/store/gameStore.ts | 338-430 | Helpers setBootstrapPhase / fetchCloudListsForBootstrap / fetchQuotaForBootstrap / fetchSettingsForBootstrap |
+| src/store/gameStore.ts | 44-67 | clearLocalCache() — borra listas + marcadores glimmind_last_cloud_fetch_<uid> |
+| src/store/gameStore.ts | 117-127 | shouldFetchCloudLists() / markCloudFetch() — TTL por usuario |
+| src/types/bootstrap-status.ts | 1-40 | LoadPhase, BootstrapPart, BootstrapStatus |
 | src/store/gameStore.ts | 827-920 | syncToCloud() con getList + updateList |
 | src/store/gameStore.ts | 433-461 | updateAssociations() que dispara syncToCloud |
-| src/components/views/Dashboard.tsx | 27-275 | Componente dashboard (sin APIs propias) |
+| src/components/views/Dashboard.tsx | — | Spinner "Cargando mazos…", alerta de error con Reintentar, chips SyncChip, wiring QuotaAlert |
+| src/components/layout/SyncChip.tsx | — | Chip generico loading/error/loaded por llamada |
+| src/components/layout/QuotaAlert.tsx | — | Props loading / error / onRetry |
+| src/components/views/dashboard/DashboardToolbar.tsx | — | Prop quotaLoading |
+| src/services/firestoreService.ts | 6-30 | fetchListsByUser — propaga errores (no devuelve [] en fallo) |
 | src/components/views/GameView.tsx | 38-461 | Componente game (dispara sync via hooks) |
 | src/hooks/game/useGameViewEffects.ts | 178-182 | Efecto que dispara onUpdateAssociations al montar |
 | src/hooks/game/useGameLogic.ts | 51-53 | Efecto que actualiza game engine con list prop |
 | src/hooks/app/useAppHandlers.ts | 78-85 | handleUpdateAssociations |
-| src/services/firestoreService.ts | 4-50 | Servicio de listas (lista de APIs) |
 | src/services/prebuiltDeckService.ts | 5-16 | Servicio de decks preconstruidos |
 | src/components/onboarding/DeckStoreOnboarding.tsx | 41-58 | Efecto que dispara getPrebuiltDecks |
 
@@ -177,6 +187,7 @@ getDashboardData + getPrebuiltDecks = 2 APIs
 | 2026-10-11 | **Fix del puerto de Firestore en el Functions emulator.** `backend/src/functions/src/utils/firebase.js` forceaba `FIRESTORE_EMULATOR_HOST = localhost:8080`, valor obsoleto que sobrevivio a la migracion de puertos del 2026-10-02 (glimmind: Firestore 8080 -> 9080, ver `docs/emulator-port-migration.md`). Como `firebase.json` ya inyecta el valor correcto en `emulators.functions.env`, el hardcode lo sobreescribia y **todas las funciones escribian en el Firestore emulator de otro proyecto** (tabito-revamped, que escucha en 8080), sin error visible porque ese puerto si existia. Sintoma: `stripeWebhook` respondia 200 y actualizaba `tier: premium`, pero `users/{uid}/meta/main` en el Firestore de glimmind nunca existia y la UI seguia mostrando plan gratuito. Ahora `firebase.js` solo define el host si nadie mas lo hizo, con el puerto 9080 de `firebase.json`; `scripts/seed-emulator.ts` tambien corregido (8080 -> 9080). Verificado con evento real: `tier: premium`, `cardQuota: 5000`, `aiQuotaDaily: 1000`. Documentado ademas que `stripe listen` debe apuntar a **9001** (no 5001) y llevar `--events`. | Agent |
 | 2026-10-11 | **Premium pasa de suscripción mensual a pago único de 4,99 €** (`docs/plans/2026-10-11-lifetime-payment.md`). `createCheckoutSession` ahora usa `mode: 'payment'`; se eliminaron `subscription_data` y `allow_promotion_codes` (parámetros exclusivos de suscripción) y se agregó `payment_intent_data.metadata.firebaseUid`. El webhook atiende `checkout.session.completed` (solo si `payment_status === 'paid'`), `payment_intent.succeeded` como ruta redundante, y `charge.refunded` que **revoca** el premium y vuelve a free; se eliminaron los tres casos `customer.subscription.*` que nunca dispararán. **Guard anti doble compra:** `createCheckoutSession` devuelve 400 con código `ALREADY_PREMIUM` antes de tocar Stripe si `meta.tier === 'premium'`. Se borraron `createBillingPortalSession` y `getSubscriptionStatus` (ambos código muerto, 0 call sites) junto con sus rewrites en `firebase.json`; el Billing Portal no aplica a un pago único. Ya no se escriben `stripeSubscriptionId/Status`, `stripePriceId` ni `stripeCurrentPeriodEnd`; ahora `premiumActivatedAt` y `stripePaymentIntentId`. **Planes configurables:** los límites viven en `backend/src/functions/src/config/plans.json` (canónico) con espejo en `src/config/plans.json`, y `utils/quotaConfig.js` los lee; `tests/config/plansDrift.test.ts` falla si divergen. **Frontend:** se quitó el botón "Gestionar suscripción" (premium ve solo texto) y se arregló una carrera: `SettingsView` consultaba `getQuota` una sola vez al volver de Stripe, antes de que llegara el webhook, y por eso mostraba "Plan gratuito" con el pago hecho; ahora hace polling cada 1,5s hasta que el tier cambia, con tope de 15s y toast de éxito solo al confirmar. **APIs disparadas sin cambios:** las mismas dos, `createCheckoutSession` y `stripeWebhook`. | Agent |
 | 2026-10-11 | **Fix de clientes Stripe huerfanos al cambiar de cuenta.** `No such customer: cus_...` (500) en `createCheckoutSession`: al pasar de claves live a sandbox, cada `stripeCustomerId` ya guardado en Firestore apuntaba a la otra cuenta y `getOrCreateStripeCustomer` lo devolvia sin comprobar. Ahora recupera el cliente primero y solo descarta ante `resource_missing`; los demas errores (auth, red) se propagan para que una API key mala no rote ids en silencio. `resolveUidForCharge` omite un cliente irresoluble en vez de fallar todo el lote. **Sin cambios en el set de APIs.** | Agent |
+| 2026-10-13 | **Fix "mazos no cargan al actualizar el dashboard" + visibilidad por llamada.** (F1) `loadInitialData` ya no ejecuta la rama guest/local cuando `user` todavia es `null` (antes escribia `[]` sobre `glimmind_lists` del usuario real y sellaba el TTL, dejando el dashboard vacio con onboarding); (F1b) cache local vacio (`[]`) fuerza `getLists` aunque el TTL este fresco; (F2) `fetchListsByUser` propaga errores (antes devolvia `[]` y sellaba el TTL en un fallo de red); (F3) `clearLocalCache` borra tambien `glimmind_last_cloud_fetch_<uid>`; (orden) getLists se invoca primero y getQuota + getSettings corren en paralelo con `Promise.allSettled` (antes getQuota/getSettings solo se pedian dentro de la rama de nube y tras esperar getLists); (UI) nuevo `bootstrapStatus` con spinner por parte: "Cargando mazos…" y alerta con Reintentar si getLists falla sin cache, chips `SyncChip` (mazos/ajustes/sincronizacion), QuotaAlert con loading/error/Reintentar y chip en DashboardToolbar; (reintento) `retryBootstrapPart(part)` reejecuta una sola llamada. **Set de APIs:** para usuarios reales, 2 siempre (getQuota, getSettings) y 3 si hay que refrescar mazos (getLists); 0 para guests; el progreso sigue viniendo de localStorage (sin getProgress). Correccion: las entradas previas del 2026-09-17 que mencionan `loadDashboardData()`/`getProgress` describian un plan que nunca se implemento en ese momento; el flujo real siempre fue `loadInitialData` unico. Tests: `tests/store/bootstrapLoad.test.ts`, `tests/services/fetchListsByUser.test.ts`, `tests/components/Dashboard.bootstrap.test.tsx`. | Agent |
 | 2026-10-11 | **Stripe pasa a modo LIVE.** Se creo el endpoint live `we_1UPTmjCCE67J3dcOOOaxqsGb` contra `https://us-central1-fladycard-22a3e.cloudfunctions.net/stripeWebhook` (eventos `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`) y se rotaron `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` y `STRIPE_WEBHOOK_SECRET` a valores reales. `stripeConfig.js` ya no rechaza `sk_live_`/`rk_live_`; en su lugar detecta dos confusiones: **clave live + precio de test** (los precios son por cuenta y fallan con "No such price") y **clave live dentro del Functions emulator** (el emulator resuelve los secretos desde Secret Manager, asi que una tarjeta real escrita en localhost cobraria de verdad). `STRIPE_ALLOW_LIVE_IN_EMULATOR=true` permite ensayar el flujo live localmente a proposito. En la cuenta live se creo el precio one-time `price_1UPTTHCCE67J3dcORO2Z1VYw` (499 EUR) y se desactivo el recurrente `price_1UOKzMCCE67J3dcOBzkWLf18`, que ya no era compatible con `mode: 'payment'`. Documentado en `docs/plans/2026-10-11-stripe-sandbox-to-live.md`. **Sin cambios en el set de APIs.** | Agent |
 ---
 
