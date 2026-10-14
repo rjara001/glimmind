@@ -4,7 +4,9 @@ import { GUEST_UID } from '../constants/app';
 import type { MyfeedinWindow } from '../types/feedback-widget';
 
 const WIDGET_SRC = 'https://myfeedin.com/widget.js';
-const PROJECT_ID = 'Tr3zskqgT2MchZXwwkP9';
+const PROJECT_ID = 'ApEKA21QHCbR1cbAFPpA';
+const WIDGET_POSITION = 'bottom-left';
+const WIDGET_COLOR = '#2563eb';
 const SCRIPT_ID = 'glimmind-feedback-widget';
 const WIDGET_NODE_ID = 'myfeedin-widget';
 const MODAL_NODE_ID = 'myfeedin-modal';
@@ -48,6 +50,8 @@ export const FeedbackWidget: React.FC = () => {
     script.src = WIDGET_SRC;
     script.async = true;
     script.setAttribute('data-project', PROJECT_ID);
+    script.setAttribute('data-position', WIDGET_POSITION);
+    script.setAttribute('data-color', WIDGET_COLOR);
     if (email) {
       script.setAttribute('data-user-email', email);
     }
