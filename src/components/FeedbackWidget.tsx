@@ -4,7 +4,7 @@ import { GUEST_UID } from '../constants/app';
 import type { MyfeedinWindow } from '../types/feedback-widget';
 
 const WIDGET_SRC = 'https://myfeedin.com/widget.js';
-const PROJECT_ID = 'ApEKA21QHCbR1cbAFPpA';
+const PROJECT_ID = 'Tr3zskqgT2MchZXwwkP9';
 const WIDGET_POSITION = 'bottom-left';
 const WIDGET_COLOR = '#2563eb';
 const SCRIPT_ID = 'glimmind-feedback-widget';
