@@ -18,6 +18,7 @@ import {
   PREMIUM_TOAST_CHECKOUT_ERROR,
   PREMIUM_TOAST_GUARD,
   PREMIUM_TOAST_PENDING,
+  PREMIUM_TOAST_RECORDING_REQUIRED,
   PREMIUM_TOAST_UPGRADED,
 } from '../../constants/premium';
 import type { PremiumUpgradeOutcome } from '../../types/premium';
@@ -121,6 +122,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
   };
 
   const handleToggleAudioRecording = () => {
+    // Rule 0: recording uploads to Firebase Storage, so it is Premium-only.
+    if (!isPremium) {
+      showToast(PREMIUM_TOAST_RECORDING_REQUIRED, 'info');
+      return;
+    }
     setSettings({ ...settings, audioRecordingEnabled: !settings.audioRecordingEnabled });
   };
 
@@ -281,7 +287,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
               Guarda los audios de tus intentos en modo voz, separados por acierto y error.
               Temporal: los archivos se eliminan automáticamente.
             </p>
-            {settings.audioRecordingEnabled ? (
+            {!isPremium ? (
+              <p className="text-xs text-indigo-600 mt-2 font-medium">
+                Función Premium. Actualizá tu plan para guardar tus audios en la nube.
+              </p>
+            ) : settings.audioRecordingEnabled ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
                 Activo. Las grabaciones se suben a la nube y se eliminan de forma automática.
               </p>
@@ -296,9 +306,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             aria-checked={settings.audioRecordingEnabled}
             aria-label="Grabación de audio"
             onClick={handleToggleAudioRecording}
+            disabled={!isPremium}
             className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
               settings.audioRecordingEnabled ? 'bg-indigo-600' : 'bg-slate-200'
-            }`}
+            } ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <span
               className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${

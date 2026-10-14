@@ -39,6 +39,9 @@ exports.transcribeSpeech = onRequest(
       );
     } catch (error) {
       console.error('[transcribeSpeech] failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'TIER_REQUIRED') {
+        return res.status(403).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
         return res.status(429).json({ error: error.message, code: error.code });
       }
@@ -88,6 +91,9 @@ exports.transcribeExistingAudio = onRequest(
       );
     } catch (error) {
       console.error('[transcribeExistingAudio] failed', { uid, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'TIER_REQUIRED') {
+        return res.status(403).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
         return res.status(429).json({ error: error.message, code: error.code });
       }
@@ -159,6 +165,9 @@ exports.transcribeChirp3 = onRequest(
       );
     } catch (error) {
       console.error('[transcribeChirp3] failed', { uid, audioDuration, audioSeconds, code: error.code, message: error.message });
+      if (error.code === 'TIER_REQUIRED') {
+        return res.status(403).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
         return res.status(429).json({ error: error.message, code: error.code });
       }

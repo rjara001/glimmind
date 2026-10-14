@@ -17,6 +17,9 @@ export const PREMIUM_TOAST_CHECKOUT_CANCELED = 'Cancelaste el pago. Tu plan sigu
 export const PREMIUM_TOAST_CHECKOUT_ERROR = 'No pudimos abrir el pago. Intentá de nuevo.';
 export const PREMIUM_TOAST_ALREADY_PREMIUM = 'Tu cuenta ya es Premium.';
 export const PREMIUM_TOAST_GUARD = 'Inicia sesión con Google para cambiar tu plan.';
+// Recording toggle in SettingsView: shown when a free account tries to enable it.
+export const PREMIUM_TOAST_RECORDING_REQUIRED =
+  'La grabación de audio es una función Premium. Actualizá tu plan para activarla.';
 
 // Landing page -> login -> SettingsView. LandingPage is only rendered for
 // signed-out visitors, so the checkout cannot be started there directly.

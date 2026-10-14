@@ -11,6 +11,7 @@ import { useImmersiveHeader } from "../../hooks/ui/useImmersiveHeader";
 import { useOrientation } from "../../hooks/ui/useOrientation";
 import { useGameVoice } from "../../hooks/voice/useGameVoice";
 import { useSpeechSynthesis } from "../../hooks/voice/tts/useSpeechSynthesis";
+import { resolveEffectiveTtsProvider } from "../../services/voice/effectiveProviders";
 import { useVoiceRecordings } from "../../hooks/voice/useVoiceRecordings";
 import { usePracticePlayer } from "../../hooks/game/usePracticePlayer";
 import { PRACTICE_REVEAL_DELAY_SECONDS, PRACTICE_AUTO_ADVANCE_SECONDS } from "../../constants/app";
@@ -125,6 +126,9 @@ export const GameView: React.FC<GameViewProps> = ({
     [actions, state],
   );
 
+  const quota = useGameStore((s) => s.quota);
+  const isPremium = quota?.tier === "premium";
+
   const voice = useGameVoice({
     list,
     enabled: state.isVoiceActive && !state.isEditingCard,
@@ -140,18 +144,17 @@ export const GameView: React.FC<GameViewProps> = ({
     commands: list.settings.voiceCommands,
     onCommand: handleVoiceCommand,
     revealed: isRevealed,
-    audioRecordingEnabled: useGameStore.getState().settings.audioRecordingEnabled,
+    audioRecordingEnabled:
+      useGameStore.getState().settings.audioRecordingEnabled && isPremium,
   });
   const voiceRef = useGameVoiceRef(voice);
 
   const goalProgress = useGameStore((s) => s.progress?.goalProgress ?? 0);
   const goalTarget = useGameStore((s) => s.progress?.goalTarget ?? 0);
-  const quota = useGameStore((s) => s.quota);
   const userId = useGameStore((s) => s.user?.uid);
-  const isPremium = quota?.tier === "premium";
 
   const { speak: speakAnswer, supported: speechSupported } = useSpeechSynthesis(
-    list.settings.ttsProvider || "browser",
+    resolveEffectiveTtsProvider(list.settings.ttsProvider, quota?.tier),
   );
 
   const handleSpeakAnswer = useCallback(
@@ -344,9 +347,9 @@ export const GameView: React.FC<GameViewProps> = ({
       <div className="hidden sm:block">
         <GameHeaderBar isMobile={false} immersive={immersive} {...headerProps} />
       </div>
-      {state.isVoiceActive && useGameStore.getState().settings.audioRecordingEnabled && (
-        <RecordingWarningBanner />
-      )}
+      {state.isVoiceActive &&
+        useGameStore.getState().settings.audioRecordingEnabled &&
+        isPremium && <RecordingWarningBanner />}
       <div ref={countersRef} className={`flex flex-col lg:flex-row gap-6 items-start relative ${immersive.isVisible ? "mt-2" : ""}`}>
         <div className="flex-1 w-full flex flex-col items-center">
           <div ref={questionCardRef} className="w-full">

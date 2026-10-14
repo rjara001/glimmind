@@ -103,13 +103,14 @@ makes the paid tier dishonest:
 
 | Promise | Reality |
 |---|---|
-| "Voces HD (Chirp 3)" | Available to everyone, limited only by quota |
+| "Voces HD (Chirp 3)" | **Closed 2026-10-14** — hidden for free accounts, coerced to browser at runtime, and rejected server-side with `TIER_REQUIRED` (403) |
 | "Estadísticas avanzadas" | Does not exist (`featureFlags.reports = false`) |
 | "Exporta todos tus datos" | Not gated; no frontend call site |
 | "Soporte prioritario" | Not implemented |
 
-And one leak: the audio-recording toggle in Settings writes to Firebase Storage
-with no tier check, so a free user generates storage cost.
+And one leak, **closed on 2026-10-14**: the audio-recording toggle in Settings
+now requires Premium — the toggle is disabled for free accounts, the handler
+guards stale clicks, and `useGameVoice` only records when the tier is premium.
 
 **Before any limit is set, marketing copy must match what is actually gated.**
 
@@ -183,6 +184,7 @@ case AI deck generation costs $0 and the largest cost line disappears.
 | 2026-10-11 | Capacity overrun → stop onboarding free users; model deferred |
 | 2026-10-11 | DeepL removed; Google Translate v3 is the only translation engine |
 | 2026-10-11 | Premium = unlimited core + metered AI/voice; no hidden functionality |
+| 2026-10-14 | Rule 0 enforced for voice: free tier blocked from Chirp 3 HD, cloud transcription and audio recording (`TIER_REQUIRED`, 403) |
 
 ## 8. Still open
 

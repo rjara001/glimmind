@@ -424,24 +424,47 @@ describe('TTS quota (backend)', () => {
     return buildTtsQuotaSpec(db, 'u1', MONTH, charCount);
   }
 
-  it('stops at 5 000 free characters no matter how many requests race', async () => {
+  it('rejects a free account before any synthesis: Rule 0 gives it no Chirp allowance', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
+    const spend = vi.fn(async () => 'audio');
+
+    await expect(runMeteredCall(db, ttsSpec(db, 1000), spend)).rejects.toMatchObject({
+      code: 'TIER_REQUIRED',
+      limit: 0,
+    });
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 20 }, () => runMeteredCall(db, ttsSpec(db, 1000), spend))
+    );
+
+    expect(attempts.filter((a) => a.status === 'rejected')).toHaveLength(20);
+    expect(spend).not.toHaveBeenCalled();
+    expect(store.get(USER_PATH)).toBeUndefined();
+    expect(store.get(GLOBAL_PATH)).toBeUndefined();
+  });
+
+  it('stops at the 100 000-char premium limit no matter how many requests race', async () => {
+    const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
+    const db = fakeDb();
+    store.set('users/u1/meta/main', { tier: 'premium' });
+    store.set(USER_PATH, { monthKey: MONTH, charsUsed: 90000, callCount: 90 });
 
     const attempts = await Promise.allSettled(
       Array.from({ length: 20 }, () => runMeteredCall(db, ttsSpec(db, 1000), async () => 'audio'))
     );
 
-    expect(attempts.filter((a) => a.status === 'fulfilled')).toHaveLength(5);
-    expect(store.get(USER_PATH)?.charsUsed).toBe(5000);
-    expect(store.get(GLOBAL_PATH)?.charsUsed).toBe(5000);
-    expect(store.get(USER_PATH)?.callCount).toBe(5);
-    expect(store.get(GLOBAL_PATH)?.totalCalls).toBe(5);
+    expect(attempts.filter((a) => a.status === 'fulfilled')).toHaveLength(10);
+    expect(store.get(USER_PATH)?.charsUsed).toBe(100000);
+    expect(store.get(USER_PATH)?.callCount).toBe(100);
+    expect(store.get(GLOBAL_PATH)?.charsUsed).toBe(10000);
+    expect(store.get(GLOBAL_PATH)?.totalCalls).toBe(10);
   });
 
   it('refunds the characters when synthesis fails', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
+    store.set('users/u1/meta/main', { tier: 'premium' });
 
     await expect(
       runMeteredCall(db, ttsSpec(db, 800), async () => {
@@ -458,15 +481,16 @@ describe('TTS quota (backend)', () => {
   it('keeps the USER_QUOTA_EXCEEDED code the route maps to 429', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
-    store.set(USER_PATH, { monthKey: MONTH, charsUsed: 4500, callCount: 4 });
+    store.set('users/u1/meta/main', { tier: 'premium' });
+    store.set(USER_PATH, { monthKey: MONTH, charsUsed: 99500, callCount: 4 });
 
     await expect(runMeteredCall(db, ttsSpec(db, 1000), async () => 'audio')).rejects.toMatchObject({
       code: 'USER_QUOTA_EXCEEDED',
-      used: 4500,
-      limit: 5000,
+      used: 99500,
+      limit: 100000,
     });
 
-    expect(store.get(USER_PATH)?.charsUsed).toBe(4500);
+    expect(store.get(USER_PATH)?.charsUsed).toBe(99500);
   });
 });
 
@@ -491,22 +515,45 @@ describe('STT quota (backend)', () => {
     return buildSttQuotaSpec(db, 'u1', MONTH, audioSeconds);
   }
 
-  it('stops at 3 000 free seconds under concurrency', async () => {
+  it('rejects a free account before any transcription: Rule 0 gives it no cloud allowance', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
+    const spend = vi.fn(async () => 'text');
+
+    await expect(runMeteredCall(db, sttSpec(db, 60), spend)).rejects.toMatchObject({
+      code: 'TIER_REQUIRED',
+      limit: 0,
+    });
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 20 }, () => runMeteredCall(db, sttSpec(db, 600), spend))
+    );
+
+    expect(attempts.filter((a) => a.status === 'rejected')).toHaveLength(20);
+    expect(spend).not.toHaveBeenCalled();
+    expect(store.get(USER_PATH)).toBeUndefined();
+    expect(store.get(GLOBAL_PATH)).toBeUndefined();
+  });
+
+  it('stops at the 72 000-second premium limit under concurrency', async () => {
+    const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
+    const db = fakeDb();
+    store.set('users/u1/meta/main', { tier: 'premium' });
+    store.set(USER_PATH, { monthKey: MONTH, audioSecondsUsed: 60600, callCount: 100 });
 
     const attempts = await Promise.allSettled(
       Array.from({ length: 20 }, () => runMeteredCall(db, sttSpec(db, 600), async () => 'text'))
     );
 
-    expect(attempts.filter((a) => a.status === 'fulfilled')).toHaveLength(5);
-    expect(store.get(USER_PATH)?.audioSecondsUsed).toBe(3000);
-    expect(store.get(GLOBAL_PATH)?.audioSecondsUsed).toBe(3000);
+    expect(attempts.filter((a) => a.status === 'fulfilled')).toHaveLength(19);
+    expect(store.get(USER_PATH)?.audioSecondsUsed).toBe(72000);
+    expect(store.get(GLOBAL_PATH)?.audioSecondsUsed).toBe(11400);
   });
 
   it('refunds the seconds when the recogniser fails', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
+    store.set('users/u1/meta/main', { tier: 'premium' });
 
     await expect(
       runMeteredCall(db, sttSpec(db, 60), async () => {
@@ -520,6 +567,7 @@ describe('STT quota (backend)', () => {
   it('refunds the seconds on NO_SPEECH, which the product does not charge for', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
+    store.set('users/u1/meta/main', { tier: 'premium' });
 
     await expect(
       runMeteredCall(db, sttSpec(db, 60), async () => {
@@ -536,7 +584,8 @@ describe('STT quota (backend)', () => {
   it('reserves before the recogniser runs, so an over-quota user is never billed', async () => {
     const { runMeteredCall } = require('../../backend/src/functions/src/utils/meteredQuota');
     const db = fakeDb();
-    store.set(USER_PATH, { monthKey: MONTH, audioSecondsUsed: 3000, callCount: 50 });
+    store.set('users/u1/meta/main', { tier: 'premium' });
+    store.set(USER_PATH, { monthKey: MONTH, audioSecondsUsed: 72000, callCount: 50 });
 
     const spend = vi.fn(async () => 'text');
 

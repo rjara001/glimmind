@@ -2,6 +2,11 @@ import { useCallback } from 'react';
 import { useSpeechSynthesis } from './tts/useSpeechSynthesis';
 import { useSpeechRecognition } from './stt/useSpeechRecognition';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
+import {
+  resolveEffectiveSttProvider,
+  resolveEffectiveTtsProvider,
+} from '../../services/voice/effectiveProviders';
+import { useGameStore } from '../../store/gameStore';
 import { AssociationList } from '../../types';
 
 export interface UseVoiceSTTOptions {
@@ -22,14 +27,17 @@ export interface UseVoiceSTTResult {
 }
 
 export function useVoiceSTT({ list, expectedWords, onInterim, onFinal, onError }: UseVoiceSTTOptions): UseVoiceSTTResult {
-  const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
+  const tier = useGameStore((state) => state.quota?.tier);
+  const tts = useSpeechSynthesis(
+    resolveEffectiveTtsProvider(list.settings.ttsProvider, tier)
+  );
   const languages = resolveVoiceLanguages(list.concept, list.settings.flipOrder, {
     termLang: list.settings.voiceTermLang,
     defLang: list.settings.voiceDefLang,
   });
 
   const stt = useSpeechRecognition({
-    provider: list.settings.sttProvider || 'browser',
+    provider: resolveEffectiveSttProvider(list.settings.sttProvider, tier),
     expectedWords,
     onInterim: (text) => {
       onInterim(text);

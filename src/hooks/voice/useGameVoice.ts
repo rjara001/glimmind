@@ -6,6 +6,10 @@ import { useAudioRecorder } from './useAudioRecorder';
 import { uploadAudioRecording } from '../../services/audioService';
 import { useGameStore } from '../../store/gameStore';
 import { resolveVoiceLanguages } from '../../services/voice/languages';
+import {
+  resolveEffectiveSttProvider,
+  resolveEffectiveTtsProvider,
+} from '../../services/voice/effectiveProviders';
 import { isExactExpectedAnswer } from '../../services/voice/stt/earlyMatch';
 import {
   matchVoiceCommand,
@@ -140,9 +144,12 @@ const expectedWords = useMemo(() => {
     [list.concept, list.settings.voiceTermLang, list.settings.voiceDefLang],
   );
 
-  const tts = useSpeechSynthesis(list.settings.ttsProvider || 'browser');
+  const tier = useGameStore((state) => state.quota?.tier);
+  const tts = useSpeechSynthesis(
+    resolveEffectiveTtsProvider(list.settings.ttsProvider, tier)
+  );
   const stt = useSpeechRecognition({
-    provider: list.settings.sttProvider || 'browser',
+    provider: resolveEffectiveSttProvider(list.settings.sttProvider, tier),
     expectedWords,
     commandWords,
     minCommandConfidence: VOSK_MIN_COMMAND_CONFIDENCE,

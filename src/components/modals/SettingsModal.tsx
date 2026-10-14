@@ -3,7 +3,13 @@ import { useVoskModelContext } from '../../context/VoskModelContext';
 import { VoiceLanguage } from '../../types';
 import { SettingsModalProps } from '../../types/settings-modal-props';
 import { ListSettings } from '../../types';
+import type { UserTier } from '../../types/quota';
 import { isChirpVoiceId } from '../../services/voice/tts/chirpVoices';
+import { useGameStore } from '../../store/gameStore';
+import {
+  resolveEffectiveSttProvider,
+  resolveEffectiveTtsProvider,
+} from '../../services/voice/effectiveProviders';
 
 import { logEvent } from '../../services/errorReporting';
   import { GameModeSection } from './settings/GameModeSection';
@@ -23,8 +29,21 @@ import { logEvent } from '../../services/errorReporting';
     };
   };
 
-  function normalizeVoiceSettings(settings: ListSettings): ListSettings {
+  export function normalizeVoiceSettings(
+    settings: ListSettings,
+    tier: UserTier | null | undefined
+  ): ListSettings {
     const normalized = { ...settings };
+
+    // Rule 0: a free account can never store a cloud voice provider.
+    const ttsProvider = resolveEffectiveTtsProvider(normalized.ttsProvider, tier);
+    if (normalized.ttsProvider && ttsProvider !== normalized.ttsProvider) {
+      normalized.ttsProvider = ttsProvider;
+    }
+    const sttProvider = resolveEffectiveSttProvider(normalized.sttProvider, tier);
+    if (normalized.sttProvider && sttProvider !== normalized.sttProvider) {
+      normalized.sttProvider = sttProvider;
+    }
 
     if (normalized.ttsProvider === 'chirp') {
       if (!isChirpVoiceId(normalized.voiceTermId as string)) {
@@ -43,8 +62,9 @@ import { logEvent } from '../../services/errorReporting';
     onUpdateList,
     onClose,
   }) => {
+    const tier = useGameStore((state) => state.quota?.tier);
     const [draft, setDraft] = useState(() =>
-      normalizeVoiceSettings(list.settings || ({} as ListSettings))
+      normalizeVoiceSettings(list.settings || ({} as ListSettings), tier)
     );
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +102,7 @@ import { logEvent } from '../../services/errorReporting';
     setIsSubmitting(true);
 
     try {
-      const finalSettings = normalizeVoiceSettings(draft);
+      const finalSettings = normalizeVoiceSettings(draft, tier);
 
       const updatedList = {
         ...list,
@@ -231,6 +251,7 @@ import { logEvent } from '../../services/errorReporting';
             />
 
             <VoiceSection
+              isPremium={tier === 'premium'}
               isVoiceEnabled={isVoiceEnabled}
               onVoiceEnabledToggle={() =>
                 setDraft({

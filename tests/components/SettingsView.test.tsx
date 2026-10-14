@@ -114,6 +114,46 @@ describe('SettingsView', () => {
     });
   });
 
+  describe('audio recording gating', () => {
+    it('disables the recording toggle for a free account and explains why', () => {
+      useGameStore.setState({ user: AUTHED_USER, quota: FREE_QUOTA });
+      renderWithToast(<SettingsView onBack={onBack} />);
+
+      const toggle = screen.getByRole('switch', { name: 'Grabación de audio' });
+      expect(toggle).toBeDisabled();
+      expect(screen.getByText(/Función Premium\. Actualizá tu plan/i)).toBeInTheDocument();
+    });
+
+    it('leaves the setting untouched when a free account clicks the toggle', () => {
+      useGameStore.setState({ user: AUTHED_USER, quota: FREE_QUOTA });
+      renderWithToast(<SettingsView onBack={onBack} />);
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Grabación de audio' }));
+
+      expect(useGameStore.getState().settings.audioRecordingEnabled).toBe(false);
+      expect(screen.queryByText(/La grabación de audio es una función Premium/i)).not.toBeInTheDocument();
+    });
+
+    it('lets a premium account turn recording on', () => {
+      useGameStore.setState({ user: AUTHED_USER, quota: PREMIUM_QUOTA });
+      renderWithToast(<SettingsView onBack={onBack} />);
+
+      const toggle = screen.getByRole('switch', { name: 'Grabación de audio' });
+      expect(toggle).not.toBeDisabled();
+
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
+      expect(useGameStore.getState().settings.audioRecordingEnabled).toBe(true);
+    });
+
+    it('keeps the toggle disabled for a guest, whose tier is never premium', () => {
+      useGameStore.setState({ user: { ...AUTHED_USER, uid: GUEST_UID }, quota: null });
+      renderWithToast(<SettingsView onBack={onBack} />);
+
+      expect(screen.getByRole('switch', { name: 'Grabación de audio' })).toBeDisabled();
+    });
+  });
+
   describe('premium checkout', () => {
     it('opens a Stripe checkout session for a free user', async () => {
       useGameStore.setState({ user: AUTHED_USER, quota: FREE_QUOTA });

@@ -66,6 +66,9 @@ exports.synthesizeSpeech = onRequest(
       res.json({ audioContent });
     } catch (error) {
       console.error('[synthesizeSpeech] failed:', error.message);
+      if (error.code === 'TIER_REQUIRED') {
+        return res.status(403).json({ error: error.message, code: error.code });
+      }
       if (error.code === 'GLOBAL_QUOTA_EXCEEDED' || error.code === 'USER_QUOTA_EXCEEDED') {
         return res.status(429).json({ error: error.message });
       }

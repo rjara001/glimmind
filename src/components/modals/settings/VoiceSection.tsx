@@ -44,6 +44,7 @@ function buildVoiceOptions(
 }
 
 interface VoiceSectionProps {
+  isPremium: boolean;
   isVoiceEnabled: boolean;
   onVoiceEnabledToggle: () => void;
   ttsProvider: string;
@@ -60,6 +61,7 @@ interface VoiceSectionProps {
 }
 
 export const VoiceSection: React.FC<VoiceSectionProps> = ({
+  isPremium,
   isVoiceEnabled,
   onVoiceEnabledToggle,
   ttsProvider,
@@ -122,7 +124,8 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
               onChange={onTtsProviderChange}
               options={[
                 { value: 'browser', label: 'Browser' },
-                { value: 'chirp', label: 'Chirp 3 HD' },
+                // Rule 0: Chirp 3 HD is Premium-only (BUSINESS_MODEL §4).
+                ...(isPremium ? [{ value: 'chirp', label: 'Chirp 3 HD' }] : []),
               ]}
             />
             {ttsProvider === 'chirp' && (
@@ -141,7 +144,8 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
               onChange={onSttProviderChange}
               options={[
                 { value: 'browser', label: 'Browser' },
-                { value: 'chiptt', label: 'Chiptt' },
+                // Rule 0: cloud transcription is Premium-only (BUSINESS_MODEL §4).
+                ...(isPremium ? [{ value: 'chiptt', label: 'Chiptt' }] : []),
                 { value: 'vosk', label: 'Vosk' },
               ]}
             />

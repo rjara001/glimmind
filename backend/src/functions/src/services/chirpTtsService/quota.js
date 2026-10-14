@@ -1,7 +1,6 @@
 const { snapshotNumber } = require("../../utils/meteredQuota");
 const {
   CHIRP_TTS_GLOBAL_LIMIT,
-  CHIRP_TTS_USER_LIMIT,
   CHIRP_TTS_PREMIUM_USER_LIMIT,
 } = require("../../utils/constants");
 
@@ -29,9 +28,10 @@ function buildTtsQuotaDocumentRefs(db, uid, monthKey) {
 }
 
 function userTtsLimit(tierData) {
-  return tierData && tierData.tier === "premium"
-    ? CHIRP_TTS_PREMIUM_USER_LIMIT
-    : CHIRP_TTS_USER_LIMIT;
+  // Rule 0 (BUSINESS_MODEL §1/§4): the free tier never reaches a billed API,
+  // so its effective monthly limit is zero and the request is rejected inside
+  // the same transaction that reads the tier.
+  return tierData && tierData.tier === "premium" ? CHIRP_TTS_PREMIUM_USER_LIMIT : 0;
 }
 
 function quotaError(message, code, used, limit) {
@@ -84,6 +84,14 @@ function buildTtsQuotaSpec(db, uid, monthKey, charCount) {
         delta: charCount,
         limit: userTtsLimit,
         onExceed(used, limit) {
+          if (limit === 0) {
+            return quotaError(
+              "Chirp 3 HD es una función Premium. Actualiza tu plan para usarla.",
+              "TIER_REQUIRED",
+              used,
+              limit
+            );
+          }
           return quotaError(
             `Llegaste a tu límite mensual de voz (${limit} caracteres). Vuelve el próximo mes.`,
             "USER_QUOTA_EXCEEDED",

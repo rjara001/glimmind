@@ -1,8 +1,16 @@
 # Paid features reachable from the free tier
 
-**Date:** 2026-10-11
-**Priority:** P1
-**Status:** Not fixed — the product decision is **not** part of this issue
+**Resolved:** 2026-10-14, by
+[`../../plans/2026-10-14-premium-voice-gating.md`](../../plans/2026-10-14-premium-voice-gating.md).
+Chirp 3 HD and Chiptt are hidden for free accounts, coerced to `browser` at
+every voice call site, and rejected server-side (`TIER_REQUIRED`, HTTP 403) —
+the free allowance is now 0 chars / 0 s instead of 5 000 / 3 000. The audio
+recording toggle in Settings is disabled for free accounts, the handler guards
+stale clicks, and `useGameVoice` only records when the tier is premium.
+Verified by `tests/services/meteredQuota.test.ts`,
+`src/services/voice/effectiveProviders.test.ts`,
+`tests/components/SettingsView.test.tsx` and
+`tests/components/modals/settings/`.
 
 ## What
 

@@ -1,7 +1,6 @@
 const { snapshotNumber } = require("../../utils/meteredQuota");
 const {
   CHIPTT_STT_GLOBAL_LIMIT,
-  CHIPTT_STT_USER_LIMIT,
   CHIPTT_STT_PREMIUM_USER_LIMIT,
 } = require("../../utils/constants");
 
@@ -29,9 +28,10 @@ function buildSttQuotaDocumentRefs(db, uid, monthKey) {
 }
 
 function userSttLimit(tierData) {
-  return tierData && tierData.tier === "premium"
-    ? CHIPTT_STT_PREMIUM_USER_LIMIT
-    : CHIPTT_STT_USER_LIMIT;
+  // Rule 0 (BUSINESS_MODEL §1/§4): the free tier never reaches a billed API,
+  // so its effective monthly limit is zero and the request is rejected inside
+  // the same transaction that reads the tier.
+  return tierData && tierData.tier === "premium" ? CHIPTT_STT_PREMIUM_USER_LIMIT : 0;
 }
 
 function quotaError(message, code, used, limit, details) {
@@ -90,6 +90,14 @@ function buildSttQuotaSpec(db, uid, monthKey, audioSeconds) {
         delta: audioSeconds,
         limit: userSttLimit,
         onExceed(used, limit) {
+          if (limit === 0) {
+            return quotaError(
+              "La transcripción en la nube es una función Premium. Actualiza tu plan para usarla.",
+              "TIER_REQUIRED",
+              used,
+              limit
+            );
+          }
           console.error('[Chiptt] user quota exceeded', {
             uid,
             audioSeconds,
