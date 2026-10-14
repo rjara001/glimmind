@@ -1,7 +1,9 @@
 # Plan: E2E Tests as the Last Barrier Before Deploy
 
 **Date:** 2026-10-13
-**Status:** Approved — execution started (Phase 0)
+**Status:** Complete 2026-10-14 — all six phases shipped (7 specs, `e2e` CI job,
+`deploy` gated on `needs: [test, e2e]`); suite green twice in a row locally,
+evidence in §9.
 **Source of truth for features:** `docs/SERVICE_CATALOG.md`
 
 ---
@@ -147,3 +149,43 @@ App code changes are allowed only when a spec cannot be written otherwise
 === FILES VERIFIED ===    ls e2e/ playwright.config.ts
 === CI ===                deploy job `needs` includes 'e2e'
 ```
+
+---
+
+## 9. Verification evidence (2026-10-14)
+
+```
+=== TSC OUTPUT ===
+$ npx tsc --noEmit
+TSC EXIT: 0   (empty output)
+
+=== TEST OUTPUT ===
+$ npx vitest run
+ Test Files  68 passed (68)
+      Tests  836 passed (836)
+   Duration  14.27s
+VITEST EXIT: 0
+
+=== E2E OUTPUT ===
+$ npx playwright test   (run 1)
+  7 passed (24.8s)
+RUN1 EXIT: 0
+
+$ npx playwright test   (run 2)
+  7 passed (15.4s)
+RUN2 EXIT: 0
+
+=== FILES VERIFIED ===
+playwright.config.ts
+e2e/: 01-smoke.spec.ts 02-create-deck.spec.ts 03-game-real.spec.ts
+      04-game-practice.spec.ts 05-resume.spec.ts 06-edit-card.spec.ts
+      07-activity.spec.ts fixtures.ts helpers.ts
+
+=== CI ===
+.github/workflows/ci.yml:39   job `e2e` (installs chromium, runs `npx playwright test`)
+.github/workflows/ci.yml:72   `deploy` → `needs: [test, e2e]`
+```
+
+Both findings parked during research were filed per §7:
+`docs/issues/P1/2026-10-13-prebuiltdeck-sin-guard-guest.md` and
+`docs/issues/P2/2026-10-13-settingsmodal-log-sin-guard-guest.md`.
