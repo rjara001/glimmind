@@ -334,7 +334,12 @@ describe('card ceiling (backend listService)', () => {
       expect(ids).toHaveLength(2);
       // delta is 3000 - 2000 = +1000
       expect(cardCountNow()).toBe(2000);
-      expect(store.get(BIG_LIST)).toBeUndefined();
+      // The original deck is never deleted: it is replaced in place by the
+      // first group, otherwise those cards are lost
+      // (docs/issues/P1/2026-10-15-splitlist-borra-mazo-original.md).
+      expect(ids[0]).toBe('big');
+      expect(store.get(BIG_LIST)).toBeDefined();
+      expect(store.get(BIG_LIST).associations).toHaveLength(1500);
     });
   });
 

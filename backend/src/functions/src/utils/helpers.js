@@ -43,9 +43,12 @@ async function getOrCreateMeta(db, userId) {
     return { ref: metaRef, data: snap.data() };
   }
   const listsSnap = await db.collection("lists").where("userId", "==", userId).get();
+  const { normalizeAssociationsToList } = require("./associationDeltas");
   const cardCount = listsSnap.docs.reduce((sum, doc) => {
-    const associations = doc.data().associations;
-    return sum + (Array.isArray(associations) ? associations.length : 0);
+    // A deck whose associations were corrupted into a map still holds cards;
+    // counting only arrays drove the rebuilt counter toward 0
+    // (docs/issues/done/2026-10-15-cardcount-cero-con-associations-malformado.md).
+    return sum + normalizeAssociationsToList(doc.data().associations).length;
   }, 0);
   const freeMaxCards = getMaxCards('free');
   const freeAiDailyLimit = getAiDailyLimit('free');

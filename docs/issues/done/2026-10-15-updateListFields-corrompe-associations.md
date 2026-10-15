@@ -64,9 +64,11 @@ RESULT: BUG
 
 ## Fix
 
-Status: implemented in code on 2026-10-15, pending commit/deploy. Verified
-locally with `scripts/repro-p0-updateListFields-corruption.mjs`
-(`RESULT: OK`, array of 3 preserved, delta applied in place).
+Status: fixed and deployed on 2026-10-15 (v1.39.2). Verified locally with
+`scripts/repro-p0-updateListFields-corruption.mjs` (`RESULT: OK`, array of 3
+preserved, delta applied in place) and re-validated after the deploy with a
+10-card stress run (two delta batches plus an unknown id: array intact, no
+resurrection).
 
 - `backend/src/functions/src/services/listService/crud.js` — `updateListFields`
   now reads the document inside the transaction, normalizes `associations` to an

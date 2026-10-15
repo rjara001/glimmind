@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useGameStore } from "../../store/gameStore";
 import { listService } from "../../services/listService";
+import { listService as firestoreListService } from "../../services/firestoreService";
 import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
 import { QuotaService } from "../../services/quotaService";
@@ -381,6 +382,17 @@ const handlePlayList = useCallback(
       setIsSplitting(true);
       try {
         await listService.splitList(realListId, groups);
+        // The split rewrites the original deck and creates the rest in the
+        // cloud. A prefer-local merge would resurrect the cards that left the
+        // original deck, so the local cache takes the cloud version of every
+        // deck that exists there and keeps only local-only decks.
+        const cloudLists = await firestoreListService.fetchListsByUser(user.uid);
+        const { lists: currentLists, setLists } = useGameStore.getState();
+        const cloudIds = new Set(cloudLists.map((l) => l.id));
+        setLists([
+          ...cloudLists,
+          ...currentLists.filter((l) => !cloudIds.has(l.id)),
+        ]);
         showToast("Mazos divididos correctamente", "success");
       } catch (error) {
         showToast(

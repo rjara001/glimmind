@@ -36,13 +36,12 @@ export const listService = {
   },
 
   updateList: async (listId: string, updates: Partial<AssociationList>): Promise<void> => {
-    try {
-      await callFunction('updateList', { listId, ...updates });
-    } catch (error) {
-      // If the user is anonymous or the backend fails, don't throw - local update is sufficient
-      console.warn('[firestoreService.updateList] Remote update failed, keeping local changes:', error);
-      // Don't re-throw to allow local-only updates for anonymous users
-    }
+    // Errors propagate on purpose: swallowing them made the editor report
+    // "Lista guardada" after a write that never reached the cloud
+    // (docs/issues/P2/2026-10-15-updatelist-silencia-error-en-nube.md).
+    // Callers handle the failure (useAppHandlers.handleUpdateList shows a toast;
+    // gameStore.markListCompleted logs it). Guests never reach this function.
+    await callFunction('updateList', { listId, ...updates });
   },
 
   deleteList: async (listId: string): Promise<void> => {

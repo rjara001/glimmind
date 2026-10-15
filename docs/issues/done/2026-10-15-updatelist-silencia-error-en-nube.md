@@ -1,5 +1,11 @@
 # updateList swallows remote write failures
 
+Status: fixed on 2026-10-15 (pending deploy of the release that carries it).
+`firestoreService.updateList` propagates the error again; the guest path never
+reaches it, and both real callers already handle failure
+(`useAppHandlers.handleUpdateList` shows a toast, `gameStore.markListCompleted`
+logs it).
+
 ## What
 
 `firestoreService.updateList` (`src/services/firestoreService.ts:37-45`) catches

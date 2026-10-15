@@ -1,5 +1,10 @@
 # cardCount falls to 0 when a deck's associations are not an array
 
+Status: fixed on 2026-10-15 (pending deploy of the release that carries it).
+`getOrCreateMeta` now runs every deck through `normalizeAssociationsToList`, so
+map-shaped decks count toward the rebuilt total. Test:
+`backend/src/functions/tests/cardCountRebuild.test.js`.
+
 ## What
 
 `getOrCreateMeta` (`backend/src/functions/src/utils/helpers.js:45-49`) rebuilds

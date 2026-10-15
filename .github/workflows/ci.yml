@@ -36,6 +36,9 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+      - name: Run backend tests
+        run: npm run test:backend
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest

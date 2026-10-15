@@ -1,5 +1,13 @@
 # splitList deletes the original deck
 
+Status: fixed on 2026-10-15 (pending deploy of the release that carries it).
+`groups[0]` now replaces the original deck in place and the document is never
+deleted; the client sends all groups (no pre-save/polling dance) and refreshes
+the local cache from the cloud after the split. Verified on the emulator:
+250-card deck split into 100/100/50 — the original survives with part 1, the
+two new decks hold the rest, all 250 cards accounted for, `cardCount` stays at
+250. Tests: `tests/services/cardCeiling.test.ts` (splitList section).
+
 ## What
 
 `divideOriginalListIntoGroupsAndReplaceIt` (`backend/src/functions/src/services/listService/crud.js:223`)

@@ -544,29 +544,10 @@ export function useListEditorActions(
             }
           }
         } else {
-          const firstGroup = groups[0];
-          const updated = { ...editList, associations: firstGroup.associations };
-          setEditList(updated);
-          await onSave(updated);
-
-          let savedList: AssociationList | undefined;
-          let firstId: string | null | undefined;
-          for (let i = 0; i < 10; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 200));
-            savedList = useGameStore.getState().lists.find(
-              (l) => l.name === firstGroup.name
-            );
-            if (savedList) break;
-          }
-          firstId = savedList?.id;
-
-          if (!firstId) {
-            showToast("⚠️ No se pudo guardar el mazo antes de dividir.", "error");
-            setShowValidationScreen(false);
-            return;
-          }
-
-          await onCreateMultiple(groups.slice(1), firstId);
+          // groups[0] replaces this deck in place on the backend and the
+          // original document is never deleted, so nothing is pre-saved here
+          // (docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
+          await onCreateMultiple(groups, editList.id);
         }
 
         showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
@@ -576,7 +557,7 @@ export function useListEditorActions(
         setIsImporting(false);
       }
     },
-    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setEditList, setIsImporting]
+    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setIsImporting]
   );
 
   const handleBackToEditor = useCallback(() => {

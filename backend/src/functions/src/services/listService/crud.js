@@ -245,8 +245,19 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
     validateUserCardQuotaNotExceeded(meta, delta);
     assertCardQuotaHasRoom(meta.tier || "free", meta.cardCount || 0, delta);
 
-    const newRefs = [];
-    for (const group of groups) {
+    // groups[0] replaces the original deck in place; the original document is
+    // never deleted. Deleting it lost the first group's cards, because the
+    // client only sends the groups that must become new decks plus this first
+    // one (see docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
+    const firstGroup = groups[0];
+    tx.update(originalRef, {
+      name: firstGroup.name,
+      associations: Array.isArray(firstGroup.associations) ? firstGroup.associations : [],
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const affectedIds = [originalRef.id];
+    for (const group of groups.slice(1)) {
       const ref = db.collection(COLLECTION_NAME).doc();
       tx.set(ref, {
         userId: uid,
@@ -262,10 +273,9 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
-      newRefs.push(ref.id);
+      affectedIds.push(ref.id);
     }
 
-    tx.delete(originalRef);
     if (delta !== 0) {
       if (metaSnap.exists) {
         tx.update(metaRef, {
@@ -276,7 +286,7 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
         tx.set(metaRef, { ...metaDefaults(), cardCount: Math.max(0, delta) });
       }
     }
-    return newRefs;
+    return affectedIds;
   });
 
   return { ids: createdIds };
