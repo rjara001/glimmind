@@ -32,6 +32,29 @@ export interface SplitListInput {
   groups: { name: string; associations: Association[] }[];
 }
 
+// One HTTP call for a whole import: the server splits `associations` into
+// decks of `cardsPerDeck` and persists everything in a single transaction.
+export interface BulkCreateListsInput {
+  userId: string;
+  name: string;
+  concept: string;
+  associations: Association[];
+  settings?: ListSettings;
+  cardsPerDeck?: number;
+}
+
+// Handler-level request (no userId; settings merged with defaults by the
+// caller) shared by useAppHandlers, ListEditor and its import actions.
+export interface BulkCreateRequest {
+  name: string;
+  concept: string;
+  associations: Association[];
+  settings?: Partial<ListSettings>;
+  cardsPerDeck?: number;
+}
+
+export type BulkCreateHandler = (input: BulkCreateRequest) => Promise<string[] | null>;
+
 export interface ListService {
   createList(input: CreateListInput): Promise<string>;
   updateList(input: UpdateListInput): Promise<void>;

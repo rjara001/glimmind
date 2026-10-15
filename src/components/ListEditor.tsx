@@ -19,6 +19,7 @@ import { useListEditorState } from "../hooks/dashboard/useListEditorState";
 import { useListEditorActions } from "../hooks/dashboard/useListEditorActions";
 import { useListEditorQuota } from "../hooks/dashboard/useListEditorQuota";
 import { useListEditorTranslation } from "../hooks/dashboard/useListEditorTranslation";
+import type { BulkCreateHandler } from "../types/list-service";
 
 interface ListEditorProps {
   list: AssociationList;
@@ -38,6 +39,7 @@ interface ListEditorProps {
     associations: Association[],
     settings?: Partial<AssociationList["settings"]>
   ) => Promise<string | null>;
+  onBulkCreate?: BulkCreateHandler;
   isSaving?: boolean;
   isCreating?: boolean;
   isSplitting?: boolean;
@@ -53,6 +55,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
   onCreateMultiple,
   isCreateMode = false,
   onCreateList,
+  onBulkCreate,
   isSaving,
   isCreating,
   isSplitting,
@@ -94,7 +97,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     onSave: wrappedOnSave,
     onCreateMultiple: onCreateMultiple ?? (() => {}),
     isCreateMode,
-    onCreateList,
+    onBulkCreate,
     showToast,
     translateLang: state.translateLang,
     lists,

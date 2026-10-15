@@ -1,9 +1,9 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { getDb } = require("../utils/firebase");
-const { requireAuth } = require("../utils/helpers");
+const { requireAuth, QuotaExceededError } = require("../utils/helpers");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../utils/constants");
 const listService = require("../services/listService");
-const { GetListsSchema, CreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema, UpdateListFieldsSchema } = require("../utils/validation");
+const { GetListsSchema, CreateListSchema, BulkCreateListSchema, UpdateListSchema, DeleteListSchema, SplitListSchema, GetListSchema, UpdateListFieldsSchema } = require("../utils/validation");
 const { rateLimit } = require("../utils/rateLimit");
 
 function applyRateLimit(fnName, handler) {
@@ -71,6 +71,42 @@ exports.createList = onRequest({ cors: true }, applyRateLimit("createList", asyn
       sourceRow,
     });
     res.json(id);
+  } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+}));
+
+// Single bulk import: the whole payload (up to 5000 cards) arrives in ONE
+// request and is persisted atomically, replacing the old client-side loop of
+// createList calls that died against the createList rate limit at 2000 cards.
+exports.bulkCreateList = onRequest({ cors: true }, applyRateLimit("bulkCreateList", async (req, res) => {
+  const body = await runValidation(req, res, BulkCreateListSchema);
+  if (!body) return;
+
+  const { userId, name, concept, associations, settings, cardsPerDeck, sourceType, sourceUrl, rawSourceText, sourceRow } = body;
+
+  const uid = await requireAuth(req, res, userId);
+  if (!uid) return;
+
+  try {
+    const data = await listService.bulkCreateLists(getDb(), userId, {
+      name,
+      concept,
+      associations,
+      settings,
+      cardsPerDeck,
+      sourceType,
+      sourceUrl,
+      rawSourceText,
+      sourceRow,
+    });
+    for (const newId of data.ids) {
+      await listService.logCloudProgress(getDb(), newId, uid);
+    }
+    res.json(data);
   } catch (error) {
     if (error instanceof QuotaExceededError) {
       return res.status(400).json({ error: error.message });

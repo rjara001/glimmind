@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11
 **Priority:** P1
-**Status:** Not fixed
+**Status:** Resolved 2026-10-15 (carried by the bulk import change)
 
 ## What
 
@@ -38,3 +38,8 @@ utils/helpers.js:119          QuotaExceededError,     // exported, just never im
 
 Add `QuotaExceededError` to the existing destructure on line 3. It is already
 exported from `helpers.js`; no other change is needed.
+
+**Applied 2026-10-15.** `listRoutes.js` now imports `{ requireAuth,
+QuotaExceededError }`, so quota rejections on `createList`, `updateList`,
+`splitList` and the new `bulkCreateList` return HTTP 400 with the friendly
+message instead of an unhandled 500.

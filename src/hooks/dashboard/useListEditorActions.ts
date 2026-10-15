@@ -1,12 +1,14 @@
 import { useCallback, useRef } from "react";
 import type { Association, AssociationList } from "../../types";
 import type { ImportValidationResult, CardCategory } from "../../services/importValidationService";
+import type { BulkCreateHandler } from "../../types/list-service";
 import { useGameStore } from "../../store/gameStore";
 import { QuotaService } from "../../services/quotaService";
 import { normalizeAssociations, AssociationLike, parseDefinitions } from "../../utils/normalizeAssociation";
 import { translationService } from "../../services/translationService";
 import { validateImportCards } from "../../services/importValidationService";
 import { downloadAssociationsCsv, parseForPreview } from "../../utils/csv";
+import { MAX_CARDS_PER_DECK } from "../../constants/limits";
 
 export interface UseListEditorActionsParams {
   editList: AssociationList;
@@ -16,12 +18,7 @@ export interface UseListEditorActionsParams {
   onSave: (list: AssociationList) => Promise<void>;
   onCreateMultiple: (groups: { name: string; associations: Association[] }[], realListId?: string) => void;
   isCreateMode?: boolean;
-  onCreateList?: (
-    name: string,
-    concept: string,
-    associations: Association[],
-    settings?: Partial<AssociationList["settings"]>,
-  ) => Promise<string | null>;
+  onBulkCreate?: BulkCreateHandler;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   translateLang: string;
   lists: AssociationList[];
@@ -73,7 +70,7 @@ export function useListEditorActions(
     onSave,
     onCreateMultiple,
     isCreateMode,
-    onCreateList,
+    onBulkCreate,
     showToast,
     translateLang,
     lists,
@@ -488,26 +485,44 @@ export function useListEditorActions(
           return;
         }
 
-        const MAX = 100;
+        // Create mode: the whole payload goes in ONE bulk request. The server
+        // splits it into decks and persists everything atomically, replacing
+        // the old per-deck createList loop that died against the rate limit
+        // (20 decks x 100 cards = 2000 cards, then HTTP 429).
+        if (isCreateMode) {
+          if (!onBulkCreate) {
+            showToast("⚠️ No se puede importar en este modo.", "error");
+            setShowValidationScreen(false);
+            return;
+          }
+          const ids = await onBulkCreate({
+            name: editList.name,
+            concept: editList.concept,
+            associations: [...editList.associations, ...toImport],
+            settings: editList.settings,
+            cardsPerDeck: MAX_CARDS_PER_DECK,
+          });
+          if (!ids || ids.length === 0) {
+            setShowValidationScreen(false);
+            return;
+          }
+          showToast(
+            ids.length === 1
+              ? `✅ ${toImport.length} tarjetas importadas`
+              : `✅ ${toImport.length} tarjetas importadas en ${ids.length} mazos`,
+            "success",
+          );
+          setShowValidationScreen(false);
+          onBack();
+          return;
+        }
+
+        // Edit mode: deckCount drives whether this is a single-deck append or
+        // a splitList call (already a single HTTP request for every deck).
+        const MAX = MAX_CARDS_PER_DECK;
         const deckCount = Math.ceil(toImport.length / MAX);
 
         if (deckCount === 1) {
-          if (isCreateMode && onCreateList) {
-            const id = await onCreateList(
-              editList.name,
-              editList.concept,
-              [...editList.associations, ...toImport],
-              editList.settings,
-            );
-            if (id) {
-              showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
-              setShowValidationScreen(false);
-              onBack();
-            } else {
-              setShowValidationScreen(false);
-            }
-            return;
-          }
           const updated = { ...editList, associations: [...editList.associations, ...toImport] };
           await onSave(updated);
           showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
@@ -529,26 +544,10 @@ export function useListEditorActions(
           groups.push({ name, associations: chunk });
         }
 
-        if (isCreateMode && onCreateList) {
-          for (const group of groups) {
-            const id = await onCreateList(
-              group.name,
-              editList.concept,
-              group.associations,
-              editList.settings,
-            );
-            if (!id) {
-              showToast("⚠️ No se pudo crear el mazo.", "error");
-              setShowValidationScreen(false);
-              return;
-            }
-          }
-        } else {
-          // groups[0] replaces this deck in place on the backend and the
-          // original document is never deleted, so nothing is pre-saved here
-          // (docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
-          await onCreateMultiple(groups, editList.id);
-        }
+        // groups[0] replaces this deck in place on the backend and the
+        // original document is never deleted, so nothing is pre-saved here
+        // (docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
+        await onCreateMultiple(groups, editList.id);
 
         showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
         setShowValidationScreen(false);
@@ -557,7 +556,7 @@ export function useListEditorActions(
         setIsImporting(false);
       }
     },
-    [validationResult, editList, onSave, onCreateMultiple, onCreateList, isCreateMode, showToast, onBack, setShowValidationScreen, setIsImporting]
+    [validationResult, editList, onSave, onCreateMultiple, onBulkCreate, isCreateMode, showToast, onBack, setShowValidationScreen, setIsImporting]
   );
 
   const handleBackToEditor = useCallback(() => {

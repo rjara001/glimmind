@@ -1,4 +1,5 @@
 import { Association, AssociationList } from '../types';
+import type { BulkCreateListsInput } from '../types/list-service';
 import { callFunction, FunctionCallError } from './callFunction';
 import { AssociationDelta } from '../utils/syncDelta';
 
@@ -25,6 +26,18 @@ export const listService = {
       sourceRow: list.sourceRow,
     });
     return result.id;
+  },
+
+  bulkCreateLists: async (input: BulkCreateListsInput): Promise<string[]> => {
+    const result = await callFunction<{ ids: string[] }>('bulkCreateList', {
+      userId: input.userId,
+      name: input.name,
+      concept: input.concept,
+      associations: input.associations,
+      settings: input.settings,
+      cardsPerDeck: input.cardsPerDeck,
+    });
+    return result.ids;
   },
 
   getList: async (listId: string): Promise<AssociationList | null> => {

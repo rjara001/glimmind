@@ -60,6 +60,27 @@ const SplitListSchema = z.object({
   })).min(1).max(50),
 });
 
+const BulkCreateListSchema = z.object({
+  userId: z.string().min(1),
+  name: z.string().min(1).max(200),
+  concept: z.string().max(500).optional(),
+  associations: z.array(z.object({
+    id: z.string().optional(),
+    term: z.string().min(1).max(500),
+    definition: z.union([z.string().min(1).max(2000), z.array(z.string())]),
+  }).passthrough()).min(1).max(5000),
+  settings: z.object({
+    mode: z.enum(["normal", "reverse", "mixed", "training", "real"]).optional(),
+    flipOrder: z.enum(["normal", "reversed"]).optional(),
+    threshold: z.number().min(0).max(1).optional(),
+  }).passthrough().optional(),
+  cardsPerDeck: z.number().int().min(100).max(1000).optional(),
+  sourceType: z.enum(["manual", "ai", "youtube", "import", "text"]).optional(),
+  sourceUrl: z.string().url().optional().or(z.literal("")),
+  rawSourceText: z.string().max(50000).optional(),
+  sourceRow: z.number().int().min(0).optional(),
+});
+
 const UpdateListFieldsSchema = z.object({
   listId: z.string().min(1),
   baseUpdatedAt: z.number().int().min(0),
@@ -209,6 +230,7 @@ module.exports = {
   GetListSchema,
   DeleteListSchema,
   SplitListSchema,
+  BulkCreateListSchema,
   UpdateListFieldsSchema,
   GetListsSchema,
   GetQuotaSchema,

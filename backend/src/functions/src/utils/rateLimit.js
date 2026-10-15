@@ -5,6 +5,7 @@ const RATE_LIMITS = {
   aiGroup: { requests: 10, windowMs: 60000 },
   synthesizeSpeech: { requests: 30, windowMs: 60000 },
   createList: { requests: 20, windowMs: 60000 },
+  bulkCreateList: { requests: 10, windowMs: 60000 },
   updateList: { requests: 30, windowMs: 60000 },
   deleteList: { requests: 10, windowMs: 60000 },
   splitList: { requests: 5, windowMs: 60000 },

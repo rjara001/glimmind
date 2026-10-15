@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-15: **0 P0 · 13 P1 · 15 P2 · 15 done · 3 backlog**.
+Counts as of 2026-10-15: **0 P0 · 12 P1 · 15 P2 · 17 done · 3 backlog**.
 
 ---
 
@@ -42,7 +42,6 @@ None open. The `updateListFields` corruption was fixed and deployed on
 
 | Issue | Impact |
 |---|---|
-| [`P1/2026-10-11-quota-exceeded-error-sin-importar.md`](P1/2026-10-11-quota-exceeded-error-sin-importar.md) | `ReferenceError` on the quota-error path of create/edit/split list |
 | [`P1/2026-10-11-log-client-error-sin-rewrite.md`](P1/2026-10-11-log-client-error-sin-rewrite.md) | Every client error is lost; one wasted request each |
 | [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
 | [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
@@ -80,6 +79,8 @@ None open. The `updateListFields` corruption was fixed and deployed on
 
 | Issue | Resolution |
 |---|---|
+| [`done/2026-10-15-import-premium-3000-corta-en-2000.md`](done/2026-10-15-import-premium-3000-corta-en-2000.md) | Premium import stopped at 2000: the client-side `createList` loop hit the 20/min rate limit; one atomic `bulkCreateList` request replaces it |
+| [`done/2026-10-11-quota-exceeded-error-sin-importar.md`](done/2026-10-11-quota-exceeded-error-sin-importar.md) | `QuotaExceededError` is imported in `listRoutes.js`, so quota rejections answer 400 with the friendly message instead of an unhandled 500 |
 | [`done/2026-10-15-splitlist-borra-mazo-original.md`](done/2026-10-15-splitlist-borra-mazo-original.md) | `splitList` deleted the original deck and lost group 1; the original is now replaced in place by `groups[0]` |
 | [`done/2026-10-15-cardcount-cero-con-associations-malformado.md`](done/2026-10-15-cardcount-cero-con-associations-malformado.md) | `cardCount` rebuild now counts map-shaped decks through `normalizeAssociationsToList` |
 | [`done/2026-10-15-updatelist-silencia-error-en-nube.md`](done/2026-10-15-updatelist-silencia-error-en-nube.md) | `firestoreService.updateList` propagates write failures again; callers already handle them |

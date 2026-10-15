@@ -1,7 +1,7 @@
 const { getDb } = require("../../utils/firebase");
 const { getOrCreateMeta, metaDefaults, metaRefFor } = require("../../utils/helpers");
 const { FieldValue } = require("../../utils/firebase");
-const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../../utils/constants");
+const { COLLECTION_NAME, MAX_CARDS_PER_LIST, DEFAULT_BULK_CARDS_PER_DECK } = require("../../utils/constants");
 const { applyDeltasToList } = require("../../utils/associationDeltas");
 const { assertCardQuotaHasRoom, validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
@@ -134,6 +134,62 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
   }
   
   return { id: docRef.id };
+}
+
+// Single bulk import: splits the payload into decks and writes every deck plus
+// the cardCount update in ONE transaction, so an import is atomic (all decks
+// or none) and never stops halfway against the createList rate limit.
+async function bulkCreateLists(db, userId, { name, concept, associations, settings, cardsPerDeck, sourceType, sourceUrl, rawSourceText, sourceRow }) {
+  const deckSize = cardsPerDeck || DEFAULT_BULK_CARDS_PER_DECK;
+  const chunks = [];
+  for (let i = 0; i < associations.length; i += deckSize) {
+    chunks.push(associations.slice(i, i + deckSize));
+  }
+  const total = associations.length;
+
+  const meta = await loadUserMetaForCardQuota(db, userId);
+  const maxAllowed = meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST;
+  chunks.forEach((chunk) => validateListDoesNotExceedCardLimit(chunk, maxAllowed));
+  validateUserCardQuotaNotExceeded(meta, total);
+
+  const createdIds = await db.runTransaction(async (tx) => {
+    const metaSnap = await tx.get(metaRefFor(db, userId));
+    const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+    const currentTier = currentMeta.tier || "free";
+
+    assertCardQuotaHasRoom(currentTier, currentMeta.cardCount || 0, total);
+
+    const ids = [];
+    chunks.forEach((chunk, index) => {
+      const deckRef = db.collection(COLLECTION_NAME).doc();
+      const deckName = index === 0 ? name : `${name}-${index + 1}`;
+      tx.set(deckRef, buildListDocumentData({
+        userId,
+        name: deckName,
+        concept,
+        associations: chunk,
+        settings,
+        sourceType,
+        sourceUrl,
+        rawSourceText,
+        sourceRow,
+      }));
+      ids.push(deckRef.id);
+    });
+
+    if (metaSnap.exists) {
+      tx.update(metaRefFor(db, userId), {
+        cardCount: FieldValue.increment(total),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    } else {
+      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, total));
+    }
+
+    return ids;
+  });
+
+  return { ids: createdIds };
 }
 
 async function applyUpdatesToListAndAdjustCardCounters(db, listId, uid, updates) {
@@ -355,6 +411,7 @@ module.exports = {
   fetchAllListsForUser,
   fetchListByIdForUser,
   persistNewListWithAssociations,
+  bulkCreateLists,
   applyUpdatesToListAndAdjustCardCounters,
   removeListAndDecrementUserCardCount,
   divideOriginalListIntoGroupsAndReplaceIt,

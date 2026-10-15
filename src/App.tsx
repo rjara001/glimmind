@@ -27,7 +27,6 @@ import { useNavigation } from './hooks/app/useNavigation';
 import { useAppHandlers } from './hooks/app/useAppHandlers';
 import { GUEST_UID } from './constants/app';
 import { isFeatureEnabled } from './constants/featureFlags';
-import { splitAssociationsByMax } from './utils/splitAssociations';
 import { NEXT_PATH_QUERY, resolveNextPath } from './utils/redirect';
 import type { Association, AssociationList } from './types';
 import { VocabularyPreview } from './components/modals/VocabularyPreview';
@@ -181,41 +180,27 @@ const AppContent: React.FC = () => {
         const maxCardsPerDeck = settings?.maxCardsPerDeck || 150;
 
         const allAssociations = chunks.flat();
-        const { chunks: splitChunks, deckNames: splitDeckNames } = splitAssociationsByMax(
-          allAssociations,
-          maxCardsPerDeck,
-          deckNames[0] || 'Deck'
-        );
 
-        const defaultSettings = {
-          mode: 'training' as const,
-          flipOrder: 'normal' as const,
-          threshold: 0.95,
-          ignoreArticles: true,
-          showHints: true,
-          autoRevealAfterSeconds: 15,
-          autoAdvanceAfterAttempts: 3,
-        };
+        // One bulk request for every deck instead of a createList call per
+        // chunk (the old loop hit the 20/min rate limit on large imports).
+        const ids = await handlers.handleBulkCreateLists({
+          name: deckNames[0] || 'Deck',
+          concept: 'value1 / value2',
+          associations: allAssociations,
+          cardsPerDeck: maxCardsPerDeck,
+        });
 
-        let firstId: string | null = null;
-        for (let i = 0; i < splitChunks.length; i++) {
-          const id = await handlers.handleCreateList(
-            splitDeckNames[i],
-            'value1 / value2',
-            splitChunks[i],
-            defaultSettings,
+        if (ids && ids.length > 0) {
+          setCurrentList(ids[0]);
+          showToast(
+            ids.length === 1 ? 'Mazo creado' : `${ids.length} mazos creados`,
+            'success',
           );
-          if (i === 0) firstId = id;
-          if (!id) break;
-        }
-
-        if (firstId) {
-          setCurrentList(firstId);
         }
         setPendingYouTube(null);
       })();
     }
-  }, [view, pendingYouTube, user, lists, handlers, setCurrentList]);
+  }, [view, pendingYouTube, user, lists, handlers, setCurrentList, showToast]);
 
   if (!isLoaded) {
     return (
@@ -298,6 +283,7 @@ const AppContent: React.FC = () => {
                         onCreateMultiple={handlers.handleCreateMultipleLists}
                         isCreateMode={!!createModeList}
                         onCreateList={handlers.handleCreateList}
+                        onBulkCreate={handlers.handleBulkCreateLists}
                         isSaving={handlers.isUpdating}
                         isCreating={handlers.isCreating}
                         isSplitting={handlers.isSplitting}

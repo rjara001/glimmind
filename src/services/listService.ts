@@ -1,5 +1,6 @@
 import { QuotaExceededError, ListNotFoundError } from '../errors/listErrors';
 import { Association, AssociationList, ListSettings } from '../types';
+import type { BulkCreateListsInput } from '../types/list-service';
 import { DeckSourceType } from '../types/youtube-deck';
 import { SourceRow } from '../types/source-row';
 import { listService as firestoreListService } from './firestoreService';
@@ -8,6 +9,7 @@ import { activityService } from './activityService';
 import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
 import { QuotaStatus } from '../types/quota';
 import { AssociationDelta } from '../utils/syncDelta';
+import { MAX_CARDS_PER_DECK } from '../constants/limits';
 
 
 export class ListServiceImpl {
@@ -28,7 +30,7 @@ export class ListServiceImpl {
     sourceRow?: SourceRow;
   }): Promise<string> {
     const status = await this.checkQuota(input.userId, input.associations.length);
-    if (status.level === 'blocked') {
+    if (input.associations.length > status.maxCards) {
       throw new QuotaExceededError(status.maxCards);
     }
 
@@ -50,6 +52,43 @@ export class ListServiceImpl {
     return id;
   }
 
+  // Single bulk import: one HTTP round-trip for the whole payload. The server
+  // splits the cards into decks and persists them atomically, so this never
+  // stops halfway against the createList rate limit (the old client-side loop
+  // died at 2000 cards: 20 decks x 100 cards, rate limit 20/min).
+  async bulkCreateLists(input: BulkCreateListsInput): Promise<string[]> {
+    const status = await this.checkQuota(input.userId, input.associations.length);
+    if (input.associations.length > status.maxCards) {
+      throw new QuotaExceededError(status.maxCards);
+    }
+
+    const ids = await this.firestore.bulkCreateLists(input);
+
+    // Best-effort: a failed activity write must not report the import itself
+    // as failed, the decks are already persisted at this point.
+    const deckSize = input.cardsPerDeck ?? MAX_CARDS_PER_DECK;
+    const events = ids.flatMap((listId, deckIndex) =>
+      input.associations
+        .slice(deckIndex * deckSize, (deckIndex + 1) * deckSize)
+        .map((association) =>
+          createActivityEvent({
+            userId: input.userId,
+            listId,
+            cardId: association.id,
+            cardTerm: association.term,
+            type: 'card_created',
+          }),
+        ),
+    );
+    try {
+      await this.activity.recordEvents(input.userId, events);
+    } catch (error) {
+      console.error('[listService.bulkCreateLists] activity recording failed:', error);
+    }
+
+    return ids;
+  }
+
   async updateList(input: {
     id: string;
     name?: string;
@@ -65,7 +104,7 @@ export class ListServiceImpl {
 
     if (input.associations && input.associations.length > (existing.associations?.length || 0)) {
       const status = await this.checkQuota(existing.userId, input.associations.length);
-      if (status.level === 'blocked') {
+      if (input.associations.length > status.maxCards) {
         throw new QuotaExceededError(status.maxCards);
       }
     }

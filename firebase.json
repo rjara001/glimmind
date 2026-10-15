@@ -150,6 +150,10 @@
         "function": "createList"
       },
       {
+        "source": "/api/bulkCreateList",
+        "function": "bulkCreateList"
+      },
+      {
         "source": "/api/getList",
         "function": "getList"
       },

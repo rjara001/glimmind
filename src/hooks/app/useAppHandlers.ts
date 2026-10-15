@@ -6,6 +6,9 @@ import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
 import { QuotaService } from "../../services/quotaService";
 import { GUEST_UID, LAST_PLAYED_KEY } from "../../constants/app";
+import { MAX_CARDS_PER_DECK } from "../../constants/limits";
+import { splitAssociationsByMax } from "../../utils/splitAssociations";
+import type { BulkCreateHandler, BulkCreateRequest } from "../../types/list-service";
 import { safeSetItem } from "../../utils/localStorage";
 import { getCorrelationId, getSessionId } from "../../services/errorReporting";
 import { FlowTracker } from "../../utils/breadcrumbs";
@@ -36,6 +39,7 @@ export interface UseAppHandlersReturn {
     associations: Association[],
     settings?: Partial<AssociationList["settings"]>
   ) => Promise<string | null>;
+  handleBulkCreateLists: BulkCreateHandler;
   handleCreateListQuick: (name: string) => Promise<string | null>;
   handleDeleteList: (id: string) => Promise<void>;
   handleCreateMultipleLists: (
@@ -258,6 +262,100 @@ const handlePlayList = useCallback(
     [handleCreateList],
   );
 
+  // Single bulk import: sends the whole payload in ONE request instead of a
+  // client-side loop of createList calls (rate limit 20/min killed that loop
+  // at 2000 cards). Returns every created deck id, or null on failure.
+  const handleBulkCreateLists = useCallback(
+    async (input: BulkCreateRequest): Promise<string[] | null> => {
+      if (!user) {
+        showToast("Debes iniciar sesión para crear listas", "error");
+        return null;
+      }
+
+      const defaultSettings: AssociationList["settings"] = {
+        mode: "training",
+        flipOrder: "normal",
+        threshold: 0.95,
+        ignoreArticles: true,
+        showHints: true,
+        autoRevealAfterSeconds: 15,
+        autoAdvanceAfterAttempts: 3,
+      };
+      const settings: AssociationList["settings"] = {
+        ...defaultSettings,
+        ...input.settings,
+      };
+      const deckSize = input.cardsPerDeck ?? MAX_CARDS_PER_DECK;
+
+      setIsCreating(true);
+      try {
+        const { chunks, deckNames } = splitAssociationsByMax(
+          input.associations,
+          deckSize,
+          input.name,
+        );
+
+        let ids: string[];
+
+        if (user.uid === GUEST_UID) {
+          // Guests stay offline/local-only: build the same deck grouping the
+          // server would produce, without any remote call (AGENTS.md, §31).
+          ids = chunks.map(() => crypto.randomUUID());
+          const guestLists: AssociationList[] = chunks.map((chunk, index) => ({
+            id: ids[index],
+            userId: user.uid,
+            name: deckNames[index],
+            concept: input.concept,
+            associations: chunk,
+            isArchived: false,
+            settings,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }));
+          const currentLists = useGameStore.getState().lists;
+          useGameStore.getState().setLists([...currentLists, ...guestLists]);
+          return ids;
+        }
+
+        ids = await listService.bulkCreateLists({
+          userId: user.uid,
+          name: input.name,
+          concept: input.concept,
+          associations: input.associations,
+          settings,
+          cardsPerDeck: deckSize,
+        });
+
+        // Mirror the server's sequential chunking so the local store shows the
+        // same decks (same size rule => same groups => same ids order).
+        const newLists: AssociationList[] = ids.map((id, index) => ({
+          id,
+          userId: user.uid,
+          name: deckNames[index] ?? `${input.name}-${index + 1}`,
+          concept: input.concept,
+          associations: chunks[index] ?? [],
+          isArchived: false,
+          settings,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }));
+        const currentLists = useGameStore.getState().lists;
+        useGameStore.getState().setLists([...currentLists, ...newLists]);
+
+        return ids;
+      } catch (error) {
+        showToast(
+          error instanceof Error ? error.message : "Error al importar los mazos",
+          "error",
+        );
+        return null;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [user, showToast],
+  );
+
   const handleUpdateList = useCallback(
     async (list: AssociationList, tracker?: FlowTracker) => {
       if (!user) return;
@@ -451,6 +549,7 @@ const handlePlayList = useCallback(
     handleUpdateList,
     handleCreateList,
     handleCreateListQuick,
+    handleBulkCreateLists,
     handleDeleteList,
     handleCreateMultipleLists,
     handleCreateListAndPlay,
