@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-14: **0 P0 · 14 P1 · 15 P2 · 10 done · 3 backlog**.
+Counts as of 2026-10-14: **0 P0 · 13 P1 · 15 P2 · 11 done · 3 backlog**.
 
 ---
 
@@ -55,7 +55,6 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
 | [`P1/2026-10-13-prebuiltdeck-sin-guard-guest.md`](P1/2026-10-13-prebuiltdeck-sin-guard-guest.md) | prebuiltDeckService has no guest guard, trapping guests in DeckStoreOnboarding |
-| [`P1/2026-10-13-updatelistfields-400-invalid-body.md`](P1/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas fail zod validation on every load, so those lists never sync |
 
 ## P2 — debt, dead code, hygiene
 
@@ -91,6 +90,7 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`done/2026-10-12-premium-sin-limite-de-tarjetas.md`](done/2026-10-12-premium-sin-limite-de-tarjetas.md) | `updateList` and `splitList` now assert the card ceiling inside their transactions; `scripts/repro-p0-curl.sh` exits 0 |
 | [`done/2026-10-12-rutas-ia-sin-rate-limit.md`](done/2026-10-12-rutas-ia-sin-rate-limit.md) | Both AI deck routes now run under `aiGroup` (10/min); `scripts/repro-p0-ai-rate-limit.sh` exits 0 |
 | [`done/2026-10-11-huecos-de-gating-premium.md`](done/2026-10-11-huecos-de-gating-premium.md) | Chirp/Chiptt hidden, coerced to browser and rejected with `TIER_REQUIRED` (403) for free; recording toggle gated on premium (plan `2026-10-14-premium-voice-gating.md`) |
+| [`done/2026-10-13-updatelistfields-400-invalid-body.md`](done/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas are sanitised against the server schema before every send; 400s now log the failing zod field instead of looping forever |
 
 ## backlog — not defects
 

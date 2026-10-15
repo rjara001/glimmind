@@ -30,7 +30,7 @@ import {
   createInitialBootstrapStatus,
 } from '../types/bootstrap-status';
 import { normalizeVoiceLanguageSettings } from '../services/voice/languages';
-import { computeDelta, AssociationDelta, chunkDeltas, mergeCloudWins } from '../utils/syncDelta';
+import { computeDelta, AssociationDelta, chunkDeltas, mergeCloudWins, sanitizeDeltas, toEpochMs } from '../utils/syncDelta';
 import { SYNC_CONFIG } from '../constants/syncConfig';
 import { safeGetItem, safeSetItem, safeRemoveItem, safeStringify } from '../utils/localStorage';
 
@@ -1130,13 +1130,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const syncInProgress = get().syncInProgress;
     if (syncInProgress.has(listId)) return;
     
-    const deltasToSync = providedDeltas ?? (pendingDeltas.get(listId) || []);
-    if (deltasToSync.length === 0) return;
+    const rawDeltas = providedDeltas ?? (pendingDeltas.get(listId) || []);
+    const deltasToSync = sanitizeDeltas(rawDeltas);
+    if (deltasToSync.length === 0) {
+      // Deltas without an id cannot be addressed by updateListFields; clearing
+      // them stops the same payload being retried on every single load.
+      if (rawDeltas.length > 0) {
+        console.warn(`[flushSync] ${listId}: dropping ${rawDeltas.length} unsyncable deltas (no id)`);
+        const cleanedPendingDeltas = new Map(pendingDeltas);
+        cleanedPendingDeltas.delete(listId);
+        set({ pendingDeltas: cleanedPendingDeltas });
+        safeStringify(PENDING_DELTAS_KEY, Object.fromEntries(cleanedPendingDeltas));
+      }
+      return;
+    }
     
     const list = lists.find(l => l.id === listId);
     if (!list) return;
     
-    const baseTs = baseUpdatedAt ?? list.updatedAt ?? Date.now();
+    // updateListFields requires a non-negative integer; cloud data can hold an
+    // ISO string here and a string or float is answered with 400.
+    const baseTs = toEpochMs(baseUpdatedAt ?? list.updatedAt) ?? Date.now();
     
     // Mark as in progress
     const newSyncInProgress = new Set(syncInProgress);
@@ -1146,14 +1160,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const startTime = Date.now();
     
     try {
-      // Handle chunking for keepalive
-      if (keepalive) {
-        const chunks = chunkDeltas(deltasToSync, SYNC_CONFIG.keepaliveSafeLimit);
-        for (const chunk of chunks) {
-          await listService.updateListFields(listId, baseTs, chunk);
-        }
-      } else {
-        await listService.updateListFields(listId, baseTs, deltasToSync);
+      // One loop for both paths: keepalive still splits by payload size, and
+      // every send stays within the server's 500-delta cap.
+      const batches = chunkDeltas(
+        deltasToSync,
+        keepalive ? SYNC_CONFIG.keepaliveSafeLimit : Number.MAX_SAFE_INTEGER
+      );
+      for (const batch of batches) {
+        await listService.updateListFields(listId, baseTs, batch);
       }
       
       // Success - clear pending deltas for this list

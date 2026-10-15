@@ -1,5 +1,17 @@
 # `updateListFields` responde 400 Invalid request body en cada carga
 
+**Resolved:** 2026-10-14. The client now sanitises the payload against the
+server schema before every send (`sanitizeDeltas` + `toEpochMs` in
+`src/utils/syncDelta.ts`): `baseUpdatedAt` and `updatedAt` are coerced to
+non-negative integers (ISO strings parsed), `currentCycle` is clamped to
+`>= 1`, integer stats are rounded, deltas without an `id` are dropped and
+cleared, and batches never exceed the 500-delta cap. `callFunction` now
+forwards the zod `fieldErrors` of a 400 and `listService.updateListFields`
+logs them next to the list id, so the failing field is no longer invisible.
+Verified by `tests/utils/syncDelta.test.ts` (18),
+`tests/store/flushSync.test.ts` (5) and
+`tests/services/listService.updateListFields.test.ts` (3).
+
 ## What
 
 Every app load, `loadInitialData` → `syncToCloud` → `flushSync` calls

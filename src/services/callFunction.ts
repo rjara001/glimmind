@@ -29,6 +29,9 @@ async function getToken(forceRefresh = false): Promise<string | null> {
 export interface FunctionCallError extends Error {
   code?: string;
   detail?: string;
+  // zod fieldErrors from a 400 validation response. Without it the caller only
+  // sees "Invalid request body" and cannot tell which field was rejected.
+  fieldErrors?: Record<string, string[]>;
   fallbackAvailable?: boolean;
 }
 
@@ -64,11 +67,13 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
     let errorMessage = `HTTP ${response.status}`;
     let errorCode: string | undefined;
     let detail: string | undefined;
+    let fieldErrors: Record<string, string[]> | undefined;
     let fallbackAvailable: boolean | undefined;
     try {
       const errorJson = JSON.parse(text);
       errorCode = errorJson.code;
       detail = errorJson.detail;
+      fieldErrors = errorJson.details;
       fallbackAvailable = errorJson.fallbackAvailable;
       errorMessage = errorJson.message || errorJson.error || errorMessage;
     } catch {
@@ -77,6 +82,7 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
     const error: FunctionCallError = new Error(errorMessage);
     error.code = errorCode;
     error.detail = detail;
+    error.fieldErrors = fieldErrors;
     error.fallbackAvailable = fallbackAvailable;
     throw error;
   }

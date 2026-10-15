@@ -1,5 +1,6 @@
 import { Association, AssociationList } from '../types';
-import { callFunction } from './callFunction';
+import { callFunction, FunctionCallError } from './callFunction';
+import { AssociationDelta } from '../utils/syncDelta';
 
 export const listService = {
 
@@ -53,11 +54,24 @@ export const listService = {
     return result.ids;
   },
 
-  updateListFields: async (listId: string, baseUpdatedAt: number, deltas: Array<{
-    id: string;
-    fields: Record<string, any>;
-    updatedAt: number;
-  }>): Promise<void> => {
-    await callFunction('updateListFields', { listId, baseUpdatedAt, deltas });
+  updateListFields: async (
+    listId: string,
+    baseUpdatedAt: number,
+    deltas: AssociationDelta[]
+  ): Promise<void> => {
+    try {
+      await callFunction('updateListFields', { listId, baseUpdatedAt, deltas });
+    } catch (error) {
+      // The 400 body carries zod's fieldErrors; without them the failing field
+      // stays invisible and the same payload is retried on every load.
+      const fnError = error as Partial<FunctionCallError>;
+      if (fnError.fieldErrors) {
+        console.error(
+          `[listService.updateListFields] rejected for list ${listId}:`,
+          fnError.fieldErrors
+        );
+      }
+      throw error;
+    }
   }
 };
