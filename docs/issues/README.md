@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-15: **0 P0 · 12 P1 · 15 P2 · 17 done · 3 backlog**.
+Counts as of 2026-10-15: **0 P0 · 12 P1 · 16 P2 · 17 done · 3 backlog**.
 
 ---
 
@@ -74,6 +74,7 @@ None open. The `updateListFields` corruption was fixed and deployed on
 | [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
 | [`P2/2026-10-13-settingsmodal-log-sin-guard-guest.md`](P2/2026-10-13-settingsmodal-log-sin-guard-guest.md) | SettingsModal calls logEvent with no guest guard |
 | [`P2/2026-10-14-voice-stt-fallback-dead-toggle.md`](P2/2026-10-14-voice-stt-fallback-dead-toggle.md) | The STT fallback toggle is written but no code reads it |
+| [`P2/2026-10-15-dist-no-se-limpia-en-cada-build.md`](P2/2026-10-15-dist-no-se-limpia-en-cada-build.md) | `dist/` never empties (outDir outside `root`): 257 bundles, 1.7 GB uploaded on every deploy |
 
 ## done — resolved
 
