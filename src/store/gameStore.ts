@@ -129,8 +129,11 @@ function flattenList(list: AssociationList): { list: AssociationList; changed: b
   // a non-iterable value and takes down the whole list load.
   if (!Array.isArray(list.associations) || list.associations.length === 0) {
     if (!Array.isArray(list.associations) && list.associations != null) {
+      // The [] is a view-only fallback for the UI. Marking it as `changed`
+      // would push the empty deck through the sync path and can wipe the cloud
+      // copy (see docs/issues/P0/2026-10-15-updateListFields-corrompe-associations.md).
       console.warn('[flattenList] ignoring non-array associations for list', list.id);
-      return { list: { ...list, associations: [] }, changed: true };
+      return { list: { ...list, associations: [] }, changed: false };
     }
     return { list, changed: false };
   }

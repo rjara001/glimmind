@@ -110,6 +110,21 @@ describe('loadInitialData robustness against malformed cloud data', () => {
       expect(loaded?.associations).toHaveLength(1);
       expectNoLoadFailure();
     });
+
+    it('never pushes the empty fallback of a corrupted deck back to the cloud', async () => {
+      vi.spyOn(listService, 'fetchListsByUser').mockResolvedValue([
+        malformedList as never,
+      ]);
+      const syncSpy = vi.spyOn(useGameStore.getState(), 'syncToCloud');
+
+      await useGameStore.getState().loadInitialData();
+
+      // The [] is a view-only fallback: a corrupted deck must not be treated as
+      // a local modification (that is how decks got wiped after the
+      // array-to-map corruption, see docs/issues/P0/2026-10-15).
+      expect(syncSpy).not.toHaveBeenCalledWith('broken-list');
+      expectNoLoadFailure();
+    });
   });
 
   describe('guest user (localStorage path)', () => {

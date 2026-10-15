@@ -28,15 +28,15 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-14: **0 P0 · 13 P1 · 15 P2 · 11 done · 3 backlog**.
+Counts as of 2026-10-15: **1 P0 · 15 P1 · 16 P2 · 11 done · 3 backlog**.
 
 ---
 
 ## P0 — bleeding money or broken right now
 
-None open. Both were resolved on 2026-10-13 and moved to
-[`done/`](done/): [`premium-sin-limite-de-tarjetas`](done/2026-10-12-premium-sin-limite-de-tarjetas.md)
-and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
+| Issue | Impact |
+|---|---|
+| [`P0/2026-10-15-updateListFields-corrompe-associations.md`](P0/2026-10-15-updateListFields-corrompe-associations.md) | `updateListFields` turned `associations` into a map and destroyed term/definition: 7 decks, 652 cards lost in production (fix in code, pending deploy) |
 
 ## P1 — behavioural bugs
 
@@ -55,6 +55,8 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
 | [`P1/2026-10-13-prebuiltdeck-sin-guard-guest.md`](P1/2026-10-13-prebuiltdeck-sin-guard-guest.md) | prebuiltDeckService has no guest guard, trapping guests in DeckStoreOnboarding |
+| [`P1/2026-10-15-splitlist-borra-mazo-original.md`](P1/2026-10-15-splitlist-borra-mazo-original.md) | `splitList` deletes the original deck, losing group 1 (100 cards) of every multi-deck import |
+| [`P1/2026-10-15-cardcount-cero-con-associations-malformado.md`](P1/2026-10-15-cardcount-cero-con-associations-malformado.md) | `cardCount` rebuild sums only arrays, so a map-shaped deck drives the quota counter to 0 |
 
 ## P2 — debt, dead code, hygiene
 
@@ -75,6 +77,7 @@ and [`rutas-ia-sin-rate-limit`](done/2026-10-12-rutas-ia-sin-rate-limit.md).
 | [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
 | [`P2/2026-10-13-settingsmodal-log-sin-guard-guest.md`](P2/2026-10-13-settingsmodal-log-sin-guard-guest.md) | SettingsModal calls logEvent with no guest guard |
 | [`P2/2026-10-14-voice-stt-fallback-dead-toggle.md`](P2/2026-10-14-voice-stt-fallback-dead-toggle.md) | The STT fallback toggle is written but no code reads it |
+| [`P2/2026-10-15-updatelist-silencia-error-en-nube.md`](P2/2026-10-15-updatelist-silencia-error-en-nube.md) | `firestoreService.updateList` swallows remote write failures and the UI reports success |
 
 ## done — resolved
 

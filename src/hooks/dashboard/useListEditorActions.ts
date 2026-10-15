@@ -42,7 +42,7 @@ export interface UseListEditorActionsParams {
 }
 
 export interface UseListEditorActionsReturn {
-  cleanupAndSave: (listToSave: AssociationList) => boolean;
+  cleanupAndSave: (listToSave: AssociationList, options?: { allowEmpty?: boolean }) => boolean;
   handleSave: () => Promise<void>;
   handleBack: () => void;
   handleRename: (value: string) => void;
@@ -95,7 +95,8 @@ export function useListEditorActions(
   const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const cleanupAndSave = useCallback(
-    (listToSave: AssociationList): boolean => {
+    (listToSave: AssociationList, options?: { allowEmpty?: boolean }): boolean => {
+      const allowEmpty = options?.allowEmpty === true;
       const seenIds = new Set<string>();
       const cleanedAssociations = normalizeAssociations(listToSave.associations)
         .map((assoc) => {
@@ -130,6 +131,19 @@ export function useListEditorActions(
       const storedList = currentLists.find((l) => l.id === listToSave.id);
       const storedCount =
         storedList?.associations?.length ?? listToSave.associations.length;
+
+      // A save that empties the deck is only legitimate when the user deleted
+      // rows on purpose. Without this guard, a deck that renders as empty (for
+      // example a corrupted cloud copy) gets wiped by any auto-save on blur
+      // (see docs/issues/P0/2026-10-15-updateListFields-corrompe-associations.md).
+      if (!allowEmpty && cleanedAssociations.length === 0) {
+        showToast(
+          "No se guardó: el mazo quedaría sin tarjetas. Si quieres eliminarlo, bórralo desde el panel.",
+          "error",
+        );
+        return false;
+      }
+
       const growing = cleanedAssociations.length > storedCount;
       if (growing) {
         const otherTotal = currentLists
@@ -273,7 +287,7 @@ export function useListEditorActions(
         ...editList,
         associations: editList.associations.filter((a) => a.id !== id),
       };
-      cleanupAndSave(updated);
+      cleanupAndSave(updated, { allowEmpty: true });
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -371,7 +385,7 @@ export function useListEditorActions(
       ...editList,
       associations: editList.associations.filter((a) => !selectedIds.has(a.id)),
     };
-    cleanupAndSave(updated);
+    cleanupAndSave(updated, { allowEmpty: true });
     setSelectedIds(new Set());
   }, [editList, selectedIds, cleanupAndSave, setSelectedIds]);
 

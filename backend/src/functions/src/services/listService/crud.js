@@ -2,6 +2,7 @@ const { getDb } = require("../../utils/firebase");
 const { getOrCreateMeta, metaDefaults, metaRefFor } = require("../../utils/helpers");
 const { FieldValue } = require("../../utils/firebase");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST } = require("../../utils/constants");
+const { applyDeltasToList } = require("../../utils/associationDeltas");
 const { assertCardQuotaHasRoom, validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
 
 function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
@@ -300,43 +301,34 @@ async function logCloudProgress(db, listId, uid) {
 }
 
 async function updateListFields(db, listId, uid, baseUpdatedAt, deltas) {
-  const { docRef, oldData } = await loadListOwnershipInfo(db, listId, uid);
-  
-  // Optimistic concurrency check
-  const oldUpdatedAt = oldData.updatedAt?.toMillis?.() ?? oldData.updatedAt ?? 0;
-  if (oldUpdatedAt > baseUpdatedAt) {
-    const error = new Error("Concurrent modification");
-    error.code = "aborted";
-    throw error;
-  }
-  
-  // Build partial updates for associations
-  const updates = {
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-  
-  for (const delta of deltas) {
-    for (const [field, value] of Object.entries(delta.fields)) {
-      updates[`associations.${delta.id}.${field}`] = value;
-    }
-  }
-  
+  const docRef = db.collection(COLLECTION_NAME).doc(listId);
+
   await db.runTransaction(async (tx) => {
     const currentSnap = await tx.get(docRef);
     if (!currentSnap.exists) {
       throw new Error("List not found");
     }
-    
-    // Re-verify concurrency in transaction
+
     const currentData = currentSnap.data();
+    if (currentData.userId && currentData.userId !== uid) {
+      throw new Error("Forbidden");
+    }
+
     const currentUpdatedAt = currentData.updatedAt?.toMillis?.() ?? currentData.updatedAt ?? 0;
     if (currentUpdatedAt > baseUpdatedAt) {
       const error = new Error("Concurrent modification");
       error.code = "aborted";
       throw error;
     }
-    
-    tx.update(docRef, updates);
+
+    // The full array is written back on purpose. Partial dotted updates
+    // (`associations.<uuid>.<field>`) replace the array with a map keyed by the
+    // UUID and destroy term/definition; see
+    // docs/issues/P0/2026-10-15-updateListFields-corrompe-associations.md.
+    tx.update(docRef, {
+      associations: applyDeltasToList(currentData.associations || [], deltas),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
   });
   
   // Log cloud progress after successful update
