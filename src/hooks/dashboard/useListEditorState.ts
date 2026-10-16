@@ -39,6 +39,8 @@ export interface ListEditorState {
   setValidationResult: React.Dispatch<React.SetStateAction<ImportValidationResult | null>>;
   showValidationScreen: boolean;
   setShowValidationScreen: React.Dispatch<React.SetStateAction<boolean>>;
+  importLimit: number | null;
+  setImportLimit: React.Dispatch<React.SetStateAction<number | null>>;
   nameError: boolean;
   setNameError: React.Dispatch<React.SetStateAction<boolean>>;
   termHeader: string;
@@ -105,6 +107,7 @@ export function useListEditorState(
   const [showBulk, setShowBulk] = useState(false);
   const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
   const [showValidationScreen, setShowValidationScreen] = useState(false);
+  const [importLimit, setImportLimit] = useState<number | null>(null);
   const [nameError, setNameError] = useState(false);
   const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
   const [isImporting, setIsImporting] = useState(false);
@@ -291,6 +294,8 @@ export function useListEditorState(
     setValidationResult,
     showValidationScreen,
     setShowValidationScreen,
+    importLimit,
+    setImportLimit,
     nameError,
     setNameError,
     termHeader,

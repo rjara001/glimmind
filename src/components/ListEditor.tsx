@@ -115,6 +115,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     setIsTranslating: state.setIsTranslating,
     isImporting: state.isImporting,
     setIsImporting: state.setIsImporting,
+    importLimit: state.importLimit,
+    setImportLimit: state.setImportLimit,
     isValidating: state.isValidating,
     setIsValidating: state.setIsValidating,
     setValidationProgress: state.setValidationProgress,
@@ -182,6 +184,7 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           deckName={state.editList.name}
           showToast={showToast as (message: string, type?: string) => void}
           isImporting={state.isImporting}
+          importLimit={state.importLimit}
         />
       )}
 

@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 17 done · 3 backlog**.
+Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 18 done · 3 backlog**.
 
 ---
 
@@ -97,6 +97,7 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 17 done · 3 backlog**.
 | [`done/2026-10-12-rutas-ia-sin-rate-limit.md`](done/2026-10-12-rutas-ia-sin-rate-limit.md) | Both AI deck routes now run under `aiGroup` (10/min); `scripts/repro-p0-ai-rate-limit.sh` exits 0 |
 | [`done/2026-10-11-huecos-de-gating-premium.md`](done/2026-10-11-huecos-de-gating-premium.md) | Chirp/Chiptt hidden, coerced to browser and rejected with `TIER_REQUIRED` (403) for free; recording toggle gated on premium (plan `2026-10-14-premium-voice-gating.md`) |
 | [`done/2026-10-13-updatelistfields-400-invalid-body.md`](done/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas are sanitised against the server schema before every send; 400s now log the failing zod field instead of looping forever |
+| [`done/2026-10-16-import-mayor-al-limite-falla-completo.md`](done/2026-10-16-import-mayor-al-limite-falla-completo.md) | Oversized bulk imports now truncate to the remaining quota instead of failing entirely; `ValidationScreen` shows the amber notice and "Se importarán Y de X" subtitle (v1.40.3) |
 
 ## backlog — not defects
 

@@ -36,6 +36,8 @@ export interface UseListEditorActionsParams {
   setIsTranslating: React.Dispatch<React.SetStateAction<boolean>>;
   isImporting: boolean;
   setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
+  importLimit: number | null;
+  setImportLimit: React.Dispatch<React.SetStateAction<number | null>>;
   isValidating: boolean;
   setIsValidating: React.Dispatch<React.SetStateAction<boolean>>;
   setValidationProgress: React.Dispatch<React.SetStateAction<number>>;
@@ -90,6 +92,8 @@ export function useListEditorActions(
     setTranslationUsed,
     setIsTranslating,
     setIsImporting,
+    importLimit,
+    setImportLimit,
     isValidating,
     setIsValidating,
     setValidationProgress,
@@ -437,6 +441,14 @@ export function useListEditorActions(
         );
         return;
       }
+
+      // Quota headroom for this import. In create mode the rows already typed
+      // in the editor are not in the store quota yet, so discount them too;
+      // otherwise the bulk would exceed maxCards once saved. In edit mode the
+      // deck is already counted, so remainingCards alone is the ceiling.
+      const editorRows = isCreateMode ? editList.associations.length : 0;
+      setImportLimit(Math.max(0, status.remainingCards - editorRows));
+
       const preview = parseForPreview(text);
       const newAssocs: Association[] = normalizeAssociations(
         preview.rows.map<AssociationLike>((triple) => ({
@@ -480,6 +492,8 @@ export function useListEditorActions(
       setValidationResult,
       setIsValidating,
       setValidationProgress,
+      setImportLimit,
+      isCreateMode,
     ]
   );
 
@@ -510,6 +524,16 @@ export function useListEditorActions(
           return;
         }
 
+        // Truncate to the quota headroom computed when validation opened. File
+        // order is preserved (categorized is built by iterating the parsed
+        // cards in order), so the first N cards win regardless of category.
+        const truncated = importLimit != null && toImport.length > importLimit;
+        const accepted = truncated ? toImport.slice(0, importLimit!) : toImport;
+        const discarded = toImport.length - accepted.length;
+        const discardedNote = truncated
+          ? ` (${discarded} fuera por tu límite)`
+          : "";
+
         // Create mode: the whole payload goes in ONE bulk request. The server
         // splits it into decks and persists everything atomically, replacing
         // the old per-deck createList loop that died against the rate limit
@@ -523,7 +547,7 @@ export function useListEditorActions(
           const ids = await onBulkCreate({
             name: editList.name,
             concept: editList.concept,
-            associations: [...editList.associations, ...toImport],
+            associations: [...editList.associations, ...accepted],
             settings: editList.settings,
             cardsPerDeck: MAX_CARDS_PER_DECK,
           });
@@ -533,8 +557,8 @@ export function useListEditorActions(
           }
           showToast(
             ids.length === 1
-              ? `✅ ${toImport.length} tarjetas importadas`
-              : `✅ ${toImport.length} tarjetas importadas en ${ids.length} mazos`,
+              ? `✅ ${accepted.length} tarjetas importadas${discardedNote}`
+              : `✅ ${accepted.length} tarjetas importadas en ${ids.length} mazos${discardedNote}`,
             "success",
           );
           setShowValidationScreen(false);
@@ -545,12 +569,12 @@ export function useListEditorActions(
         // Edit mode: deckCount drives whether this is a single-deck append or
         // a splitList call (already a single HTTP request for every deck).
         const MAX = MAX_CARDS_PER_DECK;
-        const deckCount = Math.ceil(toImport.length / MAX);
+        const deckCount = Math.ceil(accepted.length / MAX);
 
         if (deckCount === 1) {
-          const updated = { ...editList, associations: [...editList.associations, ...toImport] };
+          const updated = { ...editList, associations: [...editList.associations, ...accepted] };
           await onSave(updated);
-          showToast(`✅ ${toImport.length} tarjetas importadas`, "success");
+          showToast(`✅ ${accepted.length} tarjetas importadas${discardedNote}`, "success");
           setShowValidationScreen(false);
           onBack();
           return;
@@ -564,7 +588,7 @@ export function useListEditorActions(
 
         const groups: { name: string; associations: Association[] }[] = [];
         for (let i = 0; i < deckCount; i++) {
-          const chunk = toImport.slice(i * MAX, (i + 1) * MAX);
+          const chunk = accepted.slice(i * MAX, (i + 1) * MAX);
           const name = i === 0 ? editList.name : `${editList.name}-${i + 1}`;
           groups.push({ name, associations: chunk });
         }
@@ -574,7 +598,7 @@ export function useListEditorActions(
         // (docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
         await onCreateMultiple(groups, editList.id);
 
-        showToast(`✅ ${toImport.length} tarjetas importadas en ${deckCount} mazos`, "success");
+        showToast(`✅ ${accepted.length} tarjetas importadas en ${deckCount} mazos${discardedNote}`, "success");
         setShowValidationScreen(false);
         onBack();
       } finally {

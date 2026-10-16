@@ -9,6 +9,7 @@ interface ValidationScreenProps {
   deckName: string;
   showToast: (message: string, type?: string) => void;
   isImporting?: boolean;
+  importLimit?: number | null;
 }
 
 const BAR_COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#059669', '#d97706', '#64748b'];
@@ -20,6 +21,7 @@ export const ValidationScreen: React.FC<ValidationScreenProps> = ({
   deckName,
   showToast,
   isImporting = false,
+  importLimit = null,
 }) => {
   const [selectedCategories, setSelectedCategories] = React.useState<Record<CardCategory, boolean>>({
     existing: true,
@@ -47,6 +49,8 @@ export const ValidationScreen: React.FC<ValidationScreenProps> = ({
     (selectedCategories.new ? newCards : 0);
 
   const canImport = selectedCount > 0;
+  const isTruncated = importLimit !== null && selectedCount > importLimit;
+  const acceptedCount = isTruncated ? importLimit : selectedCount;
 
   const handleToggle = (category: CardCategory) => {
     setSelectedCategories(prev => ({ ...prev, [category]: !prev[category] }));
@@ -175,6 +179,30 @@ export const ValidationScreen: React.FC<ValidationScreenProps> = ({
             />
           </div>
 
+          {/* QUOTA TRUNCATION NOTICE */}
+          {isTruncated && (
+            <div
+              role="status"
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: 12,
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: '1rem', lineHeight: 1.4 }}>⚠️</span>
+              <div style={{ fontSize: '0.8rem', color: '#92400e', lineHeight: 1.5 }}>
+                <strong>Tu límite es {importLimit} tarjetas.</strong> Se importarán las primeras{' '}
+                {importLimit} en el orden del archivo; las {selectedCount - importLimit} restantes
+                se descartan. Libera espacio (elimina o archiva tarjetas) si necesitas importarlas
+                todas.
+              </div>
+            </div>
+          )}
+
           {/* ACTIONS */}
           <div className="pt-4 space-y-2">
             <button
@@ -196,7 +224,9 @@ export const ValidationScreen: React.FC<ValidationScreenProps> = ({
                 <>
                   <span>📤 Agregar tarjetas</span>
                   <span className="text-[0.65rem] font-normal opacity-85">
-                    {selectedCount} tarjetas seleccionadas
+                    {isTruncated
+                      ? `Se importarán ${acceptedCount} de ${selectedCount}`
+                      : `${selectedCount} tarjetas seleccionadas`}
                   </span>
                 </>
               )}

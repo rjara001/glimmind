@@ -114,6 +114,8 @@ function renderImportActions(overrides: Partial<UseListEditorActionsParams> = {}
     setIsTranslating: vi.fn(),
     isImporting: false,
     setIsImporting: vi.fn(),
+    importLimit: null,
+    setImportLimit: vi.fn(),
     isValidating: false,
     setIsValidating: vi.fn(),
     setValidationProgress: vi.fn(),
@@ -321,6 +323,37 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
       );
     });
 
+    it('truncates create-mode import to importLimit and reports discarded cards in the toast', async () => {
+      const onBulkCreate = vi.fn().mockResolvedValue(['id1']);
+      const { result } = renderImportActions({
+        onBulkCreate,
+        importLimit: 20,
+      });
+
+      await act(async () => {
+        await result.current.importSelectedCards({
+          existing: false,
+          similar: false,
+          new: true,
+        });
+      });
+
+      expect(onBulkCreate).toHaveBeenCalledTimes(1);
+      const payload = onBulkCreate.mock.calls[0][0];
+      expect(payload.associations).toHaveLength(22);
+      expect(payload.associations.slice(0, 2).map((a: Association) => a.id)).toEqual([
+        'card-0',
+        'card-1',
+      ]);
+      expect(payload.associations.slice(2).map((a: Association) => a.term)).toEqual(
+        Array.from({ length: 20 }, (_, i) => `term-${i}`),
+      );
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringMatching(/20 tarjetas importadas \(130 fuera por tu límite\)/),
+        'success',
+      );
+    });
+
     it('edit mode still splits through onCreateMultiple and never calls the bulk endpoint', async () => {
       const onCreateMultiple = vi.fn().mockResolvedValue(undefined);
       const onBulkCreate = vi.fn();
@@ -340,6 +373,34 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
 
       expect(onCreateMultiple).toHaveBeenCalledTimes(1);
       expect(onBulkCreate).not.toHaveBeenCalled();
+    });
+
+    it('edit mode truncates the append to importLimit via onSave', async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderImportActions({
+        isCreateMode: false,
+        onSave,
+        importLimit: 10,
+      });
+
+      await act(async () => {
+        await result.current.importSelectedCards({
+          existing: false,
+          similar: false,
+          new: true,
+        });
+      });
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      const saved = onSave.mock.calls[0][0] as AssociationList;
+      expect(saved.associations).toHaveLength(12);
+      expect(saved.associations.slice(2).map((a) => a.term)).toEqual(
+        Array.from({ length: 10 }, (_, i) => `term-${i}`),
+      );
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringMatching(/10 tarjetas importadas \(140 fuera por tu límite\)/),
+        'success',
+      );
     });
   });
 
@@ -368,6 +429,33 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
       const validation = setValidationResult.mock.calls[0][0] as ImportValidationResult;
       expect(validation.total).toBe(2);
       expect(validation.counts.new).toBe(2);
+    });
+
+    it('computes importLimit as remainingCards minus editor rows in create mode', async () => {
+      useGameStore.setState({ quota: buildQuota('premium') });
+      const setImportLimit = vi.fn();
+      const { result } = renderImportActions({ setImportLimit });
+
+      await act(async () => {
+        await result.current.handleBulkAdd('alpha,beta\ngamma,delta');
+      });
+
+      expect(setImportLimit).toHaveBeenCalledWith(PREMIUM_MAX_CARDS - 2);
+    });
+
+    it('computes importLimit as remainingCards in edit mode (deck already counted)', async () => {
+      useGameStore.setState({ quota: buildQuota('premium') });
+      const setImportLimit = vi.fn();
+      const { result } = renderImportActions({
+        isCreateMode: false,
+        setImportLimit,
+      });
+
+      await act(async () => {
+        await result.current.handleBulkAdd('alpha,beta\ngamma,delta');
+      });
+
+      expect(setImportLimit).toHaveBeenCalledWith(PREMIUM_MAX_CARDS);
     });
 
     it('does nothing while a validation is already running', async () => {
