@@ -7,8 +7,12 @@ import { parseForPreview, MAX_PREVIEW_ROWS } from '../../utils/csv';
 import { renderMappingBadge, renderPreviewTable } from '../../utils/importPreview';
 
 interface BulkImportProps {
-  onBulkAdd: (text: string) => void;
+  onBulkAdd: (text: string) => void | Promise<void>;
   onFileName?: (name: string) => void;
+
+  // Chunked validation feedback (Process Import / Process Extract buttons)
+  isValidating?: boolean;
+  validatingPercent?: number;
 
   // Optional keyword extraction mode (for Dashboard CreateListForm)
   extraction?: {
@@ -28,6 +32,8 @@ interface BulkImportProps {
 export const BulkImport: React.FC<BulkImportProps> = ({
   onBulkAdd,
   onFileName,
+  isValidating = false,
+  validatingPercent = 0,
   extraction,
 }) => {
   const [bulkText, setBulkText] = useState('');
@@ -194,9 +200,12 @@ export const BulkImport: React.FC<BulkImportProps> = ({
                 const text = associations.map(a => `${a.term},${a.definition[0] || ''},${a.context || ''}`).join('\n');
                 onBulkAdd(text);
               }}
-              className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition"
+              disabled={isValidating}
+              className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-wait"
             >
-              Process Extract ({selectedCount})
+              {isValidating
+                ? `Validando... [${validatingPercent}%]`
+                : `Process Extract (${selectedCount})`}
             </button>
           </div>
         )}
@@ -276,10 +285,10 @@ export const BulkImport: React.FC<BulkImportProps> = ({
           <div className="flex justify-end">
             <button
               onClick={() => onBulkAdd(bulkText)}
-              disabled={!hasParsedData || parsedData?.rows.length === 0}
+              disabled={!hasParsedData || parsedData?.rows.length === 0 || isValidating}
               className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              Process Import
+              {isValidating ? `Validando... [${validatingPercent}%]` : 'Process Import'}
             </button>
           </div>
         </>

@@ -4,8 +4,12 @@ import type { ExtractedKeyword, KeywordExtractionOptions } from "../../types/key
 import type { Association } from "../../types";
 
 interface ListEditorBulkImportProps {
-  onBulkAdd: (text: string) => void;
+  onBulkAdd: (text: string) => void | Promise<void>;
   onFileName?: (name: string) => void;
+
+  // Chunked validation feedback (Process Import button)
+  isValidating?: boolean;
+  validatingPercent?: number;
 
   // Keyword extraction
   extractText?: string;
@@ -23,6 +27,8 @@ interface ListEditorBulkImportProps {
 export const ListEditorBulkImport: React.FC<ListEditorBulkImportProps> = ({
   onBulkAdd,
   onFileName,
+  isValidating = false,
+  validatingPercent = 0,
   extractText = "",
   setExtractText,
   extractedKeywords = [],
@@ -39,6 +45,8 @@ export const ListEditorBulkImport: React.FC<ListEditorBulkImportProps> = ({
   return <BulkImport
     onBulkAdd={onBulkAdd}
     onFileName={onFileName}
+    isValidating={isValidating}
+    validatingPercent={validatingPercent}
     extraction={hasExtraction ? {
       extractText,
       setExtractText: setExtractText ?? (() => {}),

@@ -36,6 +36,9 @@ export interface UseListEditorActionsParams {
   setIsTranslating: React.Dispatch<React.SetStateAction<boolean>>;
   isImporting: boolean;
   setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
+  isValidating: boolean;
+  setIsValidating: React.Dispatch<React.SetStateAction<boolean>>;
+  setValidationProgress: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export interface UseListEditorActionsReturn {
@@ -54,7 +57,7 @@ export interface UseListEditorActionsReturn {
   handleDeleteSelected: () => void;
   handleRestoreRow: (id: string) => void;
   handleRestoreSelected: () => void;
-  handleBulkAdd: (text: string) => void;
+  handleBulkAdd: (text: string) => Promise<void>;
   importSelectedCards: (categories: Record<CardCategory, boolean>) => Promise<void>;
   handleBackToEditor: () => void;
 }
@@ -87,6 +90,9 @@ export function useListEditorActions(
     setTranslationUsed,
     setIsTranslating,
     setIsImporting,
+    isValidating,
+    setIsValidating,
+    setValidationProgress,
   } = params;
 
   const pendingSaveRef = useRef<Promise<void> | null>(null);
@@ -406,7 +412,8 @@ export function useListEditorActions(
   }, [editList, selectedArchivedIds, cleanupAndSave, setSelectedArchivedIds]);
 
   const handleBulkAdd = useCallback(
-    (text: string) => {
+    async (text: string) => {
+      if (isValidating) return;
       if (!text.trim()) return;
       if (!editList.name.trim()) {
         setNameError(true);
@@ -444,17 +451,35 @@ export function useListEditorActions(
         })),
       );
       const allLists = [...lists.filter((l) => l.id !== editList.id), editList];
-      const validationResult = validateImportCards(newAssocs, allLists);
-      setValidationResult(validationResult);
-      setShowValidationScreen(true);
+      setIsValidating(true);
+      setValidationProgress(0);
+      try {
+        // Async + chunked: the O(N x M) similarity scan yields to the event
+        // loop so the tab never freezes; the button shows "Validando... [X%]".
+        const validationResult = await validateImportCards(newAssocs, allLists, {
+          onProgress: ({ processed, total }) => {
+            setValidationProgress(
+              total > 0 ? Math.round((processed / total) * 100) : 100,
+            );
+          },
+        });
+        setValidationResult(validationResult);
+        setShowValidationScreen(true);
+      } finally {
+        setIsValidating(false);
+        setValidationProgress(0);
+      }
     },
     [
+      isValidating,
       editList,
       lists,
       showToast,
       setNameError,
       setShowValidationScreen,
       setValidationResult,
+      setIsValidating,
+      setValidationProgress,
     ]
   );
 

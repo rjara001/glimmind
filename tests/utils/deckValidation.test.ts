@@ -45,11 +45,11 @@ const makeDeck = (associations: { term: string; definition: string }[]): Prebuil
 
 
 describe('categorizeDeckCards', () => {
-  it('categorizes exact term match as existing (case-insensitive)', () => {
+  it('categorizes exact term match as existing (case-insensitive)', async () => {
     const existingLists = [makeList('House', 'Casa')];
     const deck = makeDeck([{ term: 'house', definition: 'Casa' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.counts.existing).toBe(1);
     expect(result.counts.similar).toBe(0);
@@ -57,11 +57,11 @@ describe('categorizeDeckCards', () => {
     expect(result.categorized[0].category).toBe('existing');
   });
 
-  it('categorizes Levenshtein-similar term as similar with match data', () => {
+  it('categorizes Levenshtein-similar term as similar with match data', async () => {
     const existingLists = [makeList('test', 'prueba')];
     const deck = makeDeck([{ term: 'tests', definition: 'pruebas' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.counts.similar).toBe(1);
     expect(result.categorized[0].category).toBe('similar');
@@ -70,11 +70,11 @@ describe('categorizeDeckCards', () => {
     expect(result.categorized[0].similarMatch?.similarity).toBe(0.8);
   });
 
-  it('categorizes below-threshold similarity as new', () => {
+  it('categorizes below-threshold similarity as new', async () => {
     const existingLists = [makeList('abandon', 'abandonar')];
     const deck = makeDeck([{ term: 'Abandonar', definition: 'Abandon' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     // Abandon vs Abandonar = 0.778 < 0.80 → new (not similar)
     expect(result.counts.new).toBe(1);
@@ -82,50 +82,50 @@ describe('categorizeDeckCards', () => {
     expect(result.categorized[0].similarMatch).toBeUndefined();
   });
 
-  it('categorizes completely new term as new', () => {
+  it('categorizes completely new term as new', async () => {
     const existingLists = [makeList('dog', 'perro')];
     const deck = makeDeck([{ term: 'cat', definition: 'gato' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.counts.new).toBe(1);
     expect(result.categorized[0].category).toBe('new');
   });
 
-  it('returns all new when existing lists are empty', () => {
+  it('returns all new when existing lists are empty', async () => {
     const deck = makeDeck([
       { term: 'alpha', definition: 'A' },
       { term: 'beta', definition: 'B' },
     ]);
 
-    const result = categorizeDeckCards(deck, []);
+    const result = await categorizeDeckCards(deck, []);
 
     expect(result.counts.existing).toBe(0);
     expect(result.counts.similar).toBe(0);
     expect(result.counts.new).toBe(2);
   });
 
-  it('returns all new when existingLists is undefined', () => {
+  it('returns all new when existingLists is undefined', async () => {
     const deck = makeDeck([{ term: 'alpha', definition: 'A' }]);
 
-    const result = categorizeDeckCards(deck, undefined);
+    const result = await categorizeDeckCards(deck, undefined);
 
     expect(result.counts.new).toBe(1);
   });
 
-  it('returns all new when existingLists is null', () => {
+  it('returns all new when existingLists is null', async () => {
     const deck = makeDeck([{ term: 'alpha', definition: 'A' }]);
 
-    const result = categorizeDeckCards(deck, null);
+    const result = await categorizeDeckCards(deck, null);
 
     expect(result.counts.new).toBe(1);
   });
 
-  it('handles deck with no associations', () => {
+  it('handles deck with no associations', async () => {
     const existingLists = [makeList('dog', 'perro')];
     const deck = makeDeck([]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.total).toBe(0);
     expect(result.counts.existing).toBe(0);
@@ -134,7 +134,7 @@ describe('categorizeDeckCards', () => {
     expect(result.categorized).toHaveLength(0);
   });
 
-  it('handles mixed deck with correct distribution', () => {
+  it('handles mixed deck with correct distribution', async () => {
     const existingLists = [
       makeList('house', 'Casa'),  // matches deck "house" exactly
       makeList('test', 'prueba'), // similar to deck "tests"
@@ -146,7 +146,7 @@ describe('categorizeDeckCards', () => {
       { term: 'dog', definition: 'perro' },
     ]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.total).toBe(4);
     expect(result.counts.existing).toBe(1);
@@ -155,14 +155,14 @@ describe('categorizeDeckCards', () => {
     expect(result.counts.existing + result.counts.similar + result.counts.new).toBe(result.total);
   });
 
-  it('picks the best similarity match for similar cards', () => {
+  it('picks the best similarity match for similar cards', async () => {
     const existingLists = [
       makeList('test', 'prueba'),
       makeList('tests', 'pruebas'),
     ];
     const deck = makeDeck([{ term: 'testing', definition: 'prueba' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     // "testing" vs "tests" = normalize: "testing"(7) vs "tests"(5), edit dist = 2, sim = (7-2)/7 = 0.714 < 0.80
     // "testing" vs "test" = normalize: "testing"(7) vs "test"(4), edit dist = 3, sim = (7-3)/7 = 0.571 < 0.80
@@ -171,22 +171,46 @@ describe('categorizeDeckCards', () => {
     expect(result.categorized[0].category).toBe('new');
   });
 
-  it('normalizes accents and casing for exact match', () => {
+  it('normalizes accents and casing for exact match', async () => {
     const existingLists = [makeList('café', 'coffee shop')];
     const deck = makeDeck([{ term: 'CAFE', definition: 'coffee shop' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.counts.existing).toBe(1);
     expect(result.categorized[0].category).toBe('existing');
   });
 
-  it('strips punctuation for normalization', () => {
+  it('strips punctuation for normalization', async () => {
     const existingLists = [makeList('okay', 'de acuerdo')];
     const deck = makeDeck([{ term: 'okay!', definition: 'de acuerdo' }]);
 
-    const result = categorizeDeckCards(deck, existingLists);
+    const result = await categorizeDeckCards(deck, existingLists);
 
     expect(result.counts.existing).toBe(1);
+  });
+
+  it('reports progress through onProgress and stays equivalent to a full scan', async () => {
+    const existingLists = [
+      makeList('house', 'Casa'),
+      makeList('test', 'prueba'),
+    ];
+    const deck = makeDeck([
+      { term: 'house', definition: 'Casa' },
+      { term: 'tests', definition: 'pruebas' },
+      { term: 'cat', definition: 'gato' },
+    ]);
+
+    const progressReports: { processed: number; total: number }[] = [];
+    const result = await categorizeDeckCards(deck, existingLists, {
+      chunkSize: 1,
+      onProgress: (progress) => progressReports.push(progress),
+    });
+
+    expect(result.counts.existing).toBe(1);
+    expect(result.counts.similar).toBe(1);
+    expect(result.counts.new).toBe(1);
+    expect(progressReports.length).toBeGreaterThan(0);
+    expect(progressReports[progressReports.length - 1]).toEqual({ processed: 3, total: 3 });
   });
 });

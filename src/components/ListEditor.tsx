@@ -115,6 +115,9 @@ export const ListEditor: React.FC<ListEditorProps> = ({
     setIsTranslating: state.setIsTranslating,
     isImporting: state.isImporting,
     setIsImporting: state.setIsImporting,
+    isValidating: state.isValidating,
+    setIsValidating: state.setIsValidating,
+    setValidationProgress: state.setValidationProgress,
   });
 
   useEffect(() => {
@@ -221,6 +224,8 @@ export const ListEditor: React.FC<ListEditorProps> = ({
           <ListEditorBulkImport
             onBulkAdd={actions.handleBulkAdd}
             onFileName={handleFileName}
+            isValidating={state.isValidating}
+            validatingPercent={state.validationProgress}
             extractText={state.extractText}
             setExtractText={state.setExtractText}
             extractedKeywords={state.extractedKeywords}

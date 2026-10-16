@@ -64,6 +64,10 @@ export interface ListEditorState {
   hasName: boolean;
   isImporting: boolean;
   setIsImporting: React.Dispatch<React.SetStateAction<boolean>>;
+  isValidating: boolean;
+  setIsValidating: React.Dispatch<React.SetStateAction<boolean>>;
+  validationProgress: number;
+  setValidationProgress: React.Dispatch<React.SetStateAction<number>>;
 
   // Keyword extraction
   extractText: string;
@@ -104,6 +108,8 @@ export function useListEditorState(
   const [nameError, setNameError] = useState(false);
   const [translationUsed, setTranslationUsed] = useState(() => quota?.translationCharsUsed ?? 0);
   const [isImporting, setIsImporting] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationProgress, setValidationProgress] = useState(0);
 
   // Keyword extraction state
   const [extractText, setExtractText] = useState("");
@@ -310,6 +316,10 @@ export function useListEditorState(
     setTranslationUsed,
     isImporting,
     setIsImporting,
+    isValidating,
+    setIsValidating,
+    validationProgress,
+    setValidationProgress,
 
     // Keyword extraction
     extractText,

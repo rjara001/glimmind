@@ -87,6 +87,41 @@ function makeValidationResult(count: number): ImportValidationResult {
   };
 }
 
+function renderImportActions(overrides: Partial<UseListEditorActionsParams> = {}) {
+  const params: UseListEditorActionsParams = {
+    editList: makeList('', makeCards(2), 'Imported'),
+    setEditList: vi.fn(),
+    selectedIds: new Set<string>(),
+    selectedArchivedIds: new Set<string>(),
+    onSave: vi.fn().mockResolvedValue(undefined),
+    onCreateMultiple: vi.fn().mockResolvedValue(undefined),
+    isCreateMode: true,
+    onBulkCreate: vi.fn().mockResolvedValue(['id1', 'id2']),
+    showToast: mockShowToast,
+    translateLang: 'en',
+    lists: [],
+    isSaving: false,
+    setIsSaving: vi.fn(),
+    setNameError: vi.fn(),
+    validationResult: makeValidationResult(150),
+    setValidationResult: vi.fn(),
+    setShowValidationScreen: vi.fn(),
+    setSelectedIds: vi.fn(),
+    setSelectedArchivedIds: vi.fn(),
+    onBack: vi.fn(),
+    csvHeader: ['Term', 'Definition', 'Context'],
+    setTranslationUsed: vi.fn(),
+    setIsTranslating: vi.fn(),
+    isImporting: false,
+    setIsImporting: vi.fn(),
+    isValidating: false,
+    setIsValidating: vi.fn(),
+    setValidationProgress: vi.fn(),
+    ...overrides,
+  };
+  return renderHook(() => useListEditorActions(params));
+}
+
 const mockNavigate = vi.fn();
 const mockShowToast = vi.fn();
 const mockSetLastPlayedId = vi.fn();
@@ -228,38 +263,6 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
   });
 
   describe('importSelectedCards in create mode', () => {
-    function renderImportActions(overrides: Partial<UseListEditorActionsParams> = {}) {
-      const params: UseListEditorActionsParams = {
-        editList: makeList('', makeCards(2), 'Imported'),
-        setEditList: vi.fn(),
-        selectedIds: new Set<string>(),
-        selectedArchivedIds: new Set<string>(),
-        onSave: vi.fn().mockResolvedValue(undefined),
-        onCreateMultiple: vi.fn().mockResolvedValue(undefined),
-        isCreateMode: true,
-        onBulkCreate: vi.fn().mockResolvedValue(['id1', 'id2']),
-        showToast: mockShowToast,
-        translateLang: 'en',
-        lists: [],
-        isSaving: false,
-        setIsSaving: vi.fn(),
-        setNameError: vi.fn(),
-        validationResult: makeValidationResult(150),
-        setValidationResult: vi.fn(),
-        setShowValidationScreen: vi.fn(),
-        setSelectedIds: vi.fn(),
-        setSelectedArchivedIds: vi.fn(),
-        onBack: vi.fn(),
-        csvHeader: ['Term', 'Definition', 'Context'],
-        setTranslationUsed: vi.fn(),
-        setIsTranslating: vi.fn(),
-        isImporting: false,
-        setIsImporting: vi.fn(),
-        ...overrides,
-      };
-      return renderHook(() => useListEditorActions(params));
-    }
-
     it('performs a single onBulkCreate call carrying every card, including rows already in the editor', async () => {
       const onBulkCreate = vi.fn().mockResolvedValue(['id1', 'id2']);
       const setShowValidationScreen = vi.fn();
@@ -337,6 +340,45 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
 
       expect(onCreateMultiple).toHaveBeenCalledTimes(1);
       expect(onBulkCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleBulkAdd (chunked async validation)', () => {
+    it('awaits the chunked validation, reports progress and opens the validation screen', async () => {
+      const setIsValidating = vi.fn();
+      const setValidationProgress = vi.fn();
+      const setValidationResult = vi.fn();
+      const setShowValidationScreen = vi.fn();
+      const { result } = renderImportActions({
+        setIsValidating,
+        setValidationProgress,
+        setValidationResult,
+        setShowValidationScreen,
+      });
+
+      await act(async () => {
+        await result.current.handleBulkAdd('alpha,beta\ngamma,delta');
+      });
+
+      expect(setIsValidating).toHaveBeenNthCalledWith(1, true);
+      expect(setIsValidating).toHaveBeenNthCalledWith(2, false);
+      expect(setValidationProgress).toHaveBeenLastCalledWith(0);
+      expect(setShowValidationScreen).toHaveBeenCalledWith(true);
+      expect(setValidationResult).toHaveBeenCalledTimes(1);
+      const validation = setValidationResult.mock.calls[0][0] as ImportValidationResult;
+      expect(validation.total).toBe(2);
+      expect(validation.counts.new).toBe(2);
+    });
+
+    it('does nothing while a validation is already running', async () => {
+      const setIsValidating = vi.fn();
+      const { result } = renderImportActions({ isValidating: true, setIsValidating });
+
+      await act(async () => {
+        await result.current.handleBulkAdd('alpha,beta');
+      });
+
+      expect(setIsValidating).not.toHaveBeenCalled();
     });
   });
 });
