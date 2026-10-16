@@ -28,21 +28,20 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-15: **0 P0 · 12 P1 · 16 P2 · 17 done · 3 backlog**.
+Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 17 done · 3 backlog**.
 
 ---
 
 ## P0 — bleeding money or broken right now
 
-None open. The `updateListFields` corruption was fixed and deployed on
-2026-10-15 (v1.39.2) and moved to
-[`done/`](done/): [`2026-10-15-updateListFields-corrompe-associations`](done/2026-10-15-updateListFields-corrompe-associations.md).
+| Issue | Impact |
+|---|---|
+| [`P0/2026-10-11-log-client-error-sin-rewrite.md`](P0/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting is dead: no rewrite, queue never drained, UI catches swallow errors. The 2026-10-16 keepalive incident was invisible in GCP. Plan: [`../plans/2026-10-16-client-error-observability.md`](../plans/2026-10-16-client-error-observability.md) |
 
 ## P1 — behavioural bugs
 
 | Issue | Impact |
 |---|---|
-| [`P1/2026-10-11-log-client-error-sin-rewrite.md`](P1/2026-10-11-log-client-error-sin-rewrite.md) | Every client error is lost; one wasted request each |
 | [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
 | [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
