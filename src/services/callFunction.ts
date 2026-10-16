@@ -1,4 +1,5 @@
 import { auth, isUsingEmulators } from '../firebase';
+import { SYNC_CONFIG } from '../constants/syncConfig';
 
 const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env ?? {};
 const PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID || 'fladycard-22a3e';
@@ -51,9 +52,19 @@ export async function callFunction<T>(functionName: string, data: any): Promise<
 
   console.log('[callFunction]', functionName, 'url=', url, 'tokenPresent=', !!token);
 
+  // The Fetch spec caps keepalive request bodies at 64 KiB; a larger body is
+  // rejected client-side with TypeError("Failed to fetch") before the request
+  // ever reaches the network. bulkCreateList payloads (hundreds of cards) sit
+  // far above that cap, so keepalive is only used for small payloads — the
+  // same safe limit gameStore already uses to split keepalive sync batches.
+  // Size is measured in UTF-8 bytes (what the browser enforces), not in
+  // UTF-16 code units: accented Spanish text inflates bytes over .length.
+  const payloadBytes = new TextEncoder().encode(payload).length;
+  const keepalive = payloadBytes <= SYNC_CONFIG.keepaliveSafeLimit;
+
   const response = await fetch(url, {
     method: 'POST',
-    keepalive: true, // ✅ FIX: Permite que la petición sobreviva al cierre de pestaña o navegación
+    keepalive, // Survives tab close/navigation; disabled for payloads over the safe limit
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
