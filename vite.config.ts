@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
       plugins: [react()],
       build: {
         outDir: path.resolve(__dirname, 'dist'),
+        // outDir sits outside root ('src'), so Vite skips emptying by default
+        // and every build would stack new hashed bundles on top of old ones.
+        emptyOutDir: true,
       },
       resolve: {
         alias: {

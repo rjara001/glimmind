@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 23 done · 3 backlog**.
+Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 24 done · 3 backlog**.
 
 ---
 
@@ -69,7 +69,7 @@ Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 23 done · 3 backlog**.
 | [`P2/2026-10-12-create-list-campos-opcionales.md`](P2/2026-10-12-create-list-campos-opcionales.md) | The schema calls `concept`/`settings` optional; omitting either returns 500 |
 | [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
 | [`P2/2026-10-14-voice-stt-fallback-dead-toggle.md`](P2/2026-10-14-voice-stt-fallback-dead-toggle.md) | The STT fallback toggle is written but no code reads it |
-| [`P2/2026-10-15-dist-no-se-limpia-en-cada-build.md`](P2/2026-10-15-dist-no-se-limpia-en-cada-build.md) | `dist/` never empties (outDir outside `root`): 257 bundles, 1.7 GB uploaded on every deploy |
+| [`P2/2026-10-16-callfunction-debug-console-log.md`](P2/2026-10-16-callfunction-debug-console-log.md) | `callFunction.ts:53` ships a debug `console.log` (incl. `tokenPresent=`) to every production session |
 | [`P2/2026-10-16-error-message-crudo-en-cliente.md`](P2/2026-10-16-error-message-crudo-en-cliente.md) | Toasts show raw English browser errors ("Failed to fetch") in the Spanish UI |
 
 ## done — resolved
@@ -98,7 +98,8 @@ Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 23 done · 3 backlog**.
 | [`done/2026-10-12-activity-falla-y-descarta-la-edicion.md`](done/2026-10-12-activity-falla-y-descarta-la-edicion.md) | The list write now happens before the activity record; a failed `appendActivity` can no longer veto the edit. Failures report `activity.record_error` via `logEvent` instead of being swallowed |
 | [`done/2026-10-13-prebuiltdeck-sin-guard-guest.md`](done/2026-10-13-prebuiltdeck-sin-guard-guest.md) | `prebuiltDeckService.fetchDecks` short-circuits to `[]` for guests (§31), and the onboarding error state offers "Crear lista personalizada" so a failed fetch never traps the user |
 | [`done/2026-10-12-quota-fallback-free.md`](done/2026-10-12-quota-fallback-free.md) | The four client quota gates no longer manufacture a free tier when `getQuota` failed for a signed-in user; they block with a connectivity message instead (`resolveTierForGate`) |
-| [`done/2026-10-11-log-client-error-sin-rewrite.md`](done/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting pipeline repaired in v1.40.4: hosting rewrite added, retry queue drained on start, six swallowed UI catches now report via `logEvent`, guests short-circuit (§31). Probe answered `{"success":true}` |
+| [`done/2026-10-11-log-client-error-sin-rewrite.md`](done/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting pipeline repaired in v1.40.4: hosting rewrite added, retry queue drained on start, six swallowed UI catches now report via `logEvent`, guests short-circuit (§31; the guard was hardened 2026-10-16 to also detect local guests via `localStorage` and to no-op entirely on demo builds). Probe answered `{"success":true}` |
+| [`done/2026-10-15-dist-no-se-limpia-en-cada-build.md`](done/2026-10-15-dist-no-se-limpia-en-cada-build.md) | Resolved 2026-10-16: `emptyOutDir: true` added to `vite.config.ts` (required by the E2E-against-production-build change) |
 
 ## backlog — not defects
 

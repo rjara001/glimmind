@@ -1,13 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { listTtsVoices } from '../../../services/voice/tts/chirpVoicesApi';
+import { useGameStore } from '../../../store/gameStore';
+import { GUEST_UID } from '../../../constants/app';
 import { ChirpVoice } from '../../../types';
 
 export function useChirpVoices(lang?: string) {
   const [voices, setVoices] = useState<ChirpVoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const user = useGameStore((state) => state.user);
 
   const load = useCallback(async () => {
+    // AGENTS.md §31: guests operate strictly offline; they must never invoke
+    // Cloud Functions. The voice catalog stays empty for them.
+    if (!user || user.uid === GUEST_UID) {
+      setVoices([]);
+      setError(null);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -23,7 +33,7 @@ export function useChirpVoices(lang?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [lang]);
+  }, [lang, user]);
 
   useEffect(() => {
     load();

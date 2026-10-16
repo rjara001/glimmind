@@ -1,6 +1,7 @@
 import { callFunction } from './callFunction';
-import { auth } from '../firebase';
+import { auth, isConfigured } from '../firebase';
 import { GUEST_UID } from '../constants/app';
+import { safeGetItem } from '../utils/localStorage';
 
 export type EventType =
   | 'settings.modal_opened'
@@ -44,8 +45,18 @@ const reportedErrors = new WeakSet<object>();
 
 // AGENTS.md §31: guests operate strictly offline; they must never invoke
 // Cloud Functions. Client error reporting is therefore a no-op for them.
+// Guests never authenticate with Firebase Auth, so `auth.currentUser` is null
+// for them; the local session marker in localStorage is the reliable signal.
 function isGuestSession(): boolean {
-  return auth.currentUser?.uid === GUEST_UID;
+  if (auth.currentUser?.uid === GUEST_UID) return true;
+  const savedGuest = safeGetItem('glimmind_guest_user');
+  if (!savedGuest) return false;
+  try {
+    const guest = JSON.parse(savedGuest) as { uid?: string } | null;
+    return guest?.uid === GUEST_UID;
+  } catch {
+    return false;
+  }
 }
 
 let currentCorrelationId: string | null = null;
@@ -82,6 +93,10 @@ export async function logEvent(
     extra?: Record<string, unknown>;
   }
 ): Promise<void> {
+  // Demo builds (fake API key, incl. the E2E suite) must never touch the
+  // reporting pipeline: no network, no console noise, no retry queue.
+  if (!isConfigured) return;
+
   const errObject = context.error instanceof Error ? context.error : null;
 
   if (errObject && reportedErrors.has(errObject)) return;
@@ -204,6 +219,7 @@ function queueForRetry(data: { payload: EventPayload; labels: EventLabels; sever
 }
 
 export async function flushEventQueue(): Promise<void> {
+  if (!isConfigured) return;
   if (isGuestSession()) return;
   try {
     const queue = JSON.parse(localStorage.getItem('glimmind_event_queue') || '[]');

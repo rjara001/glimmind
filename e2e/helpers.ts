@@ -22,7 +22,11 @@ export async function loginAsGuest(page: Page): Promise<void> {
 }
 
 /** Creates a deck from the first-run dashboard through the paste import flow. */
-export async function createDeckFromPaste(page: Page, deckName: string): Promise<void> {
+export async function createDeckFromRows(
+  page: Page,
+  deckName: string,
+  rows: string[]
+): Promise<void> {
   const createCustom = page.getByRole('button', { name: /Crear Lista Personalizada/ });
   await expect(createCustom).toBeVisible();
   await createCustom.click();
@@ -33,7 +37,7 @@ export async function createDeckFromPaste(page: Page, deckName: string): Promise
   await page.locator('#list-name').fill(deckName);
   await page.getByRole('button', { name: /Importar/ }).click();
   await page.getByRole('button', { name: 'Pegar texto' }).click();
-  await page.getByPlaceholder(/Abandon,Abandonar/).fill(DECK_ROWS.join('\n'));
+  await page.getByPlaceholder(/Abandon,Abandonar/).fill(rows.join('\n'));
   await expect(page.getByText(/filas detectadas/)).toBeVisible();
   await page.getByRole('button', { name: 'Process Import' }).click();
 
@@ -42,6 +46,10 @@ export async function createDeckFromPaste(page: Page, deckName: string): Promise
 
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole('button', { name: 'Study', exact: true })).toBeVisible();
+}
+
+export async function createDeckFromPaste(page: Page, deckName: string): Promise<void> {
+  await createDeckFromRows(page, deckName, DECK_ROWS);
 }
 
 export async function openGame(page: Page): Promise<void> {

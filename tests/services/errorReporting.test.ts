@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { logEvent, flushEventQueue } from '@/services/errorReporting';
 import { GUEST_UID } from '@/constants/app';
 
-const { callFunctionMock, authMock } = vi.hoisted(() => ({
+const { callFunctionMock, authMock, firebaseMock } = vi.hoisted(() => ({
   callFunctionMock: vi.fn(),
   authMock: { currentUser: null as { uid: string } | null },
+  firebaseMock: { isConfigured: true },
 }));
 
 vi.mock('@/services/callFunction', () => ({
@@ -13,6 +14,9 @@ vi.mock('@/services/callFunction', () => ({
 
 vi.mock('@/firebase', () => ({
   auth: authMock,
+  get isConfigured(): boolean {
+    return firebaseMock.isConfigured;
+  },
 }));
 
 const QUEUE_KEY = 'glimmind_event_queue';
@@ -21,6 +25,7 @@ describe('errorReporting guest guard', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    firebaseMock.isConfigured = true;
   });
 
   it('skips callFunction and queueing for guests', async () => {
@@ -41,12 +46,70 @@ describe('errorReporting guest guard', () => {
 
     expect(callFunctionMock).not.toHaveBeenCalled();
   });
+
+  it('skips callFunction for local guests (no Firebase Auth session)', async () => {
+    authMock.currentUser = null;
+    localStorage.setItem(
+      'glimmind_guest_user',
+      JSON.stringify({ uid: GUEST_UID, displayName: 'Local Guest' })
+    );
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await logEvent('sync.error', { message: 'local guest failure' });
+
+    expect(callFunctionMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(QUEUE_KEY)).toBeNull();
+  });
+
+  it('no-ops flushEventQueue for local guests without an Auth session', async () => {
+    authMock.currentUser = null;
+    localStorage.setItem('glimmind_guest_user', JSON.stringify({ uid: GUEST_UID }));
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([{ payload: { message: 'stale' } }]));
+
+    await flushEventQueue();
+
+    expect(callFunctionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('errorReporting demo build', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    firebaseMock.isConfigured = false;
+    authMock.currentUser = { uid: 'user-123' };
+  });
+
+  afterEach(() => {
+    firebaseMock.isConfigured = true;
+  });
+
+  it('logEvent is a complete no-op when Firebase is not configured', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await logEvent('sync.error', { message: 'demo failure', error: new Error('demo') });
+
+    expect(callFunctionMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(QUEUE_KEY)).toBeNull();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('flushEventQueue is a complete no-op when Firebase is not configured', async () => {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([{ payload: { message: 'stale' } }]));
+
+    await flushEventQueue();
+
+    expect(callFunctionMock).not.toHaveBeenCalled();
+    // Queue untouched: demo mode must not drain or rewrite it.
+    expect(localStorage.getItem(QUEUE_KEY)).toBe('[{"payload":{"message":"stale"}}]');
+  });
 });
 
 describe('errorReporting authenticated user', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    firebaseMock.isConfigured = true;
     authMock.currentUser = { uid: 'user-123' };
   });
 

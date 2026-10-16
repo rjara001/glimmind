@@ -1,5 +1,13 @@
 # dist accumulates every historical bundle (never emptied)
 
+**Date:** 2026-10-15
+**Priority:** P2 — hygiene
+**Status:** Resolved 2026-10-16 — `emptyOutDir: true` added to the `build`
+block in `vite.config.ts` as part of the E2E-against-production-build change
+(E2E now runs `npm run build` on every suite, so a non-emptying `dist/` would
+grow on every local run). Verify once with `npm run build` that `dist/` holds
+a single bundle set.
+
 ## What
 
 `vite.config.ts` sets `root: 'src'` while `build.outDir` points at

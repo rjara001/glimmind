@@ -35,12 +35,24 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      // Mobile smoke: the desktop Navbar is hidden below md, so this project
+      // runs the landing flow plus the dedicated mobile spec only.
+      name: 'mobile-chromium',
+      use: { ...devices['Pixel 7'] },
+      testMatch: /(01-smoke|10-mobile-game)\.spec\.ts/,
+    },
+  ],
   webServer: {
-    command: `npm run dev -- --port ${PORT} --strictPort`,
+    // Build the production bundle and serve it with `vite preview`, so the
+    // suite gates what actually ships (minified bundle, env substitution)
+    // instead of the dev server. DEMO_ENV below is inlined at build time.
+    command: 'npm run build && npm run preview -- --port 3002 --strictPort',
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     env: DEMO_ENV,
   },
 });

@@ -65,13 +65,28 @@ interface E2EFixtures {
 export const test = base.extend<E2EFixtures>({
   networkGuard: [
     async ({ page }, use) => {
+      const backendCalls: string[] = [];
       await page.route('**/*', (route) => {
-        if (isAllowedRequestUrl(route.request().url())) {
+        const url = route.request().url();
+        // Guests must never invoke Cloud Functions (section 31) and the E2E
+        // build reports no errors (demo no-op). Any same-origin call to the
+        // /api/* rewrite or the /functions/* emulator proxy is a bug;
+        // external hosts with /api/ in the path (e.g. ui-avatars) are still
+        // filtered by the allowlist below.
+        if (isAllowedRequestUrl(url) && /^\/(api|functions)\//.test(new URL(url).pathname)) {
+          backendCalls.push(url);
+          return route.abort();
+        }
+        if (isAllowedRequestUrl(url)) {
           return route.continue();
         }
         return route.abort();
       });
       await use();
+      expect(
+        backendCalls,
+        `Guest E2E attempted backend calls (Cloud Functions must stay off):\n${backendCalls.join('\n')}`
+      ).toEqual([]);
     },
     { auto: true },
   ],
