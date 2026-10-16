@@ -88,3 +88,20 @@ export const quotaService = {
     return QuotaService.checkQuota(userId, projectedCards);
   },
 };
+
+// A missing quota means two different things. For guests (and signed-out
+// users) it is expected: they never call getQuota and their tier really is
+// free. For an authenticated user it means the fetch failed, so the tier is
+// UNKNOWN — manufacturing "free" there blocked paying users at the free
+// ceiling whenever getQuota failed (P1 2026-10-12).
+export const QUOTA_UNKNOWN_MESSAGE =
+  'No pudimos verificar tu plan. Revisa tu conexión e inténtalo de nuevo.';
+
+export function resolveTierForGate(
+  quota: UserQuota | null,
+  userUid: string | null | undefined,
+): { tier: TierType; known: boolean } {
+  if (!userUid || userUid === GUEST_UID) return { tier: 'free', known: true };
+  if (quota?.tier) return { tier: quota.tier, known: true };
+  return { tier: 'free', known: false };
+}

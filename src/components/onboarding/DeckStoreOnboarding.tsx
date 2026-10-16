@@ -119,12 +119,20 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
         <p className="text-white/80 text-sm">
           No pudimos cargar el catálogo de decks preconstruidos.
         </p>
-        <button
-          onClick={handleRetry}
-          className="mt-4 px-4 py-2 bg-white text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition"
-        >
-          Reintentar
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            onClick={handleRetry}
+            className="px-4 py-2 bg-white text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition"
+          >
+            Reintentar
+          </button>
+          <button
+            onClick={onCreateCustom}
+            className="px-4 py-2 bg-white/10 text-white rounded-lg font-medium hover:bg-white/20 transition"
+          >
+            Crear lista personalizada
+          </button>
+        </div>
       </div>
     );
   }

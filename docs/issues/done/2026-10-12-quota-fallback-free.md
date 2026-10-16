@@ -1,5 +1,7 @@
 # A failed getQuota silently downgrades a Premium user to free limits
 
+**Status:** Resolved 2026-10-16 with option 1 — a new `resolveTierForGate(quota, userUid)` helper in `quotaService.ts` distinguishes the two meanings of `quota === null`: for guests (and signed-out users) free is the correct tier; for an authenticated user the tier is UNKNOWN and the four client gates (`cleanupAndSave`, `handleAddRow`, the import gate in `useListEditorActions`, and `handleQuickAdd` in `useAppHandlers`) now block with `QUOTA_UNKNOWN_MESSAGE` ("No pudimos verificar tu plan…") instead of manufacturing free limits. Server-side quota enforcement is unchanged and remains the authority. Regression-locked by `tests/services/quotaFallback.test.ts` and a case in `tests/hooks/bulkImport.test.tsx`.
+
 ## What
 
 `quota` starts as `null` in the game store and is only populated when

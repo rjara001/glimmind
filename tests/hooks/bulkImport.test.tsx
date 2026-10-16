@@ -406,6 +406,7 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
 
   describe('handleBulkAdd (chunked async validation)', () => {
     it('awaits the chunked validation, reports progress and opens the validation screen', async () => {
+      useGameStore.setState({ quota: buildQuota('premium') });
       const setIsValidating = vi.fn();
       const setValidationProgress = vi.fn();
       const setValidationResult = vi.fn();
@@ -467,6 +468,28 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
       });
 
       expect(setIsValidating).not.toHaveBeenCalled();
+    });
+
+    it('blocks with a connectivity message when the authenticated user quota is unknown, never the free ceiling', async () => {
+      // P1 2026-10-12: quota=null for a signed-in user means getQuota failed.
+      // Manufacturing "free" there blocked paying users at 1000 cards.
+      useGameStore.setState({ user, quota: null });
+      const setShowValidationScreen = vi.fn();
+      const { result } = renderImportActions({ setShowValidationScreen });
+
+      await act(async () => {
+        await result.current.handleBulkAdd('alpha,beta\ngamma,delta');
+      });
+
+      expect(setShowValidationScreen).not.toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringMatching(/conexión/i),
+        'error',
+      );
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.stringMatching(/límite de \d+ tarjetas/i),
+        expect.anything(),
+      );
     });
   });
 });

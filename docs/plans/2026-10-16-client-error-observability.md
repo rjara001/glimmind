@@ -1,8 +1,8 @@
 # Client error observability: rewrite, queue drain, and catch reporting
 
 **Date:** 2026-10-16
-**Status:** Implemented 2026-10-16 — pending post-deploy verification (§ Post-deploy verification)
-**Issue:** [`docs/issues/P0/2026-10-11-log-client-error-sin-rewrite.md`](../issues/P0/2026-10-11-log-client-error-sin-rewrite.md)
+**Status:** Implemented and deployed 2026-10-16 in v1.40.4 — the post-deploy probe answered `{"success":true}`; Log Explorer verification is the only manual step left.
+**Issue:** [`docs/issues/done/2026-10-11-log-client-error-sin-rewrite.md`](../issues/done/2026-10-11-log-client-error-sin-rewrite.md)
 
 ## Problem
 

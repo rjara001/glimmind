@@ -7,6 +7,7 @@ import { listService as firestoreListService } from './firestoreService';
 import { QuotaService, quotaService } from './quotaService';
 import { activityService } from './activityService';
 import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
+import { logEvent } from './errorReporting';
 import { QuotaStatus } from '../types/quota';
 import { AssociationDelta } from '../utils/syncDelta';
 import { MAX_CARDS_PER_DECK } from '../constants/limits';
@@ -47,7 +48,10 @@ export class ListServiceImpl {
       sourceRow: input.sourceRow,
     });
 
-    await this.activity.recordCardsCreated(input.userId, id, input.associations);
+    await this.recordActivitySafely(
+      () => this.activity.recordCardsCreated(input.userId, id, input.associations),
+      'createList',
+    );
 
     return id;
   }
@@ -80,11 +84,10 @@ export class ListServiceImpl {
           }),
         ),
     );
-    try {
-      await this.activity.recordEvents(input.userId, events);
-    } catch (error) {
-      console.error('[listService.bulkCreateLists] activity recording failed:', error);
-    }
+    await this.recordActivitySafely(
+      () => this.activity.recordEvents(input.userId, events),
+      'bulkCreateLists',
+    );
 
     return ids;
   }
@@ -109,6 +112,11 @@ export class ListServiceImpl {
       }
     }
 
+    // The list write is the primary operation; the activity history is
+    // telemetry. Recording first let a failed appendActivity veto the write
+    // and silently discard the user's edit (P1 2026-10-12).
+    await this.firestore.updateList(input.id, input);
+
     if (input.associations) {
       const events = buildListDiffEvents({
         userId: existing.userId,
@@ -116,10 +124,11 @@ export class ListServiceImpl {
         before: existing.associations || [],
         after: input.associations,
       });
-      await this.activity.recordEvents(existing.userId, events);
+      await this.recordActivitySafely(
+        () => this.activity.recordEvents(existing.userId, events),
+        'updateList',
+      );
     }
-
-    await this.firestore.updateList(input.id, input);
   }
 
   async deleteList(id: string): Promise<void> {
@@ -147,7 +156,10 @@ export class ListServiceImpl {
         })
       )
     );
-    await this.activity.recordEvents(list.userId, events);
+    await this.recordActivitySafely(
+      () => this.activity.recordEvents(list.userId, events),
+      'splitList',
+    );
 
     return newIds;
   }
@@ -175,6 +187,22 @@ export class ListServiceImpl {
       };
     }
     return QuotaService.getStatus(projectedCards, userQuota.tier);
+  }
+
+  // The primary write is already durable when this runs: a missing history
+  // entry must never undo it. Failures are reported (not rethrown) so the
+  // gap is visible in Cloud Logging instead of silently dropped.
+  private async recordActivitySafely(record: () => Promise<void>, action: string): Promise<void> {
+    try {
+      await record();
+    } catch (error) {
+      console.error(`[listService.${action}] activity recording failed:`, error);
+      void logEvent('activity.record_error', {
+        message: error instanceof Error ? error.message : String(error),
+        error,
+        labels: { source: 'listService', action },
+      });
+    }
   }
 }
 

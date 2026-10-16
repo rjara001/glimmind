@@ -4,7 +4,7 @@ import { listService } from "../../services/listService";
 import { listService as firestoreListService } from "../../services/firestoreService";
 import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
-import { QuotaService } from "../../services/quotaService";
+import { QuotaService, resolveTierForGate, QUOTA_UNKNOWN_MESSAGE } from "../../services/quotaService";
 import { GUEST_UID, LAST_PLAYED_KEY } from "../../constants/app";
 import { MAX_CARDS_PER_DECK } from "../../constants/limits";
 import { splitAssociationsByMax } from "../../utils/splitAssociations";
@@ -155,8 +155,12 @@ const handlePlayList = useCallback(
         (sum, l) => sum + (l.associations?.length || 0),
         0,
       );
-      const tier = quota?.tier || "free";
-      const status = QuotaService.getStatus(currentCards, tier);
+      const gate = resolveTierForGate(quota, user?.uid);
+      if (!gate.known) {
+        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        return;
+      }
+      const status = QuotaService.getStatus(currentCards, gate.tier);
 
       if (status.level === "blocked") {
         showToast(
@@ -192,7 +196,7 @@ const handlePlayList = useCallback(
         .updateAssociations(listId, [...(targetList.associations || []), newAssociation]);
       showToast(`Agregado a "${targetList.name}"`, "success");
     },
-    [showToast],
+    [showToast, user],
   );
 
   const handleCreateList = useCallback(

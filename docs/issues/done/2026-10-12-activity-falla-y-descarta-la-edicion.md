@@ -1,5 +1,7 @@
 # A failed activity-log call silently discards the user's edit
 
+**Status:** Resolved 2026-10-16 — `updateList` now writes the list first and records the activity after it, via a shared `recordActivitySafely` helper that reports failures with `logEvent('activity.record_error')` instead of propagating them. The same veto pattern in `createList`, `splitList` and `bulkCreateLists` was unified under the same helper. Regression-locked by `tests/services/listService.activity.test.ts` (8 tests: ordering, veto removal, ceiling/ListNotFound/write failures still propagate, logEvent on activity failure).
+
 ## What
 
 `ListServiceImpl.updateList` awaits the activity history **before** it writes the

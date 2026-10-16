@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-13
 **Priority:** P1
-**Status:** Not fixed
+**Status:** Resolved 2026-10-16 — `fetchDecks` short-circuits to `[]` for guests (and for a null user) before any `callFunction` (§31), and `DeckStoreOnboarding`'s error state now also offers "Crear lista personalizada" so a failed fetch never blocks the user. Regression-locked by `tests/services/prebuiltDeckService.guest.test.ts` (4 tests).
 
 ## What
 

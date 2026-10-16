@@ -3,7 +3,7 @@ import type { Association, AssociationList } from "../../types";
 import type { ImportValidationResult, CardCategory } from "../../services/importValidationService";
 import type { BulkCreateHandler } from "../../types/list-service";
 import { useGameStore } from "../../store/gameStore";
-import { QuotaService } from "../../services/quotaService";
+import { QuotaService, resolveTierForGate, QUOTA_UNKNOWN_MESSAGE } from "../../services/quotaService";
 import { normalizeAssociations, AssociationLike, parseDefinitions } from "../../utils/normalizeAssociation";
 import { translationService } from "../../services/translationService";
 import { validateImportCards } from "../../services/importValidationService";
@@ -119,8 +119,13 @@ export function useListEditorActions(
             assoc.definition.some((d) => d.trim() !== ""),
         );
 
-      const { quota: currentQuota, lists: currentLists } = useGameStore.getState();
-      const tier = currentQuota?.tier || "free";
+      const { quota: currentQuota, lists: currentLists, user: currentUser } = useGameStore.getState();
+      const gate = resolveTierForGate(currentQuota, currentUser?.uid);
+      if (!gate.known) {
+        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        return false;
+      }
+      const tier = gate.tier;
       const currentCards = currentLists.reduce(
         (sum, l) => sum + (l.associations?.length || 0),
         0,
@@ -214,11 +219,15 @@ export function useListEditorActions(
   }, []);
 
   const handleAddRow = useCallback(() => {
-    const { quota: currentQuota, lists: currentLists } = useGameStore.getState();
-    const tier = currentQuota?.tier || "free";
+    const { quota: currentQuota, lists: currentLists, user: currentUser } = useGameStore.getState();
+    const gate = resolveTierForGate(currentQuota, currentUser?.uid);
+    if (!gate.known) {
+      showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+      return;
+    }
     const status = QuotaService.getStatus(
       currentLists.reduce((sum, l) => sum + (l.associations?.length || 0), 0),
-      tier,
+      gate.tier,
     );
     if (status.level === "blocked") {
       showToast(
@@ -428,11 +437,15 @@ export function useListEditorActions(
         );
         return;
       }
-      const { quota: currentQuota } = useGameStore.getState();
-      const tier = currentQuota?.tier || "free";
+      const { quota: currentQuota, user: currentUser } = useGameStore.getState();
+      const gate = resolveTierForGate(currentQuota, currentUser?.uid);
+      if (!gate.known) {
+        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        return;
+      }
       const status = QuotaService.getStatus(
         lists.reduce((sum, l) => sum + (l.associations?.length || 0), 0),
-        tier,
+        gate.tier,
       );
       if (status.level === "blocked") {
         showToast(

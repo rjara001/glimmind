@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 19 done · 3 backlog**.
+Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 23 done · 3 backlog**.
 
 ---
 
@@ -36,7 +36,7 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 19 done · 3 backlog**.
 
 | Issue | Impact |
 |---|---|
-| [`P0/2026-10-11-log-client-error-sin-rewrite.md`](P0/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting is dead: no rewrite, queue never drained, UI catches swallow errors. The 2026-10-16 keepalive incident was invisible in GCP. Plan: [`../plans/2026-10-16-client-error-observability.md`](../plans/2026-10-16-client-error-observability.md) |
+| _(none open)_ | The last P0 (`log-client-error-sin-rewrite`) was resolved 2026-10-16 in v1.40.4 |
 
 ## P1 — behavioural bugs
 
@@ -48,11 +48,8 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 19 done · 3 backlog**.
 | [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
 | [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
-| [`P1/2026-10-12-activity-falla-y-descarta-la-edicion.md`](P1/2026-10-12-activity-falla-y-descarta-la-edicion.md) | `appendActivity` is awaited before the list write, so its failure drops the user's edit |
-| [`P1/2026-10-12-quota-fallback-free.md`](P1/2026-10-12-quota-fallback-free.md) | A failed `getQuota` falls back to tier `free`, so a Premium user is blocked at 1000 with a free-tier message |
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
-| [`P1/2026-10-13-prebuiltdeck-sin-guard-guest.md`](P1/2026-10-13-prebuiltdeck-sin-guard-guest.md) | prebuiltDeckService has no guest guard, trapping guests in DeckStoreOnboarding |
 
 ## P2 — debt, dead code, hygiene
 
@@ -98,6 +95,10 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 19 done · 3 backlog**.
 | [`done/2026-10-13-updatelistfields-400-invalid-body.md`](done/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas are sanitised against the server schema before every send; 400s now log the failing zod field instead of looping forever |
 | [`done/2026-10-16-import-mayor-al-limite-falla-completo.md`](done/2026-10-16-import-mayor-al-limite-falla-completo.md) | Oversized bulk imports now truncate to the remaining quota instead of failing entirely; `ValidationScreen` shows the amber notice and "Se importarán Y de X" subtitle (v1.40.3) |
 | [`done/2026-10-13-settingsmodal-log-sin-guard-guest.md`](done/2026-10-13-settingsmodal-log-sin-guard-guest.md) | Guest guard now lives inside `logEvent`/`flushEventQueue`, covering SettingsModal and every other call site (shipped with the P0 client-error observability fix) |
+| [`done/2026-10-12-activity-falla-y-descarta-la-edicion.md`](done/2026-10-12-activity-falla-y-descarta-la-edicion.md) | The list write now happens before the activity record; a failed `appendActivity` can no longer veto the edit. Failures report `activity.record_error` via `logEvent` instead of being swallowed |
+| [`done/2026-10-13-prebuiltdeck-sin-guard-guest.md`](done/2026-10-13-prebuiltdeck-sin-guard-guest.md) | `prebuiltDeckService.fetchDecks` short-circuits to `[]` for guests (§31), and the onboarding error state offers "Crear lista personalizada" so a failed fetch never traps the user |
+| [`done/2026-10-12-quota-fallback-free.md`](done/2026-10-12-quota-fallback-free.md) | The four client quota gates no longer manufacture a free tier when `getQuota` failed for a signed-in user; they block with a connectivity message instead (`resolveTierForGate`) |
+| [`done/2026-10-11-log-client-error-sin-rewrite.md`](done/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting pipeline repaired in v1.40.4: hosting rewrite added, retry queue drained on start, six swallowed UI catches now report via `logEvent`, guests short-circuit (§31). Probe answered `{"success":true}` |
 
 ## backlog — not defects
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11
 **Priority:** P0 (reclassified 2026-10-16: the keepalive incident proved the blindness cost a production incident)
-**Status:** Implemented 2026-10-16 — pending deploy verification; see [`docs/plans/2026-10-16-client-error-observability.md`](../../plans/2026-10-16-client-error-observability.md)
+**Status:** Resolved 2026-10-16 — deployed in v1.40.4; the post-deploy probe `POST https://glimmind.com/api/logClientError` answered `{"success":true}` (before the fix it returned the SPA HTML shell). See [`docs/plans/2026-10-16-client-error-observability.md`](../../plans/2026-10-16-client-error-observability.md).
 
 ## What
 
