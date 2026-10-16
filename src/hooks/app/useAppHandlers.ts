@@ -10,7 +10,7 @@ import { MAX_CARDS_PER_DECK } from "../../constants/limits";
 import { splitAssociationsByMax } from "../../utils/splitAssociations";
 import type { BulkCreateHandler, BulkCreateRequest } from "../../types/list-service";
 import { safeSetItem } from "../../utils/localStorage";
-import { getCorrelationId, getSessionId } from "../../services/errorReporting";
+import { getCorrelationId, getSessionId, logEvent } from "../../services/errorReporting";
 import { FlowTracker } from "../../utils/breadcrumbs";
 
 type ToastType = "success" | "error" | "info";
@@ -82,6 +82,11 @@ export function useAppHandlers({
       await syncFromCloud();
       showToast("Datos sincronizados desde la nube", "success");
     } catch (error) {
+      void logEvent("sync.error", {
+        message: error instanceof Error ? error.message : String(error),
+        error,
+        labels: { source: "useAppHandlers", action: "handleSyncFromCloud" },
+      });
       showToast(
         error instanceof Error ? error.message : "Error al sincronizar",
         "error",
@@ -243,6 +248,11 @@ const handlePlayList = useCallback(
         showToast("Mazo creado", "success");
         return id;
       } catch (error) {
+        void logEvent("list.create_error", {
+          message: error instanceof Error ? error.message : String(error),
+          error,
+          labels: { source: "useAppHandlers", action: "handleCreateList" },
+        });
         showToast(
           error instanceof Error ? error.message : "Error al crear el mazo",
           "error",
@@ -344,6 +354,11 @@ const handlePlayList = useCallback(
 
         return ids;
       } catch (error) {
+        void logEvent("import.bulk_create_error", {
+          message: error instanceof Error ? error.message : String(error),
+          error,
+          labels: { source: "useAppHandlers", action: "handleBulkCreateLists" },
+        });
         showToast(
           error instanceof Error ? error.message : "Error al importar los mazos",
           "error",
@@ -410,6 +425,12 @@ const handlePlayList = useCallback(
         const isHandledBackendError = error instanceof Error && 
           (error.message.includes('500') || error.message.includes('Internal Server Error'));
         
+        void logEvent("list.update_error", {
+          message: errorMessage,
+          error,
+          labels: { source: "useAppHandlers", action: "handleUpdateList" },
+        });
+
         if (error instanceof Error) {
           (error as any).__flowContext = {
             flow: 'settings-accept-close',
@@ -462,6 +483,11 @@ const handlePlayList = useCallback(
           removeListFromLocalStore(id);
           showToast("Mazo eliminado (solo local)", "success");
         } else {
+          void logEvent("list.delete_error", {
+            message: errorMessage,
+            error,
+            labels: { source: "useAppHandlers", action: "handleDeleteList" },
+          });
           showToast(errorMessage, "error");
         }
       } finally {
@@ -493,6 +519,11 @@ const handlePlayList = useCallback(
         ]);
         showToast("Mazos divididos correctamente", "success");
       } catch (error) {
+        void logEvent("list.split_error", {
+          message: error instanceof Error ? error.message : String(error),
+          error,
+          labels: { source: "useAppHandlers", action: "handleCreateMultipleLists" },
+        });
         showToast(
           error instanceof Error ? error.message : "Error al dividir mazos",
           "error",

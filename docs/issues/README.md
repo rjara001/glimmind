@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 18 done · 3 backlog**.
+Counts as of 2026-10-16: **1 P0 · 11 P1 · 16 P2 · 19 done · 3 backlog**.
 
 ---
 
@@ -71,7 +71,6 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 18 done · 3 backlog**.
 | [`P2/2026-10-12-yt-ai-limits-obsoletas.md`](P2/2026-10-12-yt-ai-limits-obsoletas.md) | `YT_AI_DAILY_LIMIT_PREMIUM` says 200, `plans.json` says 1000, nothing reads it |
 | [`P2/2026-10-12-create-list-campos-opcionales.md`](P2/2026-10-12-create-list-campos-opcionales.md) | The schema calls `concept`/`settings` optional; omitting either returns 500 |
 | [`P2/2026-10-13-rate-limit-por-instancia.md`](P2/2026-10-13-rate-limit-por-instancia.md) | Counters live in a per-instance Map, so every declared tier undercounts under concurrency |
-| [`P2/2026-10-13-settingsmodal-log-sin-guard-guest.md`](P2/2026-10-13-settingsmodal-log-sin-guard-guest.md) | SettingsModal calls logEvent with no guest guard |
 | [`P2/2026-10-14-voice-stt-fallback-dead-toggle.md`](P2/2026-10-14-voice-stt-fallback-dead-toggle.md) | The STT fallback toggle is written but no code reads it |
 | [`P2/2026-10-15-dist-no-se-limpia-en-cada-build.md`](P2/2026-10-15-dist-no-se-limpia-en-cada-build.md) | `dist/` never empties (outDir outside `root`): 257 bundles, 1.7 GB uploaded on every deploy |
 | [`P2/2026-10-16-error-message-crudo-en-cliente.md`](P2/2026-10-16-error-message-crudo-en-cliente.md) | Toasts show raw English browser errors ("Failed to fetch") in the Spanish UI |
@@ -98,6 +97,7 @@ Counts as of 2026-10-16: **1 P0 · 11 P1 · 17 P2 · 18 done · 3 backlog**.
 | [`done/2026-10-11-huecos-de-gating-premium.md`](done/2026-10-11-huecos-de-gating-premium.md) | Chirp/Chiptt hidden, coerced to browser and rejected with `TIER_REQUIRED` (403) for free; recording toggle gated on premium (plan `2026-10-14-premium-voice-gating.md`) |
 | [`done/2026-10-13-updatelistfields-400-invalid-body.md`](done/2026-10-13-updatelistfields-400-invalid-body.md) | Pending deltas are sanitised against the server schema before every send; 400s now log the failing zod field instead of looping forever |
 | [`done/2026-10-16-import-mayor-al-limite-falla-completo.md`](done/2026-10-16-import-mayor-al-limite-falla-completo.md) | Oversized bulk imports now truncate to the remaining quota instead of failing entirely; `ValidationScreen` shows the amber notice and "Se importarán Y de X" subtitle (v1.40.3) |
+| [`done/2026-10-13-settingsmodal-log-sin-guard-guest.md`](done/2026-10-13-settingsmodal-log-sin-guard-guest.md) | Guest guard now lives inside `logEvent`/`flushEventQueue`, covering SettingsModal and every other call site (shipped with the P0 client-error observability fix) |
 
 ## backlog — not defects
 

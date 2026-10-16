@@ -1,4 +1,6 @@
 import { callFunction } from './callFunction';
+import { auth } from '../firebase';
+import { GUEST_UID } from '../constants/app';
 
 export type EventType =
   | 'settings.modal_opened'
@@ -40,6 +42,12 @@ interface EventPayload {
 
 const reportedErrors = new WeakSet<object>();
 
+// AGENTS.md §31: guests operate strictly offline; they must never invoke
+// Cloud Functions. Client error reporting is therefore a no-op for them.
+function isGuestSession(): boolean {
+  return auth.currentUser?.uid === GUEST_UID;
+}
+
 let currentCorrelationId: string | null = null;
 let currentSessionId: string | null = null;
 
@@ -78,6 +86,11 @@ export async function logEvent(
 
   if (errObject && reportedErrors.has(errObject)) return;
   if (errObject) reportedErrors.add(errObject);
+
+  if (isGuestSession()) {
+    console.warn('[logEvent] Guest session: skipping remote error report', eventType);
+    return;
+  }
 
   const sanitizedExtra = sanitizePII(context.extra);
 
@@ -191,6 +204,7 @@ function queueForRetry(data: { payload: EventPayload; labels: EventLabels; sever
 }
 
 export async function flushEventQueue(): Promise<void> {
+  if (isGuestSession()) return;
   try {
     const queue = JSON.parse(localStorage.getItem('glimmind_event_queue') || '[]');
     for (const item of queue) {

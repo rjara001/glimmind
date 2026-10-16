@@ -1,7 +1,7 @@
 # Client error observability: rewrite, queue drain, and catch reporting
 
 **Date:** 2026-10-16
-**Status:** Parked — not started
+**Status:** Implemented 2026-10-16 — pending post-deploy verification (§ Post-deploy verification)
 **Issue:** [`docs/issues/P0/2026-10-11-log-client-error-sin-rewrite.md`](../issues/P0/2026-10-11-log-client-error-sin-rewrite.md)
 
 ## Problem

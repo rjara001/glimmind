@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-13
 **Priority:** P2
-**Status:** Not fixed
+**Status:** Resolved 2026-10-16 — the guest guard was moved into `logEvent`/`flushEventQueue` itself (`src/services/errorReporting.ts`), covering every call site including `SettingsModal`, as part of the P0 client-error observability fix.
 
 ## What
 

@@ -214,6 +214,10 @@
         "function": "stripeWebhook"
       },
       {
+        "source": "/api/logClientError",
+        "function": "logClientError"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

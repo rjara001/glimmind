@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-11
 **Priority:** P0 (reclassified 2026-10-16: the keepalive incident proved the blindness cost a production incident)
-**Status:** Planned — see [`docs/plans/2026-10-16-client-error-observability.md`](../../plans/2026-10-16-client-error-observability.md)
+**Status:** Implemented 2026-10-16 — pending deploy verification; see [`docs/plans/2026-10-16-client-error-observability.md`](../../plans/2026-10-16-client-error-observability.md)
 
 ## What
 

@@ -3,9 +3,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
-import { installGlobalEventHandlers } from './services/errorReporting';
+import { flushEventQueue, installGlobalEventHandlers } from './services/errorReporting';
 
 installGlobalEventHandlers();
+void flushEventQueue();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
