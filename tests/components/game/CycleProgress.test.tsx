@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { CycleProgress } from '@/components/game/CycleProgress';
+import { CYCLE_RULE_CHIPS } from '@/utils/cycle-rules';
 import type { GameState } from '@/types';
 
 const mockGameState: GameState = {
@@ -39,50 +40,87 @@ const mockGameState: GameState = {
   revealedAssociations: [],
 };
 
-describe('CycleProgress component', () => {
-  test('renders mobile horizontal train layout when isMobile is true', () => {
-    const { container } = render(
-      <CycleProgress gameState={mockGameState} isMobile={true} />
-    );
+describe('CycleProgress structure', () => {
+  test('renders one adaptive layout showing the four stages', () => {
+    const { container } = render(<CycleProgress gameState={mockGameState} />);
 
-     const train = container.querySelector('.overflow-x-auto');
-    expect(train).not.toBeNull();
+    expect(container.querySelector('.overflow-x-auto')).not.toBeNull();
+    expect(screen.getByText('Progreso por ciclo')).toBeInTheDocument();
 
-    const arrows = container.querySelectorAll('span');
-    const hasArrow = Array.from(arrows).some(el => el.textContent === '➜');
-    expect(hasArrow).toBe(true);
+    ['NUEVA', 'VISTA', 'RECONOCIDA', 'FRECUENTE'].forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('Toca para ver detalles')).toBeInTheDocument();
-
-    expect(screen.getByText('📊 Tú progreso por ciclo')).toBeInTheDocument();
+    expect(screen.getAllByText('➜')).toHaveLength(3);
   });
 
-  test('does not render the mobile title when isMobile is false', () => {
-    render(<CycleProgress gameState={mockGameState} isMobile={false} />);
+  test('never renders the retired level jargon or the competing percentages', () => {
+    const { container } = render(<CycleProgress gameState={mockGameState} />);
 
-    expect(screen.queryByText('📊 Tú progreso por ciclo')).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/niv \d/);
+    expect(screen.queryByText('Progreso real')).not.toBeInTheDocument();
+    expect(screen.queryByText('Progreso total')).not.toBeInTheDocument();
+    expect(screen.queryByText(/items aprendidos en 1er ciclo/)).not.toBeInTheDocument();
   });
 
-  test('renders desktop vertical sidebar layout when isMobile is false', () => {
-    const { container } = render(
-      <CycleProgress gameState={mockGameState} isMobile={false} />
-    );
+  test('renders one toggle that expands the rule panel', () => {
+    render(<CycleProgress gameState={mockGameState} />);
 
-    const mainWrapper = container.querySelector('div[style*="rtl"]');
-    expect(mainWrapper).not.toBeNull();
-    expect(mainWrapper?.className).toContain('min-h-[320px]');
+    const toggle = screen.getByRole('button', { name: /Toca para ver detalles/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-    const toggle = screen.getByLabelText(/Expandir|Colapsar/);
-    expect(toggle).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /Ocultar detalles/ })).toBeInTheDocument();
   });
 
-  test('renders desktop layout by default when isMobile is undefined', () => {
-    const { container } = render(
-      <CycleProgress gameState={mockGameState} />
-    );
+  test('shows the deck total exactly once', () => {
+    render(<CycleProgress gameState={mockGameState} />);
 
-    const mainWrapper = container.querySelector('div[style*="rtl"]');
-    expect(mainWrapper).not.toBeNull();
-    expect(mainWrapper?.className).toContain('min-h-[320px]');
+    expect(screen.getAllByText('Total: 2')).toHaveLength(1);
+  });
+
+  test('attaches the learned-count ref to the APRENDIDAS counter', () => {
+    const ref = { current: null } as React.RefObject<HTMLSpanElement | null>;
+    const gameState: GameState = {
+      ...mockGameState,
+      associations: mockGameState.associations.map((a) =>
+        a.id === 'a2' ? { ...a, isLearned: true } : a,
+      ),
+    };
+
+    render(<CycleProgress gameState={gameState} learnedCountRef={ref} />);
+
+    expect(ref.current?.textContent).toBe('1');
+  });
+});
+
+describe('CycleProgress cycle rules', () => {
+  test('states each engine rule exactly once and none of the retired ones', () => {
+    const { container } = render(<CycleProgress gameState={mockGameState} />);
+
+    CYCLE_RULE_CHIPS.forEach((chip) => {
+      expect(screen.getAllByText(chip)).toHaveLength(1);
+    });
+
+    expect(container.textContent).not.toMatch(/Falla → siguiente nivel/);
+    expect(container.textContent).not.toMatch(/Acierto → permanece/);
+    expect(container.textContent).not.toMatch(/falla →/i);
+  });
+
+  test('does not double-count learned cards in the displayed total', () => {
+    const gameState: GameState = {
+      ...mockGameState,
+      associations: mockGameState.associations.map((a) =>
+        a.id === 'a2' ? { ...a, isLearned: true } : a,
+      ),
+    };
+
+    render(<CycleProgress gameState={gameState} />);
+
+    expect(screen.getAllByText('Total: 2')).toHaveLength(1);
+
+    const aprendidasPill = screen.getByText('APRENDIDAS').parentElement;
+    expect(aprendidasPill).toHaveTextContent('1');
   });
 });

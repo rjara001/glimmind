@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameSummary } from '../../types';
+import { CYCLE_LABELS } from '../../utils/cycle-colors';
 
 interface FinishedScreenProps {
   summary: GameSummary | null;
@@ -25,9 +26,9 @@ const getSummaryCards = (summary: GameSummary | null): SummaryCardConfig[] => {
   return [
     {
       key: 'nueva',
-      label: 'NUEVA',
+      label: CYCLE_LABELS[1],
       level: '(nivel 0)',
-      value: summary.seen,
+      value: summary.unseen,
       className: 'bg-[#f0f4fe] border-[#c7d9f0]',
       numberClassName: 'text-[#1a2b3c]',
       labelClassName: 'text-[#64748b]',
@@ -35,17 +36,27 @@ const getSummaryCards = (summary: GameSummary | null): SummaryCardConfig[] => {
     },
     {
       key: 'vista',
-      label: 'VISTA',
+      label: CYCLE_LABELS[2],
       level: '(nivel 1)',
-      value: summary.recognized,
+      value: summary.seen,
       className: 'bg-[#fef7e6] border-[#f0e0b8]',
       numberClassName: 'text-[#1a2b3c]',
       labelClassName: 'text-[#64748b]',
       levelClassName: 'text-[#94a3b8]',
     },
     {
+      key: 'reconocida',
+      label: CYCLE_LABELS[3],
+      level: '(nivel 2)',
+      value: summary.recognized,
+      className: 'bg-[#fce8e8] border-[#f0c8c8]',
+      numberClassName: 'text-[#1a2b3c]',
+      labelClassName: 'text-[#64748b]',
+      levelClassName: 'text-[#94a3b8]',
+    },
+    {
       key: 'frecuente',
-      label: 'FRECUENTE',
+      label: CYCLE_LABELS[4],
       level: '(nivel 3+)',
       value: summary.known,
       className: 'bg-[#f0eaf8] border-[#d8cce8]',
@@ -81,7 +92,7 @@ export const FinishedScreen: React.FC<FinishedScreenProps> = ({ summary, onResta
       </div>
 
       {/* Tabla de bolsas */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-5 gap-2 mb-4">
         {summaryCards.map((card) => (
           <div
             key={card.key}

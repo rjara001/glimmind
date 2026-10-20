@@ -110,6 +110,20 @@ A toast message appears for a fixed duration.
 
 This section details how the engine determines when a session ends and how cards progress through cycles.
 
+### The real rule
+
+Cycles do not advance on failure. A card moves in exactly two ways: a correct answer in cycle 1, or leaving the card with **Siguiente**.
+
+| User action | Engine call | Effect |
+|---|---|---|
+| Correct in cycle 1 | `processAction({ type: 'CORRECT' })` | `isLearned = true`; the card leaves the cycle and becomes APRENDIDAS |
+| Correct in cycles 2-4 | `processAction({ type: 'CORRECT' })` | stays in its cycle, `status: "correct"`, `hits` + 1 |
+| **Siguiente** | `processAction({ type: 'PASS' })` | `currentCycle + 1`, capped at `globalCycle + 1` and at 4 |
+| Incorrect validation | `checkAnswer()` | **no cycle change**; only records the attempt with its similarity percentage |
+| `autoAdvanceAfterAttempts` (default 3) failed attempts with the card revealed | `processAction({ type: 'PASS' })` after 1s | advances to the next cycle |
+
+In Exam Mode a fully correct validation does not write the cycle by itself: `checkAnswer()` only sets `feedback`, and `GameView` issues `handleCorrect()` 600 ms later to run `processAction({ type: 'CORRECT' })`.
+
 Consider a list of 10 cards as an example.
 
 ### Case 1: All Answers Correct on the First Pass
@@ -120,15 +134,15 @@ Consider a list of 10 cards as an example.
 - The user types an answer, validates it, and it is correct.
 - **Next card is presented:**
   - Remaining: 9, Correct: 1
-  - Cycle 1 (New): 10
+  - APRENDIDAS: 1, Cycle 1 (New): 9
 - The user types an answer, validates it, and it is correct.
 - **Next card is presented:**
   - Remaining: 8, Correct: 2
-  - Cycle 1 (New): 10
+  - APRENDIDAS: 2, Cycle 1 (New): 8
 - ... this continues until all cards have been checked.
 - **Last card is presented:**
   - Remaining: 0, Correct: 10
-  - Cycle 1 (New): 10
+  - APRENDIDAS: 10, Cycle 1 (New): 0
 - **Result:** Since "Remaining" reaches 0 and there are no cards queued for the next cycle, **the session ends**.
 
 ### Case 2: Mixed Correct and Incorrect Answers
@@ -147,20 +161,20 @@ Consider a list of 10 cards as an example.
 - ... this continues (e.g., 5 consecutive correct answers):
   - Remaining: 5, Correct: 5
   - Cycle 1 (New): 10
-- ... this continues (e.g., failing the next 5):
+- ... this continues (e.g., leaving the next 5 with **Siguiente**):
   - Remaining: 0, Correct: 5
-  - Cycle 1 (New): 5 (The 5 that were answered correctly)
-  - Cycle 2 (Seen): 5 (The 5 that were answered incorrectly)
-- **Result:** Although "Remaining" is 0, there are 5 cards that advanced to the next cycle (Cycle 2 — Seen). Therefore, the game advances to Cycle 2.
+  - APRENDIDAS: 5 (The 5 answered correctly in Cycle 1)
+  - Cycle 2 (Seen): 5 (The 5 left with **Siguiente**)
+- **Result:** Although "Remaining" is 0, there are 5 cards that advanced to the next cycle (Cycle 2 — Seen) through `PASS`. Therefore, the game advances to Cycle 2.
 
 - **Cycle 2 starts. The first card from the new cycle is presented:**
   - Remaining: 5, Correct: 0
-  - Cycle 1 (New): 5 (The correct answers from Cycle 1)
-  - Cycle 2 (Seen): 5 (The incorrect answers from the previous cycle, now up for review)
+  - APRENDIDAS: 5 (The correct answers from Cycle 1)
+  - Cycle 2 (Seen): 5 (The cards left with **Siguiente** in the previous cycle, now up for review)
 - ... this continues (e.g., all 5 answered correctly in a row).
 - **Last card of Cycle 2 is presented:**
   - Remaining: 0, Correct: 5
-  - Cycle 1 (New): 5 (The 5 answered correctly in Cycle 1)
+  - APRENDIDAS: 5 (The 5 answered correctly in Cycle 1)
   - Cycle 2 (Seen): 5 (The 5 answered correctly in Cycle 2)
 - **Result:** "Remaining" is 0 and **no cards are left** to advance to a subsequent cycle. **The session ends**.
 

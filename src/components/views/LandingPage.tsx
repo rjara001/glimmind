@@ -39,7 +39,7 @@ export const LandingPage: React.FC = () => {
           <h2>Cómo se mueve una palabra</h2>
         </div>
         <p className="landing-section-lead">
-          Cuando fallas, la palabra no desaparece. Entra a un ciclo. Y después a otro. Hasta que se queda.
+          Con Siguiente la palabra sube de ciclo. Si la aciertas a la primera, queda aprendida.
         </p>
         <div className="landing-flow-wrap">
           <div className="landing-flow-arrows" aria-hidden="true">

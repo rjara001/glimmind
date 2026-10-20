@@ -201,7 +201,6 @@ export function CardStage(props: CardStageProps) {
           <CycleProgress
             gameState={gameState}
             cycleColorName={cycleColorName}
-            isMobile={isMobile}
             cycleMiniStats={cycleMiniStats}
           />
         )}

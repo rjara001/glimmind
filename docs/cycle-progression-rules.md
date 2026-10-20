@@ -13,31 +13,38 @@ El sistema de memorización funciona mediante ciclos de exposición progresiva. 
 
 ### Reglas de transición
 
-1. **NUEVA**
+El ciclo **no avanza cuando fallas**: avanza cuando dejas pasar la tarjeta con **Siguiente** (`PASS`).
+
+1. **NUEVA** (Cycle 1)
    - Si aciertas → **APRENDIDAS** ✅ (desaparece del juego)
-   - Si fallas → **VISTA** (Cycle 2)
+   - Si pasas con **Siguiente** → **VISTA** (Cycle 2)
 
 2. **VISTA** (Cycle 2)
    - Si aciertas → **se queda en VISTA** (marcada como correcta, sale de la cola temporalmente)
-   - Si falla → **RECONOCIDA** (Cycle 3)
+   - Si pasas con **Siguiente** → **RECONOCIDA** (Cycle 3)
 
 3. **RECONOCIDA** (Cycle 3)
    - Si aciertas → **se queda en RECONOCIDA** (marcada como correcta, sale de la cola temporalmente)
-   - Si falla → **FRECUENTE** (Cycle 4)
+   - Si pasas con **Siguiente** → **FRECUENTE** (Cycle 4)
 
 4. **FRECUENTE** (Cycle 4)
-   - No hay castigo: acierto o fallo → **se queda en FRECUENTE** (marcada como correcta, sale de la cola)
+   - Acierto → se queda, marcada como correcta y sale de la cola
+   - **Siguiente** → se queda (tope en Cycle 4)
    - Una vez en FRECUENTE, el item se considera validado y no reaparece
 
 5. **APRENDIDAS**
    - Acierto en el primer ciclo (NUEVA) → se mueve a bolsa de aprendidas y ya no aparece
    - Solo los items aprendidos en el primer ciclo (NUEVA→acierto directo) pasan a APRENDIDAS
 
+**Validación incorrecta:** no cambia `currentCycle`; solo registra el intento con su porcentaje de similitud.
+
+**Auto-avance:** tras `autoAdvanceAfterAttempts` intentos fallidos (por defecto 3) con la tarjeta revelada, el motor emite `PASS` y el item sube de ciclo.
+
 ### Reglas clave
 - Un item solo se considera APRENDIDO si se acierta en el primer ciclo (NUEVA→acierto directo)
-- Items que fallan en NUEVA pasan a VISTA, no se eliminan
+- Items que pasas en NUEVA con **Siguiente** pasan a VISTA, no se eliminan
 - Items en VISTA y RECONOCIDA que aciertan se marcan como `status: "correct"` (salen de la cola para ese ciclo global)
-- Items que fallan progresivamente suben de ciclo: NUEVA→VISTA→RECONOCIDA→FRECUENTE
+- Items que pasas con **Siguiente** suben de ciclo: NUEVA→VISTA→RECONOCIDA→FRECUENTE
 - **Gating por globalCycle: Un item nunca puede estar más de 1 ciclo por delante del globalCycle actual**
   - globalCycle=1 (NUEVA) → items max en cycle 2 (VISTA)
   - globalCycle=2 (VISTA) → items max en cycle 3 (RECONOCIDA)
@@ -59,21 +66,21 @@ El sistema de memorización funciona mediante ciclos de exposición progresiva. 
 ### Correspondencia entre ciclos y estados
 | Current Cycle | Nombre | Comportamiento |
 |---------------|--------|----------------|
-| 1 | NUEVA | Si aciertas → APRENDIDAS. Si falla → VISTA |
-| 2 | VISTA | Si aciertas → se queda (correcta). Si falla → RECONOCIDA |
-| 3 | RECONOCIDA | Si aciertas → se queda (correcta). Si falla → FRECUENTE |
-| 4 | FRECUENTE | Acierto/fallo → se queda (correcta, validado) |
+| 1 | NUEVA | Si aciertas → APRENDIDAS. Si pasas con **Siguiente** → VISTA |
+| 2 | VISTA | Si aciertas → se queda (correcta). Si pasas con **Siguiente** → RECONOCIDA |
+| 3 | RECONOCIDA | Si aciertas → se queda (correcta). Si pasas con **Siguiente** → FRECUENTE |
+| 4 | FRECUENTE | Acierto o **Siguiente** → se queda (correcta, validado) |
 | - | APRENDIDAS | `isLearned=true`, eliminada del juego |
 
 ### Ejemplo de gating
 ```
 globalCycle=1 (jugando NUEVA):
-  - Usuario falla tarjeta A → tarjeta A pasa a cycle 2 (VISTA) ✓
-  - Usuario falla tarjeta A DE NUEVO → tarjeta A se QUEDA en cycle 2 (VISTA) ✓
+  - El usuario pasa tarjeta A con Siguiente → tarjeta A pasa a cycle 2 (VISTA) ✓
+  - El usuario pasa tarjeta A DE NUEVO con Siguiente → tarjeta A se QUEDA en cycle 2 (VISTA) ✓
   - NO puede ir a cycle 3 (RECONOCIDA) hasta que globalCycle avance a 2
 
 globalCycle=2 (jugando VISTA):
-  - Usuario falla tarjeta A (ya en cycle 2) → tarjeta A pasa a cycle 3 (RECONOCIDA) ✓
-  - Usuario falla tarjeta A DE NUEVO → tarjeta A se QUEDA en cycle 3 (RECONOCIDA) ✓
+  - El usuario pasa tarjeta A (ya en cycle 2) con Siguiente → tarjeta A pasa a cycle 3 (RECONOCIDA) ✓
+  - El usuario pasa tarjeta A DE NUEVO con Siguiente → tarjeta A se QUEDA en cycle 3 (RECONOCIDA) ✓
   - NO puede ir a cycle 4 (FRECUENTE) hasta que globalCycle avance a 3
 ```

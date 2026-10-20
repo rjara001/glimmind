@@ -4,7 +4,6 @@ import type { CycleMiniStats } from './cycle-mini-bar-props';
 export interface CycleProgressProps {
   gameState: GameState;
   cycleColorName?: string;
-  isMobile?: boolean;
-  learnedCountRef?: React.RefObject<HTMLSpanElement | HTMLDivElement | null>;
+  learnedCountRef?: React.RefObject<HTMLSpanElement | null>;
   cycleMiniStats?: CycleMiniStats;
 }

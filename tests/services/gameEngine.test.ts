@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GlimmindGame } from '@/services/gameEngine';
-import { Association, AssociationList } from '@/types';
+import { Association, AssociationList, GameSummary } from '@/types';
 import { computeStateBreakdown } from '@/utils/progress';
 import { normalizeAssociations } from '@/utils/normalizeAssociation';
 
@@ -67,6 +67,78 @@ describe('GlimmindGame', () => {
 
         const finalGame = game.restart();
         expect(finalGame.state.summary).toBeDefined();
+    });
+
+    describe('summary buckets', () => {
+        const bucketTotal = (summary: GameSummary | null): number =>
+            summary
+                ? summary.learned + summary.known + summary.recognized + summary.seen + summary.unseen
+                : -1;
+
+        it('reconciles to the deck size when every card is learned in cycle 1', () => {
+            let game = GlimmindGame.create(createMockList(createMockAssociations(4)));
+
+            for (let i = 0; i < 4; i++) {
+                game = game.processAction({ type: 'CORRECT' });
+            }
+
+            expect(game.state.isFinished).toBe(true);
+            expect(game.state.summary?.learned).toBe(4);
+            expect(bucketTotal(game.state.summary)).toBe(4);
+        });
+
+        it('reconciles to the deck size when cards end in different buckets', () => {
+            let game = GlimmindGame.create(createMockList(createMockAssociations(4)));
+
+            game = game.processAction({ type: 'CORRECT' });
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+
+            expect(game.state.globalCycle).toBe(2);
+
+            game = game.processAction({ type: 'CORRECT' });
+            game = game.processAction({ type: 'CORRECT' });
+            game = game.processAction({ type: 'CORRECT' });
+
+            const summary = game.state.summary;
+            expect(game.state.isFinished).toBe(true);
+            expect(summary?.learned).toBe(1);
+            expect(summary?.seen).toBe(3);
+            expect(summary?.unseen).toBe(0);
+            expect(summary?.recognized).toBe(0);
+            expect(summary?.known).toBe(0);
+            expect(bucketTotal(summary)).toBe(4);
+        });
+
+        it('reconciles to the deck size when a card reaches cycle 4', () => {
+            let game = GlimmindGame.create(createMockList(createMockAssociations(1)));
+
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+            game = game.processAction({ type: 'PASS' });
+
+            expect(game.state.isFinished).toBe(true);
+            expect(game.state.summary?.known).toBe(1);
+            expect(bucketTotal(game.state.summary)).toBe(1);
+        });
+
+        it('counts a cycle-1 card that is neither learned nor queued', () => {
+            const base = createMockAssociations(1)[0];
+            const associations: Association[] = [
+                { ...base, id: '1' },
+                { ...base, id: '2', status: 'correct', isLearned: false },
+            ];
+            let game = GlimmindGame.create(createMockList(associations));
+
+            game = game.processAction({ type: 'CORRECT' });
+
+            const summary = game.state.summary;
+            expect(game.state.isFinished).toBe(true);
+            expect(summary?.learned).toBe(1);
+            expect(summary?.unseen).toBe(1);
+            expect(bucketTotal(summary)).toBe(2);
+        });
     });
 
     describe('reveal', () => {
