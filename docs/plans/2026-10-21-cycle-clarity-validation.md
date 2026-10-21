@@ -1,7 +1,7 @@
 # Plan: validate and ship the cycle-presentation clarity work
 
 **Date:** 2026-10-21
-**Status:** Approved for execution. Validation blocks A-D below.
+**Status:** Done — validated, merged (PR #7), v1.41.0 deployed 2026-10-21.
 **Request:** validate every feature/fix delivered by [`2026-10-20-cycle-presentation-clarity.md`](2026-10-20-cycle-presentation-clarity.md), one item at a time, then close: commits, PR to main, minor bump to 1.41.0, deploy.
 **Decisions locked (user):** commit every dirty file, organized in the commit sequence of §4; merge via PR; deploy with an explicit `1.41.0` bump (option A, never `npm run deploy`).
 
@@ -11,10 +11,10 @@
 
 | Feature | Root path | State | Metrics | Pending |
 |---|---|---|---|---|
-| Cycle rule copy (in-game + landing) | `src/utils/cycle-rules.ts`, `src/components/game/CycleProgress.tsx`, `src/components/views/LandingPage.tsx` | validated | 23/23 plan items | closure D |
-| Session summary | `src/components/game/FinishedScreen.tsx` | validated | 5 tiles | closure D |
-| Cycle vocabulary | `src/utils/activity.ts`, `src/utils/progress.ts`, `src/store/gameStore.ts`, `backend/.../validation.js` | validated | 1 rename + 7 normalizers | closure D |
-| Positioning docs | `docs/BUSINESS_MODEL.md`, `docs/SERVICE_CATALOG.md`, `docs/audits/2026-10-20-market-positioning.md` | validated | 5 doc edits | closure D |
+| Cycle rule copy (in-game + landing) | `src/utils/cycle-rules.ts`, `src/components/game/CycleProgress.tsx`, `src/components/views/LandingPage.tsx` | shipped | 23/23 plan items | none |
+| Session summary | `src/components/game/FinishedScreen.tsx` | shipped | 5 tiles | none |
+| Cycle vocabulary | `src/utils/activity.ts`, `src/utils/progress.ts`, `src/store/gameStore.ts`, `backend/.../validation.js` | shipped | 1 rename + 7 normalizers | none |
+| Positioning docs | `docs/BUSINESS_MODEL.md`, `docs/SERVICE_CATALOG.md`, `docs/audits/2026-10-20-market-positioning.md` | shipped | 5 doc edits | none |
 
 ---
 
@@ -121,9 +121,9 @@ C3 lands after C0 so `docs/issues/README.md` links resolve to already-committed 
 - [x] A1-A5 output pasted into §6
 - [x] M1-M6 signed off — M1 directly by the user; M2-M6 delegated by the user to agent code inspection + fresh test evidence
 - [x] C1-C4 confirmed
-- [ ] 5 commits pushed, PR merged to main
-- [ ] `npm run version:check` reports 1.41.0
-- [ ] Deploy done with option A; smoke passes
+- [x] 5 commits pushed, PR merged to main
+- [x] `npm run version:check` reports 1.41.0
+- [x] Deploy done with option A; smoke passes
 
 ---
 
@@ -153,3 +153,9 @@ Append evidence per gate/check here during execution.
 | 2026-10-21 | A4 re-run (fresh production build) | pass | After killing the squatter: fresh `npm run build && vite preview`, `13 passed (25.4s)`, includes `11-summary-tiles`, exit 0 — first run in this validation against the real production bundle |
 | 2026-10-21 | Final gates on the committed tree (§34) | pass | `npx tsc --noEmit` empty, exit 0; `npx vitest run` 85 files / 977 tests, exit 0; `npm run test:backend` 5 files / 77 tests, exit 0; `npx playwright test` 13 passed, exit 0; `git status --short` empty after C0-C3 |
 | 2026-10-21 | Issue index final state | pass | `docs/issues/README.md:31` counts `0 P0 · 9 P1 · 22 P2` as of 2026-10-21 (privacy, landing and stale-server findings all listed); supersedes the 20 P2 count recorded in the C4 row above |
+| 2026-10-21 | D1 commit sequence | pass | C0 `e37110f`, C1 `8ed4b33` (tsc clean on the exact staged tree via stash verify), C2 `44aa65e` (tsc clean), C3 `61f8231` (amended to include the stale-server incident docs); `git status --short` empty after C3 |
+| 2026-10-21 | D2 push | pass | `git push -u origin fix/cycle-presentation-clarity`, new branch tracked on `github-personal` |
+| 2026-10-21 | D3 PR + merge | pass | PR #7 created, 2 reviewer questions about `isMobile` answered in-thread (prop moved with an equivalent value, not removed); merged as `95d513a` |
+| 2026-10-21 | D4 bump | pass | `./scripts/version-bump.sh minor` 1.40.7 → 1.41.0 in `package.json` and `src/constants/version.ts`; `npm run version:check` reports match; commit `65488a8` pushed to main (never `npm run deploy`) |
+| 2026-10-21 | D5 deploy | pass | `npm run build` (3.32s) + `firebase deploy --only hosting,functions` → hosting release complete, functions deployed; https://fladycard-22a3e.web.app |
+| 2026-10-21 | D6 smoke (production) | pass | 8/8 against https://fladycard-22a3e.web.app: landing CTA renders, guest login → `/dashboard`, header `v1.41.0` (dashboard + game), paste-import deck created, practice session starts, web sidebar shows single `Progreso total`, `¡Sesión Completada!` reached |
