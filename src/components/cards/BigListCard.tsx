@@ -2,17 +2,18 @@ import React from 'react';
 import { BigListCardProps } from '../../types/big-list-card-props';
 import { StateBreakdown } from '../../types/progress';
 import { MILESTONE_THRESHOLDS, nextMilestoneThreshold } from '../../utils/progress';
+import { STATE_LABELS } from '../../utils/cycle-colors';
 
 const STATE_SEGMENTS: { key: keyof StateBreakdown; colorClass: string; label: string }[] = [
-  { key: 'nuevas', colorClass: 'bg-slate-400', label: 'Nuevas' },
-  { key: 'vistas', colorClass: 'bg-sky-500', label: 'Vistas' },
-  { key: 'reconocidas', colorClass: 'bg-yellow-400', label: 'Reconocidas' },
-  { key: 'conocidas', colorClass: 'bg-rose-500', label: 'Conocidas' },
-  { key: 'aprendidas', colorClass: 'bg-emerald-500', label: 'Aprendidas' },
+  { key: 'nuevas', colorClass: 'bg-slate-400', label: STATE_LABELS.nuevas },
+  { key: 'vistas', colorClass: 'bg-sky-500', label: STATE_LABELS.vistas },
+  { key: 'reconocidas', colorClass: 'bg-yellow-400', label: STATE_LABELS.reconocidas },
+  { key: 'frecuentes', colorClass: 'bg-rose-500', label: STATE_LABELS.frecuentes },
+  { key: 'aprendidas', colorClass: 'bg-emerald-500', label: STATE_LABELS.aprendidas },
 ];
 
 export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, milestones, onPlay, onEdit, onDelete }) => {
-  const total = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.conocidas + breakdown.aprendidas;
+  const total = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.frecuentes + breakdown.aprendidas;
   const learned = breakdown.aprendidas;
   const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
   const nextMilestone = nextMilestoneThreshold(milestones, percent);

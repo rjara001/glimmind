@@ -634,11 +634,14 @@ return new GlimmindGame(this.initialList, {
               case 2:
                 summary.seen++;
                 break;
+              default:
+                summary.unseen++;
+                break;
             }
           }
           return summary;
         },
-        { learned: 0, known: 0, recognized: 0, seen: 0 },
+        { learned: 0, known: 0, recognized: 0, seen: 0, unseen: 0 },
       );
   }
 

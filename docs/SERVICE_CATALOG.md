@@ -111,7 +111,7 @@ These are the items the app or its legal pages describe but that a user cannot d
 | Delete my account                    | Terms of Service             | `NOT IMPLEMENTED` — no button exists              |
 | Recordings deleted after 30 days     | Privacy Policy               | `NOT IMPLEMENTED` — no cleanup job exists          |
 | Exam mode                            | Landing page                 | `NOT IMPLEMENTED` — only Practice and Real exist   |
-| Spaced repetition                    | Marketing copy               | `NOT IMPLEMENTED` — cycles 1 to 4 are plain repeats, with no review intervals or due dates |
+| Spaced repetition                    | Former marketing copy         | `WITHDRAWN` — removed from all copy on 2026-10-21. The product ships a visible 4-cycle progression (New → Seen → Recognized → Frequent → Learned) with no review intervals or due dates, and must never be marketed as spaced repetition |
 | Publish a deck to the catalog        | Backend capability          | `NOT IMPLEMENTED` — no screen exists              |
 | Deck from free text (Gemini)         | Onboarding card             | `REMOVED` — deleted on 2026-10-12. Extract keywords is covered by Nueva Lista → Importar → Extraer Keywords |
 

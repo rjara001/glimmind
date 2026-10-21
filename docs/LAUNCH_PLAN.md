@@ -75,7 +75,7 @@ npm run build             # successful production build
 ### 1.3 Game Modes
 - [ ] Exam mode (type answer, fuzzy validation)
 - [ ] Training mode (self-evaluate)
-- [ ] 4-cycle spaced repetition (New → Seen → Recognized → Known → Learned)
+- [ ] 4-cycle progression (New → Seen → Recognized → Frequent → Learned)
 - [ ] Practice mode (auto-advance with delays)
 
 ### 1.4 Data & Sync

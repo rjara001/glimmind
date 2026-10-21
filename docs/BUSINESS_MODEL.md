@@ -185,6 +185,7 @@ case AI deck generation costs $0 and the largest cost line disappears.
 | 2026-10-11 | DeepL removed; Google Translate v3 is the only translation engine |
 | 2026-10-11 | Premium = unlimited core + metered AI/voice; no hidden functionality |
 | 2026-10-14 | Rule 0 enforced for voice: free tier blocked from Chirp 3 HD, cloud transcription and audio recording (`TIER_REQUIRED`, 403) |
+| 2026-10-21 | FSRS / spaced-repetition intervals evaluated and **rejected**: cycles stay rule-based and the state of every word stays visible. Positioning consequence: the 4-cycle mechanism is the lead differentiator, and "spaced repetition" must never appear in copy |
 
 ## 8. Still open
 

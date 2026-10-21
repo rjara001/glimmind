@@ -22,9 +22,9 @@ export const TermsOfService: React.FC = () => (
 
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-4">2. Description of Service</h2>
-          <p className="text-slate-600">Glimmind is a spaced repetition flashcard application for language learning. Features include:</p>
+          <p className="text-slate-600">Glimmind is a flashcard application with a visible 4-cycle progression for language learning. Features include:</p>
           <ul className="space-y-2 text-slate-600 mt-3 list-disc list-inside">
-            <li>4-cycle spaced repetition (New → Seen → Recognized → Known → Learned)</li>
+            <li>4-cycle progression (New → Seen → Recognized → Frequent → Learned)</li>
             <li>Exam mode (typed answers with fuzzy validation) and Training mode (self-evaluation)</li>
             <li>Voice study mode (speech recognition + text-to-speech)</li>
             <li>Local-first storage with optional Firebase cloud sync</li>
@@ -80,7 +80,7 @@ export const TermsOfService: React.FC = () => (
           <ul className="space-y-3 text-slate-600">
             <li>The App is provided "as is" without warranties of any kind</li>
             <li>We do not guarantee uninterrupted, error-free, or secure operation</li>
-            <li>Spaced repetition algorithms are educational aids, not guaranteed learning outcomes</li>
+            <li>The 4-cycle progression is an educational aid, not a guaranteed learning outcome</li>
             <li>Voice recognition accuracy varies by language, accent, and environment</li>
           </ul>
         </section>

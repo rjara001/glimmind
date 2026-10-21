@@ -1,11 +1,12 @@
 import { UserProgress } from '../types/progress';
+import { normalizeProgress } from '../utils/progress';
 import { callFunction } from './callFunction';
 
 export const progressService = {
   fetchProgress: async (userId: string): Promise<UserProgress | null> => {
     if (!userId) return null;
     try {
-      return await callFunction<UserProgress | null>('getProgress', { userId });
+      return normalizeProgress(await callFunction<UserProgress | null>('getProgress', { userId }));
     } catch (error) {
       return null;
     }

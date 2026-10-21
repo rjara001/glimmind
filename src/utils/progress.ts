@@ -25,11 +25,49 @@ export function yesterdayKey(from: Date = new Date()): string {
 }
 
 export function emptyStateBreakdown(): StateBreakdown {
-  return { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 };
+  return { nuevas: 0, vistas: 0, reconocidas: 0, frecuentes: 0, aprendidas: 0 };
 }
 
 export function emptyDailyProgress(): DailyProgress {
   return { repasos: 0, byState: emptyStateBreakdown() };
+}
+
+/**
+ * Reads a breakdown that may come from persisted data written before the
+ * cycle-4 bucket was renamed (`conocidas` -> `frecuentes`). The legacy count is
+ * carried over instead of being dropped, so a stored total never turns into
+ * `undefined` and then `NaN`.
+ */
+export function normalizeStateBreakdown(
+  byState: (Partial<StateBreakdown> & { conocidas?: number }) | null | undefined,
+): StateBreakdown {
+  if (!byState) return emptyStateBreakdown();
+  const { conocidas, frecuentes, nuevas, vistas, reconocidas, aprendidas } = byState;
+  return {
+    nuevas: nuevas ?? 0,
+    vistas: vistas ?? 0,
+    reconocidas: reconocidas ?? 0,
+    frecuentes: frecuentes ?? conocidas ?? 0,
+    aprendidas: aprendidas ?? 0,
+  };
+}
+
+/**
+ * Normalizes every stored daily entry of a progress document. Applied on every
+ * read (cloud and localStorage), which is the only boundary that sees legacy
+ * documents.
+ */
+export function normalizeProgress(
+  progress: UserProgress | null | undefined,
+): UserProgress | null {
+  if (!progress) return progress ?? null;
+  const source = progress.log ?? {};
+  const log: UserProgress['log'] = {};
+  for (const day of Object.keys(source)) {
+    const daily = source[day];
+    log[day] = { ...daily, byState: normalizeStateBreakdown(daily.byState) };
+  }
+  return { ...progress, log };
 }
 
 /**
@@ -39,7 +77,7 @@ export function stateOf(association: Association): keyof StateBreakdown {
   if (association.isLearned) return "aprendidas";
   switch (association.currentCycle) {
     case 4:
-      return "conocidas";
+      return "frecuentes";
     case 3:
       return "reconocidas";
     case 2:
@@ -63,11 +101,11 @@ export function computeStateBreakdown(associations: Association[]): StateBreakdo
 
 export function summarizeProgress(associations: Association[]): string {
   const breakdown = computeStateBreakdown(associations);
-  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.conocidas + breakdown.aprendidas;
+  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.frecuentes + breakdown.aprendidas;
   const totalArchived = associations.filter(a => a.isArchived).length;
   const total = associations.length;
   const progressPct = totalActive > 0 ? Math.round((breakdown.aprendidas / totalActive) * 100) : 0;
-  return `[PROGRESS] Total: ${total} (Active: ${totalActive}, Archived: ${totalArchived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} C: ${breakdown.conocidas} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
+  return `[PROGRESS] Total: ${total} (Active: ${totalActive}, Archived: ${totalArchived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} F: ${breakdown.frecuentes} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
 }
 
 export function mergeBreakdown(
@@ -78,7 +116,7 @@ export function mergeBreakdown(
     nuevas: target.nuevas + contribution.nuevas,
     vistas: target.vistas + contribution.vistas,
     reconocidas: target.reconocidas + contribution.reconocidas,
-    conocidas: target.conocidas + contribution.conocidas,
+    frecuentes: target.frecuentes + contribution.frecuentes,
     aprendidas: target.aprendidas + contribution.aprendidas,
   };
 }

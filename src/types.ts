@@ -95,6 +95,7 @@ export interface GameSummary {
   known: number;
   recognized: number;
   seen: number;
+  unseen: number;
 }
 
 export interface Attempt {

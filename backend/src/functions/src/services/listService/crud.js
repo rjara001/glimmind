@@ -36,7 +36,7 @@ function computeProgressSummary(associations) {
   const total = associations.length;
   let active = 0;
   let archived = 0;
-  const breakdown = { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 };
+  const breakdown = { nuevas: 0, vistas: 0, reconocidas: 0, frecuentes: 0, aprendidas: 0 };
   
   for (const a of associations) {
     if (a.isArchived) {
@@ -48,7 +48,7 @@ function computeProgressSummary(associations) {
       breakdown.aprendidas++;
     } else {
       switch (a.currentCycle) {
-        case 4: breakdown.conocidas++; break;
+        case 4: breakdown.frecuentes++; break;
         case 3: breakdown.reconocidas++; break;
         case 2: breakdown.vistas++; break;
         default: breakdown.nuevas++;
@@ -56,10 +56,10 @@ function computeProgressSummary(associations) {
     }
   }
   
-  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.conocidas + breakdown.aprendidas;
+  const totalActive = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.frecuentes + breakdown.aprendidas;
   const progressPct = totalActive > 0 ? Math.round((breakdown.aprendidas / totalActive) * 100) : 0;
   
-  return `[CLOUD_PROGRESS] Total: ${total} (Active: ${active}, Archived: ${archived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} C: ${breakdown.conocidas} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
+  return `[CLOUD_PROGRESS] Total: ${total} (Active: ${active}, Archived: ${archived}) | N: ${breakdown.nuevas} V: ${breakdown.vistas} R: ${breakdown.reconocidas} F: ${breakdown.frecuentes} ✅: ${breakdown.aprendidas} (${progressPct}%)`;
 }
 
 async function loadListOwnershipInfo(db, listId, uid) {

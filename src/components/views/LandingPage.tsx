@@ -3,6 +3,7 @@ import './landing.css';
 import { LandingDemo } from './LandingDemo';
 import { LandingValidationAnalysis } from './LandingValidationAnalysis';
 import { PREMIUM_LANDING_NEXT_PATH, PREMIUM_LANDING_NEXT_QUERY } from '../../constants/premium';
+import { CYCLE_RULE_CHIPS } from '../../utils/cycle-rules';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,7 +40,8 @@ export const LandingPage: React.FC = () => {
           <h2>Cómo se mueve una palabra</h2>
         </div>
         <p className="landing-section-lead">
-          Cuando fallas, la palabra no desaparece. Entra a un ciclo. Y después a otro. Hasta que se queda.
+          Con Siguiente la palabra sube de ciclo. Si la aciertas a la primera, queda aprendida.
+          Sin fechas ocultas ni algoritmos: ves en qué ciclo está cada palabra y por qué está ahí.
         </p>
         <div className="landing-flow-wrap">
           <div className="landing-flow-arrows" aria-hidden="true">
@@ -100,22 +102,32 @@ export const LandingPage: React.FC = () => {
             <div className="landing-flow-step landing-nueva">
               <div className="landing-step-num">STAGE 01</div>
               <div className="landing-step-name">NUEVA</div>
-              <div className="landing-step-desc">Primera vez que la ves. Si aciertas, queda aprendida.</div>
+              <div className="landing-step-desc">Todavía no ha avanzado de ciclo.</div>
             </div>
             <div className="landing-flow-step landing-vista">
               <div className="landing-step-num">STAGE 02</div>
               <div className="landing-step-name">VISTA</div>
-              <div className="landing-step-desc">Fallaste. Otra oportunidad. Si aciertas, se queda aquí.</div>
+              <div className="landing-step-desc">Avanzó una vez y sigue en camino.</div>
             </div>
             <div className="landing-flow-step landing-reconocida">
               <div className="landing-step-num">STAGE 03</div>
               <div className="landing-step-name">RECONOCIDA</div>
-              <div className="landing-step-desc">Fallaste de nuevo. Ya debería sonar. Si aciertas, se queda aquí.</div>
+              <div className="landing-step-desc">Avanzó dos veces. Ya debería sonarte.</div>
             </div>
             <div className="landing-flow-step landing-frecuente">
               <div className="landing-step-num">STAGE 04</div>
               <div className="landing-step-name">FRECUENTE</div>
-              <div className="landing-step-desc">La palabra que se resiste. No hay castigo, solo repetición.</div>
+              <div className="landing-step-desc">Avanzó tres veces: es el ciclo tope.</div>
+            </div>
+          </div>
+          <div className="landing-rule">
+            <div className="landing-rule-title">La regla, completa</div>
+            <div className="landing-rule-chips">
+              {CYCLE_RULE_CHIPS.map((chip) => (
+                <span key={chip} className="landing-rule-chip">
+                  {chip}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -261,7 +273,7 @@ export const LandingPage: React.FC = () => {
               <span className="landing-logo-text">Glimmind</span>
             </div>
             <p>
-              Flashcards con repetición espaciada para aprender idiomas.
+              Flashcards con 4 ciclos visibles para aprender idiomas.
               Construido con React, Firebase y ciencia.
             </p>
             <div className="landing-footer-social">

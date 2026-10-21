@@ -2,15 +2,16 @@ import React from 'react';
 import { GoalWidgetProps } from '../../types/goal-widget-props';
 import { StateBreakdown } from '../../types/progress';
 import { todayKey, emptyDailyProgress } from '../../utils/progress';
+import { STATE_LABELS } from '../../utils/cycle-colors';
 
 const GOAL_PRESETS = [30, 50, 100];
 
 const STATE_ITEMS: { key: keyof StateBreakdown; label: string; dotClass: string }[] = [
-  { key: 'nuevas', label: 'Nuevas', dotClass: 'bg-slate-400' },
-  { key: 'vistas', label: 'Vistas', dotClass: 'bg-sky-500' },
-  { key: 'reconocidas', label: 'Reconocidas', dotClass: 'bg-yellow-400' },
-  { key: 'conocidas', label: 'Conocidas', dotClass: 'bg-rose-500' },
-  { key: 'aprendidas', label: 'Aprendidas', dotClass: 'bg-emerald-500' },
+  { key: 'nuevas', label: STATE_LABELS.nuevas, dotClass: 'bg-slate-400' },
+  { key: 'vistas', label: STATE_LABELS.vistas, dotClass: 'bg-sky-500' },
+  { key: 'reconocidas', label: STATE_LABELS.reconocidas, dotClass: 'bg-yellow-400' },
+  { key: 'frecuentes', label: STATE_LABELS.frecuentes, dotClass: 'bg-rose-500' },
+  { key: 'aprendidas', label: STATE_LABELS.aprendidas, dotClass: 'bg-emerald-500' },
 ];
 
 const RING_RADIUS = 40;

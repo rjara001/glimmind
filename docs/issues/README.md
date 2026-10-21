@@ -28,7 +28,13 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 24 done · 3 backlog**.
+Counts as of 2026-10-21: **0 P0 · 9 P1 · 22 P2 · 24 done · 3 backlog**.
+
+Four were filed on 2026-10-20 from the state, usability and market-positioning
+audits under [`../audits/`](../audits/). Three further findings from the same
+audits (`GameView` deck-load error state, mixed-language UI, empty deck store
+for guests) are documented in [`../audits/2026-10-20-usability-gaps.md`](../audits/2026-10-20-usability-gaps.md)
+rather than as issue files, pending a plan under [`../plans/`](../plans/).
 
 ---
 
@@ -50,6 +56,7 @@ Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 24 done · 3 backlog**.
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
 | [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
+| [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
 
 ## P2 — debt, dead code, hygiene
 
@@ -71,6 +78,12 @@ Counts as of 2026-10-16: **0 P0 · 8 P1 · 16 P2 · 24 done · 3 backlog**.
 | [`P2/2026-10-14-voice-stt-fallback-dead-toggle.md`](P2/2026-10-14-voice-stt-fallback-dead-toggle.md) | The STT fallback toggle is written but no code reads it |
 | [`P2/2026-10-16-callfunction-debug-console-log.md`](P2/2026-10-16-callfunction-debug-console-log.md) | `callFunction.ts:53` ships a debug `console.log` (incl. `tokenPresent=`) to every production session |
 | [`P2/2026-10-16-error-message-crudo-en-cliente.md`](P2/2026-10-16-error-message-crudo-en-cliente.md) | Toasts show raw English browser errors ("Failed to fetch") in the Spanish UI |
+| [`P2/2026-10-20-admin-inalcanzable-por-role.md`](P2/2026-10-20-admin-inalcanzable-por-role.md) | `role` is never assigned, so `/admin` bounces through a `/403` route that does not exist |
+| [`P2/2026-10-20-quickadd-y-login-muertos.md`](P2/2026-10-20-quickadd-y-login-muertos.md) | `QuickAddModal` never opens and `src/pages/Login.tsx` has no importer |
+| [`P2/2026-10-20-pwa-sin-configurar.md`](P2/2026-10-20-pwa-sin-configurar.md) | `vite-plugin-pwa` installed but unregistered; no manifest, icons, favicon, or `cap sync` |
+| [`P2/2026-10-21-privacypolicy-promete-estadisticas-desactivadas.md`](P2/2026-10-21-privacypolicy-promete-estadisticas-desactivadas.md) | Privacy and cookie policies promise statistics while `FEATURE_FLAGS.reports` keeps them unreachable |
+| [`P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md`](P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md) | Landing comparison card says failing "enters a cycle"; the cycle only advances on Siguiente |
+| [`P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md`](P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md) | Playwright reuses any process on port 3002, so local e2e can test a stale server instead of the production bundle |
 
 ## done — resolved
 

@@ -10,7 +10,7 @@ Glimmind is a cross-platform flashcard application for language learning, built 
 
 ## Features
 
-- **4-Cycle Spaced Repetition**: Cards progress through New → Seen → Recognized → Known → Learned based on your performance.
+- **4-Cycle Progression**: Cards progress through New → Seen → Recognized → Frequent → Learned when you pass them.
 - **Two Game Modes**:
   - **Exam mode (`real`)**: Type your answer; validated via fuzzy matching with configurable similarity threshold.
   - **Training mode (`training`)**: Self-evaluate by revealing the answer and marking it correct or passing.

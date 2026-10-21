@@ -140,7 +140,9 @@ const UpdateProgressSchema = z.object({
         nuevas: z.number().int().min(0),
         vistas: z.number().int().min(0),
         reconocidas: z.number().int().min(0),
-        conocidas: z.number().int().min(0),
+        frecuentes: z.number().int().min(0).optional(),
+        // Legacy key sent by clients older than the cycle-4 rename.
+        conocidas: z.number().int().min(0).optional(),
         aprendidas: z.number().int().min(0),
       }).optional(),
     })).optional(),

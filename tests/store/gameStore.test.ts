@@ -31,7 +31,7 @@ function makeSession(overrides: Partial<GameSessionSummary> = {}): GameSessionSu
     cardsPlayed: 5,
     correct: 4,
     incorrect: 1,
-    byLevel: { nuevas: 0, vistas: 1, reconocidas: 1, conocidas: 2, aprendidas: 1 },
+    byLevel: { nuevas: 0, vistas: 1, reconocidas: 1, frecuentes: 2, aprendidas: 1 },
     ...overrides,
   };
 }

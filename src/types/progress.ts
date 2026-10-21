@@ -2,9 +2,11 @@ export interface StateBreakdown {
   nuevas: number;
   vistas: number;
   reconocidas: number;
-  conocidas: number;
+  frecuentes: number;
   aprendidas: number;
 }
+
+export type StateKey = keyof StateBreakdown;
 
 export interface DailyProgress {
   repasos: number;

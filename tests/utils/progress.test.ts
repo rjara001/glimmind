@@ -13,6 +13,8 @@ import {
   createDefaultProgress,
   nextMilestoneThreshold,
   applyRepaso,
+  normalizeStateBreakdown,
+  normalizeProgress,
   MILESTONE_THRESHOLDS,
 } from '@/utils/progress';
 import { UserProgress } from '@/types/progress';
@@ -42,18 +44,18 @@ describe('date keys', () => {
 
 describe('state helpers', () => {
   it('returns an empty breakdown with all buckets at zero', () => {
-    expect(emptyStateBreakdown()).toEqual({ nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 });
+    expect(emptyStateBreakdown()).toEqual({ nuevas: 0, vistas: 0, reconocidas: 0, frecuentes: 0, aprendidas: 0 });
   });
 
   it('returns an empty daily progress entry', () => {
-    expect(emptyDailyProgress()).toEqual({ repasos: 0, byState: { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 } });
+    expect(emptyDailyProgress()).toEqual({ repasos: 0, byState: { nuevas: 0, vistas: 0, reconocidas: 0, frecuentes: 0, aprendidas: 0 } });
   });
 
   it('maps an association to its state bucket', () => {
     expect(stateOf(createAssociation('1'))).toBe('nuevas');
     expect(stateOf(createAssociation('2', { currentCycle: 2 }))).toBe('vistas');
     expect(stateOf(createAssociation('3', { currentCycle: 3 }))).toBe('reconocidas');
-    expect(stateOf(createAssociation('4', { currentCycle: 4 }))).toBe('conocidas');
+    expect(stateOf(createAssociation('4', { currentCycle: 4 }))).toBe('frecuentes');
     expect(stateOf(createAssociation('5', { isLearned: true }))).toBe('aprendidas');
   });
 
@@ -71,7 +73,7 @@ describe('state helpers', () => {
       nuevas: 1,
       vistas: 1,
       reconocidas: 1,
-      conocidas: 1,
+      frecuentes: 1,
       aprendidas: 1,
     });
   });
@@ -79,25 +81,66 @@ describe('state helpers', () => {
 
 describe('mergeBreakdown / addContribution', () => {
   it('merges two breakdowns by adding each bucket', () => {
-    const target = { nuevas: 1, vistas: 2, reconocidas: 3, conocidas: 4, aprendidas: 5 };
-    const contribution = { nuevas: 5, vistas: 4, reconocidas: 3, conocidas: 2, aprendidas: 1 };
+    const target = { nuevas: 1, vistas: 2, reconocidas: 3, frecuentes: 4, aprendidas: 5 };
+    const contribution = { nuevas: 5, vistas: 4, reconocidas: 3, frecuentes: 2, aprendidas: 1 };
 
     expect(mergeBreakdown(target, contribution)).toEqual({
       nuevas: 6,
       vistas: 6,
       reconocidas: 6,
-      conocidas: 6,
+      frecuentes: 6,
       aprendidas: 6,
     });
   });
 
   it('adds a single contribution to one bucket without mutating the target', () => {
-    const target = { nuevas: 1, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 };
+    const target = { nuevas: 1, vistas: 0, reconocidas: 0, frecuentes: 0, aprendidas: 0 };
 
     const result = addContribution(target, 'vistas');
 
-    expect(result).toEqual({ nuevas: 1, vistas: 1, reconocidas: 0, conocidas: 0, aprendidas: 0 });
+    expect(result).toEqual({ nuevas: 1, vistas: 1, reconocidas: 0, frecuentes: 0, aprendidas: 0 });
     expect(target.vistas).toBe(0);
+  });
+});
+
+describe('legacy cycle-4 normalization', () => {
+  const legacyBreakdown = { nuevas: 1, vistas: 2, reconocidas: 3, conocidas: 4, aprendidas: 5 };
+
+  it('carries the legacy conocidas bucket over to frecuentes', () => {
+    expect(normalizeStateBreakdown(legacyBreakdown)).toEqual({
+      nuevas: 1,
+      vistas: 2,
+      reconocidas: 3,
+      frecuentes: 4,
+      aprendidas: 5,
+    });
+  });
+
+  it('keeps current buckets and fills missing ones with zero', () => {
+    expect(normalizeStateBreakdown({ vistas: 2 })).toEqual({
+      nuevas: 0,
+      vistas: 2,
+      reconocidas: 0,
+      frecuentes: 0,
+      aprendidas: 0,
+    });
+  });
+
+  it('translates every log entry of a stored progress document', () => {
+    const legacy = {
+      ...createDefaultProgress(),
+      log: { '2026-08-05': { repasos: 2, byState: legacyBreakdown } },
+    } as unknown as UserProgress;
+
+    const normalized = normalizeProgress(legacy)!;
+    const byState = normalized.log['2026-08-05'].byState;
+
+    expect(byState.frecuentes).toBe(4);
+    expect('conocidas' in byState).toBe(false);
+  });
+
+  it('returns null for an empty document', () => {
+    expect(normalizeProgress(null)).toBeNull();
   });
 });
 

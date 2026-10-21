@@ -20,7 +20,7 @@ export const PrivacyPolicy: React.FC = () => (
           <ul className="space-y-3 text-slate-600">
             <li><strong>Account data:</strong> Email, display name, profile photo (via Google OAuth)</li>
             <li><strong>Flashcard content:</strong> Terms, definitions, contexts you create or import</li>
-            <li><strong>Game progress:</strong> Spaced repetition state, cycles, review history, statistics</li>
+            <li><strong>Game progress:</strong> Cycle progression state, review history, statistics</li>
             <li><strong>Voice recordings:</strong> Optional audio recordings of your answers (only if enabled)</li>
             <li><strong>Usage analytics:</strong> Feature usage, error logs, performance metrics (no personal identifiers)</li>
           </ul>
@@ -29,7 +29,7 @@ export const PrivacyPolicy: React.FC = () => (
         <section>
           <h2 className="text-xl font-bold text-slate-900 mb-4">2. How We Use Your Data</h2>
           <ul className="space-y-3 text-slate-600">
-            <li>Provide core flashcard functionality (sync, spaced repetition, voice study)</li>
+            <li>Provide core flashcard functionality (sync, 4-cycle progression, voice study)</li>
             <li>Improve the app through usage analytics</li>
             <li>Enforce quotas and prevent abuse</li>
             <li>Comply with legal obligations</li>

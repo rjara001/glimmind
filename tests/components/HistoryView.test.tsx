@@ -55,7 +55,7 @@ describe('HistoryView', () => {
     });
     render(<HistoryView onBack={vi.fn()} onGoToSettings={onGoToSettings} />);
     expect(screen.getByText(/Correcta: Hola/)).toBeInTheDocument();
-    expect(screen.getByText(/Mundo → Vista/)).toBeInTheDocument();
+    expect(screen.getByText(/Mundo → VISTA/)).toBeInTheDocument();
   });
 
   it('shows the load more button when a next cursor exists', () => {

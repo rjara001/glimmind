@@ -1,7 +1,12 @@
 import { CardActivityEvent, GameSessionSummary } from '../types/activity';
 import { callFunction } from './callFunction';
 import { Association } from '../types';
-import { createActivityEvent, buildListDiffEvents } from '../utils/activity';
+import {
+  createActivityEvent,
+  buildListDiffEvents,
+  normalizeActivityEvent,
+  normalizeSessionSummary,
+} from '../utils/activity';
 import { safeGetItem, safeStringify } from '../utils/localStorage';
 
 const LOCAL_ACTIVITY_KEY = 'glimmind_activity';
@@ -27,7 +32,7 @@ function loadLocalActivity(): CardActivityEvent[] {
   if (!saved) return [];
   try {
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeActivityEvent) : [];
   } catch {
     return [];
   }
@@ -42,7 +47,7 @@ function loadLocalSessions(): GameSessionSummary[] {
   if (!saved) return [];
   try {
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeSessionSummary) : [];
   } catch {
     return [];
   }
@@ -140,7 +145,8 @@ export const activityService = {
           : undefined;
       return { events: page, nextCursor };
     }
-    return callFunction<ActivityPage>('getActivity', { userId, cursor, limit, type, listId });
+    const page = await callFunction<ActivityPage>('getActivity', { userId, cursor, limit, type, listId });
+    return { ...page, events: page.events.map(normalizeActivityEvent) };
   },
 
   saveSession: async (userId: string, session: GameSessionSummary): Promise<void> => {
@@ -155,6 +161,7 @@ export const activityService = {
 
   fetchSessions: async (userId: string): Promise<GameSessionSummary[]> => {
     if (!userId) return loadLocalSessions();
-    return callFunction<GameSessionSummary[]>('getSessions', { userId });
+    const sessions = await callFunction<GameSessionSummary[]>('getSessions', { userId });
+    return sessions.map(normalizeSessionSummary);
   },
 };

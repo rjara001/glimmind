@@ -1,23 +1,62 @@
 import { Association } from '../types';
-import { stateOf } from './progress';
-import { CardActivityEvent, CardLevel } from '../types/activity';
+import { emptyStateBreakdown, stateOf } from './progress';
+import { CardActivityEvent, CardLevel, GameSessionSummary } from '../types/activity';
 import { joinDefinitions } from './normalizeAssociation';
+import { STATE_LABELS } from './cycle-colors';
 
 export const LEVEL_ORDER: CardLevel[] = [
   'nuevas',
   'vistas',
   'reconocidas',
-  'conocidas',
+  'frecuentes',
   'aprendidas',
 ];
 
-export const LEVEL_LABELS: Record<CardLevel, string> = {
-  nuevas: 'Nueva',
-  vistas: 'Vista',
-  reconocidas: 'Reconocida',
-  conocidas: 'Conocida',
-  aprendidas: 'Aprendida',
-};
+export const LEVEL_LABELS: Record<CardLevel, string> = { ...STATE_LABELS };
+
+const LEGACY_LEVEL = 'conocidas';
+
+/**
+ * Maps a level read from storage onto the current vocabulary. Activity events
+ * written before the cycle-4 rename still store `conocidas`, so every read
+ * boundary translates them and consumers only ever see LEVEL_ORDER members.
+ */
+export function normalizeCardLevel(
+  level: CardLevel | string | null | undefined,
+): CardLevel | undefined {
+  if (!level) return undefined;
+  if (level === LEGACY_LEVEL) return 'frecuentes';
+  return level in LEVEL_LABELS ? (level as CardLevel) : undefined;
+}
+
+export function normalizeActivityEvent(event: CardActivityEvent): CardActivityEvent {
+  const fromLevel = normalizeCardLevel(event.fromLevel);
+  const toLevel = normalizeCardLevel(event.toLevel);
+  if (fromLevel === event.fromLevel && toLevel === event.toLevel) return event;
+  return { ...event, fromLevel, toLevel };
+}
+
+/**
+ * Rebuilds a stored session level histogram under the current keys, folding the
+ * legacy `conocidas` count into `frecuentes` instead of dropping it.
+ */
+export function normalizeByLevel(
+  byLevel: (Partial<Record<CardLevel, number>> & { conocidas?: number }) | null | undefined,
+): Record<CardLevel, number> {
+  const result: Record<CardLevel, number> = { ...emptyStateBreakdown() };
+  if (!byLevel) return result;
+  for (const level of LEVEL_ORDER) {
+    result[level] = byLevel[level] ?? 0;
+  }
+  if (typeof byLevel.conocidas === 'number') {
+    result.frecuentes += byLevel.conocidas;
+  }
+  return result;
+}
+
+export function normalizeSessionSummary(session: GameSessionSummary): GameSessionSummary {
+  return { ...session, byLevel: normalizeByLevel(session.byLevel) };
+}
 
 /**
  * Returns the mastery level bucket a single association belongs to.
