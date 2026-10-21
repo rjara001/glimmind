@@ -1,8 +1,8 @@
 # Glimmind — Phased Public Launch Plan
 
-**Version:** 1.0  
-**Date:** 2026-10-08  
-**Status:** Planning Phase
+**Version:** 1.1 (revised 2026-10-21)
+**Date:** 2026-10-08
+**Status:** Audited 2026-10-21 — Phases 0-1 verified complete; Phase 2 mostly complete (gaps listed below); Phases 3-4 pending manual/console steps.
 
 ---
 
@@ -10,112 +10,147 @@
 
 This plan divides the public launch into **4 sequential phases**. Each phase must be 100% complete (code + tests + verification) before starting the next. No parallel work across phases.
 
-**Current State:** TypeScript errors (40+), failing tests (15+), no landing page, no payment system, Gemini references in codebase, manual security steps pending.
+**Current State (2026-10-21):** `tsc --noEmit` = 0 errors; 977 unit + 77 backend + 13 e2e tests pass; production build green (v1.41.0 deployed 2026-10-21). The landing page, legal pages and one-time Stripe payments (live mode) exist and ship. Gemini was **kept** as the provider for metered Premium AI deck generation — only smart grouping was removed. Functions run Node 22. App Check is initialised in code; enforcement, billing alerts, metrics and store submissions remain console/manual steps.
+
+---
+
+## Audit — 2026-10-21
+
+Every checklist below was reconciled against the repository (`file:line` evidence in each section).
+
+| Phase | Verdict | Headline |
+|---|---|---|
+| 0 Foundation | complete (0.1 rewritten: Gemini kept by decision) | tsc 0, 977 tests, grouping-AI fully removed |
+| 1 Core product | complete, 1 open gap | quotas 1000/5000 enforced; **periodic sync never mounted → `docs/issues/P1/2026-10-12-sync-config-sin-conectar.md`** |
+| 2 Landing & payments | mostly complete | route/hero/pricing/legal/checkout/webhook/tier-write done; missing SEO meta, social proof, real footer links, legal links in Settings, Navbar/Dashboard premium badges; PWA claim was false |
+| 3 Security | partial | Node 22 done; App Check in code; **enforcement, billing alerts, log-based metrics = console-side, unverified** |
+| 4 Mobile & launch | scaffolded | Capacitor projects exist but `cap sync` never ran; store submissions and Search Console pending |
+
+### Top contradictions found (plan vs reality)
+
+1. **"Remove all Gemini references"** — superseded: Gemini powers Premium AI deck generation (`createDeckFromText.js`, `youtubeDeckRoutes.js` declare `secrets: ["GEMINI_API_KEY"]`). Only `aiGroup`/`SmartGroupModal`/`aiService` were removed.
+2. **"Subscription billing"** (goal, Billing Portal, grace period) — superseded by the one-time €4.99 model (2026-10-11); downgrade happens via `charge.refunded`.
+3. **"PWA manifest already configured"** — false: `vite-plugin-pwa` installed but unregistered (`vite.config.ts:22`) → `docs/issues/P2/2026-10-20-pwa-sin-configurar.md`.
+4. **Pricing table**: audio recording is Premium-only (decided 2026-10-14, fixed in this revision); Export/Import, priority support and advanced statistics are promised by the landing but not implemented (`BUSINESS_MODEL.md` §4) — decision still open in §8.
+5. **"Premium: no AI quota (since AI removed)"** — false: AI quota remains by design (`plans.json:6,11`, `aiDailyLimit` 100/1000).
+6. **Test cards** only work against the Stripe emulator; production is in **live mode**.
+7. **`stripe-webhook`** is actually exported as `stripeWebhook` (`stripeRoutes.js:74`).
+8. **"Custom domain already configured"** — unverified from the repo; docs still reference the default `fladycard-22a3e.web.app` target.
+
+### Console-side, unverified from the repository
+
+- App Check registration + enforcement (Firestore, Storage, Functions) — `docs/MANUAL_STEPS_REMAINING.md` (Critical)
+- Budget/billing alerts (50/90/100%)
+- Secret Manager contents (`GEMINI_API_KEY`, Stripe live keys, `ADMIN_UIDS`)
+- Custom domain binding for glimmind.com
+- Log-based metrics, alerting policies, "Glimmind Production" dashboard
+- App Store / Play Console / Search Console / Bing submissions
 
 ---
 
 ## Phase 0 — Foundation (Week 1)
-**Goal:** Clean codebase that compiles and tests pass.
+**Goal:** Clean codebase that compiles and tests pass. **[VERIFIED 2026-10-21]**
 
-### 0.1 Remove All Gemini References
-- [ ] Search and delete all Gemini API calls from frontend (`src/services/aiService.ts`, `src/hooks/`, etc.)
-- [ ] Search and delete all Gemini API calls from backend (`backend/src/functions/src/services/aiService/`, `backend/src/functions/src/routes/aiRoutes.js`)
-- [ ] Remove `GEMINI_API_KEY` from Secret Manager (if exists)
-- [ ] Remove `GEMINI_API_KEY` from `.env` files
-- [ ] Remove `aiGroup` Cloud Function and its route (`/api/aiGroup`)
-- [ ] Remove AI grouping UI (SmartGroupModal, Dashboard AI button)
-- [ ] Remove `aiService` from `package.json` dependencies if unused
+### 0.1 AI grouping removal + Gemini disposition — complete as reconciled
+Decision (`BUSINESS_MODEL.md` §4): AI deck generation stays as a **metered Premium feature**, so Gemini is kept. Only smart grouping was removed.
 
-### 0.2 Fix TypeScript Compilation (Target: 0 errors)
-- [ ] Create `src/types/index.ts` barrel file re-exporting all types
-- [ ] Fix `src/utils/multivalueParser.ts` — remove `multivalues` property usage (not in `Association` interface)
-- [ ] Fix `src/utils/flattenAssociations.ts` — type mismatches with `Association`
-- [ ] Fix `src/components/FeedbackWidget.tsx` — add Vite `ImportMetaEnv` type declaration
-- [ ] Fix `src/components/layout/Toast.tsx` — replace `NodeJS.Timeout` with `ReturnType<typeof setTimeout>`
-- [ ] Fix test files — replace `@/` aliases with relative paths or configure `tsconfig.json` paths
-- [ ] Remove unused imports/variables flagged by TS (see `tsc --noEmit` output)
+- [x] Remove frontend `src/services/aiService.ts` — does not exist
+- [x] Remove backend `services/aiService/` + `routes/aiRoutes.js` — do not exist
+- [x] Remove `aiGroup` Cloud Function and `/api/aiGroup` rewrite — gone (the `aiGroup` rate-limit bucket name survives, reused by `createDeckFromText`/`createYouTubeDeck`)
+- [x] Remove AI grouping UI (`SmartGroupModal`, Dashboard AI grouping button) — `SmartGroupModal.tsx` does not exist
+- [x] Remove `aiService` from dependencies — absent from both `package.json` files
+- [x] Remove `GEMINI_API_KEY` from `.env` files — 0 references across `.env*`
+- [ ] `GEMINI_API_KEY` in Secret Manager — must **stay** (declared in `createDeckFromText.js:67,145`, `youtubeDeckRoutes.js:173,243`); console-side: unverified
+- Note: Gemini disclosure in `PrivacyPolicy.tsx:56` and CSP `generativelanguage.googleapis.com` (`firebase.json:66`) are correct while AI decks ship.
 
-### 0.3 Fix Failing Tests (Target: 100% pass)
-- [ ] `tests/services/grouping/grouping.test.ts` — fix semantic grouping tests
-- [ ] `tests/utils/quota.test.ts` — fix quota clamping tests
-- [ ] `tests/components/game/CycleProgress.test.tsx` — fix mobile render test
-- [ ] `tests/components/game/verification-buttons.test.tsx` — fix 9 button tests
-- [ ] `tests/components/verification-toast.test.tsx` — fix 6 toast timeout tests
-- [ ] `tests/hooks/useSpeechRecognition.test.ts` — fix 9 STT hook tests
-- [ ] `tests/components/ReportsView.test.tsx` — fix 2 report view tests
-- [ ] `tests/services/settingsService.test.ts` — fix local storage round-trip
-- [ ] `tests/services/gameEngine.test.ts` — fix implicit `any` types
+### 0.2 Fix TypeScript Compilation (Target: 0 errors) — complete
+- [x] Type barrel — implemented as `src/types.ts` (single file; `src/types/index.ts` was never created; alias `@/*` → `src/*` in `tsconfig.json:19-22`)
+- [x] `multivalueParser.ts` — resolved the opposite way: `multivalues?: string[]` added to `Association` (`src/types.ts:46`), usage kept and valid
+- [x] `flattenAssociations.ts` — compiles clean
+- [x] `FeedbackWidget.tsx` — `ImportMetaEnv` typed in `src/vite-env.d.ts:3`
+- [x] `Toast.tsx` — `ReturnType<typeof setTimeout>` (`Toast.tsx:21`)
+- [x] Test files use `@/` aliases — resolved via tsconfig paths
+- [x] Unused imports/variables — `npx tsc --noEmit` empty, exit 0 (2026-10-21)
 
-### 0.4 Verification Gate (Must Pass Before Phase 1)
+### 0.3 Fix Failing Tests (Target: 100% pass) — complete
+- [x] All 9 listed files exist unchanged: `grouping`, `quota`, `CycleProgress`, `verification-buttons`, `verification-toast`, `useSpeechRecognition`, `ReportsView`, `settingsService`, `gameEngine`
+- [x] Full suite green 2026-10-21: 85 files / 977 tests (+ 5 files / 77 backend, + 13 e2e)
+
+### 0.4 Verification Gate — passed 2026-10-21
 ```bash
-npx tsc --noEmit          # 0 errors
-npx vitest run            # all tests pass
-npm run build             # successful production build
+npx tsc --noEmit          # 0 errors ✓
+npx vitest run            # 977/977 ✓
+npm run build             # successful (v1.41.0) ✓
 ```
 
 ---
 
 ## Phase 1 — Core Product (Week 2)
-**Goal:** Fully functional app without AI grouping, ready for paid users.
+**Goal:** Fully functional app without AI grouping, ready for paid users. **[VERIFIED 2026-10-21]**
 
-### 1.1 Settings & Quota System (No AI)
-- [ ] Verify quota enforcement works without AI (cards limit only)
-- [ ] Settings page: remove AI-related settings, keep voice/TTS/STT
-- [ ] Premium tier: 5000 cards, no AI quota (since AI removed)
-- [ ] Free tier: 1000 cards
+### 1.1 Settings & Quota System (No AI grouping)
+- [x] Quota enforcement — both sides: `src/config/plans.json:5,10` (Free 1000 / Premium 5000 cards), backend `quotaConfig.js:21-23`, drift test `tests/config/plansDrift.test.ts`
+- [x] Settings page has no AI-grouping settings (answer validation, game mode, provider, voice, voice commands only)
+- [x] Premium tier: 5000 cards
+- [x] Free tier: 1000 cards
+- Note: "remove AI quota" is void — AI is kept and metered: `aiDailyLimit` 100 free / 1000 premium (`plans.json:6,11`), surfaced in `CreateYouTubeDeckModal.tsx:73-75`
 
 ### 1.2 Voice Stack (Keep & Polish)
-- [ ] Browser STT (primary)
-- [ ] ChipTTS STT (fallback, verify quota works)
-- [ ] Chirp 3 HD TTS (verify billing alerts cover it)
-- [ ] Vosk STT (offline option)
-- [ ] Voice commands in game mode
-- [ ] Audio recording (opt-in, user-scoped storage)
+- [x] Browser STT (primary) — `src/hooks/voice/stt/useBrowserSTT.ts`, `useSpeechRecognition.ts`
+- [x] ChipTTS STT fallback with quota — `useChipTTSTT.ts`, backend `chipttSttService/` (a metering layer over Google STT `chirp_3`, not a separate provider)
+- [x] Chirp 3 HD TTS with limits — `src/services/voice/tts/chirpTts.ts`, backend `chirpTtsService/`, gated Premium 2026-10-14
+- [x] Vosk STT (offline) — `vosk-browser`, `useVoskSTT.ts`, assets via `scripts/copy-ml-assets.mjs`
+- [x] Voice commands in game — `src/services/voice/stt/commands.ts`, mounted in `GameView.tsx:132`
+- [x] Audio recording (opt-in, Premium-gated, user-scoped) — `useAudioRecorder.ts`, `SessionBar.tsx:58`
 
 ### 1.3 Game Modes
-- [ ] Exam mode (type answer, fuzzy validation)
-- [ ] Training mode (self-evaluate)
-- [ ] 4-cycle progression (New → Seen → Recognized → Frequent → Learned)
-- [ ] Practice mode (auto-advance with delays)
+- [x] Exam mode (type answer, fuzzy validation) — implemented as **Real mode**: `GameMode = 'training' | 'real'` (`src/types.ts:4`), Levenshtein grading (`src/utils/similarity.ts`), e2e `03-game-real.spec.ts`
+- [x] Training mode (self-evaluate) — `GameModeSection.tsx`
+- [x] 4-cycle progression (New → Seen → Recognized → Frequent → Learned) — `src/services/gameEngine.ts:537-542`, labels `src/utils/cycle-colors.ts`
+- [x] Practice mode (auto-advance with delays) — `src/hooks/game/usePracticePlayer.ts`, delays `GameView.tsx:69-80`
 
 ### 1.4 Data & Sync
-- [ ] Local-first (localStorage)
-- [ ] Firebase sync (authenticated users)
-- [ ] Delta-based sync with conflict resolution
-- [ ] Offline queue + retry
+- [x] Local-first (localStorage) — `gameStore.ts:37,44`
+- [x] Firebase sync (authenticated) — `flushSync` `gameStore.ts:1137` (guests short-circuit per §31)
+- [x] Delta-based sync with conflict resolution — `syncDelta.ts`, 409 retry `gameStore.ts:1220-1250`
+- [x] Offline queue + retry — `pendingDeltas` + `retryBootstrapPart`
+- [ ] **Open gap:** periodic sync is never mounted (`usePeriodicSync` has zero importers) → `docs/issues/P1/2026-10-12-sync-config-sin-conectar.md`; progress-upload gaps documented in `docs/SERVICE_CATALOG.md`
 
-### 1.5 Verification Gate
+### 1.5 Verification Gate — passed 2026-10-21
 ```bash
-npx tsc --noEmit
-npx vitest run
-npm run build
-# Manual: full game flow (create list → play → complete → sync)
+npx tsc --noEmit          # ✓
+npx vitest run            # ✓
+npm run build             # ✓
+# Manual: full game flow verified by e2e (create list → play → complete) ✓
 ```
 
 ---
 
 ## Phase 2 — Landing Page & Payments (Week 3)
-**Goal:** Public-facing marketing + subscription billing.
+**Goal:** Public-facing marketing + one-time payment billing (subscription model abandoned 2026-10-11).
 
 ### 2.1 Landing Page (`/`)
-**Route:** `/` (separate from `/dashboard` which requires auth)
+**Route:** `/` — public, outside `ProtectedRoute` (`src/App.tsx:229-234`) [x]
 
 **Sections:**
-1. **Hero** — Tagline, primary CTA ("Start Free"), secondary CTA ("Watch Demo")
-2. **Features** — 4-cycle SRS, Two modes, Fuzzy matching, Voice study, Cross-platform, Local-first + sync
-3. **Pricing Table** — Free vs Premium (see 2.2)
-4. **Social Proof** — Testimonials placeholder, user count (from analytics)
-5. **Footer** — Links: Privacy, Terms, Contact, GitHub, Privacy Policy
+- [x] **Hero** — tagline, primary CTA "Empezar gratis", secondary CTA "Ver demo" (`LandingPage.tsx:24-31`)
+- [x] **Features** — 4-cycle mechanism (`:37-134`), two modes (`:164-172`), fuzzy matching (`:136-146`), voice (`:181-188`), cross-platform (`:189-196`), local-first + sync (`:197-204`)
+- [x] **Pricing Table** — Free €0 / Premium €4.99 one-time (`:208-260`)
+- [ ] **Social Proof** — testimonials/user count: not implemented (0 hits)
+- [x] **Footer** — Privacy + Terms live (`:306-308`, `:319-321`)
+- [ ] Footer **Contact** — placeholder `/placeholder` (`:300`)
+- [ ] Footer **GitHub** — generic `https://github.com`, not the repo (`:280`)
 
 **Technical:**
-- New route in `App.tsx` before `ProtectedRoute`
-- Static page (no auth, no Firebase calls)
-- SEO meta tags, Open Graph, Twitter cards
-- Responsive, Tailwind CSS
-- PWA manifest already configured
+- [x] Route before `ProtectedRoute` (`App.tsx:229`)
+- [x] Static page, no Firebase calls on load
+- [ ] **SEO meta tags, Open Graph, Twitter cards** — `src/index.html` has none (`docs/audits/2026-10-20-market-positioning.md:15`)
+- [x] Responsive (own CSS + media queries, `landing.css:1436,1440,1460`) — caveat: Tailwind ships from CDN at runtime → `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`
+- [ ] **PWA manifest** — was **never** configured: `vite-plugin-pwa` installed (`package.json:57`) but not registered (`vite.config.ts:22`) → `docs/issues/P2/2026-10-20-pwa-sin-configurar.md`
 
 ### 2.2 Pricing & Payment Mechanism
-**Provider:** Stripe (recommended) or Paddle (handles EU VAT)
+**Provider:** Stripe, **live mode** since 2026-10-12 (`docs/plans/2026-10-11-stripe-sandbox-to-live.md`).
+**Model:** one-time €4.99, not a subscription.
 
 **Plans:**
 | Feature | Free | Premium (€4.99 one-time) |
@@ -124,78 +159,73 @@ npm run build
 | Lists | Unlimited | Unlimited |
 | Voice study | ✅ | ✅ |
 | Cloud sync | ✅ | ✅ |
-| Audio recording | ✅ | ✅ |
-| Export/Import | ✅ | ✅ |
-| Priority support | ❌ | ✅ |
+| Audio recording | ❌ (Premium-only, decided 2026-10-14) | ✅ |
+| Export/Import | ⚠ see note | ⚠ see note |
+| Priority support | ❌ | ⚠ see note |
+
+> ⚠ Rows marked ⚠ await the open decision in [`BUSINESS_MODEL.md`](BUSINESS_MODEL.md) §8 ("What is actually in Premium?"): the landing promises **Export**, **priority support** and **advanced statistics** as Premium, none are implemented (`SERVICE_CATALOG.md`), and §4 of the same document lists cards as *Unlimited* while the code enforces 1,000/5,000. Do not edit these rows until §8 is closed.
 
 **Implementation:**
-- [ ] Stripe account setup (test mode)
-- [ ] `stripe-webhook` Cloud Function for `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`
-- [ ] `createCheckoutSession` callable function (client → function → Stripe → return session URL)
+- [x] Stripe account (live mode) — `docs/plans/2026-10-11-stripe-sandbox-to-live.md`
+- [x] `stripeWebhook` Cloud Function (plan text said `stripe-webhook`) handling `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded` (`stripeService.js:124-167`)
+- [x] `createCheckoutSession` callable (`stripeRoutes.js:36-71`)
 - [x] No billing portal and no `getSubscriptionStatus`: premium is a one-time purchase, so there is nothing to manage or query
-- [ ] Premium badge in UI (Navbar, Settings, Dashboard)
-- [ ] Upgrade flow: Settings → "Upgrade to Premium" → Stripe Checkout → webhook updates Firestore `users/{uid}/meta/main.tier = "premium"`
-- [ ] Downgrade/cancel: Stripe Billing Portal
-- [ ] Grace period: 7 days after failed payment before downgrade
-- [ ] Test cards: 4242 4242 4242 4242 (success), 4000 0000 0000 0002 (decline)
+- [ ] Premium badge in **Settings** done (`SettingsView.tsx:192-228`) — missing in **Navbar** (0 hits) and **Dashboard** (tier used only for gating)
+- [x] Upgrade flow: Settings → "Actualizar a Premium" → Stripe Checkout → webhook writes `users/{uid}/meta/main.tier = "premium"` (`stripeService.js:94-108,136,150`)
+- [x] Downgrade/refund: `charge.refunded` → free tier (`stripeService.js:154-166`) — replaces the abandoned Billing Portal item
+- [x] ~~Grace period after failed payment~~ — N/A: one-time payment, no recurring charge
+- [x] Test cards: documented, but **only valid against the Stripe emulator**; live mode rejects `4242…` (`docs/plans/2026-10-11-stripe-sandbox-to-live.md:101`)
 
 ### 2.3 Legal Pages (New Routes)
-- [ ] `/privacy` — Privacy Policy (data collected, Firebase, voice recordings, analytics, retention, GDPR rights)
-- [ ] `/terms` — Terms of Service
-- [ ] `/cookies` — Cookie Policy (if using analytics cookies)
-- [ ] Links in landing page footer + Settings page
+- [x] `/privacy` — `App.tsx:363`
+- [x] `/terms` — `App.tsx:364`
+- [x] `/cookies` — `App.tsx:365`
+- [x] Links in landing footer (`LandingPage.tsx:304-310,318-322`) + `Auth.tsx:141-142`
+- [ ] Links in Settings page (0 hits in `SettingsView.tsx`)
 
 ### 2.4 Verification Gate
 ```bash
-npx tsc --noEmit
-npx vitest run
-npm run build
-# Manual: landing page loads, pricing clicks → Stripe Checkout (test), webhook → premium tier in Firestore
-# Manual: full refund → downgrade to free tier via charge.refunded
+npx tsc --noEmit          # ✓ 2026-10-21
+npx vitest run            # ✓ 2026-10-21
+npm run build             # ✓ 2026-10-21 (v1.41.0)
+# Manual: landing loads ✓; checkout/webhook/tier-write code verified ✓ (live payment history in the Stripe plans)
 ```
 
 ---
 
 ## Phase 3 — Security & Production Hardening (Week 4)
-**Goal:** Production-ready security posture.
+**Goal:** Production-ready security posture. **Console steps tracked in [`MANUAL_STEPS_REMAINING.md`](MANUAL_STEPS_REMAINING.md).**
 
 ### 3.1 Firebase App Check (Mandatory)
-- [ ] Register app in Firebase Console → App Check → reCAPTCHA Enterprise
-- [ ] Add site key to `src/firebase.ts` BEFORE `initializeApp`
-- [ ] Enable enforcement: Firestore, Storage, Functions
-- [ ] Verify `X-Firebase-AppCheck` header on live requests
+- [x] Site key + init in code — `src/firebase.ts:55-61` (`ReCaptchaEnterpriseProvider`, auto-refresh; skipped in demo/emulator)
+- [ ] Register app + **enable enforcement** (Firestore, Storage, Functions) — console-side, unverified; listed Critical in `MANUAL_STEPS_REMAINING.md`
+- [ ] Verify `X-Firebase-AppCheck` header on live requests — console-side
 
 ### 3.2 Billing Alerts (GCP Console)
-- [ ] Budget: $50/month
-- [ ] Alerts: 50%, 90%, 100% → email
-- [ ] Scope: All services (Functions, Firestore, Storage, Vertex AI for TTS/STT)
+- [ ] Budget + alerts (50/90/100%) — console-side, no record of configuration (`MANUAL_STEPS_REMAINING.md:70-77`)
 
-### 3.3 Node.js 22 Upgrade (Before Oct 2026 Deadline)
-- [ ] `backend/src/functions/package.json` → `"engines": { "node": "22" }`
-- [ ] Test locally: `firebase emulators:start`
-- [ ] Deploy: `firebase deploy --only functions`
+### 3.3 Node.js 22 Upgrade — **done** (ahead of the Oct 2026 deadline)
+- [x] `backend/src/functions/package.json` → `"engines": { "node": "22" }` (commit `f469f58`, 2026-10-08); CI on 22 (`.github/workflows/ci.yml:23,53,85`)
+- [x] Deployed — functions shipped with v1.41.0 on 2026-10-21
+- Note: `MANUAL_STEPS_REMAINING.md:95-96` still says "Current: Node 20" — stale.
 
 ### 3.4 GCP Logging & Monitoring (No Sentry)
-- [ ] Structured logging in all Cloud Functions (already using `console.log` with JSON)
-- [ ] Log-based metrics: function errors, latency, AI/TTS/STT costs
-- [ ] Alerting policies:
-  - Function error rate > 5% for 5 min
-  - Daily AI/TTS/STT cost > $10
-  - Firestore read/write spike > 10x baseline
-- [ ] Dashboard: "Glimmind Production" with key metrics
+- [x] `logClientError` function + rewrite (`loggingRoutes.js:19-40`, `firebase.json:216-218`)
+- [ ] Structured logging across all functions — only `loggingRoutes.js:31-37` emits parseable JSON; the rest are prefixed strings (no shared logger)
+- [ ] Log-based metrics, alerting policies, dashboard — console-side, unverified
 
 ### 3.5 Secrets Audit
-- [ ] `git log --all --full-history --oneline -- '**/*.env*' '**/secrets*' '**/*secret*' '**/*key*'`
-- [ ] Rotate any exposed keys in Secret Manager
-- [ ] Verify `.env.local` in `.gitignore`
+- [x] `.env.local` ignored (`.gitignore:34`), `.emulator-data` ignored (`.gitignore:44`), `.secret.local` untracked, never committed (full-history scan empty)
+- [ ] Rotate/verify Secret Manager contents — console-side
+- [ ] Tracked env artifacts to clean up: `.env.local.backup` (real Firebase web config, commit `cb50750`), `.env.backup` (12,979-line wordlist misnamed as env), `backend/src/functions/debug-env.js` (stray debug script) → `docs/issues/P2/2026-10-21-env-backups-trackeados-y-debug-env.md`
 
 ### 3.6 Verification Gate
-```bash
-# App Check enforced in Firebase Console
-# Billing alerts test email received
-# Node 22 functions deployed
-# Monitoring dashboard shows green
-# No CSP violations in production console
+```text
+[ ] App Check enforced in Firebase Console
+[ ] Billing alerts test email received
+[x] Node 22 functions deployed
+[ ] Monitoring dashboard shows green
+[ ] No CSP violations in production console
 ```
 
 ---
@@ -204,35 +234,31 @@ npm run build
 **Goal:** App Store / Play Store release + web launch.
 
 ### 4.1 iOS Build (Capacitor)
-- [ ] `npm run ios:build` → Xcode archive
-- [ ] Privacy Manifest (iOS 17+): `NSPrivacyTracking` = false, `NSPrivacyCollectedDataTypes` = minimal
-- [ ] App Store Connect: screenshots, description, keywords, privacy policy URL
-- [ ] TestFlight beta → internal testing
-- [ ] Submit for review
+- [x] `npm run ios:build` script + `ios/` project scaffolded (`capacitor.config.ts`, icons present)
+- [ ] Web bundle synced into `ios/App/App/public` — `cap sync` never ran
+- [ ] Privacy Manifest (`PrivacyInfo.xcprivacy`) — missing
+- [ ] App Store Connect assets / TestFlight / submission — console-side, pending
 
 ### 4.2 Android Build (Capacitor)
-- [ ] `npm run android:build` → signed AAB
-- [ ] Play Console: store listing, privacy policy, target API 34
-- [ ] Internal testing track
-- [ ] Submit for review
+- [x] `npm run android:build` + `npm run cap:sync` scripts; `android/` scaffolded
+- [ ] Web bundle synced (`android/app/src/main/assets` does not exist)
+- [ ] Play Console listing / internal track / target API 34 / submission — console-side, pending
 
 ### 4.3 Web Launch
-- [ ] Custom domain (`glimmind.com`) already configured
-- [ ] Firebase Hosting: `firebase deploy --only hosting`
-- [ ] Verify HTTPS, HSTS, CSP headers
-- [ ] Submit to search engines (Google Search Console, Bing)
+- [ ] Custom domain (`glimmind.com`) "already configured" — **unverified**; hosting target docs still say `fladycard-22a3e.web.app`; binding is console-side
+- [x] Firebase Hosting deploys (`firebase.json:12-13`, SPA rewrite, deployed with v1.41.0 2026-10-21)
+- [x] HTTPS/HSTS (`firebase.json:45-47`) + CSP (`firebase.json:65-66`)
+- [ ] Search engines (Search Console, Bing) — no `robots.txt`, no `sitemap.xml`
 
 ### 4.4 Post-Launch Monitoring (First 2 Weeks)
-- [ ] Daily: check error rates, billing, user signups
-- [ ] Weekly: review support emails, app store reviews
-- [ ] Iterate: hotfixes via patch versions
+- [ ] Daily error rates, billing, signups — routine, no artifacts in repo
 
 ### 4.5 Verification Gate
-```bash
-# iOS: TestFlight build installs, works on device
-# Android: Internal track build installs, works on device
-# Web: glimmind.com loads, auth works, payment works
-# All: no critical errors in GCP Logging
+```text
+[ ] iOS: TestFlight build installs, works on device
+[ ] Android: Internal track build installs, works on device
+[ ] Web: glimmind.com loads, auth works, payment works
+[ ] All: no critical errors in GCP Logging
 ```
 
 ---
@@ -264,7 +290,8 @@ npm run build
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Gemini removal breaks smart grouping | High | Medium | Accept: remove feature, keep manual grouping only |
+| ~~Gemini removal breaks smart grouping~~ resolved 2026-10-21: grouping removed, Gemini kept for AI decks | — | — | Metered AI decks + `aiGroup` rate limit |
+| Gemini quota/policy change breaks AI deck generation | Medium | Medium | Quota enforcement + `SERVICE_CATALOG` metering; open question in `BUSINESS_MODEL` §8 (are we on the free tier?) |
 | Stripe webhook fails silently | Medium | High | Idempotency keys, retry logic, dead-letter queue in Firestore |
 | App Check breaks existing users | Low | High | Test in staging first, gradual rollout |
 | iOS/Android review rejection | Medium | Medium | Pre-submission checklist, appeal process ready |
@@ -274,11 +301,11 @@ npm run build
 
 ## Success Criteria (Definition of Done)
 
-**Phase 0:** `tsc --noEmit` = 0, `vitest run` = all pass, `npm run build` = success  
-**Phase 1:** Full game flow works offline + online, no AI features  
-**Phase 2:** Landing page live, Stripe test payment → premium tier in Firestore  
-**Phase 3:** App Check enforced, billing alerts firing, Node 22 deployed, monitoring green  
-**Phase 4:** iOS/Android/Web all accessible to public, first paying user onboarded  
+**Phase 0:** ✅ verified 2026-10-21 — `tsc` = 0, `vitest` all pass, build succeeds
+**Phase 1:** ✅ verified 2026-10-21 — full game flow works (e2e); no AI-grouping features (periodic-sync gap open, P1)
+**Phase 2:** Landing live ✅; one-time payment → tier write in Firestore ✅ (code); remaining: SEO, badges, Settings links, social proof, PWA
+**Phase 3:** App Check enforced ⬜, billing alerts ⬜, monitoring ⬜ (console); Node 22 ✅
+**Phase 4:** iOS/Android/Web all accessible to public ⬜, first paying user onboarded ⬜
 
 ---
 
@@ -294,21 +321,6 @@ npm run build
 
 ---
 
-## Appendix: File Inventory for Gemini Removal
+## Appendix: Gemini inventory — superseded 2026-10-21
 
-**Frontend:**
-- `src/services/aiService.ts` → DELETE
-- `src/hooks/dashboard/useDeckValidation.ts` → remove AI validation
-- `src/components/modals/SmartGroupModal.tsx` → DELETE
-- `src/components/onboarding/DeckStoreOnboarding.tsx` → remove AI deck button
-- `src/components/views/Dashboard.tsx` → remove AI grouping import/button
-
-**Backend:**
-- `backend/src/functions/src/services/aiService/` → DELETE entire folder
-- `backend/src/functions/src/routes/aiRoutes.js` → DELETE
-- `backend/src/functions/src/index.js` → remove `aiGroup` export
-- `backend/src/functions/src/utils/constants.js` → remove Gemini config
-- `firebase.json` → remove `/api/aiGroup` rewrite
-
-**Secrets:**
-- `GEMINI_API_KEY` in Secret Manager → DELETE
+The original removal inventory below described deleting AI **grouping**. Those files are gone (`aiService.ts`, `SmartGroupModal.tsx`, `services/aiService/`, `aiRoutes.js`, `aiGroup` export, `/api/aiGroup` rewrite, `aiService` dependency). **Gemini itself stays**: `GEMINI_API_KEY` is declared by `createDeckFromText.js` and `youtubeDeckRoutes.js`, `@google/genai` powers `vocabularyExtractionService`, and `VOCABULARY_GEMINI_MODELS` lives in `utils/constants.js:12`. Treat this appendix as a record of what was removed, not as remaining work.

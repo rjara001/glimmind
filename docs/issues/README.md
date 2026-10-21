@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-21: **0 P0 · 9 P1 · 22 P2 · 24 done · 3 backlog**.
+Counts as of 2026-10-21: **0 P0 · 9 P1 · 23 P2 · 24 done · 3 backlog**.
 
 Four were filed on 2026-10-20 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). Three further findings from the same
@@ -84,6 +84,7 @@ rather than as issue files, pending a plan under [`../plans/`](../plans/).
 | [`P2/2026-10-21-privacypolicy-promete-estadisticas-desactivadas.md`](P2/2026-10-21-privacypolicy-promete-estadisticas-desactivadas.md) | Privacy and cookie policies promise statistics while `FEATURE_FLAGS.reports` keeps them unreachable |
 | [`P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md`](P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md) | Landing comparison card says failing "enters a cycle"; the cycle only advances on Siguiente |
 | [`P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md`](P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md) | Playwright reuses any process on port 3002, so local e2e can test a stale server instead of the production bundle |
+| [`P2/2026-10-21-env-backups-trackeados-y-debug-env.md`](P2/2026-10-21-env-backups-trackeados-y-debug-env.md) | `.env.local.backup` (real Firebase config) and a misnamed 12,979-line `.env.backup` are tracked in git alongside a stray `debug-env.js` |
 
 ## done — resolved
 
