@@ -1,13 +1,14 @@
 {
   "name": "glimmind---word-association-master",
   "private": true,
-  "version": "1.40.6",
+  "version": "1.40.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "emulators": "firebase emulators:start --only auth,functions,firestore --import .emulator-data --export-on-exit .emulator-data",
     "emulators:kill": "lsof -ti :9000 -ti :9001 -ti :9080 -ti :9099 | xargs kill -9 2>/dev/null; echo 'Emulator ports cleared'",
     "stripe:listen": "stripe listen --forward-to localhost:9001/fladycard-22a3e/us-central1/stripeWebhook --events checkout.session.completed,payment_intent.succeeded,charge.refunded",
+    "grant:premium": "node scripts/grant-local-premium.mjs",
     "prebuild": "node scripts/copy-ml-assets.mjs",
     "build": "vite build",
     "version:bump": "scripts/version-bump.sh patch",
