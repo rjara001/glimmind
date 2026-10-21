@@ -163,7 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onUpgrade }) 
 8. Pricing: "Simple y honesto. Empieza gratis. Actualiza cuando lo necesites. Sin sorpresas."
 9. Planes: Free (1.000 tarjetas) vs Premium (5.000 tarjetas + voces HD, stats, export, soporte)
 10. Cierre: "¿Listo para recordar de verdad? Crea tu primer mazo gratis. Toma menos de un minuto."
-11. Footer: "Flashcards con repetición espaciada para aprender idiomas. Construido con React, Firebase y ciencia."
+11. Footer: "Flashcards con 4 ciclos visibles para aprender idiomas. Construido con React, Firebase y ciencia."
 
 ### i18n
 - **En Paso 0, verificar si la app tiene sistema de i18n** (buscar `i18n`, `react-i18next`, `useTranslation`, archivos de locale)
