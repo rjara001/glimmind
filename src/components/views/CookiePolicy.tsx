@@ -60,7 +60,7 @@ export const CookiePolicy: React.FC = () => (
           <h2 className="text-xl font-bold text-slate-900 mb-4">3. Local Storage (Not Cookies)</h2>
           <p className="text-slate-600 mb-4">Glimmind is local-first. Most data lives in your browser's localStorage, not cookies:</p>
           <ul className="space-y-2 text-slate-600 list-disc list-inside">
-            <li>Flashcards, decks, and spaced repetition state</li>
+            <li>Flashcards, decks, and cycle progression state</li>
             <li>User preferences (theme, voice settings, game mode)</li>
             <li>Game progress, statistics, review history</li>
             <li>Offline queue for cloud sync</li>
