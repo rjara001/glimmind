@@ -1,8 +1,24 @@
+import type { StateKey } from '../types/progress';
+
 export const CYCLE_LABELS: Record<number, string> = {
   1: 'NUEVA',
   2: 'VISTA',
   3: 'RECONOCIDA',
   4: 'FRECUENTE',
+};
+
+export const LEARNED_LABEL = 'APRENDIDAS';
+
+/**
+ * Single source of truth for the five state names. The four cycle labels come
+ * straight from CYCLE_LABELS so a screen can never rename one of them alone.
+ */
+export const STATE_LABELS: Record<StateKey, string> = {
+  nuevas: CYCLE_LABELS[1],
+  vistas: CYCLE_LABELS[2],
+  reconocidas: CYCLE_LABELS[3],
+  frecuentes: CYCLE_LABELS[4],
+  aprendidas: LEARNED_LABEL,
 };
 
 export interface CycleColorPalette {

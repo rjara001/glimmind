@@ -435,6 +435,7 @@ export const GameView: React.FC<GameViewProps> = ({
             cycleColorName={gameplay.cycleColorName}
             learnedCountRef={correctRef}
             cycleMiniStats={gameplay.cycleMiniStats}
+            isMobile={false}
           />
         )}
       </div>

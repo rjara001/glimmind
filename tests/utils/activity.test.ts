@@ -8,7 +8,12 @@ import {
   createActivityEvent,
   backfillAssociationStats,
   buildListDiffEvents,
+  normalizeCardLevel,
+  normalizeActivityEvent,
+  normalizeByLevel,
+  normalizeSessionSummary,
 } from '@/utils/activity';
+import { CardActivityEvent, GameSessionSummary } from '@/types/activity';
 
 const createAssociation = (overrides: Partial<Association> = {}): Association => ({
   id: '1',
@@ -26,8 +31,8 @@ describe('levelOf', () => {
     expect(levelOf(createAssociation({ isLearned: true, currentCycle: 1 }))).toBe('aprendidas');
   });
 
-  it('maps cycle 4 to conocidas', () => {
-    expect(levelOf(createAssociation({ currentCycle: 4 }))).toBe('conocidas');
+  it('maps cycle 4 to frecuentes', () => {
+    expect(levelOf(createAssociation({ currentCycle: 4 }))).toBe('frecuentes');
   });
 
   it('maps cycle 3 to reconocidas', () => {
@@ -49,7 +54,7 @@ describe('levelIndex', () => {
       'nuevas',
       'vistas',
       'reconocidas',
-      'conocidas',
+      'frecuentes',
       'aprendidas',
     ]);
     expect(levelIndex('nuevas')).toBe(0);
@@ -60,6 +65,77 @@ describe('levelIndex', () => {
     for (const level of LEVEL_ORDER) {
       expect(LEVEL_LABELS[level]).toBeTruthy();
     }
+  });
+});
+
+describe('legacy cycle-4 level normalization', () => {
+  it('maps the legacy conocidas level onto frecuentes', () => {
+    expect(normalizeCardLevel('conocidas')).toBe('frecuentes');
+  });
+
+  it('passes current levels through and rejects unknown values', () => {
+    expect(normalizeCardLevel('frecuentes')).toBe('frecuentes');
+    expect(normalizeCardLevel('desconocido')).toBeUndefined();
+    expect(normalizeCardLevel(undefined)).toBeUndefined();
+  });
+
+  it('rewrites the level fields of a stored event', () => {
+    const legacy = {
+      id: 'e1',
+      userId: 'u1',
+      listId: 'l1',
+      cardId: 'c1',
+      cardTerm: 'Term',
+      type: 'card_level_up',
+      at: 1,
+      fromLevel: 'conocidas',
+      toLevel: 'aprendidas',
+    } as unknown as CardActivityEvent;
+
+    const normalized = normalizeActivityEvent(legacy);
+
+    expect(normalized.fromLevel).toBe('frecuentes');
+    expect(normalized.toLevel).toBe('aprendidas');
+  });
+
+  it('folds the legacy conocidas count into frecuentes in a session histogram', () => {
+    expect(normalizeByLevel({ nuevas: 1, conocidas: 2 })).toEqual({
+      nuevas: 1,
+      vistas: 0,
+      reconocidas: 0,
+      frecuentes: 2,
+      aprendidas: 0,
+    });
+    expect(normalizeByLevel({ frecuentes: 3, conocidas: 2 }).frecuentes).toBe(5);
+    expect(normalizeByLevel(undefined)).toEqual({
+      nuevas: 0,
+      vistas: 0,
+      reconocidas: 0,
+      frecuentes: 0,
+      aprendidas: 0,
+    });
+  });
+
+  it('translates a stored session summary onto the current keys', () => {
+    const legacy = {
+      id: 's1',
+      listId: 'l1',
+      listName: 'Lista 1',
+      startedAt: 1,
+      endedAt: 2,
+      cardsPlayed: 2,
+      correct: 1,
+      incorrect: 1,
+      byLevel: { conocidas: 2 },
+    } as unknown as GameSessionSummary;
+
+    expect(normalizeSessionSummary(legacy).byLevel).toEqual({
+      nuevas: 0,
+      vistas: 0,
+      reconocidas: 0,
+      frecuentes: 2,
+      aprendidas: 0,
+    });
   });
 });
 

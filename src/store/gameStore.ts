@@ -9,6 +9,8 @@ import {
   applyRepaso,
   computeStateBreakdown,
   createDefaultProgress,
+  emptyDailyProgress,
+  normalizeProgress,
   todayKey,
 } from '../utils/progress';
 import { UserProgress, CelebrationEvent, RepasoContext } from '../types/progress';
@@ -743,13 +745,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (isGuest) {
       const savedLocal = safeGetItem(LOCAL_PROGRESS_KEY);
-      const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
+      const localProgress: UserProgress | null = savedLocal
+        ? normalizeProgress(JSON.parse(savedLocal) as UserProgress)
+        : null;
       set({ progress: localProgress || createDefaultProgress() });
       return;
     }
 
     const savedLocal = safeGetItem(LOCAL_PROGRESS_KEY);
-    const localProgress: UserProgress | null = savedLocal ? JSON.parse(savedLocal) : null;
+    const localProgress: UserProgress | null = savedLocal
+      ? normalizeProgress(JSON.parse(savedLocal) as UserProgress)
+      : null;
     const progress = localProgress || createDefaultProgress();
     set({ progress });
     safeStringify(LOCAL_PROGRESS_KEY, progress);
@@ -933,7 +939,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       log: {
         ...progress.log,
         [today]: {
-          ...(progress.log[today] || { repasos: 0, byState: { nuevas: 0, vistas: 0, reconocidas: 0, conocidas: 0, aprendidas: 0 } }),
+          ...(progress.log[today] || emptyDailyProgress()),
           byState: globalBreakdown,
         },
       },
@@ -1016,7 +1022,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     try {
       const localProgressRaw = safeGetItem(LOCAL_PROGRESS_KEY);
       const localProgress = localProgressRaw
-        ? (JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number })
+        ? normalizeProgress(JSON.parse(localProgressRaw) as UserProgress & { updatedAt?: number })
         : null;
       const progress = localProgress || createDefaultProgress();
       set({ progress });

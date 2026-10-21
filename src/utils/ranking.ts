@@ -23,7 +23,7 @@ const EMPTY_BY_LEVEL: Record<CardLevel, number> = {
   nuevas: 0,
   vistas: 0,
   reconocidas: 0,
-  conocidas: 0,
+  frecuentes: 0,
   aprendidas: 0,
 };
 

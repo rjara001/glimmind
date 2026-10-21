@@ -284,7 +284,7 @@ describe("Validation schemas", () => {
           cardsPlayed: 10,
           correct: 8,
           incorrect: 2,
-          byLevel: { nuevas: 1, vistas: 2, reconocidas: 3, conocidas: 2, aprendidas: 2 },
+          byLevel: { nuevas: 1, vistas: 2, reconocidas: 3, frecuentes: 2, aprendidas: 2 },
         },
       };
       const result = validation.SaveSessionSchema.safeParse(input);
@@ -321,6 +321,39 @@ describe("Validation schemas", () => {
         },
       };
       const result = validation.SaveSessionSchema.safeParse(input);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("UpdateProgressSchema", () => {
+    const makeProgress = (byState) => ({
+      userId: "user123",
+      progress: {
+        goalTarget: 30,
+        goalProgress: 1,
+        streak: 2,
+        log: { "2026-10-20": { repasos: 3, byState } },
+      },
+    });
+
+    test("accepts a breakdown using the current frecuentes bucket", () => {
+      const result = validation.UpdateProgressSchema.safeParse(
+        makeProgress({ nuevas: 1, vistas: 1, reconocidas: 1, frecuentes: 2, aprendidas: 0 })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    test("accepts a breakdown written before the rename (conocidas)", () => {
+      const result = validation.UpdateProgressSchema.safeParse(
+        makeProgress({ nuevas: 1, vistas: 1, reconocidas: 1, conocidas: 2, aprendidas: 0 })
+      );
+      expect(result.success).toBe(true);
+    });
+
+    test("rejects a negative bucket", () => {
+      const result = validation.UpdateProgressSchema.safeParse(
+        makeProgress({ nuevas: -1, vistas: 0, reconocidas: 0, aprendidas: 0 })
+      );
       expect(result.success).toBe(false);
     });
   });

@@ -1,4 +1,6 @@
-export type CardLevel = 'nuevas' | 'vistas' | 'reconocidas' | 'conocidas' | 'aprendidas';
+import type { StateKey } from './progress';
+
+export type CardLevel = StateKey;
 
 export type CardActivityType =
   | 'card_created'

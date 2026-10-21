@@ -202,6 +202,7 @@ export function CardStage(props: CardStageProps) {
             gameState={gameState}
             cycleColorName={cycleColorName}
             cycleMiniStats={cycleMiniStats}
+            isMobile
           />
         )}
         <AttemptList

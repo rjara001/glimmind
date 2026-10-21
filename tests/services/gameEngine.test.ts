@@ -280,7 +280,7 @@ describe('GlimmindGame', () => {
             const breakdown = computeStateBreakdown(game.state.associations);
             // At globalCycle=2, max allowed is cycle 3 (RECONOCIDA)
             expect(breakdown.reconocidas).toBe(1);
-            expect(breakdown.conocidas).toBe(0); // cycle 4 not allowed yet
+            expect(breakdown.frecuentes).toBe(0); // cycle 4 not allowed yet
         });
     });
 

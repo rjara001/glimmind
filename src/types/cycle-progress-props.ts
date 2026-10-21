@@ -6,4 +6,5 @@ export interface CycleProgressProps {
   cycleColorName?: string;
   learnedCountRef?: React.RefObject<HTMLSpanElement | null>;
   cycleMiniStats?: CycleMiniStats;
+  isMobile?: boolean;
 }
