@@ -28,13 +28,15 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-21: **0 P0 · 9 P1 · 23 P2 · 24 done · 3 backlog**.
+Counts as of 2026-10-21: **0 P0 · 9 P1 · 26 P2 · 24 done · 3 backlog**.
 
-Four were filed on 2026-10-20 from the state, usability and market-positioning
-audits under [`../audits/`](../audits/). Three further findings from the same
+Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
+audits under [`../audits/`](../audits/). The last three findings from the same
 audits (`GameView` deck-load error state, mixed-language UI, empty deck store
-for guests) are documented in [`../audits/2026-10-20-usability-gaps.md`](../audits/2026-10-20-usability-gaps.md)
-rather than as issue files, pending a plan under [`../plans/`](../plans/).
+for guests) were documented only in
+[`../audits/2026-10-20-usability-gaps.md`](../audits/2026-10-20-usability-gaps.md)
+until 2026-10-21, when they were filed as issue files (see the three P2 rows
+dated 2026-10-21 below).
 
 ---
 
@@ -85,6 +87,9 @@ rather than as issue files, pending a plan under [`../plans/`](../plans/).
 | [`P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md`](P2/2026-10-21-landing-falla-atribuye-entrada-a-ciclo.md) | Landing comparison card says failing "enters a cycle"; the cycle only advances on Siguiente |
 | [`P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md`](P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md) | Playwright reuses any process on port 3002, so local e2e can test a stale server instead of the production bundle |
 | [`P2/2026-10-21-env-backups-trackeados-y-debug-env.md`](P2/2026-10-21-env-backups-trackeados-y-debug-env.md) | `.env.local.backup` (real Firebase config) and a misnamed 12,979-line `.env.backup` are tracked in git alongside a stray `debug-env.js` |
+| [`P2/2026-10-21-gameview-sin-estado-de-error.md`](P2/2026-10-21-gameview-sin-estado-de-error.md) | `GameView`/`App` render the same spinner for loading, empty and failed deck loads — no error, no retry (audit U-12) |
+| [`P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`](P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md) | Neutral ES, Argentine voseo and English share the same screens; no switcher, `lang="es"` hard-coded (audit U-13) |
+| [`P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md`](P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md) | Guests get an empty prebuilt catalogue and no quota display, so the lowest-friction entry path shows an empty product (audit U-17) |
 
 ## done — resolved
 

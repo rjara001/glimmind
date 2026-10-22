@@ -2,8 +2,8 @@
 
 **Date:** 2026-10-20
 **Scope:** friction, trust and clarity defects in the current product. Read-only inspection; nothing was modified.
-**Sibling documents:** [`2026-10-20-app-state.md`](./2026-10-20-app-state.md), [`2026-10-20-market-positioning.md`](./2026-10-20-market-positioning.md).
-**Companion issues:** every gap marked *new* has a file under [`../issues/`](../issues/). Gaps marked *tracked* already had one.
+**Sibling documents:** [`2026-10-20-app-state.md`](./2026-10-20-app-state.md), [`2026-10-20-market-positioning.md`](./2026-10-20-market-positioning.md), [`2026-10-20-improvement-roadmap.md`](./2026-10-20-improvement-roadmap.md).
+**Companion issues:** every gap marked *new* has a file under [`../issues/`](../issues/) — U-12, U-13 and U-17 were filed on 2026-10-21 (closeout plan Phase B). Gaps marked *tracked* already had one.
 
 Priority follows `docs/issues/README.md`: **P0** bleeding/broken now, **P1** behavioural bugs, **P2** debt and hygiene.
 
@@ -24,18 +24,18 @@ Priority follows `docs/issues/README.md`: **P0** bleeding/broken now, **P1** beh
 | U-09 | **Entire UI styled by `cdn.tailwindcss.com` at runtime** | **P1** | **new** | `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` |
 | U-10 | Quotas invisible until the user hits a 429 | P2 | tracked | `docs/issues/P2/2026-10-11-cuotas-invisibles-al-usuario.md` |
 | U-11 | Raw English browser errors in a Spanish UI | P2 | tracked | `docs/issues/P2/2026-10-16-error-message-crudo-en-cliente.md` |
-| U-12 | `GameView` has no deck-load error state | P2 | **new** | this document §3 |
-| U-13 | Mixed-language UI (ES / AR-ES / EN) with no switcher | P2 | **new** | this document §4 |
+| U-12 | `GameView` has no deck-load error state | P2 | **new** | `docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md` |
+| U-13 | Mixed-language UI (ES / AR-ES / EN) with no switcher | P2 | **new** | `docs/issues/P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md` |
 | U-14 | `/admin` unreachable; `/403` route does not exist | P2 | **new** | `docs/issues/P2/2026-10-20-admin-inalcanzable-por-role.md` |
 | U-15 | `QuickAddModal` and `src/pages/Login.tsx` unreachable | P2 | **new** | `docs/issues/P2/2026-10-20-quickadd-y-login-muertos.md` |
 | U-16 | PWA installed but not registered: no manifest, icons or service worker | P2 | **new** | `docs/issues/P2/2026-10-20-pwa-sin-configurar.md` |
-| U-17 | Guest sees an empty deck store (catalogue short-circuits to `[]`) | P2 | **new** | this document §5 |
+| U-17 | Guest sees an empty deck store (catalogue short-circuits to `[]`) | P2 | **new** | `docs/issues/P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md` |
 | U-18 | Progress lives only in the browser; clearing data loses everything | P2 | tracked | `docs/SERVICE_CATALOG.md` §7.1 |
 | U-19 | Marketing copy promises features that do not exist | P2 | tracked | `docs/BUSINESS_MODEL.md:107`, §4 |
 | U-20 | Deploy via GitHub Actions broken since 2026-10-07 | P2 | tracked | `docs/issues/P2/2026-10-12-deploy-de-github-actions-roto.md` |
 
 **Count:** 8 tracked P1 · 1 new P1 · 5 tracked P2 · 6 new P2.
-Of the 7 new findings, 4 are filed as standalone issues (`U-09`, `U-14`, `U-15`, `U-16`) and 3 are documented in this audit only (`U-12`, `U-13`, `U-17`) pending a plan under `docs/plans/`.
+All 7 new findings now have a standalone issue file under `docs/issues/` (`U-09`, `U-14`, `U-15`, `U-16` filed 2026-10-20; `U-12`, `U-13`, `U-17` filed 2026-10-21 by the closeout plan `docs/plans/2026-10-21-close-audit-backlog.md` Phase B).
 
 ---
 
