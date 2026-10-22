@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { transcribeChirp3, transcribeSpeech } from '../../../services/voice/stt/chipttStt';
+import { transcribeChirp3 } from '../../../services/voice/stt/chipttStt';
 import { SttProvider } from '../../../types/stt';
 
 const MAX_RECORDING_SECONDS = 20;
@@ -127,37 +127,6 @@ export function useChipTTSTT({ onFinal, onInterim, onError }: UseChipTTSTTOption
       reader.onerror = () => reject(new Error('Failed to read audio blob.'));
     });
   }, []);
-
-  const transcribeExistingAudio = useCallback(
-    async (blob: Blob, languageCode?: string): Promise<string> => {
-      const base64 = await blobToBase64(blob);
-      const encoding = blob.type.includes('ogg')
-        ? 'OGG_OPUS'
-        : blob.type.includes('opus')
-          ? 'WEBM_OPUS'
-          : 'WEBM';
-
-      const result = await transcribeSpeech({
-        audioContent: base64,
-        encoding,
-        sampleRateHertz: 48000,
-        languageCode: languageCode || undefined,
-        audioDuration: 60,
-      });
-
-      if (result.noSpeech) {
-        throw new Error(result.message || 'No speech detected in existing audio.');
-      }
-
-      const trimmed = result.transcript?.trim();
-      if (!trimmed) {
-        throw new Error('No speech detected in existing audio transcript.');
-      }
-
-      return trimmed;
-    },
-    [blobToBase64],
-  );
 
   const start = useCallback(
     (lang: string | null) => {
@@ -394,8 +363,7 @@ export function useChipTTSTT({ onFinal, onInterim, onError }: UseChipTTSTTOption
       start,
       stop,
       abort,
-      transcribeExistingAudio,
     }),
-    [supported, isListening, isProcessing, interimTranscript, recordingTimeLeft, recordingElapsed, start, stop, abort, transcribeExistingAudio],
+    [supported, isListening, isProcessing, interimTranscript, recordingTimeLeft, recordingElapsed, start, stop, abort],
   );
 }

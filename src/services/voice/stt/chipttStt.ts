@@ -24,18 +24,6 @@ export async function transcribeSpeech(
   return callFunction<ChipttTranscribeResponse>('transcribeSpeech', options);
 }
 
-export interface ChipttExistingAudioOptions {
-  audioContent: string;
-  languageCode?: string;
-  audioDuration?: number;
-}
-
-export async function transcribeExistingAudio(
-  options: ChipttExistingAudioOptions,
-): Promise<ChipttTranscribeResponse> {
-  return callFunction<ChipttTranscribeResponse>('transcribeExistingAudio', options);
-}
-
 export interface ChipttChirp3Options {
   audioContent: string;
   languageCode?: string;

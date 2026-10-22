@@ -27,10 +27,7 @@ export function useSTT({ provider, expectedWords, commandWords, minCommandConfid
   });
 
   if (provider === 'chiptt') {
-    return {
-      ...chiptt,
-      transcribeExistingAudio: chiptt.transcribeExistingAudio,
-    };
+    return chiptt;
   }
 
   if (provider === 'vosk') {

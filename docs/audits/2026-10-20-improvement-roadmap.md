@@ -33,7 +33,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | U-01 | usability-gaps §1/§2 | P1 | Premium sync has no callers; progress is localStorage-only | large | filed | `docs/issues/P1/2026-10-12-sync-config-sin-conectar.md` |
 | U-02 | usability-gaps §1/§2 | P1 | Sign-in after a guest session erases the guest's local decks | large | done | `docs/issues/done/2026-10-13-guest-decks-erased-on-user-switch.md` (resolved 2026-10-22 via disclosed disclaimer; migration declined) |
 | U-03 | usability-gaps §1 | P1 | "Regresar al panel" returns to `/game` on first play | small | done | `docs/issues/done/2026-10-13-regresar-al-panel-vuelve-a-game.md` |
-| U-04 | usability-gaps §1 | P1 | `transcribeExistingAudio` can only ever answer 502 | small | filed | `docs/issues/P1/2026-10-12-transcribe-existing-audio-roto.md` |
+| U-04 | usability-gaps §1 | P1 | `transcribeExistingAudio` can only ever answer 502 | small | done | `docs/issues/done/2026-10-12-transcribe-existing-audio-roto.md` (removed; reimplementation stub in P2) |
 | U-05 | usability-gaps §1 | P1 | Mobile STT grades multi-word phrases on the first word | medium | done | `docs/issues/done/2026-08-24-mobile-stt-premature-final.md` |
 | U-06 | usability-gaps §1 | P1 | Recordings stored base64 in Firestore documents | large | filed | `docs/issues/P1/2026-10-12-audio-base64-en-firestore.md` |
 | U-07 | usability-gaps §1 | P1 | Deck count uncapped: 10 000 one-word decks pass every limit | medium | filed | `docs/issues/P1/2026-10-12-sin-tope-de-mazos-por-usuario.md` |

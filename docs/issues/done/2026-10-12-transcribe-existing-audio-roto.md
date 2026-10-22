@@ -1,5 +1,15 @@
 # `transcribeExistingAudio` calls a function that does not exist
 
+**Resolved:** 2026-10-22 (removed, in `fix/audit-batch-1`). With zero callers
+and a guaranteed 502, the endpoint was removed instead of repaired: the Cloud
+Function, the hosting rewrite, the orphan
+`transcribeExistingAudioService.js`, the `chipttStt.ts` wrapper, the unused
+`useChipTTSTT`/`useSTT` plumbing and the optional `SttProvider` method. A
+reimplementation sketch lives in
+[`P2/2026-10-22-transcribe-existing-audio-reimplementation.md`](../P2/2026-10-22-transcribe-existing-audio-reimplementation.md).
+
+---
+
 ## What
 
 The route handler calls `sttService.sendAudioToGoogleSpeechRecognitionRecognize`.

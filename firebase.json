@@ -166,10 +166,6 @@
         "function": "transcribeSpeech"
       },
       {
-        "source": "/api/transcribeExistingAudio",
-        "function": "transcribeExistingAudio"
-      },
-      {
         "source": "/api/transcribeChirp3",
         "function": "transcribeChirp3"
       },
