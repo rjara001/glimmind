@@ -19,7 +19,7 @@ Priority follows `docs/issues/README.md`: **P0** bleeding/broken now, **P1** beh
 | U-04 | `transcribeExistingAudio` can only ever answer 502 | P1 | resolved (2026-10-22, dead endpoint removed) | `docs/issues/done/2026-10-12-transcribe-existing-audio-roto.md` |
 | U-05 | Mobile STT grades multi-word phrases on the first word | P1 | resolved (2026-10-22, cursor rebuild + 1200 ms silence / 3000 ms cap) | `docs/issues/done/2026-08-24-mobile-stt-premature-final.md` |
 | U-06 | Recordings stored base64 in Firestore documents | P1 | resolved (2026-10-22, feature removed; Storage path untouched) | `docs/issues/done/2026-10-12-audio-base64-en-firestore.md` |
-| U-07 | No cap on deck count: 10 000 one-word decks pass every limit | P1 | tracked | `docs/issues/P1/2026-10-12-sin-tope-de-mazos-por-usuario.md` |
+| U-07 | No cap on deck count: 10 000 one-word decks pass every limit | P1 | resolved (2026-10-22, `maxDecks` 50/200 transactional + client gate) | `docs/issues/done/2026-10-12-sin-tope-de-mazos-por-usuario.md` |
 | U-08 | STT allowance bypassed by under-reporting `audioDuration` | P1 | resolved (2026-10-22, payload-derived seconds; true-up parked) | `docs/issues/done/2026-10-12-stt-audio-seconds-no-verificar.md` |
 | U-09 | **Entire UI styled by `cdn.tailwindcss.com` at runtime** | **P1** | **new** | `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` |
 | U-10 | Quotas invisible until the user hits a 429 | P2 | tracked | `docs/issues/P2/2026-10-11-cuotas-invisibles-al-usuario.md` |

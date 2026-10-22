@@ -33,5 +33,8 @@ describe('plans.json drift', () => {
     expect(backendPlans.tiers.premium.aiDailyLimit).toBeGreaterThan(
       backendPlans.tiers.free.aiDailyLimit
     );
+    expect(backendPlans.tiers.premium.maxDecks).toBeGreaterThan(
+      backendPlans.tiers.free.maxDecks
+    );
   });
 });

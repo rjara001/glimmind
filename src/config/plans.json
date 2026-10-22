@@ -3,11 +3,13 @@
     "free": {
       "label": "Plan gratuito",
       "maxCards": 1000,
+      "maxDecks": 50,
       "aiDailyLimit": 100
     },
     "premium": {
       "label": "Plan Premium",
       "maxCards": 5000,
+      "maxDecks": 200,
       "aiDailyLimit": 1000
     }
   },

@@ -3,7 +3,7 @@ const { getOrCreateMeta, metaDefaults, metaRefFor } = require("../../utils/helpe
 const { FieldValue } = require("../../utils/firebase");
 const { COLLECTION_NAME, MAX_CARDS_PER_LIST, DEFAULT_BULK_CARDS_PER_DECK } = require("../../utils/constants");
 const { applyDeltasToList } = require("../../utils/associationDeltas");
-const { assertCardQuotaHasRoom, validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota } = require("./quota");
+const { assertCardQuotaHasRoom, assertDeckQuotaHasRoom, validateListDoesNotExceedCardLimit, validateUserCardQuotaNotExceeded, loadUserMetaForCardQuota, resolveListCount } = require("./quota");
 
 function buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
   return {
@@ -22,10 +22,11 @@ function buildListDocumentData({ userId, name, concept, associations, settings, 
   };
 }
 
-function buildMetaDocumentDataForListCreation(meta, newCardsCount) {
+function buildMetaDocumentDataForListCreation(meta, newCardsCount, newDecksCount) {
   return {
     ...metaDefaults(),
     cardCount: newCardsCount,
+    listCount: newDecksCount,
   };
 }
 
@@ -99,11 +100,26 @@ async function fetchListByIdForUser(db, listId, uid) {
   return { id: doc.id, ...doc.data() };
 }
 
+function effectiveListCount(metaSnapExists, meta, legacyListCount) {
+  if (metaSnapExists && typeof meta.listCount === "number") return meta.listCount;
+  return legacyListCount ?? 0;
+}
+
+function listCountWrite(currentMeta, legacyListCount, delta) {
+  // A counter written by metaDefaults/previous writes grows atomically; a meta
+  // from before listCount existed gets one absolute backfill write instead,
+  // because increment on a missing field would count from 0, not from the
+  // decks the user actually owns.
+  if (typeof currentMeta.listCount === "number") return FieldValue.increment(delta);
+  return (legacyListCount ?? 0) + delta;
+}
+
 async function persistNewListWithAssociations(db, userId, { name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }) {
   const meta = await loadUserMetaForCardQuota(db, userId);
   const maxAllowed = meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST;
   const count = validateListDoesNotExceedCardLimit(associations, maxAllowed);
   const { cardQuota, cardCount } = validateUserCardQuotaNotExceeded(meta, count);
+  const legacyListCount = typeof meta.listCount === "number" ? null : await resolveListCount(db, userId);
 
   const docRef = db.collection(COLLECTION_NAME).doc();
   await db.runTransaction(async (tx) => {
@@ -111,18 +127,21 @@ async function persistNewListWithAssociations(db, userId, { name, concept, assoc
     const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     const currentCardCount = currentMeta.cardCount || 0;
     const currentTier = currentMeta.tier || "free";
+    const currentListCount = effectiveListCount(metaSnap.exists, currentMeta, legacyListCount);
 
     assertCardQuotaHasRoom(currentTier, currentCardCount, count);
+    assertDeckQuotaHasRoom(currentTier, currentListCount, 1);
 
     tx.set(docRef, buildListDocumentData({ userId, name, concept, associations, settings, sourceType, sourceUrl, rawSourceText, sourceRow }));
     
     if (metaSnap.exists) {
       tx.update(metaRefFor(db, userId), {
         cardCount: FieldValue.increment(count),
+        listCount: listCountWrite(currentMeta, legacyListCount, 1),
         updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
-      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, count));
+      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, count, currentListCount + 1));
     }
   });
   
@@ -151,13 +170,16 @@ async function bulkCreateLists(db, userId, { name, concept, associations, settin
   const maxAllowed = meta.tier === "premium" ? Infinity : MAX_CARDS_PER_LIST;
   chunks.forEach((chunk) => validateListDoesNotExceedCardLimit(chunk, maxAllowed));
   validateUserCardQuotaNotExceeded(meta, total);
+  const legacyListCount = typeof meta.listCount === "number" ? null : await resolveListCount(db, userId);
 
   const createdIds = await db.runTransaction(async (tx) => {
     const metaSnap = await tx.get(metaRefFor(db, userId));
     const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     const currentTier = currentMeta.tier || "free";
+    const currentListCount = effectiveListCount(metaSnap.exists, currentMeta, legacyListCount);
 
     assertCardQuotaHasRoom(currentTier, currentMeta.cardCount || 0, total);
+    assertDeckQuotaHasRoom(currentTier, currentListCount, chunks.length);
 
     const ids = [];
     chunks.forEach((chunk, index) => {
@@ -180,10 +202,11 @@ async function bulkCreateLists(db, userId, { name, concept, associations, settin
     if (metaSnap.exists) {
       tx.update(metaRefFor(db, userId), {
         cardCount: FieldValue.increment(total),
+        listCount: listCountWrite(currentMeta, legacyListCount, chunks.length),
         updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
-      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, total));
+      tx.set(metaRefFor(db, userId), buildMetaDocumentDataForListCreation(currentMeta, total, currentListCount + chunks.length));
     }
 
     return ids;
@@ -259,18 +282,35 @@ async function removeListAndDecrementUserCardCount(db, listId, uid) {
     await getOrCreateMeta(db, ownerId);
   }
 
+  const preDeleteMetaSnap = await metaRefFor(db, ownerId).get();
+  const legacyListCount =
+    preDeleteMetaSnap.exists && typeof preDeleteMetaSnap.data().listCount === "number"
+      ? null
+      : await resolveListCount(db, ownerId);
+
   await db.runTransaction(async (tx) => {
     const metaRef = metaRefFor(db, ownerId);
     const metaSnap = await tx.get(metaRef);
-    if (!metaSnap.exists) {
-      tx.set(metaRef, metaDefaults());
+    const currentMeta = metaSnap.exists ? metaSnap.data() : metaDefaults();
+    // The resolved count still includes the deck being deleted right now, so a
+    // legacy meta (no listCount field yet) gets one absolute backfill write.
+    const remainingDecks = Math.max(0, (legacyListCount ?? (currentMeta.listCount || 0)) - 1);
+    const metaUpdate = { updatedAt: FieldValue.serverTimestamp() };
+    if (count > 0) {
+      metaUpdate.cardCount = FieldValue.increment(-count);
+    }
+    if (metaSnap.exists && typeof currentMeta.listCount === "number") {
+      // A counter already at 0 is out of sync with reality; a delete must not
+      // drive it negative.
+      if (currentMeta.listCount > 0) metaUpdate.listCount = FieldValue.increment(-1);
+    } else {
+      metaUpdate.listCount = remainingDecks;
     }
     tx.delete(docRef);
-    if (count > 0) {
-      tx.update(metaRef, {
-        cardCount: FieldValue.increment(-count),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    if (metaSnap.exists) {
+      tx.update(metaRef, metaUpdate);
+    } else {
+      tx.set(metaRef, { ...metaDefaults(), ...metaUpdate });
     }
   });
   return { success: true };
@@ -293,6 +333,16 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
     0
   );
   const delta = totalNewCount - originalCount;
+  // groups[0] rewrites the original deck in place; every later group is a new
+  // deck document, and that count is what the deck ceiling must bound.
+  const newDecksCount = Math.max(0, groups.length - 1);
+
+  const preMetaSnap = await metaRefFor(db, uid).get();
+  const preMeta = preMetaSnap.exists ? preMetaSnap.data() : metaDefaults();
+  const legacyListCount =
+    preMetaSnap.exists && typeof preMeta.listCount === "number"
+      ? null
+      : await resolveListCount(db, uid);
 
   const createdIds = await db.runTransaction(async (tx) => {
     const metaRef = metaRefFor(db, uid);
@@ -300,6 +350,8 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
     const meta = metaSnap.exists ? metaSnap.data() : metaDefaults();
     validateUserCardQuotaNotExceeded(meta, delta);
     assertCardQuotaHasRoom(meta.tier || "free", meta.cardCount || 0, delta);
+    const currentListCount = effectiveListCount(metaSnap.exists, meta, legacyListCount);
+    assertDeckQuotaHasRoom(meta.tier || "free", currentListCount, newDecksCount);
 
     // groups[0] replaces the original deck in place; the original document is
     // never deleted. Deleting it lost the first group's cards, because the
@@ -332,14 +384,19 @@ async function divideOriginalListIntoGroupsAndReplaceIt(db, listId, uid, groups)
       affectedIds.push(ref.id);
     }
 
-    if (delta !== 0) {
+    const hasCardDelta = delta !== 0;
+    if (hasCardDelta || newDecksCount > 0) {
       if (metaSnap.exists) {
-        tx.update(metaRef, {
-          cardCount: FieldValue.increment(delta),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        const metaUpdate = { updatedAt: FieldValue.serverTimestamp() };
+        if (hasCardDelta) metaUpdate.cardCount = FieldValue.increment(delta);
+        if (newDecksCount > 0) metaUpdate.listCount = listCountWrite(meta, legacyListCount, newDecksCount);
+        tx.update(metaRef, metaUpdate);
       } else {
-        tx.set(metaRef, { ...metaDefaults(), cardCount: Math.max(0, delta) });
+        tx.set(metaRef, {
+          ...metaDefaults(),
+          cardCount: Math.max(0, delta),
+          listCount: (legacyListCount ?? 0) + newDecksCount,
+        });
       }
     }
     return affectedIds;

@@ -43,11 +43,15 @@ describe("getOrCreateMeta cardCount rebuild", () => {
     const { data } = await getOrCreateMeta(db, "user-1");
 
     expect(data.cardCount).toBe(5);
+    // U-07: listCount rebuilds alongside cardCount so legacy metas can enter
+    // the deck-ceiling guard without a backfill migration.
+    expect(data.listCount).toBe(4);
   });
 
   test("stays 0 when the user has no decks", async () => {
     const { data } = await getOrCreateMeta(fakeDbWithLists([]), "user-2");
 
     expect(data.cardCount).toBe(0);
+    expect(data.listCount).toBe(0);
   });
 });

@@ -199,6 +199,29 @@ const handlePlayList = useCallback(
     [showToast, user],
   );
 
+  // Deck-count gate (mirror of the server's assertDeckQuotaHasRoom). The
+  // server stays authoritative; this only gives the user the refusal before
+  // the round trip. Guests resolve to free, like every other quota gate.
+  const deckGate = useCallback(
+    (decksToAdd: number): boolean => {
+      if (decksToAdd <= 0) return true;
+      const { lists, quota } = useGameStore.getState();
+      const gate = resolveTierForGate(quota, user?.uid);
+      if (!gate.known) {
+        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        return false;
+      }
+      const currentDecks = lists.length;
+      if (QuotaService.canAddDecks(currentDecks, decksToAdd, gate.tier)) return true;
+      showToast(
+        `Llegaste a tu límite de ${QuotaService.getMaxDecks(gate.tier)} mazos. Elimina o archiva mazos para crear más.`,
+        "error",
+      );
+      return false;
+    },
+    [user, showToast],
+  );
+
   const handleCreateList = useCallback(
     async (
       name: string,
@@ -210,6 +233,7 @@ const handlePlayList = useCallback(
         showToast("Debes iniciar sesión para crear listas", "error");
         return null;
       }
+      if (!deckGate(1)) return null;
       const defaultSettings: AssociationList["settings"] = {
         mode: "training",
         flipOrder: "normal",
@@ -266,7 +290,7 @@ const handlePlayList = useCallback(
         setIsCreating(false);
       }
     },
-    [user, showToast],
+    [user, deckGate, showToast],
   );
 
   const handleCreateListQuick = useCallback(
@@ -300,6 +324,10 @@ const handlePlayList = useCallback(
         ...input.settings,
       };
       const deckSize = input.cardsPerDeck ?? MAX_CARDS_PER_DECK;
+      // The import fans out into ceil(cards / deckSize) decks; gate the whole
+      // fan-out, not one deck.
+      const decksToAdd = Math.ceil(input.associations.length / deckSize);
+      if (!deckGate(decksToAdd)) return null;
 
       setIsCreating(true);
       try {
@@ -372,7 +400,7 @@ const handlePlayList = useCallback(
         setIsCreating(false);
       }
     },
-    [user, showToast],
+    [user, deckGate, showToast],
   );
 
   const handleUpdateList = useCallback(
@@ -507,6 +535,8 @@ const handlePlayList = useCallback(
       realListId?: string
     ) => {
       if (!user || !realListId) return;
+      // groups[0] rewrites the original deck; every extra group is a new deck.
+      if (!deckGate(Math.max(0, groups.length - 1))) return;
       setIsSplitting(true);
       try {
         await listService.splitList(realListId, groups);
@@ -536,7 +566,7 @@ const handlePlayList = useCallback(
         setIsSplitting(false);
       }
     },
-    [user, showToast],
+    [user, deckGate, showToast],
   );
 
   const handleCreateListAndPlay = useCallback(

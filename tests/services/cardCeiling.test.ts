@@ -91,6 +91,19 @@ function fakeCollection(path: string) {
         collection: (sub: string) => fakeCollection(`${path}/${id}/${sub}`),
       };
     },
+    // resolveListCount runs a where().get() over the decks collection for metas
+    // written before listCount existed. The filter has to see the seeded store,
+    // otherwise every createList test would resolve a count of 0.
+    where: (field: string, op: string, value: unknown) => ({
+      get: async () => {
+        if (op !== '==') throw new Error(`unsupported operator ${op}`);
+        const docs = [...store.entries()]
+          .filter(([docPath]) => docPath.startsWith(`${path}/`) && !docPath.slice(path.length + 1).includes('/'))
+          .filter(([, data]) => data[field as keyof StoredDoc] === value)
+          .map(([docPath, data]) => ({ id: docPath.split('/').pop(), data: () => data }));
+        return { docs };
+      },
+    }),
   };
 }
 

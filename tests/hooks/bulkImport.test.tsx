@@ -152,7 +152,9 @@ describe('single bulk import (one HTTP request for the whole payload)', () => {
       user,
       lists: [],
       currentListId: null,
-      quota: null,
+      // The deck gate reads the store quota; null for a signed-in user means
+      // "unknown" and blocks deck creation before any import runs.
+      quota: buildQuota(activeTier),
       isLoaded: true,
       isLoading: false,
     });

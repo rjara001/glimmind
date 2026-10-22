@@ -8,6 +8,10 @@ export class QuotaService {
     return QUOTA_CONFIG.tiers[tier]?.maxCards ?? QUOTA_CONFIG.tiers.free.maxCards;
   }
 
+  static getMaxDecks(tier: TierType = 'free'): number {
+    return QUOTA_CONFIG.tiers[tier]?.maxDecks ?? QUOTA_CONFIG.tiers.free.maxDecks;
+  }
+
   static getAiDailyLimit(tier: TierType = 'free'): number {
     return QUOTA_CONFIG.tiers[tier]?.aiDailyLimit ?? QUOTA_CONFIG.tiers.free.aiDailyLimit;
   }
@@ -40,6 +44,11 @@ export class QuotaService {
   static canAddCards(currentCards: number, cardsToAdd: number, tier: TierType = 'free'): boolean {
     const maxCards = this.getMaxCards(tier);
     return (currentCards + cardsToAdd) <= maxCards;
+  }
+
+  static canAddDecks(currentDecks: number, decksToAdd: number, tier: TierType = 'free'): boolean {
+    const maxDecks = this.getMaxDecks(tier);
+    return (currentDecks + decksToAdd) <= maxDecks;
   }
 
   static canUseAI(currentCards: number, tier: TierType = 'free'): boolean {

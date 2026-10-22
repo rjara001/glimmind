@@ -23,6 +23,10 @@ function getMaxCards(tier) {
   return getTierConfig(tier).maxCards;
 }
 
+function getMaxDecks(tier) {
+  return getTierConfig(tier).maxDecks;
+}
+
 function getAiDailyLimit(tier) {
   return getTierConfig(tier).aiDailyLimit;
 }
@@ -62,6 +66,11 @@ function canAddCards(currentCards, cardsToAdd, tier) {
   return currentCards + cardsToAdd <= maxCards;
 }
 
+function canAddDecks(currentDecks, decksToAdd, tier) {
+  const maxDecks = getMaxDecks(tier);
+  return currentDecks + decksToAdd <= maxDecks;
+}
+
 function canUseAI(currentCards, tier) {
   return !getStatus(currentCards, tier).isAiBlocked;
 }
@@ -83,9 +92,11 @@ module.exports = {
   getTierConfig,
   getTierLabel,
   getMaxCards,
+  getMaxDecks,
   getAiDailyLimit,
   getStatus,
   canAddCards,
+  canAddDecks,
   canUseAI,
   getEffectiveQuota,
 };

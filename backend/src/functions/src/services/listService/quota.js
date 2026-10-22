@@ -1,5 +1,5 @@
 const { QuotaService } = require("../quotaService");
-const { QUOTA_CONFIG } = require("../../utils/quotaConfig");
+const { QUOTA_CONFIG, getMaxDecks } = require("../../utils/quotaConfig");
 const { QuotaExceededError } = require("../../utils/helpers");
 
 function resolveListCardLimit(tier) {
@@ -52,10 +52,36 @@ function assertCardQuotaHasRoom(tier, currentCardCount, newCardsCount) {
   throw new QuotaExceededError(`Llegaste a tu límite de ${effectiveQuota} tarjetas. Elimina o archiva tarjetas para añadir más.`);
 }
 
+// The deck-count guard, same contract as assertCardQuotaHasRoom: it lives
+// inside the caller's transaction, only growth is bounded, and the figure it
+// reads is authoritative only while the transaction holds. A single-word deck
+// never touches the card quota, so without this a user could create thousands
+// of decks (docs/issues/done/2026-10-12-sin-tope-de-mazos-por-usuario.md).
+function assertDeckQuotaHasRoom(tier, currentDeckCount, newDecksCount) {
+  if (!(newDecksCount > 0)) return;
+  if (QuotaService.canAddDecks(currentDeckCount, newDecksCount, tier)) return;
+
+  const maxDecks = getMaxDecks(tier);
+  throw new QuotaExceededError(`Llegaste a tu límite de ${maxDecks} mazos. Elimina o archiva mazos para crear más.`);
+}
+
+// Legacy metas (written before maxDecks existed) carry no listCount. Firestore
+// transactions cannot run queries, so the real figure is resolved here, before
+// the transaction, and written back absolutely on the first write; from that
+// point on the counter is maintained inside the transaction like cardCount.
+// docs/issues/done/2026-10-12-sin-tope-de-mazos-por-usuario.md
+async function resolveListCount(db, userId) {
+  const { COLLECTION_NAME } = require("../../utils/constants");
+  const listsSnap = await db.collection(COLLECTION_NAME).where("userId", "==", userId).get();
+  return Array.isArray(listsSnap.docs) ? listsSnap.docs.length : 0;
+}
+
 module.exports = {
   resolveListCardLimit,
   validateListDoesNotExceedCardLimit,
   loadUserMetaForCardQuota,
   validateUserCardQuotaNotExceeded,
   assertCardQuotaHasRoom,
+  assertDeckQuotaHasRoom,
+  resolveListCount,
 };

@@ -1,8 +1,12 @@
-const { QUOTA_CONFIG, getMaxCards, getAiDailyLimit, getStatus, canAddCards, canUseAI, getEffectiveQuota, resolveTier } = require('../utils/quotaConfig');
+const { QUOTA_CONFIG, getMaxCards, getMaxDecks, getAiDailyLimit, getStatus, canAddCards, canAddDecks, canUseAI, getEffectiveQuota, resolveTier } = require('../utils/quotaConfig');
 
 class QuotaService {
   static getMaxCards(tier = 'free') {
     return getMaxCards(tier);
+  }
+
+  static getMaxDecks(tier = 'free') {
+    return getMaxDecks(tier);
   }
 
   static getAiDailyLimit(tier = 'free') {
@@ -15,6 +19,10 @@ class QuotaService {
 
   static canAddCards(currentCards, cardsToAdd, tier = 'free') {
     return canAddCards(currentCards, cardsToAdd, tier);
+  }
+
+  static canAddDecks(currentDecks, decksToAdd, tier = 'free') {
+    return canAddDecks(currentDecks, decksToAdd, tier);
   }
 
   static canUseAI(currentCards, tier = 'free') {

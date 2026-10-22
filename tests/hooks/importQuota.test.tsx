@@ -95,7 +95,9 @@ describe('bulk import quota harness (injected limits: free=10, premium=20)', () 
       user,
       lists: [],
       currentListId: null,
-      quota: null,
+      // The deck gate (useAppHandlers.deckGate) reads the store quota; a null
+      // quota for a signed-in user means "unknown" and blocks deck creation.
+      quota: buildQuota(activeTier),
       isLoaded: true,
       isLoading: false,
     });

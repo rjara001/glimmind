@@ -1,5 +1,21 @@
 # No limit on the number of decks a user can create
 
+**Resolved:** 2026-10-22 (U-07). `maxDecks` added to both tiers in `plans.json`
+(free 50, premium 200). The server asserts it inside the transactions of the
+three routes that create decks — `persistNewListWithAssociations`,
+`bulkCreateLists`, `divideOriginalListIntoGroupsAndReplaceIt` — and decrements
+on `removeListAndDecrementUserCardCount`, through
+`assertDeckQuotaHasRoom`/`canAddDecks`. Meta docs gained a `listCount` field
+that rebuilds on creation (`getOrCreateMeta`) and backfills absolutely for
+legacy docs on first write (`resolveListCount` + `listCountWrite`); delete
+floors at 0. The client mirrors the check in `useAppHandlers.deckGate`
+(`handleCreateList`, `handleBulkCreateLists`, `handleCreateMultipleLists`) so
+the user sees the ceiling before the round trip; an unknown tier blocks with
+`QUOTA_UNKNOWN_MESSAGE`, never manufacturing "free" (same rule as
+`done/2026-10-12-quota-fallback-free.md`). Tests: `deckQuota.test.js` (17),
+`tests/hooks/deckCeiling.test.tsx` (10), plus `plansDrift`/`cardCountRebuild`
+assertions.
+
 ## What
 
 Card totals are capped per tier (1000 free, 5000 premium — though the premium
