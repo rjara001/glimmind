@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-22: **0 P0 · 2 P1 · 29 P2 · 31 done · 3 backlog**.
+Counts as of 2026-10-22: **0 P0 · 3 P1 · 28 P2 · 31 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -52,6 +52,7 @@ dated 2026-10-21 below).
 |---|---|
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
 | [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
+| [`P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`](P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md) | Neutral ES, Argentine voseo and English share the same screens; no switcher, `lang="es"` hard-coded (audit U-13; elevated P2→P1 2026-10-22, plan `docs/plans/2026-10-22-i18n-plan.md`) |
 
 ## P2 — debt, dead code, hygiene
 
@@ -81,7 +82,6 @@ dated 2026-10-21 below).
 | [`P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md`](P2/2026-10-21-playwright-reutiliza-servidor-stale-3002.md) | Playwright reuses any process on port 3002, so local e2e can test a stale server instead of the production bundle |
 | [`P2/2026-10-21-env-backups-trackeados-y-debug-env.md`](P2/2026-10-21-env-backups-trackeados-y-debug-env.md) | `.env.local.backup` (real Firebase config) and a misnamed 12,979-line `.env.backup` are tracked in git alongside a stray `debug-env.js` |
 | [`P2/2026-10-21-gameview-sin-estado-de-error.md`](P2/2026-10-21-gameview-sin-estado-de-error.md) | `GameView`/`App` render the same spinner for loading, empty and failed deck loads — no error, no retry (audit U-12) |
-| [`P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`](P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md) | Neutral ES, Argentine voseo and English share the same screens; no switcher, `lang="es"` hard-coded (audit U-13) |
 | [`P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md`](P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md) | Guests get an empty prebuilt catalogue and no quota display, so the lowest-friction entry path shows an empty product (audit U-17) |
 | [`P2/2026-10-22-stt-trueup-billed-duration.md`](P2/2026-10-22-stt-trueup-billed-duration.md) | STT metering uses the payload-size heuristic only; Google's `totalBilledDuration` is never reconciled (U-08 follow-up) |
 | [`P2/2026-10-22-transcribe-existing-audio-reimplementation.md`](P2/2026-10-22-transcribe-existing-audio-reimplementation.md) | Reimplementation stub for the stored-audio transcription endpoint removed with U-04 |

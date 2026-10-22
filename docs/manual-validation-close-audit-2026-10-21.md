@@ -68,6 +68,10 @@ Optional online spot-check (prices drift; a mismatch later is not a defect — u
 
 ## 2. Phase B — three P2 issues, index and audit sync
 
+> Note (2026-10-22): `ui-mezcla-tres-idiomas-sin-switcher.md` was elevated to
+> `docs/issues/P1/` when U-13 was promoted and planned; the command below is
+> the validation as it ran on 2026-10-21.
+
 ```bash
 ls docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md \
    docs/issues/P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md \

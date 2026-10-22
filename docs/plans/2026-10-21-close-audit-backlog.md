@@ -43,7 +43,7 @@ Goal: §2 and §4 stop being opinion and become sourced facts.
 
 - [x] **B-1** Create three issues under `docs/issues/P2/` (format per AGENTS §44: What / Impact / Evidence / Fix — concise, no execution plan), sourced from the audit sections:
   - `U-12` `GameView` has no deck-load error state → from `usability-gaps.md` §3 → `docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md`
-  - `U-13` Mixed-language UI (ES / AR-ES / EN) with no switcher → from §4 (prerequisite for i18n, see the same file's priority table `:158`) → `docs/issues/P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`
+  - `U-13` Mixed-language UI (ES / AR-ES / EN) with no switcher → from §4 (prerequisite for i18n, see the same file's priority table `:158`) → `docs/issues/P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md` (filed in `P2/` on 2026-10-21, elevated to P1 on 2026-10-22)
   - `U-17` Guest sees an empty deck store (catalogue short-circuits to `[]`) → from §5 → `docs/issues/P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md`
 - [x] **B-2** Update `docs/issues/README.md`: three new rows + counts line (`0 P0 · 9 P1 · 23 P2` → `26 P2`).
 - [x] **B-3** Update `usability-gaps.md:38` so the audit no longer claims the three gaps are unpicked (point at the new issue files). Keeps §44 index and evidence in sync.

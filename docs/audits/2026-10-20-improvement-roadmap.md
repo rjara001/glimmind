@@ -42,7 +42,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | U-10 | usability-gaps §1/§6 | P2 | Quotas invisible until the user hits a 429 | medium | filed | `docs/issues/P2/2026-10-11-cuotas-invisibles-al-usuario.md` |
 | U-11 | usability-gaps §1 | P2 | Raw English browser errors in a Spanish UI | medium | filed | `docs/issues/P2/2026-10-16-error-message-crudo-en-cliente.md` |
 | U-12 | usability-gaps §1/§3 | P2 | `GameView` renders the same spinner for loading/empty/failed deck loads | medium | filed | `docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md` |
-| U-13 | usability-gaps §1/§4 · app-state §6 | P2 | Three languages on one screen, no switcher, `lang` hard-coded — blocks every locale | large | filed | `docs/issues/P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md` |
+| U-13 | usability-gaps §1/§4 · app-state §6 | P1 | Three languages on one screen, no switcher, `lang` hard-coded — blocks every locale | large | planned | `docs/plans/2026-10-22-i18n-plan.md` (elevated P2→P1 2026-10-22; issue `docs/issues/P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`) |
 | U-14 | usability-gaps §1 · app-state §7 | P2 | `role` never assigned; `/admin` bounces through a nonexistent `/403` | small | filed | `docs/issues/P2/2026-10-20-admin-inalcanzable-por-role.md` |
 | U-15 | usability-gaps §1 · app-state §3.5 | P2 | `QuickAddModal` and `src/pages/Login.tsx` unreachable | small | filed | `docs/issues/P2/2026-10-20-quickadd-y-login-muertos.md` |
 | U-16 | usability-gaps §1 · app-state §8 | P2 | PWA not registered (no manifest/icons/SW) and `cap sync` never run | medium | filed | `docs/issues/P2/2026-10-20-pwa-sin-configurar.md` |
