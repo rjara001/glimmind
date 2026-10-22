@@ -43,7 +43,13 @@ interface WindowWithSpeech extends Window {
 const RESTART_DELAY_MS = 150;
 const START_TIMEOUT_MS = 4000;
 const INACTIVITY_TIMEOUT_MS = 10000;
-const FINAL_DEBOUNCE_MS = 500;
+// Silence needed before an utterance is considered complete. Mobile engines
+// emit each word as its own isFinal result with ~200-600 ms gaps; 1200 ms is
+// above inter-word gaps and below a deliberate phrase boundary (U-05).
+const SILENCE_FLUSH_MS = 1200;
+// Hard cap: never hold an utterance longer than this even if finals keep
+// arriving (continuous dictation must still reach the consumer).
+const MAX_UTTERANCE_MS = 3000;
 
 function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
@@ -80,6 +86,12 @@ export function useBrowserSTT({
 
   const accumulatedFinalRef = useRef<string>('');
   const finalDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxUtteranceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const utteranceStartRef = useRef<number>(0);
+  // Cursor into the session-scoped results array: everything below it was
+  // already flushed via onFinal; rebuilds only read the unflushed suffix.
+  const flushCursorRef = useRef<number>(0);
+  const resultsLengthRef = useRef<number>(0);
 
   // Ref sync for callbacks and dynamic data
   const onFinalRef = useRef(onFinal);
@@ -111,9 +123,34 @@ export function useBrowserSTT({
 
   const clearFinalBuffer = useCallback(() => {
     accumulatedFinalRef.current = '';
+    utteranceStartRef.current = 0;
+    flushCursorRef.current = 0;
+    resultsLengthRef.current = 0;
     if (finalDebounceRef.current) {
       clearTimeout(finalDebounceRef.current);
       finalDebounceRef.current = null;
+    }
+    if (maxUtteranceTimerRef.current) {
+      clearTimeout(maxUtteranceTimerRef.current);
+      maxUtteranceTimerRef.current = null;
+    }
+  }, []);
+
+  const flushAccumulatedFinal = useCallback(() => {
+    if (finalDebounceRef.current) {
+      clearTimeout(finalDebounceRef.current);
+      finalDebounceRef.current = null;
+    }
+    if (maxUtteranceTimerRef.current) {
+      clearTimeout(maxUtteranceTimerRef.current);
+      maxUtteranceTimerRef.current = null;
+    }
+    const accumulated = accumulatedFinalRef.current;
+    accumulatedFinalRef.current = '';
+    utteranceStartRef.current = 0;
+    flushCursorRef.current = resultsLengthRef.current;
+    if (accumulated.trim()) {
+      onFinalRef.current(accumulated.trim());
     }
   }, []);
 
@@ -155,6 +192,8 @@ export function useBrowserSTT({
       restartTimerRef.current = setTimeout(() => {
         restartTimerRef.current = null;
         if (!shouldRunRef.current || recognitionRef.current !== instance) return;
+        // The results array resets on start(); drop any stale cursor.
+        clearFinalBuffer();
         try {
           instance.start();
           pendingStartRef.current = true;
@@ -165,7 +204,7 @@ export function useBrowserSTT({
         }
       }, RESTART_DELAY_MS + 300);
     }, INACTIVITY_TIMEOUT_MS);
-  }, [armStartWatchdog]);
+  }, [armStartWatchdog, clearFinalBuffer]);
 
   const ensureInstance = useCallback(
     (lang: string | null): SpeechRecognitionLike | null => {
@@ -237,19 +276,14 @@ export function useBrowserSTT({
           return;
         }
 
-        if (finalDebounceRef.current) {
-          clearTimeout(finalDebounceRef.current);
-          finalDebounceRef.current = null;
-        }
-        const pendingFinal = accumulatedFinalRef.current;
-        accumulatedFinalRef.current = '';
-        if (pendingFinal.trim()) {
-          onFinalRef.current(pendingFinal.trim());
-        }
+        // Safety net: emit whatever the debounce has not flushed yet.
+        flushAccumulatedFinal();
 
         restartTimerRef.current = setTimeout(() => {
           restartTimerRef.current = null;
           if (!shouldRunRef.current || recognitionRef.current !== instance) return;
+          // The results array resets on start(); drop any stale cursor.
+          clearFinalBuffer();
           try {
             instance.start();
             pendingStartRef.current = true;
@@ -262,11 +296,16 @@ export function useBrowserSTT({
 
       instance.onresult = (event) => {
         armInactivityWatchdog(instance);
+        resultsLengthRef.current = event.results.length;
 
         let interim = '';
         let final = '';
 
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        // Rebuild from the flush cursor instead of event.resultIndex: mobile
+        // engines append each word as its own isFinal result, so the full
+        // unflushed phrase can only be reconstructed by re-reading every
+        // result the cursor has not emitted yet (U-05).
+        for (let i = flushCursorRef.current; i < event.results.length; i += 1) {
           const result = event.results[i];
           const alternative = result && result[0];
           const transcript = alternative?.transcript ?? '';
@@ -286,23 +325,30 @@ export function useBrowserSTT({
         if (final) {
           accumulatedFinalRef.current = final;
 
+          if (!utteranceStartRef.current) {
+            utteranceStartRef.current = Date.now();
+            if (maxUtteranceTimerRef.current) {
+              clearTimeout(maxUtteranceTimerRef.current);
+            }
+            maxUtteranceTimerRef.current = setTimeout(() => {
+              maxUtteranceTimerRef.current = null;
+              flushAccumulatedFinal();
+            }, MAX_UTTERANCE_MS);
+          }
+
           if (finalDebounceRef.current) {
             clearTimeout(finalDebounceRef.current);
           }
           finalDebounceRef.current = setTimeout(() => {
             finalDebounceRef.current = null;
-            const accumulated = accumulatedFinalRef.current;
-            accumulatedFinalRef.current = '';
-            if (accumulated.trim()) {
-              onFinalRef.current(accumulated.trim());
-            }
-          }, FINAL_DEBOUNCE_MS);
+            flushAccumulatedFinal();
+          }, SILENCE_FLUSH_MS);
         }
       };
 
       return instance;
     },
-    [armInactivityWatchdog, armStartWatchdog, clearRestartTimer, clearSafetyTimers],
+    [armInactivityWatchdog, armStartWatchdog, clearRestartTimer, clearSafetyTimers, clearFinalBuffer, flushAccumulatedFinal],
   );
 
   const start = useCallback(

@@ -95,7 +95,8 @@ describe('useSpeechRecognition', () => {
     expect(onFinal).not.toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(500);
+      // SILENCE_FLUSH_MS = 1200 (U-05 utterance silence window)
+      vi.advanceTimersByTime(1200);
     });
 
     expect(onFinal).toHaveBeenCalledWith('hello world');
@@ -132,7 +133,8 @@ describe('useSpeechRecognition', () => {
     expect(onFinal).not.toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(500);
+      // SILENCE_FLUSH_MS = 1200 (U-05 utterance silence window)
+      vi.advanceTimersByTime(1200);
     });
 
     expect(onFinal).toHaveBeenCalledTimes(1);
@@ -179,7 +181,8 @@ describe('useSpeechRecognition', () => {
 
     // Debounce fires first
     await act(async () => {
-      vi.advanceTimersByTime(500);
+      // SILENCE_FLUSH_MS = 1200 (U-05 utterance silence window)
+      vi.advanceTimersByTime(1200);
     });
 
     // Then onend fires — buffer is already empty, should not emit again

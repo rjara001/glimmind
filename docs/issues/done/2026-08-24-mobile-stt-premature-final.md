@@ -1,7 +1,19 @@
 # Mobile STT Premature Final — Multi-Word Phrases Evaluated on First Word
 
+**Resolved:** 2026-10-22, in `fix/audit-batch-1`. The planned Part A + Part B
+fix is now complete in `src/hooks/voice/stt/useBrowserSTT.ts`:
+
+- Finals are rebuilt from a session flush cursor (not `event.resultIndex`), so
+  every unflushed word of a mobile word-by-word utterance is re-read and the
+  buffer is no longer overwritten with the latest word only.
+- `onFinal` flushes after 1200 ms of silence (`SILENCE_FLUSH_MS`, raised from
+  the 500 ms partial fix) with a hard 3000 ms utterance cap
+  (`MAX_UTTERANCE_MS`), and `onend` still flushes as a safety net.
+- Covered by `tests/hooks/useBrowserSTT.test.ts` (5 cases) and the updated
+  debounce expectations in `tests/hooks/useSpeechRecognition.test.ts`.
+
 Date: 2026-08-24
-Status: Root cause identified — fix in progress
+Status: Resolved 2026-10-22
 Scope: Browser-native STT (`window.SpeechRecognition` / `webkitSpeechRecognition`) via `useBrowserSTT`
 
 ## Symptom

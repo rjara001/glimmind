@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-22: **0 P0 · 7 P1 · 26 P2 · 26 done · 3 backlog**.
+Counts as of 2026-10-22: **0 P0 · 6 P1 · 26 P2 · 27 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -53,7 +53,6 @@ dated 2026-10-21 below).
 | [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
 | [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
-| [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
 | [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
 | [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
@@ -119,6 +118,7 @@ dated 2026-10-21 below).
 | [`done/2026-10-15-dist-no-se-limpia-en-cada-build.md`](done/2026-10-15-dist-no-se-limpia-en-cada-build.md) | Resolved 2026-10-16: `emptyOutDir: true` added to `vite.config.ts` (required by the E2E-against-production-build change) |
 | [`done/2026-10-13-guest-decks-erased-on-user-switch.md`](done/2026-10-13-guest-decks-erased-on-user-switch.md) | Resolved 2026-10-22: product decision — no per-uid migration; guest data loss is now disclosed in Auth and GuestBanner ("no se pasan a tu cuenta"); false sync claim removed |
 | [`done/2026-10-13-regresar-al-panel-vuelve-a-game.md`](done/2026-10-13-regresar-al-panel-vuelve-a-game.md) | Resolved 2026-10-22: `navigate` skips the history push when `nextView === view`, so the bootstrap + `handlePlayList` double fire no longer traps the user on `/game`; E2E workarounds removed |
+| [`done/2026-08-24-mobile-stt-premature-final.md`](done/2026-08-24-mobile-stt-premature-final.md) | Resolved 2026-10-22: finals rebuilt from a flush cursor (no more first-word overwrite), `onFinal` flushes after 1200 ms silence with a 3000 ms utterance cap; mobile multi-word phrases reach the consumer intact |
 
 ## backlog — not defects
 
