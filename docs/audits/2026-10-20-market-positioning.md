@@ -1,10 +1,11 @@
 # Market Positioning and Organic Presence Audit
 
 **Date:** 2026-10-20
+**Updated:** 2026-10-21 — Phase A of `docs/plans/2026-10-21-close-audit-backlog.md`: §2.6 (verified competitor prices) and §4.1 (keyword shortlist) added from research retrieved 2026-10-21; all other sections unchanged.
 **Goal:** position Glimmind as a credible international alternative in the learning market.
 **Budget constraint:** organic only (SEO, content, product-led growth). No paid acquisition.
 **Priority order agreed:** usability first, then market.
-**Sibling documents:** [`2026-10-20-app-state.md`](./2026-10-20-app-state.md), [`2026-10-20-usability-gaps.md`](./2026-10-20-usability-gaps.md).
+**Sibling documents:** [`2026-10-20-app-state.md`](./2026-10-20-app-state.md), [`2026-10-20-usability-gaps.md`](./2026-10-20-usability-gaps.md), [`2026-10-20-improvement-roadmap.md`](./2026-10-20-improvement-roadmap.md).
 
 ---
 
@@ -69,6 +70,24 @@ Full list: `docs/SERVICE_CATALOG.md` §7 and `2026-10-20-usability-gaps.md` U-19
 **Do not** position on content volume or course breadth — every incumbent wins there.
 **Do** position on: retention of user-owned vocabulary + voice + honest one-time pricing.
 
+### 2.6 Verified competitor prices and proof (retrieved 2026-10-21)
+
+Every figure below was read from the linked source on 2026-10-21. Google Play ratings vary by locale/capture; ranges are given when captures disagreed. Anything that could not be confirmed from an official source is marked *unverified*.
+
+| Competitor | Free tier | Paid price (official source) | Store proof (retrieved 2026-10-21) | Source |
+|---|---|---|---|---|
+| Anki (desktop, web, AnkiDroid) | full-featured, open source, no ads | AnkiMobile (iOS): **$24.99 one-time** (US; $23.86–$33.67 across regions) | AnkiDroid: 4.7–4.8★, ~166K reviews, 10M+ downloads (Play Store). AnkiMobile: 4.0★, 2,363 ratings, #1 Top Paid Education US | [apps.ankiweb.net](https://apps.ankiweb.net/); [Play Store AnkiDroid](https://play.google.com/store/apps/details?id=com.ichi2.anki); [App Store AnkiMobile](https://apps.apple.com/us/app/ankimobile-flashcards/id373493387); [regional prices, opentherank 2026-10-14](https://opentherank.com/education-pricing/ankimobile/); [AppBrain 2026-10-17](https://www.appbrain.com/appstore/ankimobile-flashcards/ios-373493387) |
+| Quizlet | yes, with ads and caps | Plus **$35.99/yr** ($2.99/mo billed annually; $7.99/mo monthly). Plus Unlimited **$44.99/yr** ($3.75/mo billed annually). Family **$83.99/yr**, up to 5 accounts | 4.4–4.7★, ~918K reviews, 50M+ downloads (locale-dependent captures) | [quizlet.com/upgrade](https://quizlet.com/upgrade); [Play Store Quizlet](https://play.google.com/store/apps/details?id=com.quizlet.quizletandroid) |
+| Memrise | yes, with ads and gated explanations | **$24.99/mo**; **$61.99/yr** ($5.17/mo, "save 79%"); Lifetime **$329.99** one-time | 4.4–4.5★ typical (captures 4.2–4.7), ~1.57M reviews, 50M+ downloads | [app.memrise.com/payment/plans/en](https://app.memrise.com/payment/plans/en); [Play Store Memrise](https://play.google.com/store/apps/details?id=com.memrise.android.memrisecompanion) |
+| Duolingo | full course free, ads + daily Energy limit | Super **$83.99/yr** (Google Play US, after 14-day trial); App Store US lists six unlabelled Super items ($9.99, $12.99, $79.99, $83.99, $95.99, $119.99). Family **$119.99/yr**, up to 6. Max: **not published** — third-party reports $29.99/mo or ~$167.99–168/yr (*unverified*) | 4.7★, 51.2M reviews, 500M+ downloads, #1 top grossing Education | [Play Store Duolingo](https://play.google.com/store/apps/details?id=com.duolingo); [onlinecourseing 2026-09-27](https://onlinecourseing.com/duolingo-super-cost/); [mindomax 2026-10-13](https://www.mindomax.com/duolingo-cost); [nibble 2026-06-20 (Max, unverified)](https://nibble-app.com/blog/is-duolingo-max-worth-it) |
+| Glimmind (us) | free tier costs the operator $0 (all on-device) | Premium **€4.99 one-time** — current shipped price, read from code; *not* a pricing decision (`docs/BUSINESS_MODEL.md` §8 owns those) | 0 real users, no reviews (`docs/BUSINESS_MODEL.md`) | `src/components/views/LandingPage.tsx:239`; `backend/src/functions/src/services/stripeService.js:76` |
+
+**What the verified numbers change in §2.5:**
+
+- **One-time pricing is a real, scarce axis.** The only paid one-time model among direct competitors is AnkiMobile at $24.99 (iOS only; the rest of Anki is free). Glimmind's shipped €4.99 one-time is ~5× cheaper than AnkiMobile and replaces the subscription model of Quizlet, Memrise and Duolingo. The differentiator in §2.2 ("One-time price, not a subscription") is now quantified against the market.
+- **Price transparency is itself differentiating.** Quizlet, Memrise, Anki and Glimmind publish prices publicly; Duolingo does not — its Super page shows no price until login and reviewers note "a price list that Duolingo never publishes" (mindomax 2026-10-13; onlinecourseing 2026-09-27). This parallels the scheduling-opacity claim above: incumbents keep both the price and the algorithm out of sight; Glimmind shows both.
+- **Proof asymmetry is extreme and must not be faked.** Competitors carry 166K–51.2M reviews; Glimmind has none. §2.5 differentiation must rest on verifiable code behaviour (§2.2), never on social proof, until §9's credibility phase delivers real testimonials.
+
 ---
 
 ## 3. Audience (ICP)
@@ -109,6 +128,23 @@ Additional structural issues:
 - **Two legal documents exist twice**: React views (`src/components/views/PrivacyPolicy.tsx` etc.) and static files in `public/`. Search engines may index `public/privacy-policy.html` and `/privacy` as separate, competing pages.
 - **Tailwind via CDN** (`docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`) delays first paint, which is a Core Web Vitals risk on top of the availability risk.
 - **Bundle weight**: `dist/` carries `onnx/` (83 MB, unused — `docs/issues/P2/2026-10-11-codigo-muerto-y-endpoints-sin-uso.md`) and `models/` (41 MB). Neither blocks SEO directly, but both penalise the crawl budget story and real-user load metrics.
+
+Baseline re-verified 2026-10-21: `grep -c -E 'og:|meta name="description"|canonical|application/ld\+json|rel="icon"' src/index.html` → `0`; `public/` still holds only `models/` and the two legal HTML files.
+
+### 4.1 Target keyword surface (added 2026-10-21)
+
+Shortlist from Phase A research (`docs/plans/2026-10-21-close-audit-backlog.md` A-1). No keyword-tool access exists in this repository: **search volumes and difficulty are `unverified` for every row**; the "evidence" column proves the query family is live (SERP content, competitor positioning), not its size.
+
+| Query family | Intent | Evidence it is live (all retrieved 2026-10-21) | Volume / difficulty | Target route |
+|---|---|---|---|---|
+| "anki alternative" | comparison / commercial | category is bought by competitors as App Store subtitles ("Study Smart - Anki Alternative", "Anki and Quizlet Alternative", "Quizlet & Anki Alternative"); GitHub topic [`anki-alternative`](https://github.com/topics/anki-alternative); 2026 roundups ([Voovo](https://www.voovostudy.com/study-blog/best-anki-alternatives-in-2024), [studytoolguide](https://studytoolguide.com/tool-comparisons/anki-flashcard-app-review)) | unverified | `/vs/anki` (planned, §6) |
+| "quizlet alternative" | comparison / commercial | App Store subtitles ("Quizlet & Anki Alternative"); [RemNote "Replace: Notion, Quizlet, Anki"](https://www.remnote.com/anki); Knowt positioned as Quizlet's free alternative | unverified | `/vs/quizlet` (planned, §6) |
+| "duolingo alternative" + "how much does &lt;competitor&gt; cost" | comparison + commercial investigation | dedicated 2026 cost pages exist and rank: [mindomax](https://www.mindomax.com/duolingo-cost) (2026-10-13), [onlinecourseing](https://onlinecourseing.com/duolingo-super-cost/) (2026-09-27), [bestlanguageapps](https://bestlanguageapps.com/guides/how-much-is-duolingo/) (2026-10-06) | unverified | `/vs/duolingo` (planned, §6) |
+| "best flashcard app" / "best flashcard app with AI" | commercial | active 2026 roundups: [mindomax, 31 apps tested, 2026-09-08](https://www.mindomax.com/best-flashcard-apps), [mindomax, 10 best AI, 2026-03-01](https://www.mindomax.com/flashcard-app-with-ai-2026) | unverified | future comparison content (§6) |
+| "spaced repetition app / flashcards" | commercial | App Store category saturated with SRS-branded apps (Space, Repetio, Flashcards Spaced Repetition, Azri FSRS) | unverified | landing + SEO baseline (Phase 3) |
+| "vocabulary retention", "words won't stick", "&lt;exam&gt; vocabulary list", "spanish words I keep forgetting" | problem / ICP | ICP-driven rows from §3; no SERP roundups captured on 2026-10-21 → keep as speculative | unverified | future programmatic glossaries (§6) |
+
+Rules for this table: a row may be promoted out of *speculative* only when a source URL + date is added; volumes stay `unverified` until someone with keyword-tool access fills them in. The `/vs/*` routes are planned in §6 and do not exist yet (verified 2026-10-21: `grep -c "vs/" src/App.tsx` → `0`).
 
 ---
 
