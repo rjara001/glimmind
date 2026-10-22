@@ -7,10 +7,6 @@ export interface SessionBarProps {
   onRestart?: () => void;
   voiceEnabled?: boolean;
   onVoiceToggle?: () => void;
-  isPremium?: boolean;
-  isRecording?: boolean;
-  onRecordToggle?: () => void;
-  onViewRecordings?: () => void;
   isPresentationActive?: boolean;
   onPracticeToggle?: () => void;
 }

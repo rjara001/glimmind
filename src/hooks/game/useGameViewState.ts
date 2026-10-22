@@ -15,11 +15,6 @@ export interface GameViewState {
   showRevealWarning: boolean;
   showRevealWarningBanner: () => void;
   dismissRevealWarningBanner: () => void;
-  showVoiceRecordings: boolean;
-  openVoiceRecordings: () => void;
-  closeVoiceRecordings: () => void;
-  isRecording: boolean;
-  toggleRecording: () => void;
   isEditingName: boolean;
   startEditingName: () => void;
   stopEditingName: () => void;
@@ -43,8 +38,6 @@ export function useGameViewState({ voiceMode }: UseGameViewStateArgs): GameViewS
   const [showSettings, setShowSettings] = useState(false);
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [showRevealWarning, setShowRevealWarning] = useState(false);
-  const [showVoiceRecordings, setShowVoiceRecordings] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(() => voiceMode === true);
   const [isVoiceMode, setIsVoiceMode] = useState(() => voiceMode === true);
@@ -55,9 +48,6 @@ export function useGameViewState({ voiceMode }: UseGameViewStateArgs): GameViewS
 
   const toggleVoiceActive = useCallback(() => {
     setIsVoiceActive((prev) => !prev);
-  }, []);
-  const toggleRecording = useCallback(() => {
-    setIsRecording((prev) => !prev);
   }, []);
   const togglePresentationMode = useCallback(() => {
     setIsPresentationMode((prev) => !prev);
@@ -73,11 +63,6 @@ export function useGameViewState({ voiceMode }: UseGameViewStateArgs): GameViewS
     showRevealWarning,
     showRevealWarningBanner: () => setShowRevealWarning(true),
     dismissRevealWarningBanner: () => setShowRevealWarning(false),
-    showVoiceRecordings,
-    openVoiceRecordings: () => setShowVoiceRecordings(true),
-    closeVoiceRecordings: () => setShowVoiceRecordings(false),
-    isRecording,
-    toggleRecording,
     isEditingName,
     startEditingName: () => setIsEditingName(true),
     stopEditingName: () => setIsEditingName(false),

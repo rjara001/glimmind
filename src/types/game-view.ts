@@ -33,15 +33,11 @@ export interface GameHeaderBarProps {
   goalTarget: number;
   sessionRepasos: number;
   isVoiceActive: boolean;
-  isRecording: boolean;
-  isPremium: boolean;
   isPresentationMode: boolean;
   onBack: (updatedAssociations?: Association[]) => void;
   onSettings: () => void;
   onRestart: () => void;
   onToggleVoice: () => void;
-  onToggleRecord: () => void;
-  onViewRecordings: () => void;
   onTogglePractice: () => void;
 }
 

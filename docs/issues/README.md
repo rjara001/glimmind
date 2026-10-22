@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-22: **0 P0 · 4 P1 · 28 P2 · 29 done · 3 backlog**.
+Counts as of 2026-10-22: **0 P0 · 3 P1 · 29 P2 · 30 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -51,7 +51,6 @@ dated 2026-10-21 below).
 | Issue | Impact |
 |---|---|
 | [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
-| [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
 | [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
 
@@ -87,6 +86,7 @@ dated 2026-10-21 below).
 | [`P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md`](P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md) | Guests get an empty prebuilt catalogue and no quota display, so the lowest-friction entry path shows an empty product (audit U-17) |
 | [`P2/2026-10-22-stt-trueup-billed-duration.md`](P2/2026-10-22-stt-trueup-billed-duration.md) | STT metering uses the payload-size heuristic only; Google's `totalBilledDuration` is never reconciled (U-08 follow-up) |
 | [`P2/2026-10-22-transcribe-existing-audio-reimplementation.md`](P2/2026-10-22-transcribe-existing-audio-reimplementation.md) | Reimplementation stub for the stored-audio transcription endpoint removed with U-04 |
+| [`P2/2026-10-22-voice-recordings-storage-reimplementation.md`](P2/2026-10-22-voice-recordings-storage-reimplementation.md) | Reimplementation stub for per-answer voice recordings on Storage, removed with U-06 |
 
 ## done — resolved
 
@@ -121,6 +121,7 @@ dated 2026-10-21 below).
 | [`done/2026-08-24-mobile-stt-premature-final.md`](done/2026-08-24-mobile-stt-premature-final.md) | Resolved 2026-10-22: finals rebuilt from a flush cursor (no more first-word overwrite), `onFinal` flushes after 1200 ms silence with a 3000 ms utterance cap; mobile multi-word phrases reach the consumer intact |
 | [`done/2026-10-12-stt-audio-seconds-no-verificar.md`](done/2026-10-12-stt-audio-seconds-no-verificar.md) | Resolved 2026-10-22: metered seconds now derive from the base64 payload (`deriveMeteredAudioSeconds`) and the 60 s ceiling applies to the derived value; client `audioDuration` is log-only. True-up parked as P2 |
 | [`done/2026-10-12-transcribe-existing-audio-roto.md`](done/2026-10-12-transcribe-existing-audio-roto.md) | Resolved 2026-10-22: dead 502-only endpoint removed (function, rewrite, orphan service, client wrapper, SttProvider method); reimplementation stub parked as P2 |
+| [`done/2026-10-12-audio-base64-en-firestore.md`](done/2026-10-12-audio-base64-en-firestore.md) | Resolved 2026-10-22: Firestore base64 recordings feature removed (buttons, hook, service, modal); Storage auto-recording (Path 1) untouched; Storage reimplementation stub parked as P2 |
 
 ## backlog — not defects
 

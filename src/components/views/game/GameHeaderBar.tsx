@@ -11,15 +11,11 @@ export function GameHeaderBar(props: GameHeaderBarProps) {
     goalTarget,
     sessionRepasos,
     isVoiceActive,
-    isRecording,
-    isPremium,
     isPresentationMode,
     onBack,
     onSettings,
     onRestart,
     onToggleVoice,
-    onToggleRecord,
-    onViewRecordings,
     onTogglePractice,
   } = props;
 
@@ -38,10 +34,6 @@ export function GameHeaderBar(props: GameHeaderBarProps) {
       onRestart={onRestart}
       voiceEnabled={isVoiceActive}
       onVoiceToggle={onToggleVoice}
-      isPremium={isPremium}
-      isRecording={isRecording}
-      onRecordToggle={onToggleRecord}
-      onViewRecordings={onViewRecordings}
       isPresentationActive={isPresentationMode}
       onPracticeToggle={onTogglePractice}
     />

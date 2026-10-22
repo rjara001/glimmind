@@ -101,7 +101,7 @@ npm run build             # successful (v1.41.0) ✓
 - [x] Chirp 3 HD TTS with limits — `src/services/voice/tts/chirpTts.ts`, backend `chirpTtsService/`, gated Premium 2026-10-14
 - [x] Vosk STT (offline) — `vosk-browser`, `useVoskSTT.ts`, assets via `scripts/copy-ml-assets.mjs`
 - [x] Voice commands in game — `src/services/voice/stt/commands.ts`, mounted in `GameView.tsx:132`
-- [x] Audio recording (opt-in, Premium-gated, user-scoped) — `useAudioRecorder.ts`, `SessionBar.tsx:58`
+- [x] Audio recording (opt-in, Premium-gated, user-scoped) — `useAudioRecorder.ts` + `audioService.ts` (Storage upload from voice mode, toggle `audioRecordingEnabled` in SettingsView). The old per-session "Grabar Voz"/"Historial" buttons that stored base64 in Firestore were removed 2026-10-22 (U-06)
 
 ### 1.3 Game Modes
 - [x] Exam mode (type answer, fuzzy validation) — implemented as **Real mode**: `GameMode = 'training' | 'real'` (`src/types.ts:4`), Levenshtein grading (`src/utils/similarity.ts`), e2e `03-game-real.spec.ts`

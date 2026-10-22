@@ -65,7 +65,7 @@ catalog is reviewed.
 | Edit deck        | Delete a word                  | Remove it from the deck                                        | No              |
 | Edit deck        | Edit from within the game      | Fix something without leaving the session                       | No              |
 | Edit deck        | Add words                      | Insert new words                                               | No              |
-| Edit deck        | Record audio for a word        | Record it and keep it in my own voice                           | Yes (only with premium transcription) |
+| Edit deck        | Record audio for a word        | Record it and keep it in my own voice                           | No — `REMOVED` 2026-10-22 (Firestore base64 path deleted; voice mode can still auto-record spoken answers to Storage when enabled) |
 | Edit deck        | Publish my deck to the catalog | Share it with other users                                      | No — `NOT IMPLEMENTED` |
 
 ## 4. Exporting and Data

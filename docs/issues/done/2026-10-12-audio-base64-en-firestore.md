@@ -1,5 +1,17 @@
 # Voice recordings are stored base64 inside Firestore documents
 
+**Resolved:** 2026-10-22 (feature removed, in `fix/audit-batch-1`). Product
+decision: the per-session "Grabar Voz" / "Historial" feature and its Firestore
+base64 storage were removed instead of migrated — SessionBar buttons, the
+recording state in `useGameViewState`, `useVoiceRecordings`,
+`voiceRecordingService` and `VoiceRecordingsModal` are gone. The auto-recording
+of spoken answers to user-scoped Cloud Storage (Path 1,
+`audioRecordingEnabled` + `useGameVoice` + `audioService.ts`) is untouched. A
+reimplementation sketch lives in
+[`P2/2026-10-22-voice-recordings-storage-reimplementation.md`](../P2/2026-10-22-voice-recordings-storage-reimplementation.md).
+
+---
+
 ## What
 
 Recorded answers are written as `audioBase64` field of a `voiceRecordings`

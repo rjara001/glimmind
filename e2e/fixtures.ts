@@ -26,9 +26,9 @@ const ALLOWED_HOSTS = new Set([
 const IGNORED_CONSOLE_PATTERNS = [
   /Failed to load resource/, // resource blocked by networkGuard or dead emulator port
   /net::ERR_/,
-  // Guest E2E blocks Firestore on purpose; `useVoiceRecordings` queries it in
-  // the background and the SDK logs this offline diagnostic after 10 s. It is
-  // an SDK message, not an app error. See docs/issues/P2 (parked finding).
+  // Guest E2E blocks Firestore on purpose; the SDK can still log this offline
+  // diagnostic (it was first seen via the removed `useVoiceRecordings` hook).
+  // It is an SDK message, not an app error. See docs/issues/P2 (parked finding).
   /Could not reach Cloud Firestore backend/,
 ];
 

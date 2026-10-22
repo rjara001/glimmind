@@ -35,7 +35,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | U-03 | usability-gaps §1 | P1 | "Regresar al panel" returns to `/game` on first play | small | done | `docs/issues/done/2026-10-13-regresar-al-panel-vuelve-a-game.md` |
 | U-04 | usability-gaps §1 | P1 | `transcribeExistingAudio` can only ever answer 502 | small | done | `docs/issues/done/2026-10-12-transcribe-existing-audio-roto.md` (removed; reimplementation stub in P2) |
 | U-05 | usability-gaps §1 | P1 | Mobile STT grades multi-word phrases on the first word | medium | done | `docs/issues/done/2026-08-24-mobile-stt-premature-final.md` |
-| U-06 | usability-gaps §1 | P1 | Recordings stored base64 in Firestore documents | large | filed | `docs/issues/P1/2026-10-12-audio-base64-en-firestore.md` |
+| U-06 | usability-gaps §1 | P1 | Recordings stored base64 in Firestore documents | large | done | `docs/issues/done/2026-10-12-audio-base64-en-firestore.md` (removed; Storage reimpl. stub in P2) |
 | U-07 | usability-gaps §1 | P1 | Deck count uncapped: 10 000 one-word decks pass every limit | medium | filed | `docs/issues/P1/2026-10-12-sin-tope-de-mazos-por-usuario.md` |
 | U-08 | usability-gaps §1 | P1 | STT allowance bypassed by under-reporting `audioDuration` | medium | done | `docs/issues/done/2026-10-12-stt-audio-seconds-no-verificar.md` (true-up parked as P2) |
 | U-09 | usability-gaps §1/§7 · app-state §8.1 | P1 | Whole UI styled by `cdn.tailwindcss.com` at runtime; global availability risk | medium | filed | `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` (covers AS-01: `esm.sh` importmap + `next` dead dep) |

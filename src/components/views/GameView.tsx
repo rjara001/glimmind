@@ -6,13 +6,11 @@ import { FinishedScreen } from "../game/FinishedScreen";
 import { CycleProgress } from "../game/CycleProgress";
 import { EditCardModal } from "../modals/EditCardModal";
 import { SettingsModal } from "../modals/SettingsModal";
-import { VoiceRecordingsModal } from "../modals/VoiceRecordingsModal";
 import { useImmersiveHeader } from "../../hooks/ui/useImmersiveHeader";
 import { useOrientation } from "../../hooks/ui/useOrientation";
 import { useGameVoice } from "../../hooks/voice/useGameVoice";
 import { useSpeechSynthesis } from "../../hooks/voice/tts/useSpeechSynthesis";
 import { resolveEffectiveTtsProvider } from "../../services/voice/effectiveProviders";
-import { useVoiceRecordings } from "../../hooks/voice/useVoiceRecordings";
 import { usePracticePlayer } from "../../hooks/game/usePracticePlayer";
 import { PRACTICE_REVEAL_DELAY_SECONDS, PRACTICE_AUTO_ADVANCE_SECONDS } from "../../constants/app";
 import type { GameViewProps } from "../../types/game-view";
@@ -151,7 +149,6 @@ export const GameView: React.FC<GameViewProps> = ({
 
   const goalProgress = useGameStore((s) => s.progress?.goalProgress ?? 0);
   const goalTarget = useGameStore((s) => s.progress?.goalTarget ?? 0);
-  const userId = useGameStore((s) => s.user?.uid);
 
   const { speak: speakAnswer, supported: speechSupported } = useSpeechSynthesis(
     resolveEffectiveTtsProvider(list.settings.ttsProvider, quota?.tier),
@@ -193,19 +190,6 @@ export const GameView: React.FC<GameViewProps> = ({
     handleCorrect: actions.handleCorrect,
     handlePass: actions.handlePass,
     reveal: actions.reveal,
-  });
-
-  const {
-    recordings,
-    isLoading: recordingsLoading,
-    error: recordingsError,
-    deleteRecording,
-    downloadRecording,
-    refresh: refreshRecordings,
-  } = useVoiceRecordings({
-    userId: userId || "",
-    listId: list.id,
-    enabled: state.isRecording,
   });
 
   const handlers = useGameViewActions({
@@ -301,15 +285,11 @@ export const GameView: React.FC<GameViewProps> = ({
     goalTarget,
     sessionRepasos,
     isVoiceActive: state.isVoiceActive,
-    isRecording: state.isRecording,
-    isPremium,
     isPresentationMode: state.isPresentationMode,
     onBack,
     onSettings: state.openSettings,
     onRestart: handlers.handleHeaderRestart,
     onToggleVoice: state.toggleVoiceActive,
-    onToggleRecord: state.toggleRecording,
-    onViewRecordings: state.openVoiceRecordings,
     onTogglePractice: handlers.handleTogglePractice,
   };
 
@@ -466,18 +446,6 @@ export const GameView: React.FC<GameViewProps> = ({
             }
           }}
           onClose={state.closeSettings}
-        />
-      )}
-      {state.showVoiceRecordings && userId && (
-        <VoiceRecordingsModal
-          isOpen={state.showVoiceRecordings}
-          onClose={state.closeVoiceRecordings}
-          recordings={recordings}
-          isLoading={recordingsLoading}
-          error={recordingsError}
-          onDelete={deleteRecording}
-          onDownload={downloadRecording}
-          onRefresh={refreshRecordings}
         />
       )}
     </div>
