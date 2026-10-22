@@ -1,8 +1,20 @@
 # Guest decks are erased when a real account loads on the same device
 
-**Date:** 2026-10-13
-**Priority:** P1
-**Status:** Not fixed
+**Resolved:** 2026-10-22 (product decision + disclaimer, batch
+`fix/audit-batch-1`). The per-uid migration of the shared localStorage key was
+considered and declined: guest data is now an explicit, disclosed tradeoff
+rather than a silent bug. The auth screen (`src/components/Auth.tsx`) states
+that guest decks are temporary, local-only, and are NOT carried over to the
+account on sign-up; the guest banner (`src/components/layout/GuestBanner.tsx`)
+repeats it in Spanish. The false claim "Google: sincroniza entre todos tus
+dispositivos" was removed as part of the same change. Covered by
+`tests/components/layout/GuestBanner.test.tsx`.
+
+The technical defect described below (shared `glimmind_lists` key filtered by
+`ownerUid` on write-back) remains factually true. If the product decision is
+revisited, the fix sketch at the bottom still applies.
+
+---
 
 ## What
 
@@ -30,7 +42,7 @@ is silent — the dashboard simply shows the signed-in account's decks.
   but only in the cloud-fetch path, so it does not cover the guest→real switch
   when the TTL is fresh.
 
-## Fix
+## Fix (declined for now)
 
 Scope the local cache per uid (e.g. `glimmind_lists_<uid>`) or merge on
 write-back so decks of other owners are preserved in storage instead of

@@ -131,8 +131,10 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
           <div className="bg-indigo-50/50 border border-slate-200 rounded-[10px] p-3 flex gap-2.5 items-start mb-5">
             <span className="text-indigo-500 text-sm leading-relaxed flex-shrink-0">💡</span>
             <p className="text-[0.72rem] text-slate-500 leading-relaxed">
-              <strong className="text-slate-900 font-semibold">Modo invitado:</strong> tus datos se guardan solo en tu dispositivo.{' '}
-              <strong className="text-slate-900 font-semibold">Google:</strong> sincroniza entre todos tus dispositivos.
+              <strong className="text-slate-900 font-semibold">Modo invitado:</strong> tus mazos y progreso son temporales.
+              Se guardan solo en este navegador, no se sincronizan y no se pasan a tu cuenta si te registras.
+              Se perderán si borras los datos del navegador o usas otro dispositivo.{' '}
+              <strong className="text-slate-900 font-semibold">Con Google:</strong> tus mazos quedan guardados en tu cuenta.
             </p>
           </div>
 

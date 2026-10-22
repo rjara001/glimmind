@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-21: **0 P0 · 9 P1 · 26 P2 · 24 done · 3 backlog**.
+Counts as of 2026-10-22: **0 P0 · 8 P1 · 26 P2 · 25 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -56,7 +56,6 @@ dated 2026-10-21 below).
 | [`P1/2026-08-24-mobile-stt-premature-final.md`](P1/2026-08-24-mobile-stt-premature-final.md) | Mobile STT grades multi-word phrases on the first word. Classified 2026-10-12 |
 | [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
-| [`P1/2026-10-13-guest-decks-erased-on-user-switch.md`](P1/2026-10-13-guest-decks-erased-on-user-switch.md) | Signing in after a guest session erases the guest's local-only decks |
 | [`P1/2026-10-13-regresar-al-panel-vuelve-a-game.md`](P1/2026-10-13-regresar-al-panel-vuelve-a-game.md) | "Regresar al panel" returns to /game on the first play of a session |
 | [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
 
@@ -119,6 +118,7 @@ dated 2026-10-21 below).
 | [`done/2026-10-12-quota-fallback-free.md`](done/2026-10-12-quota-fallback-free.md) | The four client quota gates no longer manufacture a free tier when `getQuota` failed for a signed-in user; they block with a connectivity message instead (`resolveTierForGate`) |
 | [`done/2026-10-11-log-client-error-sin-rewrite.md`](done/2026-10-11-log-client-error-sin-rewrite.md) | Client error reporting pipeline repaired in v1.40.4: hosting rewrite added, retry queue drained on start, six swallowed UI catches now report via `logEvent`, guests short-circuit (§31; the guard was hardened 2026-10-16 to also detect local guests via `localStorage` and to no-op entirely on demo builds). Probe answered `{"success":true}` |
 | [`done/2026-10-15-dist-no-se-limpia-en-cada-build.md`](done/2026-10-15-dist-no-se-limpia-en-cada-build.md) | Resolved 2026-10-16: `emptyOutDir: true` added to `vite.config.ts` (required by the E2E-against-production-build change) |
+| [`done/2026-10-13-guest-decks-erased-on-user-switch.md`](done/2026-10-13-guest-decks-erased-on-user-switch.md) | Resolved 2026-10-22: product decision — no per-uid migration; guest data loss is now disclosed in Auth and GuestBanner ("no se pasan a tu cuenta"); false sync claim removed |
 
 ## backlog — not defects
 

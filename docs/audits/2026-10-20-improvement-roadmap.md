@@ -31,7 +31,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | ID | Source | Priority | Impact | Effort | Status | Issue / plan link |
 |---|---|---|---|---|---|---|
 | U-01 | usability-gaps §1/§2 | P1 | Premium sync has no callers; progress is localStorage-only | large | filed | `docs/issues/P1/2026-10-12-sync-config-sin-conectar.md` |
-| U-02 | usability-gaps §1/§2 | P1 | Sign-in after a guest session erases the guest's local decks | large | filed | `docs/issues/P1/2026-10-13-guest-decks-erased-on-user-switch.md` |
+| U-02 | usability-gaps §1/§2 | P1 | Sign-in after a guest session erases the guest's local decks | large | done | `docs/issues/done/2026-10-13-guest-decks-erased-on-user-switch.md` (resolved 2026-10-22 via disclosed disclaimer; migration declined) |
 | U-03 | usability-gaps §1 | P1 | "Regresar al panel" returns to `/game` on first play | small | filed | `docs/issues/P1/2026-10-13-regresar-al-panel-vuelve-a-game.md` |
 | U-04 | usability-gaps §1 | P1 | `transcribeExistingAudio` can only ever answer 502 | small | filed | `docs/issues/P1/2026-10-12-transcribe-existing-audio-roto.md` |
 | U-05 | usability-gaps §1 | P1 | Mobile STT grades multi-word phrases on the first word | medium | filed | `docs/issues/P1/2026-08-24-mobile-stt-premature-final.md` |

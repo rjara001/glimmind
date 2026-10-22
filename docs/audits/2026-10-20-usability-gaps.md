@@ -14,7 +14,7 @@ Priority follows `docs/issues/README.md`: **P0** bleeding/broken now, **P1** beh
 | # | Gap | Priority | Status | Evidence |
 |---|---|---|---|---|
 | U-01 | Multi-device sync does not exist: Premium sells it, nothing calls it | P1 | tracked | `docs/issues/P1/2026-10-12-sync-config-sin-conectar.md` |
-| U-02 | Signing in after a guest session erases the guest's local decks | P1 | tracked | `docs/issues/P1/2026-10-13-guest-decks-erased-on-user-switch.md` |
+| U-02 | Signing in after a guest session erases the guest's local decks | P1 | resolved (disclaimer 2026-10-22; migration declined) | `docs/issues/done/2026-10-13-guest-decks-erased-on-user-switch.md` |
 | U-03 | "Regresar al panel" returns to `/game` on the first play of a session | P1 | tracked | `docs/issues/P1/2026-10-13-regresar-al-panel-vuelve-a-game.md` |
 | U-04 | `transcribeExistingAudio` can only ever answer 502 | P1 | tracked | `docs/issues/P1/2026-10-12-transcribe-existing-audio-roto.md` |
 | U-05 | Mobile STT grades multi-word phrases on the first word | P1 | tracked | `docs/issues/P1/2026-08-24-mobile-stt-premature-final.md` |
