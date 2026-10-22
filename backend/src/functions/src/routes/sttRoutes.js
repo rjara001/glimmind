@@ -3,6 +3,16 @@ const { getDb, getAuth } = require("../utils/firebase");
 const { CHIPTT_STT_MAX_SINGLE_DURATION } = require("../utils/constants");
 const sttService = require("../services/sttService");
 
+// ~4 KB/s heuristic for 16 kHz 16-bit mono audio. The metered seconds must be
+// derived from the payload the client actually sent; audioDuration is a
+// client-supplied hint and is never trusted for billing or the ceiling (U-08).
+function deriveMeteredAudioSeconds(audioContent) {
+  const rawBytes = Buffer.from(audioContent, 'base64').length;
+  return Math.max(1, Math.ceil(rawBytes / 4000));
+}
+
+exports.deriveMeteredAudioSeconds = deriveMeteredAudioSeconds;
+
 exports.transcribeSpeech = onRequest(
   { cors: true, timeoutSeconds: 60, memory: "256MiB" },
   async (req, res) => {
@@ -25,12 +35,12 @@ exports.transcribeSpeech = onRequest(
       return res.status(401).json({ error: 'Unauthorized', reason: error.message });
     }
 
-    const audioSeconds = Math.max(1, Math.ceil(audioDuration || (Buffer.from(audioContent, 'base64').length / 4000)));
-    if (audioDuration > CHIPTT_STT_MAX_SINGLE_DURATION) {
+    const audioSeconds = deriveMeteredAudioSeconds(audioContent);
+    if (audioSeconds > CHIPTT_STT_MAX_SINGLE_DURATION) {
       return res.status(400).json({ error: `Recording cannot exceed ${CHIPTT_STT_MAX_SINGLE_DURATION} seconds.` });
     }
 
-    console.error('[transcribeSpeech] request', { uid, audioDuration, audioSeconds });
+    console.error('[transcribeSpeech] request', { uid, declaredAudioDuration: audioDuration, audioSeconds });
 
     let transcript;
     try {
@@ -150,12 +160,12 @@ exports.transcribeChirp3 = onRequest(
       return res.status(401).json({ error: 'Unauthorized', reason: error.message });
     }
 
-    const audioSeconds = Math.max(1, Math.ceil(audioDuration || (Buffer.from(audioContent, 'base64').length / 4000)));
-    if (audioDuration > CHIPTT_STT_MAX_SINGLE_DURATION) {
+    const audioSeconds = deriveMeteredAudioSeconds(audioContent);
+    if (audioSeconds > CHIPTT_STT_MAX_SINGLE_DURATION) {
       return res.status(400).json({ error: `Recording cannot exceed ${CHIPTT_STT_MAX_SINGLE_DURATION} seconds.` });
     }
 
-    console.error('[transcribeChirp3] request', { uid, audioDuration, audioSeconds, rawLanguageCode: languageCode });
+    console.error('[transcribeChirp3] request', { uid, declaredAudioDuration: audioDuration, audioSeconds, rawLanguageCode: languageCode });
 
     let result;
     try {

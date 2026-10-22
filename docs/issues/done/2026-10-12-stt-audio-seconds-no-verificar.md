@@ -1,5 +1,20 @@
 # STT meters seconds the client declares, not the audio it sends
 
+**Resolved:** 2026-10-22 (minimal fix, in `fix/audit-batch-1`).
+`transcribeSpeech` and `transcribeChirp3` now derive the metered seconds from
+the base64 payload via `deriveMeteredAudioSeconds`
+(`backend/src/functions/src/routes/sttRoutes.js`), apply the
+`CHIPTT_STT_MAX_SINGLE_DURATION` ceiling to that derived value, and treat the
+client's `audioDuration` as a log-only hint. `transcribeExistingAudio` was
+removed in the same batch (U-04), which also removed the ceiling-less route.
+Covered by `backend/src/functions/tests/sttAudioSeconds.test.js`.
+
+Remaining approximation (payload-size heuristic vs Google's real billed
+duration) is parked as
+[`P2/2026-10-22-stt-trueup-billed-duration.md`](../P2/2026-10-22-stt-trueup-billed-duration.md).
+
+---
+
 ## What
 
 `sttRoutes.js` derives `audioSeconds` — the quantity the monthly quota is

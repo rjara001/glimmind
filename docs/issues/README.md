@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-22: **0 P0 · 6 P1 · 26 P2 · 27 done · 3 backlog**.
+Counts as of 2026-10-22: **0 P0 · 5 P1 · 27 P2 · 28 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -53,7 +53,6 @@ dated 2026-10-21 below).
 | [`P1/2026-10-12-sin-tope-de-mazos-por-usuario.md`](P1/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Deck count is uncapped; 10000 one-word decks stay inside every limit |
 | [`P1/2026-10-12-audio-base64-en-firestore.md`](P1/2026-10-12-audio-base64-en-firestore.md) | Recordings stored base64 in Firestore docs, unmetered, not deleted with the account |
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
-| [`P1/2026-10-12-stt-audio-seconds-no-verificar.md`](P1/2026-10-12-stt-audio-seconds-no-verificar.md) | STT charges the seconds the client declares, so the allowance can be bypassed by under-reporting `audioDuration` |
 | [`P1/2026-10-12-transcribe-existing-audio-roto.md`](P1/2026-10-12-transcribe-existing-audio-roto.md) | The route calls a function that does not exist; it can only ever answer 502 |
 | [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
 
@@ -87,6 +86,7 @@ dated 2026-10-21 below).
 | [`P2/2026-10-21-gameview-sin-estado-de-error.md`](P2/2026-10-21-gameview-sin-estado-de-error.md) | `GameView`/`App` render the same spinner for loading, empty and failed deck loads — no error, no retry (audit U-12) |
 | [`P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`](P2/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md) | Neutral ES, Argentine voseo and English share the same screens; no switcher, `lang="es"` hard-coded (audit U-13) |
 | [`P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md`](P2/2026-10-21-guest-ve-tienda-de-mazos-vacia.md) | Guests get an empty prebuilt catalogue and no quota display, so the lowest-friction entry path shows an empty product (audit U-17) |
+| [`P2/2026-10-22-stt-trueup-billed-duration.md`](P2/2026-10-22-stt-trueup-billed-duration.md) | STT metering uses the payload-size heuristic only; Google's `totalBilledDuration` is never reconciled (U-08 follow-up) |
 
 ## done — resolved
 
@@ -119,6 +119,7 @@ dated 2026-10-21 below).
 | [`done/2026-10-13-guest-decks-erased-on-user-switch.md`](done/2026-10-13-guest-decks-erased-on-user-switch.md) | Resolved 2026-10-22: product decision — no per-uid migration; guest data loss is now disclosed in Auth and GuestBanner ("no se pasan a tu cuenta"); false sync claim removed |
 | [`done/2026-10-13-regresar-al-panel-vuelve-a-game.md`](done/2026-10-13-regresar-al-panel-vuelve-a-game.md) | Resolved 2026-10-22: `navigate` skips the history push when `nextView === view`, so the bootstrap + `handlePlayList` double fire no longer traps the user on `/game`; E2E workarounds removed |
 | [`done/2026-08-24-mobile-stt-premature-final.md`](done/2026-08-24-mobile-stt-premature-final.md) | Resolved 2026-10-22: finals rebuilt from a flush cursor (no more first-word overwrite), `onFinal` flushes after 1200 ms silence with a 3000 ms utterance cap; mobile multi-word phrases reach the consumer intact |
+| [`done/2026-10-12-stt-audio-seconds-no-verificar.md`](done/2026-10-12-stt-audio-seconds-no-verificar.md) | Resolved 2026-10-22: metered seconds now derive from the base64 payload (`deriveMeteredAudioSeconds`) and the 60 s ceiling applies to the derived value; client `audioDuration` is log-only. True-up parked as P2 |
 
 ## backlog — not defects
 
