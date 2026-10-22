@@ -24,9 +24,9 @@ test('practice mode run, restart without archiving and back to the panel', async
   await page.getByRole('button', { name: /Reiniciar sin archivar/ }).click();
   await expect(visibleText(page, 'Queue 1/4')).toBeVisible();
 
-  // Known bug (parked in docs/issues/P1): "Regresar al panel" navigates back to
-  // /game on the first play of a session. Use the Navbar instead.
-  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
+  // "Regresar al panel" must return to /dashboard even on the first play of a
+  // session (U-03 double-push guard).
+  await page.getByRole('button', { name: 'Regresar al panel' }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole('heading', { name: 'Mazo Práctica' })).toBeVisible();
   await expect(page.getByText('4 pairs')).toBeVisible();

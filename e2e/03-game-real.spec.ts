@@ -45,10 +45,9 @@ test('real mode grades typed answers and finishes the session', async ({ page })
   await expect(page.getByText('¡Sesión Completada!')).toBeVisible();
   await expect(page.getByText(/Has aprendido 4 items/)).toBeVisible();
 
-  // Known bug (parked in docs/issues/P1): "Regresar al panel" navigates back to
-  // /game on the first play of a session because navigate('game') is pushed
-  // twice onto the history stack. Use the Navbar instead.
-  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
+  // "Regresar al panel" must return to /dashboard even on the first play of a
+  // session (U-03 double-push guard).
+  await page.getByRole('button', { name: 'Regresar al panel' }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByText('4 / 4').first()).toBeVisible();
   await expect(page.getByText('logro 100%').first()).toBeVisible();

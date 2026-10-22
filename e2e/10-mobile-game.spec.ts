@@ -13,10 +13,9 @@ test('mobile guest creates a deck and finishes a practice session', async ({ pag
   }
   await expect(page.getByText('¡Sesión Completada!')).toBeVisible();
 
-  // The desktop Navbar tabs are hidden below md; the logo Link to /dashboard
-  // stays visible and performs SPA navigation, dodging the known double-push
-  // history bug that traps page.goBack() on /game.
-  await page.locator('a[href="/dashboard"]').click();
+  // "Regresar al panel" must return to /dashboard on mobile too (U-03
+  // double-push guard); no Navbar workaround needed anymore.
+  await page.getByRole('button', { name: 'Regresar al panel' }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole('heading', { name: 'Mazo Móvil' })).toBeVisible();
   await expect(page.getByText('4 / 4').first()).toBeVisible();

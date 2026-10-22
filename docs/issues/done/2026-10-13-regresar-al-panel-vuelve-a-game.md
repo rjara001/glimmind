@@ -1,8 +1,15 @@
 # "Regresar al panel" returns to /game on the first play of a session
 
-**Date:** 2026-10-13
-**Priority:** P1
-**Status:** Not fixed
+**Resolved:** 2026-10-22, in `fix/audit-batch-1` (commit in this branch).
+`useNavigation.navigate` now skips the history push when `nextView === view`
+(`src/hooks/app/useNavigation.ts`), so the bootstrap auto-nav plus
+`handlePlayList` double fire of `navigate('game')` leaves a single
+`['dashboard']` entry and `goBack()` returns to `/dashboard`. Covered by
+`tests/hooks/useNavigation.test.ts`; the E2E workarounds in
+`e2e/03-game-real.spec.ts`, `e2e/04-game-practice.spec.ts` and
+`e2e/10-mobile-game.spec.ts` now click "Regresar al panel" directly.
+
+---
 
 ## What
 
@@ -36,10 +43,8 @@ Reproduction (from `e2e/03-game-real.spec.ts` and `e2e/04-game-practice.spec.ts`
 4. Finish the session, click "Regresar al panel".
 5. URL stays on `/game` instead of returning to `/dashboard`.
 
-## Fix
+## Fix (applied)
 
 In `useNavigation.navigate`, skip the history push when `nextView === view`
-(no-op navigation). Alternatively, guard the bootstrap auto-nav with a
-`didAutoNavigate` ref check *before* calling `navigate`, which already exists
-but is set only after the call — move the ref assignment ahead of the
-`navigate` call so a concurrent `handlePlayList` cannot double-push.
+(no-op navigation). The bootstrap `didAutoNavigate` ref is already assigned
+before the `navigate` call.

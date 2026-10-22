@@ -25,7 +25,10 @@ export function useNavigation(): UseNavigationReturn {
       if (nextView === "dashboard") {
         clearListContext();
         historyRef.current = [];
-      } else {
+      } else if (nextView !== view) {
+        // No-op navigation (nextView === view) must not push a duplicate
+        // entry: the bootstrap auto-nav and handlePlayList both fire
+        // navigate('game') on the first play of a session (U-03).
         historyRef.current = [...historyRef.current, view];
       }
       setView(nextView);
