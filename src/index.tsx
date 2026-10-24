@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { flushEventQueue, installGlobalEventHandlers } from './services/errorReporting';
+import './index.css';
 
 installGlobalEventHandlers();
 void flushEventQueue();

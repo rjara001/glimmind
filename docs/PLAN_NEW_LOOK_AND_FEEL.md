@@ -3,6 +3,11 @@
 **Proyecto:** Glimmind  
 **Fecha:** 2026-10-08
 
+> **Historical document.** Its instruction to "keep the Tailwind CDN" in
+> `src/index.html` is obsolete: on 2026-10-23 Tailwind was moved into the Vite
+> build and the CDN removed (issue `docs/issues/done/2026-10-20-tailwind-cdn-en-runtime-produccion.md`,
+> audit U-09). Do not reintroduce `cdn.tailwindcss.com`.
+
 ---
 
 ## 1. Estado Actual

@@ -5,8 +5,11 @@ import { test as base, expect, type Page } from '@playwright/test';
  *
  * Every spec gets:
  *  - `networkGuard`: aborts any request leaving the machine except the static
- *    CDNs the app needs to render (Tailwind CDN, Google Fonts). Guarantees the
- *    suite never spends money or depends on external availability.
+ *    CDNs the app needs to render (Google Fonts). Tailwind is compiled into
+ *    the bundle (U-09), so the Tailwind CDN is deliberately NOT allowed: if
+ *    anything tries to load it, the request is aborted and the spec fails.
+ *    Guarantees the suite never spends money or depends on external
+ *    availability.
  *  - `cleanStart`: boots the app once and clears localStorage / sessionStorage /
  *    IndexedDB so the spec begins from a from-scratch state. Specs that need
  *    persistence (e.g. resume after reload) keep it mid-test; Playwright also
@@ -18,7 +21,6 @@ import { test as base, expect, type Page } from '@playwright/test';
 const ALLOWED_HOSTS = new Set([
   'localhost',
   '127.0.0.1',
-  'cdn.tailwindcss.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
 ]);

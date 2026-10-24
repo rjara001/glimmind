@@ -21,7 +21,7 @@ Priority follows `docs/issues/README.md`: **P0** bleeding/broken now, **P1** beh
 | U-06 | Recordings stored base64 in Firestore documents | P1 | resolved (2026-10-22, feature removed; Storage path untouched) | `docs/issues/done/2026-10-12-audio-base64-en-firestore.md` |
 | U-07 | No cap on deck count: 10 000 one-word decks pass every limit | P1 | resolved (2026-10-22, `maxDecks` 50/200 transactional + client gate) | `docs/issues/done/2026-10-12-sin-tope-de-mazos-por-usuario.md` |
 | U-08 | STT allowance bypassed by under-reporting `audioDuration` | P1 | resolved (2026-10-22, payload-derived seconds; true-up parked) | `docs/issues/done/2026-10-12-stt-audio-seconds-no-verificar.md` |
-| U-09 | **Entire UI styled by `cdn.tailwindcss.com` at runtime** | **P1** | **new** | `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` |
+| U-09 | **Entire UI styled by `cdn.tailwindcss.com` at runtime** | **P1** | resolved (2026-10-23, Tailwind compiled into Vite build; CDN + importmap + `next` removed; E2E blocks the CDN) | `docs/issues/done/2026-10-20-tailwind-cdn-en-runtime-produccion.md` |
 | U-10 | Quotas invisible until the user hits a 429 | P2 | tracked | `docs/issues/P2/2026-10-11-cuotas-invisibles-al-usuario.md` |
 | U-11 | Raw English browser errors in a Spanish UI | P2 | tracked | `docs/issues/P2/2026-10-16-error-message-crudo-en-cliente.md` |
 | U-12 | `GameView` has no deck-load error state | P2 | **new** | `docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md` |
@@ -126,6 +126,8 @@ There is no persistent quota meter. The user discovers the limit through a 429 o
 
 ## 7. U-09 — Runtime CDN dependency (new P1)
 
+> **Resolved 2026-10-23.** Tailwind is compiled into the Vite bundle (`tailwindcss@3.4` + PostCSS, `src/index.css`); the CDN `<script>`, the `esm.sh` importmap and the dead `next` dependency were removed; the CSP no longer allow-lists either host; `e2e/fixtures.ts` aborts any request to `cdn.tailwindcss.com`. Details and verification: `docs/issues/done/2026-10-20-tailwind-cdn-en-runtime-produccion.md`.
+
 ```
 $ grep -n "tailwind\|postcss" package.json   → no results
 $ ls tailwind.config* postcss.config*        → no matches
@@ -154,7 +156,7 @@ Related and already filed separately: the `esm.sh` importmap in the same file, a
 | 1 | U-02 (guest decks erased) | destroys the primary conversion path |
 | 2 | U-01 (sync) or, if out of scope, remove the sync claim from Premium copy | stops an active false promise |
 | 3 | U-19 (copy vs reality) | cheapest credibility fix: edit `LandingPage.tsx:236-238` |
-| 4 | U-09 (Tailwind CDN) | single change removes a global availability risk |
+| 4 | U-09 (Tailwind CDN) | **done 2026-10-23** — compiled into the Vite build, CDN blocked by E2E guard |
 | 5 | U-11 + U-13 (language consistency) | prerequisite for any i18n work |
 | 6 | U-10 (quota visibility) | removes a recurring support-style failure |
 | 7 | U-12 (GameView error state) | closes the last silent-failure path |

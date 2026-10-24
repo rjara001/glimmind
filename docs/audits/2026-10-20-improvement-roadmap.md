@@ -38,7 +38,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | U-06 | usability-gaps §1 | P1 | Recordings stored base64 in Firestore documents | large | done | `docs/issues/done/2026-10-12-audio-base64-en-firestore.md` (removed; Storage reimpl. stub in P2) |
 | U-07 | usability-gaps §1 | P1 | Deck count uncapped: 10 000 one-word decks pass every limit | medium | done | `docs/issues/done/2026-10-12-sin-tope-de-mazos-por-usuario.md` (resolved 2026-10-22: `maxDecks` 50/200 transactional + `listCount` + client gate) |
 | U-08 | usability-gaps §1 | P1 | STT allowance bypassed by under-reporting `audioDuration` | medium | done | `docs/issues/done/2026-10-12-stt-audio-seconds-no-verificar.md` (true-up parked as P2) |
-| U-09 | usability-gaps §1/§7 · app-state §8.1 | P1 | Whole UI styled by `cdn.tailwindcss.com` at runtime; global availability risk | medium | filed | `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` (covers AS-01: `esm.sh` importmap + `next` dead dep) |
+| U-09 | usability-gaps §1/§7 · app-state §8.1 | P1 | Whole UI styled by `cdn.tailwindcss.com` at runtime; global availability risk | medium | done | `docs/issues/done/2026-10-20-tailwind-cdn-en-runtime-produccion.md` (resolved 2026-10-23: Tailwind compiled into Vite build, CDN + `esm.sh` importmap + `next` dead dep removed, CSP tightened, E2E blocks the CDN) |
 | U-10 | usability-gaps §1/§6 | P2 | Quotas invisible until the user hits a 429 | medium | filed | `docs/issues/P2/2026-10-11-cuotas-invisibles-al-usuario.md` |
 | U-11 | usability-gaps §1 | P2 | Raw English browser errors in a Spanish UI | medium | filed | `docs/issues/P2/2026-10-16-error-message-crudo-en-cliente.md` |
 | U-12 | usability-gaps §1/§3 | P2 | `GameView` renders the same spinner for loading/empty/failed deck loads | medium | filed | `docs/issues/P2/2026-10-21-gameview-sin-estado-de-error.md` |
@@ -50,7 +50,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 | U-18 | usability-gaps §1 | P2 | Progress lives only in the browser; clearing data loses everything | large | open | evidence only: `docs/SERVICE_CATALOG.md` §7.1 |
 | U-19 | usability-gaps §1/§2 · market §7 | P2 | Marketing copy promises features that do not exist (refund/chargeback risk) | small | planned | `docs/audits/2026-10-20-market-positioning.md` §7 (Phase 1, order 3) |
 | U-20 | usability-gaps §1 · app-state §11 | P2 | GitHub Actions deploy broken on every run since 2026-10-07 | medium | filed | `docs/issues/P2/2026-10-12-deploy-de-github-actions-roto.md` |
-| AS-01 | app-state §8.1 | P1 | Production HTML resolves modules via `esm.sh` at runtime; `next` is a dead dependency | small | filed | folded into `docs/issues/P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md` (fix step 4) |
+| AS-01 | app-state §8.1 | P1 | Production HTML resolves modules via `esm.sh` at runtime; `next` is a dead dependency | small | done | closed 2026-10-23 inside `docs/issues/done/2026-10-20-tailwind-cdn-en-runtime-produccion.md` (importmap deleted, `next` removed from `dependencies`) |
 | AS-02 | app-state §10 | P2 | `README.md` and `LAUNCH_CHECKLIST.md` contradict the code (Gemini claims, 604-test gate vs 83 test files) | small | open | evidence: `app-state.md` §10. `LAUNCH_PLAN.md` itself already fixed (v1.1, PR #8, 2026-10-21) |
 | AS-03 | app-state §1/§4 | P2 | No email/password registration UI; entry is Google or guest only | medium | open | documented in `app-state.md` §4.6; product-scope decision pending |
 | AS-04 | app-state §1/§5.2 · market §5 I-8 | P2 | Pricing displayed in EUR only; no per-market localization | medium | planned | `docs/audits/2026-10-20-market-positioning.md` §5 I-8; decision owner `docs/BUSINESS_MODEL.md` §8 |
@@ -70,7 +70,7 @@ Re-runnable counts: `grep -c "^| U-" docs/audits/2026-10-20-usability-gaps.md` �
 ## 3. Reading the table
 
 - **P1/P2 vocabulary** follows `docs/issues/README.md`: P1 = behavioural bugs, P2 = debt/hygiene. No P0 is open; every P1 row already has an issue file.
-- **Launch-blocking items are not P1** by that vocabulary but gate the international launch anyway: U-13/MP-03 (i18n), MP-01 (SEO), U-09 (styling availability), U-01/U-02 (data trust). The market audit's Phase 0–6 order (`market-positioning.md` §8) and the usability order of attack (`usability-gaps.md` §8) remain the execution sequences.
+- **Launch-blocking items are not P1** by that vocabulary but gate the international launch anyway: U-13/MP-03 (i18n), MP-01 (SEO), U-01/U-02 (data trust). The market audit's Phase 0–6 order (`market-positioning.md` §8) and the usability order of attack (`usability-gaps.md` §8) remain the execution sequences. (U-09 styling availability was fixed 2026-10-23.)
 - **Gaps resolved by this closeout:** AS-05 (decision), MP-09 (audit rewrite), `LAUNCH_PLAN.md` v1.1 (PR #8) — recorded so the next session does not reopen them.
 - **Nothing in this roadmap authorises a fix.** Each fix becomes its own plan/issue per `AGENTS.md` §12/§44; pricing and tier decisions stay in `docs/BUSINESS_MODEL.md`.
 

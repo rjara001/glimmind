@@ -1,5 +1,7 @@
 /// <reference types="vitest" />
 import path from 'path';
+import autoprefixer from 'autoprefixer';
+import tailwindcss from 'tailwindcss';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -20,6 +22,11 @@ export default defineConfig(({ mode }) => {
         }
       },
       plugins: [react()],
+      css: {
+        postcss: {
+          plugins: [tailwindcss(), autoprefixer()],
+        },
+      },
       build: {
         outDir: path.resolve(__dirname, 'dist'),
         // outDir sits outside root ('src'), so Vite skips emptying by default

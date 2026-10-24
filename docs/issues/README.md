@@ -28,7 +28,7 @@ duplicates the priority in prose.
 | [`done/`](done/) | Resolved. Kept so a fix does not silently regress |
 | [`backlog/`](backlog/) | Not a defect. Specs and diagnostics that do not belong here yet |
 
-Counts as of 2026-10-22: **0 P0 · 3 P1 · 28 P2 · 31 done · 3 backlog**.
+Counts as of 2026-10-23: **0 P0 · 2 P1 · 28 P2 · 32 done · 3 backlog**.
 
 Seven were filed on 2026-10-20/21 from the state, usability and market-positioning
 audits under [`../audits/`](../audits/). The last three findings from the same
@@ -51,7 +51,6 @@ dated 2026-10-21 below).
 | Issue | Impact |
 |---|---|
 | [`P1/2026-10-12-sync-config-sin-conectar.md`](P1/2026-10-12-sync-config-sin-conectar.md) | The Premium sync tier has no callers and `usePeriodicSync` is never mounted |
-| [`P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](P1/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Production styling comes from `cdn.tailwindcss.com`; Tailwind is not in the build at all |
 | [`P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md`](P1/2026-10-21-ui-mezcla-tres-idiomas-sin-switcher.md) | Neutral ES, Argentine voseo and English share the same screens; no switcher, `lang="es"` hard-coded (audit U-13; elevated P2→P1 2026-10-22, plan `docs/plans/2026-10-22-i18n-plan.md`) |
 
 ## P2 — debt, dead code, hygiene
@@ -122,6 +121,7 @@ dated 2026-10-21 below).
 | [`done/2026-10-12-transcribe-existing-audio-roto.md`](done/2026-10-12-transcribe-existing-audio-roto.md) | Resolved 2026-10-22: dead 502-only endpoint removed (function, rewrite, orphan service, client wrapper, SttProvider method); reimplementation stub parked as P2 |
 | [`done/2026-10-12-audio-base64-en-firestore.md`](done/2026-10-12-audio-base64-en-firestore.md) | Resolved 2026-10-22: Firestore base64 recordings feature removed (buttons, hook, service, modal); Storage auto-recording (Path 1) untouched; Storage reimplementation stub parked as P2 |
 | [`done/2026-10-12-sin-tope-de-mazos-por-usuario.md`](done/2026-10-12-sin-tope-de-mazos-por-usuario.md) | Resolved 2026-10-22: `maxDecks` (free 50, premium 200) asserted transactionally on create/bulk/split and decremented on delete via `assertDeckQuotaHasRoom`; `listCount` field rebuilds on meta creation and backfills for legacy docs; client mirrors the ceiling in `useAppHandlers.deckGate` (unknown tier blocks, never manufactures "free") |
+| [`done/2026-10-20-tailwind-cdn-en-runtime-produccion.md`](done/2026-10-20-tailwind-cdn-en-runtime-produccion.md) | Resolved 2026-10-23: Tailwind compiled into the Vite build (`tailwindcss@3.4` + PostCSS, `src/index.css`); CDN `<script>`, dead `esm.sh` importmap and `next` dependency removed; CSP tightened; E2E network guard aborts any future request to `cdn.tailwindcss.com` (closes audit U-09 + AS-01) |
 
 ## backlog — not defects
 
