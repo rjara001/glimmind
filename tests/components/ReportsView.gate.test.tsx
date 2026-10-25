@@ -37,7 +37,7 @@ describe('feature flag: reports', () => {
         </MemoryRouter>
       );
 
-      expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+      expect(screen.queryByText('Reportes')).not.toBeInTheDocument();
     });
 
     it('still renders the other nav items', () => {
@@ -47,9 +47,9 @@ describe('feature flag: reports', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('History')).toBeInTheDocument();
-      expect(screen.getByText('Settings')).toBeInTheDocument();
+      expect(screen.getByText('Panel')).toBeInTheDocument();
+      expect(screen.getByText('Actividad')).toBeInTheDocument();
+      expect(screen.getByText('Ajustes')).toBeInTheDocument();
     });
   });
 
@@ -72,13 +72,13 @@ describe('feature flag: reports', () => {
     it('does not render the Reports button while the flag is off', () => {
       render(<AppHeader {...headerProps} />);
 
-      expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+      expect(screen.queryByText('Reportes')).not.toBeInTheDocument();
     });
 
     it('still renders the Activity button', () => {
       render(<AppHeader {...headerProps} />);
 
-      expect(screen.getByText('Activity')).toBeInTheDocument();
+      expect(screen.getByText('Actividad')).toBeInTheDocument();
     });
   });
 

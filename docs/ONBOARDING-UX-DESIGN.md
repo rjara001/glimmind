@@ -79,8 +79,8 @@ handlePlayList() → navigates to GameView
 │                                                      │
 │   ¡Bienvenido a tu Tienda de Barajas!                │
 │                                                      │
-│   Explora nuestro catalogo, revisa las tarjetas y    │
-│   cargalas a tu espacio en 1 clic.                   │
+│   Explora nuestro catálogo, revisa las tarjetas y     │
+│   cárgalas a tu espacio en 1 clic.                    │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -203,15 +203,15 @@ User returns to Dashboard → lists.length > 0 → normal Dashboard with real me
 | Location | Text |
 |----------|------|
 | **Banner title** | `¡Bienvenido a tu Tienda de Barajas!` |
-| **Banner subtitle** | `Explorá nuestro catálogo, revisá las tarjetas y cargalas a tu espacio en 1 clic.` |
+| **Banner subtitle** | `Explora nuestro catálogo, revisa las tarjetas y cárgalas a tu espacio en 1 clic.` |
 | **Deck card "Preview" btn** | `👁️ Previsualizar` |
 | **Deck card "Add" btn** | `🛒 Agregar a mi Espacio` |
 | **Modal header desc** | Deck's description from Firestore |
 | **Modal footer primary** | `🛒 Agregar esta baraja a mi espacio` |
 | **Modal footer secondary** | `Cancelar` |
-| **Custom section title** | `🛠️ ¿Preferís cargar tu propio material?` |
-| **Custom section subtitle** | `Creá tu propia lista con el método que prefieras.` |
-| **Method 1** | `📋 CSV / Copiar y Pegar` — "Pegá desde Excel o Google Sheets" |
+| **Custom section title** | `🛠️ ¿Prefieres cargar tu propio material?` |
+| **Custom section subtitle** | `Crea tu propia lista con el método que prefieras.` |
+| **Method 1** | `📋 CSV / Copiar y Pegar` — "Pega desde Excel o Google Sheets" |
 | **Method 2** | `🤖 Generar con IA` — badge "Popular" |
 | **Method 3** | `✍️ Carga Manual` — "Formulario directo término por término" |
 | **Custom CTA** | `+ Crear Lista Personalizada` |

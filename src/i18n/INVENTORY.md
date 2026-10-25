@@ -34,7 +34,7 @@ straight to the `es` catalogues (namespace below) with a key — AGENTS §24/§4
 | Literal rows | **1132** across **110** files |
 | Dynamic call sites (trace source in P3) | **48** |
 | By category | jsx-text: 672 · expr: 98 · toast: 45 · label: 56 · title: 7 · aria-label: 48 · placeholder: 29 · field: 157 · const-string: 12 · auth-error: 8 |
-| By origin (heuristic) | EN: 127 · ES?: 456 · EN?: 95 · neutral?: 178 · ES-neutral: 258 · AR (voseo): 13 · do-not-translate (email): 4 · symbol (do-not-translate): 1 |
+| By origin (heuristic) | ES?: 468 · EN: 107 · EN?: 96 · neutral?: 176 · ES-neutral: 271 · AR (voseo): 9 · do-not-translate (email): 4 · symbol (do-not-translate): 1 |
 | By namespace | common: 574 · nav: 36 · auth: 33 · errors: 53 · dashboard: 26 · editor: 87 · store: 126 · onboarding: 73 · settings: 45 · game: 79 |
 
 **Deferred** (not extraction targets): `document.title`/meta per-route strings
@@ -53,10 +53,10 @@ legal long-form views (localization handled in the SEO/legal phase).
 |---|---|---|---|---|
 | 196 | expr | `Mazo creado` | ES? | `common.mazo_creado` |
 | 196 | expr | `{{…}} mazos creados` | ES? | `common.mazos_creados` |
-| 213 | jsx-text | `Loading...` | EN | `common.loading` |
+| 213 | jsx-text | `Cargando...` | ES? | `common.cargando` |
 | 282 | expr | `Volver al juego` | ES? | `common.volver_al_juego` |
 | 282 | expr | `Volver al dashboard` | EN | `common.volver_al_dashboard` |
-| 320 | jsx-text | `Loading deck...` | EN | `common.loading_deck` |
+| 320 | jsx-text | `Cargando mazo...` | ES? | `common.cargando_mazo` |
 | 388 | expr | `Sin nombre` | ES? | `common.sin_nombre` |
 
 **src/components/ListEditor.tsx**
@@ -72,7 +72,7 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 35 | jsx-text | `Loading...` | EN | `common.loading_2` |
+| 35 | jsx-text | `Cargando...` | ES? | `common.cargando_2` |
 
 **src/components/modals/AttemptAnalysisModal.tsx**
 
@@ -421,7 +421,7 @@ legal long-form views (localization handled in the SEO/legal phase).
 | 282 | jsx-text | `DC` | neutral? | `common.dc` |
 | 282 | aria-label | `Discord` | neutral? | `common.discord` |
 | 286 | jsx-text | `Producto` | neutral? | `common.producto` |
-| 288 | jsx-text | `Dashboard` | EN | `common.dashboard` |
+| 288 | jsx-text | `Panel` | ES? | `common.panel` |
 | 289 | jsx-text | `Precios` | neutral? | `common.precios` |
 | 290 | jsx-text | `Novedades` | neutral? | `common.novedades` |
 | 291 | jsx-text | `Roadmap` | neutral? | `common.roadmap` |
@@ -867,10 +867,10 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 20 | label | `Dashboard` | EN | `nav.dashboard` |
-| 25 | label | `History` | EN | `nav.history` |
-| 30 | label | `Reports` | EN | `nav.reports` |
-| 35 | label | `Settings` | EN | `nav.settings` |
+| 20 | label | `Panel` | ES? | `nav.panel` |
+| 25 | label | `Actividad` | ES? | `nav.actividad` |
+| 30 | label | `Reportes` | ES? | `nav.reportes` |
+| 35 | label | `Ajustes` | ES? | `nav.ajustes` |
 | 74 | jsx-text | `Glimmind` | neutral? | `nav.glimmind` |
 
 **src/components/layout/AppHeader.tsx**
@@ -878,12 +878,12 @@ legal long-form views (localization handled in the SEO/legal phase).
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
 | 34 | jsx-text | `Glimmind` | neutral? | `nav.glimmind_2` |
-| 40 | aria-label | `Add value` | ES? | `nav.add_value` |
-| 46 | jsx-text | `Add` | neutral? | `nav.add` |
-| 67 | jsx-text | `Activity` | neutral? | `nav.activity` |
-| 74 | jsx-text | `Reports` | EN | `nav.reports_2` |
+| 40 | aria-label | `Añadir valor` | ES-neutral | `nav.anadir_valor` |
+| 46 | jsx-text | `Añadir` | ES-neutral | `nav.anadir` |
+| 67 | jsx-text | `Actividad` | ES? | `nav.actividad_2` |
+| 74 | jsx-text | `Reportes` | ES? | `nav.reportes_2` |
 | 82 | jsx-text | `Admin` | neutral? | `nav.admin` |
-| 88 | aria-label | `Settings` | EN | `nav.settings_2` |
+| 88 | aria-label | `Ajustes` | ES? | `nav.ajustes_2` |
 
 **src/components/layout/CelebrationOverlay.tsx**
 
@@ -945,9 +945,9 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 40 | aria-label | `User menu` | ES? | `nav.user_menu` |
-| 71 | jsx-text | `Settings` | EN | `nav.settings_3` |
-| 85 | jsx-text | `Sign out` | EN | `nav.sign_out` |
+| 40 | aria-label | `Menú de usuario` | ES-neutral | `nav.menu_de_usuario` |
+| 71 | jsx-text | `Ajustes` | ES? | `nav.ajustes_3` |
+| 85 | jsx-text | `Cerrar sesión` | ES-neutral | `nav.cerrar_sesion` |
 
 ### auth (33)
 
@@ -974,13 +974,13 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 99 | auth-error | `Login failed. Please try again.` | EN | `auth.login_failed_please_try_again` |
-| 103 | auth-error | `No account found with this email.` | EN | `auth.no_account_found_with_this_email` |
-| 107 | auth-error | `Invalid email or password.` | EN | `auth.invalid_email_or_password` |
-| 110 | auth-error | `Invalid email address.` | EN | `auth.invalid_email_address` |
-| 113 | auth-error | `This account has been disabled.` | EN | `auth.this_account_has_been_disabled` |
-| 116 | auth-error | `Too many failed attempts. Please try again later.` | EN | `auth.too_many_failed_attempts_please_try_again_` |
-| 119 | auth-error | `Network error. Please check your connection.` | EN | `auth.network_error_please_check_your_connection` |
+| 99 | auth-error | `No se pudo iniciar sesión. Inténtalo de nuevo.` | ES-neutral | `auth.no_se_pudo_iniciar_sesion_intentalo_de_nue` |
+| 103 | auth-error | `No hay ninguna cuenta con este correo.` | EN? | `auth.no_hay_ninguna_cuenta_con_este_correo` |
+| 107 | auth-error | `Correo o contraseña incorrectos.` | ES-neutral | `auth.correo_o_contrasena_incorrectos` |
+| 110 | auth-error | `Correo electrónico no válido.` | ES-neutral | `auth.correo_electronico_no_valido` |
+| 113 | auth-error | `Esta cuenta está deshabilitada.` | ES-neutral | `auth.esta_cuenta_esta_deshabilitada` |
+| 116 | auth-error | `Demasiados intentos fallidos. Inténtalo de nuevo más tarde.` | ES-neutral | `auth.demasiados_intentos_fallidos_intentalo_de_` |
+| 119 | auth-error | `Error de red. Revisa tu conexión.` | ES-neutral | `auth.error_de_red_revisa_tu_conexion` |
 | 156 | auth-error | `useAuth must be used within an AuthProvider` | EN? | `auth.useauth_must_be_used_within_an_authprovide` |
 
 **src/pages/Login.tsx**
@@ -1395,19 +1395,19 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 10 | jsx-text | `🛠️ ¿Preferís cargar tu propio material?` | AR (voseo) | `onboarding.preferis_cargar_tu_propio_material` |
-| 11 | jsx-text | `Creá tu propia lista con el método que prefieras.` | AR (voseo) | `onboarding.crea_tu_propia_lista_con_el_metodo_que_pre` |
+| 10 | jsx-text | `🛠️ ¿Prefieres cargar tu propio material?` | ES-neutral | `onboarding.prefieres_cargar_tu_propio_material` |
+| 11 | jsx-text | `Crea tu propia lista con el método que prefieras.` | ES-neutral | `onboarding.crea_tu_propia_lista_con_el_metodo_que_pre` |
 | 16 | jsx-text | `CSV / Copiar y Pegar` | ES? | `onboarding.csv_copiar_y_pegar` |
-| 17 | jsx-text | `Pegá desde Excel o Google Sheets` | ES-neutral | `onboarding.pega_desde_excel_o_google_sheets` |
+| 17 | jsx-text | `Pega desde Excel o Google Sheets` | ES? | `onboarding.pega_desde_excel_o_google_sheets` |
 | 20 | jsx-text | `Popular` | neutral? | `onboarding.popular` |
 | 24 | jsx-text | `Generar con IA` | ES? | `onboarding.generar_con_ia` |
-| 25 | jsx-text | `Creá listas por temas automáticamente` | AR (voseo) | `onboarding.crea_listas_por_temas_automaticamente` |
+| 25 | jsx-text | `Crea listas por temas automáticamente` | ES-neutral | `onboarding.crea_listas_por_temas_automaticamente` |
 | 29 | jsx-text | `Carga Manual` | ES? | `onboarding.carga_manual` |
 | 30 | jsx-text | `Formulario directo término por término` | ES-neutral | `onboarding.formulario_directo_termino_por_termino` |
 | 37 | jsx-text | `Desde YouTube` | ES? | `onboarding.desde_youtube` |
-| 38 | jsx-text | `Pegá una URL y generamos vocabulario automáticamente` | ES-neutral | `onboarding.pega_una_url_y_generamos_vocabulario_autom` |
+| 38 | jsx-text | `Pega una URL y generamos vocabulario automáticamente` | ES-neutral | `onboarding.pega_una_url_y_generamos_vocabulario_autom` |
 | 42 | jsx-text | `Texto Libre` | ES? | `onboarding.texto_libre` |
-| 43 | jsx-text | `Pegá un artículo, transcripción o texto y generamos vocabulario automáticamente` | ES-neutral | `onboarding.pega_un_articulo_transcripcion_o_texto_y_g` |
+| 43 | jsx-text | `Pega un artículo, transcripción o texto y generamos vocabulario automáticamente` | ES-neutral | `onboarding.pega_un_articulo_transcripcion_o_texto_y_g` |
 | 51 | jsx-text | `+ Crear Lista Personalizada` | ES? | `onboarding.crear_lista_personalizada` |
 
 **src/components/onboarding/DeckAnalysisStats.tsx**
@@ -1468,7 +1468,7 @@ legal long-form views (localization handled in the SEO/legal phase).
 | 132 | jsx-text | `Crear lista personalizada` | ES? | `onboarding.crear_lista_personalizada_2` |
 | 146 | jsx-text | `Analizando tarjetas...` | ES? | `onboarding.analizando_tarjetas` |
 | 155 | jsx-text | `¡Bienvenido a tu Tienda de Barajas!` | ES-neutral | `onboarding.bienvenido_a_tu_tienda_de_barajas` |
-| 156 | jsx-text | `Explorá nuestro catálogo, revisá las tarjetas y cargalas a tu espacio en 1 clic.` | AR (voseo) | `onboarding.explora_nuestro_catalogo_revisa_las_tarjet` |
+| 156 | jsx-text | `Explora nuestro catálogo, revisa las tarjetas y cárgalas a tu espacio en 1 clic.` | ES-neutral | `onboarding.explora_nuestro_catalogo_revisa_las_tarjet` |
 | 166 | jsx-text | `Explorar Catálogo` | ES-neutral | `onboarding.explorar_catalogo` |
 
 **src/components/onboarding/DeckValidationScreen.tsx**
@@ -1709,7 +1709,7 @@ legal long-form views (localization handled in the SEO/legal phase).
 
 | Line | Cat | Text (verbatim) | Origin | Proposed key |
 |---|---|---|---|---|
-| 274 | jsx-text | `Loading...` | EN | `game.loading` |
+| 274 | jsx-text | `Cargando...` | ES? | `game.cargando` |
 
 **src/components/views/game/CardStage.tsx**
 

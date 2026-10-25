@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async (email: string, password: string) => {
     if (!auth) {
-      setError('Firebase auth not initialized');
+      setError('Autenticación de Firebase no inicializada');
       return;
     }
 
@@ -96,27 +96,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(mapFirebaseUser(result.user));
     } catch (err) {
       const authError = err as AuthError;
-      let message = 'Login failed. Please try again.';
+      let message = 'No se pudo iniciar sesión. Inténtalo de nuevo.';
 
       switch (authError.code) {
         case 'auth/user-not-found':
-          message = 'No account found with this email.';
+          message = 'No hay ninguna cuenta con este correo.';
           break;
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          message = 'Invalid email or password.';
+          message = 'Correo o contraseña incorrectos.';
           break;
         case 'auth/invalid-email':
-          message = 'Invalid email address.';
+          message = 'Correo electrónico no válido.';
           break;
         case 'auth/user-disabled':
-          message = 'This account has been disabled.';
+          message = 'Esta cuenta está deshabilitada.';
           break;
         case 'auth/too-many-requests':
-          message = 'Too many failed attempts. Please try again later.';
+          message = 'Demasiados intentos fallidos. Inténtalo de nuevo más tarde.';
           break;
         case 'auth/network-request-failed':
-          message = 'Network error. Please check your connection.';
+          message = 'Error de red. Revisa tu conexión.';
           break;
       }
 
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
     } catch (err) {
       console.error('Logout failed:', err);
-      setError('Failed to sign out. Please try again.');
+      setError('No se pudo cerrar sesión. Inténtalo de nuevo.');
     }
   }, []);
 

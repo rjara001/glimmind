@@ -285,7 +285,7 @@ export const LandingPage: React.FC = () => {
           <div className="landing-footer-col">
             <h4>Producto</h4>
             <ul>
-              <li><a href="/login">Dashboard</a></li>
+              <li><a href="/login">Panel</a></li>
               <li><a href="/login">Precios</a></li>
               <li><a href="/privacy">Novedades</a></li>
               <li><a href="/terms">Roadmap</a></li>

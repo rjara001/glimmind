@@ -37,13 +37,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onShowQuickAdd}
-            aria-label="Add value"
+            aria-label="Añadir valor"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            <span className="hidden sm:inline">Add</span>
+            <span className="hidden sm:inline">Añadir</span>
           </button>
           {user && (
             <UserMenu user={user} onNavigate={onNavigate} onLogout={onLogout} />
@@ -59,20 +59,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          {isSyncing ? 'Sync...' : 'Sync'}
+          {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
         </button>
         <button
           onClick={() => onNavigate('activity')}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'activity' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
         >
-          Activity
+          Actividad
         </button>
         {isFeatureEnabled('reports') && (
           <button
             onClick={() => onNavigate('reports')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'reports' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
           >
-            Reports
+            Reportes
           </button>
         )}
         {isAdmin && (
@@ -85,7 +85,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         )}
         <button
           onClick={() => onNavigate('settings')}
-          aria-label="Settings"
+          aria-label="Ajustes"
           className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 whitespace-nowrap"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

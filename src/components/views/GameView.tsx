@@ -271,7 +271,7 @@ export const GameView: React.FC<GameViewProps> = ({
   if (!currentAssociation) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-slate-500">Loading...</div>
+        <div className="text-slate-500">Cargando...</div>
       </div>
     );
   }

@@ -7,14 +7,14 @@ interface CustomCreationSectionProps {
 export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ onCreateCustom }) => {
   return (
     <div className="border-2 border-dashed border-indigo-200 bg-slate-50 rounded-2xl p-8">
-      <h3 className="text-xl font-bold text-gray-900 mb-1">🛠️ ¿Preferís cargar tu propio material?</h3>
-      <p className="text-sm text-gray-500 mb-6">Creá tu propia lista con el método que prefieras.</p>
+      <h3 className="text-xl font-bold text-gray-900 mb-1">🛠️ ¿Prefieres cargar tu propio material?</h3>
+      <p className="text-sm text-gray-500 mb-6">Crea tu propia lista con el método que prefieras.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 border border-gray-100">
           <span className="text-2xl mb-2 block">📋</span>
           <p className="font-bold text-sm text-gray-900">CSV / Copiar y Pegar</p>
-          <p className="text-xs text-gray-500 mt-1">Pegá desde Excel o Google Sheets</p>
+          <p className="text-xs text-gray-500 mt-1">Pega desde Excel o Google Sheets</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-gray-100 relative">
           <span className="absolute top-3 right-3 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded">
@@ -22,7 +22,7 @@ export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ on
           </span>
           <span className="text-2xl mb-2 block">🤖</span>
           <p className="font-bold text-sm text-gray-900">Generar con IA</p>
-          <p className="text-xs text-gray-500 mt-1">Creá listas por temas automáticamente</p>
+          <p className="text-xs text-gray-500 mt-1">Crea listas por temas automáticamente</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-gray-100">
           <span className="text-2xl mb-2 block">✍️</span>
@@ -35,12 +35,12 @@ export const CustomCreationSection: React.FC<CustomCreationSectionProps> = ({ on
         <div className="bg-white rounded-xl p-4 border border-gray-100">
           <span className="text-2xl mb-2 block">📺</span>
           <p className="font-bold text-sm text-gray-900">Desde YouTube</p>
-          <p className="text-xs text-gray-500 mt-1">Pegá una URL y generamos vocabulario automáticamente</p>
+          <p className="text-xs text-gray-500 mt-1">Pega una URL y generamos vocabulario automáticamente</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-gray-100">
           <span className="text-2xl mb-2 block">📝</span>
           <p className="font-bold text-sm text-gray-900">Texto Libre</p>
-          <p className="text-xs text-gray-500 mt-1">Pegá un artículo, transcripción o texto y generamos vocabulario automáticamente</p>
+          <p className="text-xs text-gray-500 mt-1">Pega un artículo, transcripción o texto y generamos vocabulario automáticamente</p>
         </div>
       </div>
 
