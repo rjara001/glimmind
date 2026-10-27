@@ -154,7 +154,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 shadow-lg">
         <h2 className="text-2xl font-bold text-white mb-1">¡Bienvenido a tu Tienda de Barajas!</h2>
         <p className="text-white/80 text-sm">
-          Explorá nuestro catálogo, revisá las tarjetas y cargalas a tu espacio en 1 clic.
+          Explora nuestro catálogo, revisa las tarjetas y cárgalas a tu espacio en 1 clic.
         </p>
       </div>
 

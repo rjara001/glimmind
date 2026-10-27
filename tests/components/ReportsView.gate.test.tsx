@@ -47,9 +47,9 @@ describe('feature flag: reports', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('History')).toBeInTheDocument();
-      expect(screen.getByText('Settings')).toBeInTheDocument();
+      expect(screen.getByText('Panel')).toBeInTheDocument();
+      expect(screen.getByText('Actividad')).toBeInTheDocument();
+      expect(screen.getByText('Ajustes')).toBeInTheDocument();
     });
   });
 
