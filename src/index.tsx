@@ -5,6 +5,7 @@ import App from './App';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { flushEventQueue, installGlobalEventHandlers } from './services/errorReporting';
 import './index.css';
+import './i18n';
 
 installGlobalEventHandlers();
 void flushEventQueue();
