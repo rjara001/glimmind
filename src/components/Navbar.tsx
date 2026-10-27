@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { UserMenu } from './layout/UserMenu';
+import { LanguageSelector } from './layout/LanguageSelector';
 import { APP_VERSION } from '../constants/version';
 import { isFeatureEnabled } from '../constants/featureFlags';
 
@@ -101,6 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onLogout }) => {
           </div>
 
           <div className="flex items-center gap-3">
+            <LanguageSelector variant="compact" />
             <UserMenu
               user={user}
               onNavigate={handleNavClick}

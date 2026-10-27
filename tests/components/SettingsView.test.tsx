@@ -9,6 +9,7 @@ import { GUEST_UID } from '@/constants/app';
 import { PREMIUM_POLL_INTERVAL_MS, PREMIUM_POLL_TIMEOUT_MS } from '@/constants/premium';
 import { stripeService } from '@/services/stripe';
 import type { UserQuota } from '@/types/quota';
+import i18n from '@/i18n';
 
 vi.mock('@/services/stripe', () => ({
   stripeService: {
@@ -42,9 +43,12 @@ const AUTHED_USER = {
 describe('SettingsView', () => {
   const onBack = vi.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
+    await act(async () => {
+      await i18n.changeLanguage('es');
+    });
     useGameStore.setState({ settings: { ...DEFAULT_SETTINGS } });
     vi.mocked(stripeService.createCheckoutSession).mockResolvedValue(CHECKOUT_URL);
   });
