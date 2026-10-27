@@ -4,7 +4,7 @@ import { createDeckFromPaste, loginAsGuest, openGame } from './helpers';
 test('activity history records answers once enabled in settings', async ({ page }) => {
   await loginAsGuest(page);
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes', exact: true }).click();
   await expect(page).toHaveURL(/\/settings/);
 
   const historySwitch = page.getByRole('switch', { name: 'Registro de historial' });
@@ -12,7 +12,7 @@ test('activity history records answers once enabled in settings', async ({ page 
   await historySwitch.click();
   await expect(historySwitch).toHaveAttribute('aria-checked', 'true');
 
-  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
+  await page.getByRole('button', { name: 'Panel', exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
   await createDeckFromPaste(page, 'Mazo Historial');
@@ -40,10 +40,10 @@ test('activity history records answers once enabled in settings', async ({ page 
 
   // Known bug (parked in docs/issues/P1): "Regresar al panel" navigates back to
   // /game on the first play of a session. Use the Navbar instead.
-  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
+  await page.getByRole('button', { name: 'Panel', exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
-  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await page.getByRole('button', { name: 'Actividad', exact: true }).click();
   await expect(page).toHaveURL(/\/activity/);
   await expect(page.getByRole('heading', { name: 'Actividad', exact: true })).toBeVisible();
   await expect(page.getByText(/Correcta: /).first()).toBeVisible();
