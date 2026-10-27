@@ -3,7 +3,8 @@ import type { Association, AssociationList } from "../../types";
 import type { ImportValidationResult, CardCategory } from "../../services/importValidationService";
 import type { BulkCreateHandler } from "../../types/list-service";
 import { useGameStore } from "../../store/gameStore";
-import { QuotaService, resolveTierForGate, QUOTA_UNKNOWN_MESSAGE } from "../../services/quotaService";
+import { QuotaService, resolveTierForGate } from "../../services/quotaService";
+import i18n from "../../i18n";
 import { normalizeAssociations, AssociationLike, parseDefinitions } from "../../utils/normalizeAssociation";
 import { translationService } from "../../services/translationService";
 import { validateImportCards } from "../../services/importValidationService";
@@ -122,7 +123,7 @@ export function useListEditorActions(
       const { quota: currentQuota, lists: currentLists, user: currentUser } = useGameStore.getState();
       const gate = resolveTierForGate(currentQuota, currentUser?.uid);
       if (!gate.known) {
-        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        showToast(i18n.t("errors.no_pudimos_verificar_tu_plan_revisa_tu_con"), "error");
         return false;
       }
       const tier = gate.tier;
@@ -134,7 +135,7 @@ export function useListEditorActions(
 
       if (status.level === "blocked") {
         showToast(
-          `Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`,
+          i18n.t("errors.llegaste_a_tu_limite_de_tarjetas_elimina_o", { maxCards: status.maxCards }),
           "error",
         );
         return false;
@@ -150,7 +151,7 @@ export function useListEditorActions(
       // (see docs/issues/P0/2026-10-15-updateListFields-corrompe-associations.md).
       if (!allowEmpty && cleanedAssociations.length === 0) {
         showToast(
-          "No se guardó: el mazo quedaría sin tarjetas. Si quieres eliminarlo, bórralo desde el panel.",
+          i18n.t("errors.no_se_guardo_el_mazo_quedaria_sin_tarjetas"),
           "error",
         );
         return false;
@@ -165,14 +166,14 @@ export function useListEditorActions(
         const projectedStatus = QuotaService.getStatus(projected, tier);
         if (projectedStatus.level === "blocked") {
           showToast(
-            `Llegaste a tu límite de ${projectedStatus.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`,
+            i18n.t("errors.llegaste_a_tu_limite_de_tarjetas_elimina_o", { maxCards: projectedStatus.maxCards }),
             "error",
           );
           return false;
         }
         if (projectedStatus.level === "danger") {
           showToast(
-            `Te quedan solo ${projectedStatus.remainingCards} tarjetas disponibles`,
+            i18n.t("errors.te_quedan_solo_tarjetas_disponibles", { remainingCards: projectedStatus.remainingCards }),
             "error",
           );
         }
@@ -193,7 +194,7 @@ export function useListEditorActions(
   const handleSave = useCallback(async () => {
     if (isSaving) return;
     if (!editList.name.trim()) {
-      showToast("⚠️ Ponle un nombre a tu mazo antes de guardar.", "error");
+      showToast(i18n.t("errors.ponle_un_nombre_a_tu_mazo_antes_de_guardar"), "error");
       document.getElementById("list-name")?.focus();
       return;
     }
@@ -203,7 +204,7 @@ export function useListEditorActions(
       if (saved && pendingSaveRef.current) {
         await pendingSaveRef.current;
       }
-      showToast("Lista guardada", "success");
+      showToast(i18n.t("errors.lista_guardada"), "success");
     } finally {
       setIsSaving(false);
     }
@@ -222,7 +223,7 @@ export function useListEditorActions(
     const { quota: currentQuota, lists: currentLists, user: currentUser } = useGameStore.getState();
     const gate = resolveTierForGate(currentQuota, currentUser?.uid);
     if (!gate.known) {
-      showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+      showToast(i18n.t("errors.no_pudimos_verificar_tu_plan_revisa_tu_con"), "error");
       return;
     }
     const status = QuotaService.getStatus(
@@ -231,7 +232,7 @@ export function useListEditorActions(
     );
     if (status.level === "blocked") {
       showToast(
-        `Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`,
+        i18n.t("errors.llegaste_a_tu_limite_de_tarjetas_elimina_o", { maxCards: status.maxCards }),
         "error",
       );
       return;
@@ -321,7 +322,7 @@ export function useListEditorActions(
 
     const user = useGameStore.getState().user;
     if (!user) {
-      showToast("Debes iniciar sesión para traducir.", "error");
+      showToast(i18n.t("errors.debes_iniciar_sesion_para_traducir"), "error");
       return;
     }
 
@@ -357,18 +358,21 @@ export function useListEditorActions(
       onSave(updatedList);
 
       if (response.quotaExceeded) {
-        showToast("Se agotó la cuota de traducción.", "error");
+        showToast(i18n.t("errors.se_agoto_la_cuota_de_traduccion"), "error");
       } else {
         setTranslationUsed((prev) => prev + response.consumedChars);
         const remaining = response.userRemainingChars;
         showToast(
-          `Traducidas ${response.translations.length} tarjetas. Quedan ${remaining} caracteres.`,
+          i18n.t("errors.traducidas_tarjetas_quedan_caracteres", {
+            translatedCards: response.translations.length,
+            remainingChars: remaining,
+          }),
           "success",
         );
       }
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "Error al traducir.",
+        error instanceof Error ? error.message : i18n.t("errors.error_al_traducir"),
         "error",
       );
     } finally {
@@ -392,7 +396,7 @@ export function useListEditorActions(
     if (selectedAssociations.length === 0) return;
     const fileName = `${editList.name.replace(/[^a-zA-Z0-9]/g, "_")}_export.csv`;
     downloadAssociationsCsv(selectedAssociations, fileName, csvHeader);
-    showToast(`Exportadas ${selectedAssociations.length} tarjetas`, "success");
+    showToast(i18n.t("errors.exportadas_tarjetas", { exportedCards: selectedAssociations.length }), "success");
   }, [editList, selectedIds, csvHeader, showToast]);
 
   const handleDeleteSelected = useCallback(() => {
@@ -432,7 +436,7 @@ export function useListEditorActions(
         setNameError(true);
         document.getElementById("list-name")?.focus();
         showToast(
-          "⚠️ Ponle un nombre a tu mazo antes de importar.",
+          i18n.t("errors.ponle_un_nombre_a_tu_mazo_antes_de_importa"),
           "error",
         );
         return;
@@ -440,7 +444,7 @@ export function useListEditorActions(
       const { quota: currentQuota, user: currentUser } = useGameStore.getState();
       const gate = resolveTierForGate(currentQuota, currentUser?.uid);
       if (!gate.known) {
-        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        showToast(i18n.t("errors.no_pudimos_verificar_tu_plan_revisa_tu_con"), "error");
         return;
       }
       const status = QuotaService.getStatus(
@@ -449,7 +453,7 @@ export function useListEditorActions(
       );
       if (status.level === "blocked") {
         showToast(
-          `Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`,
+          i18n.t("errors.llegaste_a_tu_limite_de_tarjetas_elimina_o", { maxCards: status.maxCards }),
           "error",
         );
         return;
@@ -532,7 +536,7 @@ export function useListEditorActions(
         }
 
         if (toImport.length === 0) {
-          showToast("⚠️ No hay tarjetas para importar.", "error");
+          showToast(i18n.t("errors.no_hay_tarjetas_para_importar"), "error");
           setShowValidationScreen(false);
           return;
         }
@@ -544,7 +548,7 @@ export function useListEditorActions(
         const accepted = truncated ? toImport.slice(0, importLimit!) : toImport;
         const discarded = toImport.length - accepted.length;
         const discardedNote = truncated
-          ? ` (${discarded} fuera por tu límite)`
+          ? i18n.t("errors.fuera_por_tu_limite", { discarded })
           : "";
 
         // Create mode: the whole payload goes in ONE bulk request. The server
@@ -553,7 +557,7 @@ export function useListEditorActions(
         // (20 decks x 100 cards = 2000 cards, then HTTP 429).
         if (isCreateMode) {
           if (!onBulkCreate) {
-            showToast("⚠️ No se puede importar en este modo.", "error");
+            showToast(i18n.t("errors.no_se_puede_importar_en_este_modo"), "error");
             setShowValidationScreen(false);
             return;
           }
@@ -570,8 +574,12 @@ export function useListEditorActions(
           }
           showToast(
             ids.length === 1
-              ? `✅ ${accepted.length} tarjetas importadas${discardedNote}`
-              : `✅ ${accepted.length} tarjetas importadas en ${ids.length} mazos${discardedNote}`,
+              ? i18n.t("errors.tarjetas_importadas", { importedCards: accepted.length, note: discardedNote })
+              : i18n.t("errors.tarjetas_importadas_en_mazos", {
+                  importedCards: accepted.length,
+                  deckCount: ids.length,
+                  note: discardedNote,
+                }),
             "success",
           );
           setShowValidationScreen(false);
@@ -587,14 +595,14 @@ export function useListEditorActions(
         if (deckCount === 1) {
           const updated = { ...editList, associations: [...editList.associations, ...accepted] };
           await onSave(updated);
-          showToast(`✅ ${accepted.length} tarjetas importadas${discardedNote}`, "success");
+          showToast(i18n.t("errors.tarjetas_importadas", { importedCards: accepted.length, note: discardedNote }), "success");
           setShowValidationScreen(false);
           onBack();
           return;
         }
 
         if (!onCreateMultiple) {
-          showToast("⚠️ No se puede dividir en múltiples mazos.", "error");
+          showToast(i18n.t("errors.no_se_puede_dividir_en_multiples_mazos"), "error");
           setShowValidationScreen(false);
           return;
         }
@@ -611,7 +619,11 @@ export function useListEditorActions(
         // (docs/issues/done/2026-10-15-splitlist-borra-mazo-original.md).
         await onCreateMultiple(groups, editList.id);
 
-        showToast(`✅ ${accepted.length} tarjetas importadas en ${deckCount} mazos${discardedNote}`, "success");
+        showToast(i18n.t("errors.tarjetas_importadas_en_mazos", {
+          importedCards: accepted.length,
+          deckCount,
+          note: discardedNote,
+        }), "success");
         setShowValidationScreen(false);
         onBack();
       } finally {

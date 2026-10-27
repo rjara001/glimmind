@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CountdownTimerProps } from '../../types/countdown-timer-props';
 
 const TICK_INTERVAL_MS = 1000;
@@ -14,6 +15,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   className = '',
   ariaLabel,
 }) => {
+  const { t } = useTranslation();
   const [remaining, setRemaining] = useState(seconds);
   const onCompleteRef = useRef(onComplete);
 
@@ -51,7 +53,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
     <div
       role="status"
       aria-live="polite"
-      aria-label={ariaLabel ?? `Auto advance in ${remaining} seconds`}
+      aria-label={ariaLabel ?? t('nav.auto_advance_in_seconds', { seconds: remaining })}
       className={`pointer-events-none ${className}`}
     >
       <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md shadow-black/10 ring-1 ring-indigo-200 backdrop-blur-sm">

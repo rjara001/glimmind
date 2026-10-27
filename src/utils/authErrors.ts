@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 export interface AuthLoginError {
   code?: string;
   message?: string;
@@ -33,33 +35,35 @@ export function isUserCancellation(error: unknown): boolean {
   return err?.code === 'auth/popup-closed-by-user';
 }
 
-const FRIENDLY_MESSAGES: Record<string, string> = {
-  'auth/popup-blocked': 'El navegador bloqueó la ventana de acceso. Se intentó redirigir automáticamente.',
-  'auth/cancelled-popup-request': 'Se canceló una ventana de acceso anterior. Intenta de nuevo.',
-  'auth/popup-closed-by-user': 'Cerraste la ventana de acceso.',
-  'auth/web-storage-unsupported': 'Este navegador bloquea el almacenamiento local requerido para iniciar sesión.',
-  'auth/network-request-failed': 'Error de red. Revisá tu conexión.',
-  'auth/too-many-requests': 'Demasiados intentos fallidos. Esperá un momento e intentá de nuevo.',
-  'auth/unauthorized-domain': 'Dominio no autorizado para iniciar sesión.',
-  'auth/operation-not-allowed': 'El proveedor de acceso no está habilitado en el proyecto.',
-  'auth/account-exists-with-different-credential': 'Ya existe una cuenta con ese correo usando otro método.',
-  'auth/user-disabled': 'Esta cuenta está deshabilitada.',
-};
+const FRIENDLY_MESSAGE_KEYS = {
+  'auth/popup-blocked': 'errors.el_navegador_bloqueo_la_ventana_de_acceso_',
+  'auth/cancelled-popup-request': 'errors.se_cancelo_una_ventana_de_acceso_anterior_',
+  'auth/popup-closed-by-user': 'errors.cerraste_la_ventana_de_acceso',
+  'auth/web-storage-unsupported': 'errors.este_navegador_bloquea_el_almacenamiento_l',
+  'auth/network-request-failed': 'errors.error_de_red_revisa_tu_conexion',
+  'auth/too-many-requests': 'errors.demasiados_intentos_fallidos_espera_un_mom',
+  'auth/unauthorized-domain': 'errors.dominio_no_autorizado_para_iniciar_sesion',
+  'auth/operation-not-allowed': 'errors.el_proveedor_de_acceso_no_esta_habilitado_',
+  'auth/account-exists-with-different-credential': 'errors.ya_existe_una_cuenta_con_ese_correo_usando',
+  'auth/user-disabled': 'errors.esta_cuenta_esta_deshabilitada',
+} as const;
+
+type FriendlyAuthCode = keyof typeof FRIENDLY_MESSAGE_KEYS;
 
 export function describeAuthError(error: unknown): string {
   const err = error as AuthLoginError | null;
 
   if (isCoopIsolationError(error)) {
-    return 'Login no disponible en este navegador (aislamiento de origen). Probá con otro navegador o ventana privada.';
+    return i18n.t('errors.login_no_disponible_en_este_navegador_aisl');
   }
 
   const code = err?.code;
-  if (code && FRIENDLY_MESSAGES[code]) {
-    return FRIENDLY_MESSAGES[code];
+  if (code && code in FRIENDLY_MESSAGE_KEYS) {
+    return i18n.t(FRIENDLY_MESSAGE_KEYS[code as FriendlyAuthCode]);
   }
 
   if (code) {
-    return `Error de autenticación (${code}).`;
+    return i18n.t('errors.error_de_autenticacion', { code });
   }
-  return 'No pudimos iniciar sesión. Intentá de nuevo.';
+  return i18n.t('errors.no_pudimos_iniciar_sesion_intenta_de_nuevo');
 }

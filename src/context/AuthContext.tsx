@@ -11,6 +11,7 @@ import {
 import { auth } from '../firebase';
 import { GUEST_ID } from '../constants/app';
 import { safeGetItem, safeRemoveItem } from '../utils/localStorage';
+import i18n from '../i18n';
 import type { AppUser } from '../types';
 
 interface AuthContextValue {
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async (email: string, password: string) => {
     if (!auth) {
-      setError('Autenticación de Firebase no inicializada');
+      setError(i18n.t('auth.autenticacion_de_firebase_no_inicializada'));
       return;
     }
 
@@ -96,27 +97,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(mapFirebaseUser(result.user));
     } catch (err) {
       const authError = err as AuthError;
-      let message = 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+      let message = i18n.t('auth.no_se_pudo_iniciar_sesion_intentalo_de_nue');
 
       switch (authError.code) {
         case 'auth/user-not-found':
-          message = 'No hay ninguna cuenta con este correo.';
+          message = i18n.t('auth.no_hay_ninguna_cuenta_con_este_correo');
           break;
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          message = 'Correo o contraseña incorrectos.';
+          message = i18n.t('auth.correo_o_contrasena_incorrectos');
           break;
         case 'auth/invalid-email':
-          message = 'Correo electrónico no válido.';
+          message = i18n.t('auth.correo_electronico_no_valido');
           break;
         case 'auth/user-disabled':
-          message = 'Esta cuenta está deshabilitada.';
+          message = i18n.t('auth.esta_cuenta_esta_deshabilitada');
           break;
         case 'auth/too-many-requests':
-          message = 'Demasiados intentos fallidos. Inténtalo de nuevo más tarde.';
+          message = i18n.t('auth.demasiados_intentos_fallidos_intentalo_de_');
           break;
         case 'auth/network-request-failed':
-          message = 'Error de red. Revisa tu conexión.';
+          message = i18n.t('auth.error_de_red_revisa_tu_conexion');
           break;
       }
 
@@ -135,7 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
     } catch (err) {
       console.error('Logout failed:', err);
-      setError('No se pudo cerrar sesión. Inténtalo de nuevo.');
+      setError(i18n.t('auth.no_se_pudo_cerrar_sesion_intentalo_de_nuevo'));
     }
   }, []);
 
@@ -153,7 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error(i18n.t('auth.useauth_must_be_used_within_an_authprovide'));
   }
   return context;
 };

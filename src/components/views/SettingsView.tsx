@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { isFeatureEnabled } from '../../constants/featureFlags';
@@ -28,6 +29,7 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
+  const { t } = useTranslation();
   const settings = useGameStore((state) => state.settings);
   const setSettings = useGameStore((state) => state.setSettings);
   const user = useGameStore((state) => state.user);
@@ -172,7 +174,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={onBack}
-          aria-label="Volver"
+          aria-label={t('settings.volver')}
           className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -180,8 +182,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
           </svg>
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Configuración</h2>
-          <p className="text-sm text-gray-500">Preferencias generales de tu entorno.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('settings.configuracion')}</h2>
+          <p className="text-sm text-gray-500">
+            {t('settings.preferencias_generales_de_tu_entorno')}
+          </p>
         </div>
       </div>
 
@@ -189,18 +193,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-bold text-gray-900">Premium</h3>
+              <h3 className="font-bold text-gray-900">{t('settings.premium')}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Desbloquear 5000 tarjetas activas, voces HD y sincronización prioritaria.
+                {t('settings.desbloquear_5000_tarjetas_activas_voces_hd')}
               </p>
             </div>
             {isPremium ? (
               <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1 flex-shrink-0">
-                Plan Premium
+                {t('settings.plan_premium')}
               </span>
             ) : (
               <span className="text-xs font-semibold text-gray-500 bg-gray-50 border border-slate-200 rounded-full px-3 py-1 flex-shrink-0">
-                Plan gratuito
+                {t('settings.plan_gratuito')}
               </span>
             )}
           </div>
@@ -218,14 +222,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
                 disabled={isCheckoutPending}
                 className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold transition hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isGuest ? 'Iniciá sesión para actualizar' : 'Actualizar a Premium'}
+                {isGuest
+                  ? t('settings.inicia_sesion_para_actualizar')
+                  : t('settings.actualizar_a_premium')}
               </button>
             </div>
           )}
 
           {isPremium && (
             <p className="text-xs text-gray-400 mt-4">
-              Pago único. Tu plan Premium no se renueva ni cobra de nuevo.
+              {t('settings.pago_unico_tu_plan_premium_no_se_renueva_n')}
             </p>
           )}
         </div>
@@ -234,37 +240,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
         <div className="p-6 flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-bold text-gray-900">Registro de historial</h3>
+            <h3 className="font-bold text-gray-900">
+              {t('settings.registro_de_historial')}
+            </h3>
             <p className="text-sm text-gray-500 mt-1">
-              Registra la actividad de tus tarjetas: movimientos entre listas, ediciones de
-              valor1/valor2 y el avance en los niveles del juego (nueva, vista, reconocida,
-              conocida, aprendida).
+              {t('settings.registra_la_actividad_de_tus_tarjetas_movi')}
             </p>
             {settings.activityHistoryEnabled ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
                 {isFeatureEnabled('reports') ? (
-                  <>
-                    Activo. A partir de ahora se registra la actividad de tus tarjetas y las
-                    vistas de Actividad, Resumen de juegos y Ranking estarán disponibles.
-                  </>
+                  <>{t('settings.activo_a_partir_de_ahora_se_registra_la_ac')}</>
                 ) : (
-                  <>
-                    Activo. Se registra la actividad de tus tarjetas y la vista de Actividad
-                    estará disponible.
-                  </>
+                  <>{t('settings.activo_se_registra_la_actividad_de_tus_tar')}</>
                 )}
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-2">
-                Desactivado por defecto. Tus tarjetas no registran actividad ni contadores de
-                partidas.
+                {t('settings.desactivado_por_defecto_tus_tarjetas_no_re')}
               </p>
             )}
           </div>
           <button
             role="switch"
             aria-checked={settings.activityHistoryEnabled}
-            aria-label="Registro de historial"
+            aria-label={t('settings.registro_de_historial')}
             onClick={handleToggleHistory}
             className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
               settings.activityHistoryEnabled ? 'bg-indigo-600' : 'bg-slate-200'
@@ -282,29 +281,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
         <div className="p-6 flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-bold text-gray-900">Grabación de audio</h3>
+            <h3 className="font-bold text-gray-900">{t('settings.grabacion_de_audio')}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Guarda los audios de tus intentos en modo voz, separados por acierto y error.
-              Temporal: los archivos se eliminan automáticamente.
+              {t('settings.guarda_los_audios_de_tus_intentos_en_modo_')}
             </p>
             {!isPremium ? (
               <p className="text-xs text-indigo-600 mt-2 font-medium">
-                Función Premium. Actualizá tu plan para guardar tus audios en la nube.
+                {t('settings.funcion_premium_actualiza_tu_plan_para_gua')}
               </p>
             ) : settings.audioRecordingEnabled ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
-                Activo. Las grabaciones se suben a la nube y se eliminan de forma automática.
+                {t('settings.activo_las_grabaciones_se_suben_a_la_nube_')}
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-2">
-                Desactivado por defecto. No se guardan audios.
+                {t('settings.desactivado_por_defecto_no_se_guardan_audi')}
               </p>
             )}
           </div>
           <button
             role="switch"
             aria-checked={settings.audioRecordingEnabled}
-            aria-label="Grabación de audio"
+            aria-label={t('settings.grabacion_de_audio')}
             onClick={handleToggleAudioRecording}
             disabled={!isPremium}
             className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
@@ -323,26 +321,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
         <div className="p-6 flex items-start justify-between gap-4">
           <div>
-            <h3 className="font-bold text-gray-900">Fallback de reconocimiento de voz</h3>
+            <h3 className="font-bold text-gray-900">
+              {t('settings.fallback_de_reconocimiento_de_voz')}
+            </h3>
             <p className="text-sm text-gray-500 mt-1">
-              Si el reconocimiento del navegador falla hasta 3 veces seguidas, se activa
-              automáticamente un reconocimiento externo para intentar leer tu respuesta.
+              {t('settings.si_el_reconocimiento_del_navegador_falla_h')}
             </p>
             {settings.voiceSttFallback ? (
               <p className="text-xs text-amber-600 mt-2 font-medium">
-                Activo. Tenés hasta 3 intentos antes de que se intente el reconocimiento externo.
+                {t('settings.activo_tenes_hasta_3_intentos_antes_de_que')}
               </p>
             ) : (
               <p className="text-xs text-gray-400 mt-2">
-                Desactivado por defecto. Si falla el reconocimiento del navegador, la respuesta
-                se considera incorrecta sin intentos adicionales.
+                {t('settings.desactivado_por_defecto_si_falla_el_recono')}
               </p>
             )}
           </div>
           <button
             role="switch"
             aria-checked={settings.voiceSttFallback}
-            aria-label="Fallback de reconocimiento de voz"
+            aria-label={t('settings.fallback_de_reconocimiento_de_voz')}
             onClick={handleToggleFallback}
             className={`relative inline-flex flex-shrink-0 h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
               settings.voiceSttFallback ? 'bg-indigo-600' : 'bg-slate-200'
@@ -359,10 +357,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-4">
         <div className="p-6">
-          <h3 className="font-bold text-gray-900">Máximo de tarjetas por mazo</h3>
+          <h3 className="font-bold text-gray-900">
+            {t('settings.maximo_de_tarjetas_por_mazo')}
+          </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Al importar texto, CSV o YouTube, si superás este límite se dividirá
-            automáticamente en varios mazos.
+            {t('settings.al_importar_texto_csv_o_youtube_si_superas')}
           </p>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[100, 300, 700, 1000].map((option) => (
@@ -381,7 +380,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
             ))}
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Valor actual: <span className="font-bold">{settings.maxCardsPerDeck}</span> tarjetas por mazo
+            {t('settings.valor_actual')} <span className="font-bold">{settings.maxCardsPerDeck}</span> {t('settings.tarjetas_por_mazo')}
           </p>
         </div>
       </div>

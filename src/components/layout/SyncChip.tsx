@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { LoadPhase } from '../../types/bootstrap-status';
 
 interface SyncChipProps {
@@ -9,6 +10,8 @@ interface SyncChipProps {
 }
 
 export function SyncChip({ label, loadingLabel, errorLabel, phase, onRetry }: SyncChipProps) {
+  const { t } = useTranslation();
+
   if (phase === 'idle') return null;
 
   if (phase === 'loading') {
@@ -39,7 +42,7 @@ export function SyncChip({ label, loadingLabel, errorLabel, phase, onRetry }: Sy
             onClick={onRetry}
             className="underline hover:no-underline font-semibold"
           >
-            Reintentar
+            {t('nav.reintentar_3')}
           </button>
         )}
       </span>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VocabularyResult, DeckSizeOption, VocabularyLevel } from '../../types/youtube-deck';
 import { youtubeDeckService } from '../../services/youtubeDeckService';
 import { useGameStore } from '../../store/gameStore';
@@ -6,16 +7,16 @@ import { FunctionCallError } from '../../services/callFunction';
 import { QuotaService } from '../../services/quotaService';
 import { useToast } from '../layout/Toast';
 import { GUEST_UID } from '../../constants/app';
-import { GuestFeatureRequiredError, GUEST_AI_SIGNUP_MESSAGE } from '../../errors/guestErrors';
+import { GuestFeatureRequiredError, getGuestAiSignupMessage } from '../../errors/guestErrors';
 
-const DECK_SIZE_OPTIONS: DeckSizeOption[] = [
-  { tier: 'express', label: 'Express', description: 'Rápido', terms: 20, costPercent: 15 },
-  { tier: 'standard', label: 'Standard', description: 'Recomendado', terms: 40, costPercent: 30 },
-  { tier: 'extended', label: 'Extended', description: 'Profundo', terms: 80, costPercent: 60 },
-  { tier: 'massive', label: 'Massive', description: 'Completo', terms: 150, costPercent: 100 },
-];
+const DECK_SIZE_OPTIONS = [
+  { tier: 'express', labelKey: 'store.express', descriptionKey: 'store.rapido', terms: 20, costPercent: 15 },
+  { tier: 'standard', labelKey: 'store.standard', descriptionKey: 'store.recomendado', terms: 40, costPercent: 30 },
+  { tier: 'extended', labelKey: 'store.extended', descriptionKey: 'store.profundo', terms: 80, costPercent: 60 },
+  { tier: 'massive', labelKey: 'store.massive', descriptionKey: 'store.completo', terms: 150, costPercent: 100 },
+] as const;
 
-const DEFAULT_TIER = DECK_SIZE_OPTIONS[1];
+const DEFAULT_TIER_INDEX = 1;
 const DEFAULT_LEVEL: VocabularyLevel = 'b2c1';
 
 const TIER_COLORS: Record<string, string> = {
@@ -33,18 +34,18 @@ const TIER_SELECTED_RING: Record<string, string> = {
 };
 
 const TARGET_LANGUAGES = [
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Alemán' },
-  { code: 'fr', label: 'Francés' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'pt', label: 'Portugués' },
-  { code: 'en', label: 'Inglés' },
-];
+  { code: 'es', labelKey: 'store.espanol' },
+  { code: 'de', labelKey: 'store.aleman' },
+  { code: 'fr', labelKey: 'store.frances' },
+  { code: 'it', labelKey: 'store.italiano' },
+  { code: 'pt', labelKey: 'store.portugues' },
+  { code: 'en', labelKey: 'store.ingles' },
+] as const;
 
-const LEVEL_OPTIONS: { value: VocabularyLevel; label: string; hint: string }[] = [
-  { value: 'b1', label: 'B1 Intermedio', hint: 'Vocabulario cotidiano y frases útiles' },
-  { value: 'b2c1', label: 'B2-C1 Avanzado', hint: 'Phrasal verbs, idioms y coloquialismos' },
-];
+const LEVEL_OPTIONS = [
+  { value: 'b1', labelKey: 'store.b1_intermedio', hintKey: 'store.vocabulario_cotidiano_y_frases_utiles' },
+  { value: 'b2c1', labelKey: 'store.b2_c1_avanzado', hintKey: 'store.phrasal_verbs_idioms_y_coloquialismos' },
+] as const;
 
 interface CreateYouTubeDeckModalProps {
   onClose: () => void;
@@ -52,13 +53,28 @@ interface CreateYouTubeDeckModalProps {
 }
 
 export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const quota = useGameStore((state) => state.quota);
   const isGuest = useGameStore((state) => state.user?.uid === GUEST_UID);
+
+  const deckSizeOptions = useMemo<DeckSizeOption[]>(
+    () =>
+      DECK_SIZE_OPTIONS.map((option) => ({
+        tier: option.tier,
+        label: t(option.labelKey),
+        description: t(option.descriptionKey),
+        terms: option.terms,
+        costPercent: option.costPercent,
+      })),
+    [t],
+  );
+  const defaultTier = deckSizeOptions[DEFAULT_TIER_INDEX];
+
   const [url, setUrl] = useState('');
   const [targetLanguage, setTargetLanguage] = useState('es');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [tier, setTier] = useState<DeckSizeOption>(DEFAULT_TIER);
+  const [tier, setTier] = useState<DeckSizeOption>(defaultTier);
   const [level, setLevel] = useState<VocabularyLevel>(DEFAULT_LEVEL);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +82,9 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
   const [manualTranscript, setManualTranscript] = useState('');
   const [isSubmittingFallback, setIsSubmittingFallback] = useState(false);
 
-  const effectiveMaxTerms = showAdvanced ? tier.terms : DEFAULT_TIER.terms;
+  const effectiveMaxTerms = showAdvanced ? tier.terms : defaultTier.terms;
   const effectiveLevel = showAdvanced ? level : DEFAULT_LEVEL;
-  const effectiveCost = showAdvanced ? tier.costPercent : DEFAULT_TIER.costPercent;
+  const effectiveCost = showAdvanced ? tier.costPercent : defaultTier.costPercent;
 
   const remainingPoints = quota ? Math.max(0, quota.ytAiDailyLimit - quota.ytAiUsedToday) : null;
   const remainingPercent = quota && quota.ytAiDailyLimit > 0
@@ -77,10 +93,10 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
 
   const affordableTierLabels = useMemo(() => {
     if (remainingPoints === null) return [];
-    return DECK_SIZE_OPTIONS
+    return deckSizeOptions
       .filter((option) => option.costPercent <= remainingPoints)
       .map((option) => option.label);
-  }, [remainingPoints]);
+  }, [remainingPoints, deckSizeOptions]);
 
   const quotaMessage = useMemo(() => {
     if (!quota || remainingPoints === null) return null;
@@ -107,11 +123,11 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
 
   const toggleAdvanced = useCallback(() => {
     if (showAdvanced) {
-      setTier(DEFAULT_TIER);
+      setTier(defaultTier);
       setLevel(DEFAULT_LEVEL);
     }
     setShowAdvanced(!showAdvanced);
-  }, [showAdvanced]);
+  }, [showAdvanced, defaultTier]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +144,7 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
 
     if (status.isAiBlocked) {
       const message = status.level === 'blocked'
-        ? `Llegaste al límite de tarjetas (${status.currentCards}/${status.maxCards}). Liberá espacio para usar IA.`
+        ? t('store.llegaste_al_limite_de_tarjetas_libera_espa', { currentCards: status.currentCards, maxCards: status.maxCards })
         : `Te quedan pocas tarjetas disponibles (${status.remainingCards}). Liberá espacio para usar IA.`;
       setError(message);
       showToast(message, 'error');
@@ -136,8 +152,8 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
     }
 
     if (isGuest) {
-      setError(GUEST_AI_SIGNUP_MESSAGE);
-      showToast(GUEST_AI_SIGNUP_MESSAGE, 'error');
+      setError(getGuestAiSignupMessage());
+      showToast(getGuestAiSignupMessage(), 'error');
       return;
     }
 
@@ -176,8 +192,8 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
       return;
     }
     if (isGuest) {
-      setError(GUEST_AI_SIGNUP_MESSAGE);
-      showToast(GUEST_AI_SIGNUP_MESSAGE, 'error');
+      setError(getGuestAiSignupMessage());
+      showToast(getGuestAiSignupMessage(), 'error');
       return;
     }
 
@@ -380,7 +396,7 @@ export const CreateYouTubeDeckModal: React.FC<CreateYouTubeDeckModalProps> = ({ 
 
           {isGuest && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <p className="text-amber-900 text-xs font-semibold">{GUEST_AI_SIGNUP_MESSAGE}</p>
+              <p className="text-amber-900 text-xs font-semibold">{getGuestAiSignupMessage()}</p>
               <p className="text-amber-700 text-[11px] mt-1">
                 Podés seguir creando y usando barajas en modo invitado; solo la generación con IA necesita cuenta.
               </p>

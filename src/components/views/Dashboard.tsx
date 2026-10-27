@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Association } from "../../types";
 import type { PrebuiltDeck } from "../../types/prebuilt-deck";
 import type { DashboardProps } from "../../types/dashboard";
@@ -34,6 +35,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isCreating: isCreatingProp,
   isSplitting,
 }) => {
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeckStore, setShowDeckStore] = useState(false);
@@ -110,7 +112,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const quotaStatus = quota ? QuotaService.getStatus(countCards(lists), quota.tier) : null;
   const createDisabled = quotaStatus?.level === "blocked" && !isPremium;
   const createTitle =
-    createDisabled && quotaStatus ? `Llegaste a tu límite de ${quotaStatus.maxCards} tarjetas` : undefined;
+    createDisabled && quotaStatus
+      ? t('dashboard.llegaste_a_tu_limite_de_tarjetas', { maxCards: quotaStatus.maxCards })
+      : undefined;
 
   if (listsPhase === "loading" && isFirstTime && !isCreating) {
     return (
@@ -125,7 +129,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <span className="text-sm font-medium text-gray-500">Cargando mazos…</span>
+          <span className="text-sm font-medium text-gray-500">{t('dashboard.cargando_mazos')}</span>
         </div>
       </div>
     );
@@ -135,16 +139,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return (
       <div className="max-w-5xl mx-auto p-6">
         <div role="alert" className="flex flex-col items-center justify-center py-24 gap-3">
-          <span className="text-sm font-medium text-red-700">No se pudieron actualizar tus mazos</span>
+          <span className="text-sm font-medium text-red-700">{t('dashboard.no_se_pudieron_actualizar_tus_mazos')}</span>
           <p className="text-xs text-gray-500">
-            {bootstrapStatus.error ?? "Revisa tu conexión e inténtalo de nuevo."}
+            {bootstrapStatus.error ?? t('dashboard.revisa_tu_conexion_e_intentalo_de_nuevo')}
           </p>
           <button
             type="button"
             onClick={() => retryBootstrapPart("lists")}
             className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition"
           >
-            Reintentar
+            {t('dashboard.reintentar')}
           </button>
         </div>
       </div>
@@ -171,7 +175,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onClick={handleCloseDeckStore}
             className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
           >
-            ← Volver al Dashboard
+            {t('dashboard.volver_al_dashboard')}
           </button>
         </div>
         <DeckStoreOnboarding
@@ -203,23 +207,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {!isFirstTime && (
         <div className="mb-6 flex flex-wrap gap-2">
           <SyncChip
-            label="Mazos sincronizados"
-            loadingLabel="Actualizando mazos…"
-            errorLabel="Mazos sin actualizar"
+            label={t('dashboard.mazos_sincronizados')}
+            loadingLabel={t('dashboard.actualizando_mazos')}
+            errorLabel={t('dashboard.mazos_sin_actualizar')}
             phase={listsPhase}
             onRetry={() => retryBootstrapPart("lists")}
           />
           <SyncChip
-            label="Ajustes sincronizados"
-            loadingLabel="Cargando ajustes…"
-            errorLabel="Ajustes no sincronizados"
+            label={t('dashboard.ajustes_sincronizados')}
+            loadingLabel={t('dashboard.cargando_ajustes')}
+            errorLabel={t('dashboard.ajustes_no_sincronizados')}
             phase={bootstrapStatus.settings}
             onRetry={() => retryBootstrapPart("settings")}
           />
           <SyncChip
-            label="Sincronizado con la nube"
-            loadingLabel="Sincronizando en la nube…"
-            errorLabel="Cambios pendientes de sincronizar"
+            label={t('dashboard.sincronizado_con_la_nube')}
+            loadingLabel={t('dashboard.sincronizando_en_la_nube')}
+            errorLabel={t('dashboard.cambios_pendientes_de_sincronizar')}
             phase={bootstrapStatus.sync}
             onRetry={() => retryBootstrapPart("sync")}
           />

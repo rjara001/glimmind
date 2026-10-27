@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import i18n from '../../i18n';
 
 interface Props {
   children: ReactNode;
@@ -42,14 +43,14 @@ export class ErrorBoundary extends Component<Props, State> {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Algo salió mal</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">{i18n.t('nav.algo_salio_mal')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Ocurrió un error inesperado. Puedes intentar de nuevo o recargar la página.
+              {i18n.t('nav.ocurrio_un_error_inesperado_puedes_intenta')}
             </p>
             {this.state.error && (
               <details className="mb-6 text-left">
                 <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">
-                  Ver detalles del error
+                  {i18n.t('nav.ver_detalles_del_error')}
                 </summary>
                 <pre className="mt-2 text-xs text-rose-600 bg-rose-50 p-3 rounded-lg overflow-auto max-h-32">
                   {this.state.error.message}
@@ -61,13 +62,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleRetry}
                 className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition"
               >
-                Reintentar
+                {i18n.t('nav.reintentar')}
               </button>
               <button
                 onClick={() => window.location.reload()}
                 className="px-6 py-2.5 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition"
               >
-                Recargar página
+                {i18n.t('nav.recargar_pagina')}
               </button>
             </div>
           </div>

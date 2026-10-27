@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { APP_VERSION } from '../../constants/version';
 import { isFeatureEnabled } from '../../constants/featureFlags';
 import { UserMenu } from './UserMenu';
@@ -25,6 +26,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onNavigate,
   onLogout,
 }) => {
+  const { t } = useTranslation();
   const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
   return (
@@ -37,13 +39,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onShowQuickAdd}
-            aria-label="Añadir valor"
+            aria-label={t('nav.anadir_valor')}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            <span className="hidden sm:inline">Añadir</span>
+            <span className="hidden sm:inline">{t('nav.anadir')}</span>
           </button>
           {user && (
             <UserMenu user={user} onNavigate={onNavigate} onLogout={onLogout} />
@@ -59,20 +61,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+          {isSyncing ? t('nav.sincronizando') : t('nav.sincronizar')}
         </button>
         <button
           onClick={() => onNavigate('activity')}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'activity' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
         >
-          Actividad
+          {t('nav.actividad_2')}
         </button>
         {isFeatureEnabled('reports') && (
           <button
             onClick={() => onNavigate('reports')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'reports' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
           >
-            Reportes
+            {t('nav.reportes_2')}
           </button>
         )}
         {isAdmin && (
@@ -80,12 +82,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             onClick={() => onNavigate('admin')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${view === 'admin' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600'}`}
           >
-            Admin
+            {t('nav.admin')}
           </button>
         )}
         <button
           onClick={() => onNavigate('settings')}
-          aria-label="Ajustes"
+          aria-label={t('nav.ajustes_2')}
           className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 whitespace-nowrap"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { useGameStore } from '../../store/gameStore';
 import { CardActivityEvent, CardActivityType } from '../../types/activity';
 import { LEVEL_LABELS } from '../../utils/activity';
@@ -8,16 +10,27 @@ interface HistoryViewProps {
   onGoToSettings: () => void;
 }
 
-const TYPE_LABELS: Record<CardActivityType, string> = {
-  card_created: 'Tarjeta creada',
-  card_updated: 'Tarjeta editada',
-  card_archived: 'Tarjeta archivada',
-  card_restored: 'Tarjeta restaurada',
-  card_deleted: 'Tarjeta eliminada',
-  card_moved: 'Tarjeta movida',
-  card_revealed: 'Tarjeta revelada',
-  card_answered: 'Respuesta',
-  card_level_up: 'Nivel alcanzado',
+type ActivityTypeLabelKey =
+  | 'dashboard.tipo_tarjeta_creada'
+  | 'dashboard.tipo_tarjeta_editada'
+  | 'dashboard.tipo_tarjeta_archivada'
+  | 'dashboard.tipo_tarjeta_restaurada'
+  | 'dashboard.tipo_tarjeta_eliminada'
+  | 'dashboard.tipo_tarjeta_movida'
+  | 'dashboard.tipo_tarjeta_revelada'
+  | 'dashboard.tipo_respuesta'
+  | 'dashboard.tipo_nivel_alcanzado';
+
+const TYPE_LABELS: Record<CardActivityType, ActivityTypeLabelKey> = {
+  card_created: 'dashboard.tipo_tarjeta_creada',
+  card_updated: 'dashboard.tipo_tarjeta_editada',
+  card_archived: 'dashboard.tipo_tarjeta_archivada',
+  card_restored: 'dashboard.tipo_tarjeta_restaurada',
+  card_deleted: 'dashboard.tipo_tarjeta_eliminada',
+  card_moved: 'dashboard.tipo_tarjeta_movida',
+  card_revealed: 'dashboard.tipo_tarjeta_revelada',
+  card_answered: 'dashboard.tipo_respuesta',
+  card_level_up: 'dashboard.tipo_nivel_alcanzado',
 };
 
 const TYPE_COLORS: Record<CardActivityType, string> = {
@@ -35,13 +48,18 @@ const TYPE_COLORS: Record<CardActivityType, string> = {
 function eventDescription(event: CardActivityEvent): string {
   switch (event.type) {
     case 'card_answered':
-      return `${event.correct ? 'Correcta' : 'Incorrecta'}: ${event.cardTerm}`;
+      return `${i18n.t(event.correct ? 'dashboard.correcta' : 'dashboard.incorrecta')}: ${event.cardTerm}`;
     case 'card_updated':
-      return `Valor ${event.field === 'term' ? '1' : '2'} de "${event.cardTerm}": "${event.before}" → "${event.after}"`;
+      return i18n.t('dashboard.evento_valor', {
+        value: event.field === 'term' ? '1' : '2',
+        term: event.cardTerm,
+        before: event.before,
+        after: event.after,
+      });
     case 'card_level_up':
-      return `${event.cardTerm} → ${event.toLevel ? LEVEL_LABELS[event.toLevel] : 'Nivel superior'}`;
+      return `${event.cardTerm} → ${event.toLevel ? LEVEL_LABELS[event.toLevel] : i18n.t('dashboard.nivel_superior')}`;
     case 'card_moved':
-      return `${event.cardTerm} → otra lista`;
+      return `${event.cardTerm} → ${i18n.t('dashboard.otra_lista')}`;
     default:
       return event.cardTerm;
   }
@@ -58,6 +76,7 @@ interface DayGroup {
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings }) => {
+  const { t } = useTranslation();
   const enabled = useGameStore((state) => state.settings.activityHistoryEnabled);
   const activity = useGameStore((state) => state.activity);
   const nextCursor = useGameStore((state) => state.activityNextCursor);
@@ -116,7 +135,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={onBack}
-          aria-label="Volver"
+          aria-label={t('dashboard.volver')}
           className="text-gray-400 hover:text-indigo-600 transition p-2 hover:bg-white rounded-full"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -124,20 +143,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings
           </svg>
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Actividad</h2>
-          <p className="text-sm text-gray-500">Historial de eventos de tus tarjetas.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('dashboard.actividad')}</h2>
+          <p className="text-sm text-gray-500">{t('dashboard.historial_de_eventos_de_tus_tarjetas')}</p>
         </div>
       </div>
 
       {!enabled ? (
         <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Historial desactivado</h3>
-          <p className="text-gray-500 mt-2">Activa el registro de historial en Configuración para empezar a registrar la actividad de tus tarjetas.</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('dashboard.historial_desactivado')}</h3>
+          <p className="text-gray-500 mt-2">{t('dashboard.activa_el_registro_de_historial_en_configu')}</p>
           <button
             onClick={onGoToSettings}
             className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
           >
-            Ir a Configuración
+            {t('dashboard.ir_a_configuracion')}
           </button>
         </div>
       ) : (
@@ -147,20 +166,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as CardActivityType | 'all')}
               className="px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
-              aria-label="Filtrar por tipo"
+              aria-label={t('dashboard.filtrar_por_tipo')}
             >
-              <option value="all">Todos los tipos</option>
+              <option value="all">{t('dashboard.todos_los_tipos')}</option>
               {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value}>{t(label)}</option>
               ))}
             </select>
             <select
               value={listFilter}
               onChange={(e) => setListFilter(e.target.value)}
               className="px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
-              aria-label="Filtrar por lista"
+              aria-label={t('dashboard.filtrar_por_lista')}
             >
-              <option value="all">Todas las listas</option>
+              <option value="all">{t('dashboard.todas_las_listas')}</option>
               {lists.map((list) => (
                 <option key={list.id} value={list.id}>{list.name}</option>
               ))}
@@ -169,16 +188,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack, onGoToSettings
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar tarjeta..."
+              placeholder={t('dashboard.buscar_tarjeta')}
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
-              aria-label="Buscar tarjeta"
+              aria-label={t('dashboard.buscar_tarjeta_label')}
             />
           </div>
 
           {dayGroups.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Sin actividad</h3>
-              <p className="text-gray-500 mt-2">Aún no hay eventos registrados para estos filtros.</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('dashboard.sin_actividad')}</h3>
+              <p className="text-gray-500 mt-2">{t('dashboard.aun_no_hay_eventos_registrados_para_estos_')}</p>
             </div>
           ) : (
             <div className="space-y-8">

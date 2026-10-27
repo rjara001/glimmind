@@ -4,7 +4,8 @@ import { listService } from "../../services/listService";
 import { listService as firestoreListService } from "../../services/firestoreService";
 import { Association, AssociationList } from "../../types";
 import type { AppView } from "../../types/app";
-import { QuotaService, resolveTierForGate, QUOTA_UNKNOWN_MESSAGE } from "../../services/quotaService";
+import { QuotaService, resolveTierForGate } from "../../services/quotaService";
+import i18n from "../../i18n";
 import { GUEST_UID, LAST_PLAYED_KEY } from "../../constants/app";
 import { MAX_CARDS_PER_DECK } from "../../constants/limits";
 import { splitAssociationsByMax } from "../../utils/splitAssociations";
@@ -80,7 +81,7 @@ export function useAppHandlers({
     setIsSyncing(true);
     try {
       await syncFromCloud();
-      showToast("Datos sincronizados desde la nube", "success");
+      showToast(i18n.t("errors.datos_sincronizados_desde_la_nube"), "success");
     } catch (error) {
       void logEvent("sync.error", {
         message: error instanceof Error ? error.message : String(error),
@@ -88,7 +89,7 @@ export function useAppHandlers({
         labels: { source: "useAppHandlers", action: "handleSyncFromCloud" },
       });
       showToast(
-        error instanceof Error ? error.message : "Error al sincronizar",
+        error instanceof Error ? error.message : i18n.t("errors.error_al_sincronizar"),
         "error",
       );
     } finally {
@@ -157,14 +158,14 @@ const handlePlayList = useCallback(
       );
       const gate = resolveTierForGate(quota, user?.uid);
       if (!gate.known) {
-        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        showToast(i18n.t("errors.no_pudimos_verificar_tu_plan_revisa_tu_con"), "error");
         return;
       }
       const status = QuotaService.getStatus(currentCards, gate.tier);
 
       if (status.level === "blocked") {
         showToast(
-          `Llegaste a tu límite de ${status.maxCards} tarjetas. Elimina o archiva tarjetas para añadir más.`,
+          i18n.t("errors.llegaste_a_tu_limite_de_tarjetas_elimina_o", { maxCards: status.maxCards }),
           "error",
         );
         return;
@@ -172,12 +173,15 @@ const handlePlayList = useCallback(
 
       if (status.level === "danger") {
         showToast(
-          `Te quedan solo ${status.remainingCards} tarjetas disponibles`,
+          i18n.t("errors.te_quedan_solo_tarjetas_disponibles", { remainingCards: status.remainingCards }),
           "error",
         );
       } else if (status.level === "warning") {
         showToast(
-          `Estás acercándote al límite de tarjetas (${status.currentCards}/${status.maxCards})`,
+          i18n.t("errors.estas_acercandote_al_limite_de_tarjetas", {
+            currentCards: status.currentCards,
+            maxCards: status.maxCards,
+          }),
           "info",
         );
       }
@@ -194,7 +198,7 @@ const handlePlayList = useCallback(
       useGameStore
         .getState()
         .updateAssociations(listId, [...(targetList.associations || []), newAssociation]);
-      showToast(`Agregado a "${targetList.name}"`, "success");
+      showToast(i18n.t("errors.agregado_a", { name: targetList.name }), "success");
     },
     [showToast, user],
   );
@@ -208,13 +212,15 @@ const handlePlayList = useCallback(
       const { lists, quota } = useGameStore.getState();
       const gate = resolveTierForGate(quota, user?.uid);
       if (!gate.known) {
-        showToast(QUOTA_UNKNOWN_MESSAGE, "error");
+        showToast(i18n.t("errors.no_pudimos_verificar_tu_plan_revisa_tu_con"), "error");
         return false;
       }
       const currentDecks = lists.length;
       if (QuotaService.canAddDecks(currentDecks, decksToAdd, gate.tier)) return true;
       showToast(
-        `Llegaste a tu límite de ${QuotaService.getMaxDecks(gate.tier)} mazos. Elimina o archiva mazos para crear más.`,
+        i18n.t("errors.llegaste_a_tu_limite_de_mazos_elimina_o_ar", {
+          maxDecks: QuotaService.getMaxDecks(gate.tier),
+        }),
         "error",
       );
       return false;
@@ -230,7 +236,7 @@ const handlePlayList = useCallback(
       settings?: Partial<AssociationList["settings"]>
     ): Promise<string | null> => {
       if (!user) {
-        showToast("Debes iniciar sesión para crear listas", "error");
+        showToast(i18n.t("errors.debes_iniciar_sesion_para_crear_listas"), "error");
         return null;
       }
       if (!deckGate(1)) return null;
@@ -273,7 +279,7 @@ const handlePlayList = useCallback(
         const currentLists = useGameStore.getState().lists;
         useGameStore.getState().setLists([...currentLists, newList]);
 
-        showToast("Mazo creado", "success");
+        showToast(i18n.t("errors.mazo_creado"), "success");
         return id;
       } catch (error) {
         void logEvent("list.create_error", {
@@ -282,7 +288,7 @@ const handlePlayList = useCallback(
           labels: { source: "useAppHandlers", action: "handleCreateList" },
         });
         showToast(
-          error instanceof Error ? error.message : "Error al crear el mazo",
+          error instanceof Error ? error.message : i18n.t("errors.error_al_crear_el_mazo"),
           "error",
         );
         return null;
@@ -306,7 +312,7 @@ const handlePlayList = useCallback(
   const handleBulkCreateLists = useCallback(
     async (input: BulkCreateRequest): Promise<string[] | null> => {
       if (!user) {
-        showToast("Debes iniciar sesión para crear listas", "error");
+        showToast(i18n.t("errors.debes_iniciar_sesion_para_crear_listas"), "error");
         return null;
       }
 
@@ -392,7 +398,7 @@ const handlePlayList = useCallback(
           labels: { source: "useAppHandlers", action: "handleBulkCreateLists" },
         });
         showToast(
-          error instanceof Error ? error.message : "Error al importar los mazos",
+          error instanceof Error ? error.message : i18n.t("errors.error_al_importar_los_mazos"),
           "error",
         );
         return null;
@@ -421,7 +427,7 @@ const handlePlayList = useCallback(
           );
 
           tracker?.add('parent: guest mode, skipping remote update');
-          showToast("Lista guardada", "success");
+          showToast(i18n.t("errors.lista_guardada"), "success");
           return;
         }
 
@@ -441,7 +447,7 @@ const handlePlayList = useCallback(
         );
         
         tracker?.add('parent: local store updated, showing toast');
-        showToast("Lista guardada", "success");
+        showToast(i18n.t("errors.lista_guardada"), "success");
         
         tracker?.add('parent: handleUpdateList completed successfully');
       } catch (error: unknown) {
@@ -494,26 +500,26 @@ const handlePlayList = useCallback(
       if (!user) return;
       if (!id) {
         // Don't allow deleting lists with empty IDs (create mode lists)
-        showToast("No se puede eliminar una lista sin guardar", "error");
+        showToast(i18n.t("errors.no_se_puede_eliminar_una_lista_sin_guardar"), "error");
         return;
       }
       setIsDeleting(true);
       try {
         if (user.uid === GUEST_UID) {
           removeListFromLocalStore(id);
-          showToast("Mazo eliminado (modo invitado)", "success");
+          showToast(i18n.t("errors.mazo_eliminado_modo_invitado"), "success");
           return;
         }
 
         await listService.deleteList(id);
         removeListFromLocalStore(id);
-        showToast("Mazo eliminado", "success");
+        showToast(i18n.t("errors.mazo_eliminado"), "success");
       } catch (error) {
         // If list doesn't exist in Firestore (e.g., local-only list), still remove from local store
-        const errorMessage = error instanceof Error ? error.message : "Error al eliminar";
+        const errorMessage = error instanceof Error ? error.message : i18n.t("errors.error_al_eliminar");
         if (errorMessage.toLowerCase().includes("not found") || errorMessage.toLowerCase().includes("no existe")) {
           removeListFromLocalStore(id);
-          showToast("Mazo eliminado (solo local)", "success");
+          showToast(i18n.t("errors.mazo_eliminado_solo_local"), "success");
         } else {
           void logEvent("list.delete_error", {
             message: errorMessage,
@@ -551,7 +557,7 @@ const handlePlayList = useCallback(
           ...cloudLists,
           ...currentLists.filter((l) => !cloudIds.has(l.id)),
         ]);
-        showToast("Mazos divididos correctamente", "success");
+        showToast(i18n.t("errors.mazos_divididos_correctamente"), "success");
       } catch (error) {
         void logEvent("list.split_error", {
           message: error instanceof Error ? error.message : String(error),
@@ -559,7 +565,7 @@ const handlePlayList = useCallback(
           labels: { source: "useAppHandlers", action: "handleCreateMultipleLists" },
         });
         showToast(
-          error instanceof Error ? error.message : "Error al dividir mazos",
+          error instanceof Error ? error.message : i18n.t("errors.error_al_dividir_mazos"),
           "error",
         );
       } finally {

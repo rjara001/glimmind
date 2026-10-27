@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/layout/Toast';
 
@@ -9,6 +10,7 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const { t } = useTranslation();
   const { login, error, clearError } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -30,7 +32,7 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      showToast('Welcome back!', 'success');
+      showToast(t('auth.welcome_back'), 'success');
       navigate(from, { replace: true });
     } catch {
       // Error handled by auth context effect
@@ -54,14 +56,14 @@ export const Login: React.FC = () => {
               <path d="M19 12h2" />
             </svg>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-1.5 tracking-tight">Welcome back</h1>
-          <p className="text-slate-500 font-medium text-sm">Sign in to continue to Glimmind</p>
+          <h1 className="text-3xl font-black text-slate-900 mb-1.5 tracking-tight">{t('auth.welcome_back_2')}</h1>
+          <p className="text-slate-500 font-medium text-sm">{t('auth.sign_in_to_continue_to_glimmind')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 space-y-5">
           <div>
             <label htmlFor="email" className="block text-sm font-semibold text-slate-700 mb-2">
-              Email
+              {t('auth.email')}
             </label>
             <input
               id="email"
@@ -78,7 +80,7 @@ export const Login: React.FC = () => {
 
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-2">
-              Password
+              {t('auth.password')}
             </label>
             <div className="relative">
               <input
@@ -97,7 +99,7 @@ export const Login: React.FC = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('auth.hide_password') : t('auth.show_password')}
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -125,17 +127,17 @@ export const Login: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <span>Signing in...</span>
-              </>
-            ) : (
-              'Sign in'
-            )}
+                  <span>{t('auth.signing_in')}</span>
+                </>
+              ) : (
+                t('auth.sign_in')
+              )}
           </button>
 
           <p className="text-center text-sm text-slate-500">
-            Don't have an account?{' '}
+            {t('auth.dont_have_an_account')}{' '}
             <a href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">
-              Sign up
+              {t('auth.sign_up')}
             </a>
           </p>
         </form>

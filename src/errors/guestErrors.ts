@@ -1,8 +1,11 @@
-export const GUEST_AI_SIGNUP_MESSAGE =
-  'La generación con IA requiere una cuenta. Crea tu usuario gratis para crear barajas desde YouTube o texto.';
+import i18n from '../i18n';
+
+export function getGuestAiSignupMessage(): string {
+  return i18n.t('errors.la_generacion_con_ia_requiere_una_cuenta_c');
+}
 
 export class GuestFeatureRequiredError extends Error {
-  constructor(message: string = GUEST_AI_SIGNUP_MESSAGE) {
+  constructor(message: string = getGuestAiSignupMessage()) {
     super(message);
     this.name = 'GuestFeatureRequiredError';
   }

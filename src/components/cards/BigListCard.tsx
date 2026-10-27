@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { BigListCardProps } from '../../types/big-list-card-props';
 import { StateBreakdown } from '../../types/progress';
 import { MILESTONE_THRESHOLDS, nextMilestoneThreshold } from '../../utils/progress';
@@ -13,6 +14,7 @@ const STATE_SEGMENTS: { key: keyof StateBreakdown; colorClass: string; label: st
 ];
 
 export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, milestones, onPlay, onEdit, onDelete }) => {
+  const { t } = useTranslation();
   const total = breakdown.nuevas + breakdown.vistas + breakdown.reconocidas + breakdown.frecuentes + breakdown.aprendidas;
   const learned = breakdown.aprendidas;
   const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
@@ -31,7 +33,7 @@ export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, miles
       </div>
       <h3 className="text-xl font-bold text-gray-900 mb-1 truncate max-w-[200px]" title={list.name}>{list.name}</h3>
       <p className="text-gray-500 text-sm mb-4">
-        {total} pairs · <span className="font-bold text-gray-700">{percent}% dominado</span>
+        {total} {t('dashboard.pairs')} · <span className="font-bold text-gray-700">{t('dashboard.pct_dominado', { percent })}</span>
       </p>
 
       <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100 mb-2">
@@ -40,7 +42,7 @@ export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, miles
             key={segment.key}
             className={segment.colorClass}
             style={{ width: total > 0 ? `${(breakdown[segment.key] / total) * 100}%` : '0%' }}
-            title={`${segment.label}: ${breakdown[segment.key]}`}
+            title={t('dashboard.segment_label', { label: segment.label, count: breakdown[segment.key] })}
           />
         ))}
       </div>
@@ -55,11 +57,11 @@ export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, miles
 
       <div className="mb-5">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-slate-500">Hitos</span>
+          <span className="text-xs font-semibold text-slate-500">{t('dashboard.hitos')}</span>
           {nextMilestone !== null ? (
-            <span className="text-xs font-bold text-indigo-600">Próximo: {nextMilestone}%</span>
+            <span className="text-xs font-bold text-indigo-600">{t('dashboard.proximo', { percent: nextMilestone })}</span>
           ) : (
-            <span className="text-xs font-bold text-emerald-600">¡Lista dominada al 100%!</span>
+            <span className="text-xs font-bold text-emerald-600">{t('dashboard.lista_dominada_al_100')}</span>
           )}
         </div>
         <div className="flex gap-1.5 mb-2">
@@ -92,10 +94,10 @@ export const BigListCard: React.FC<BigListCardProps> = ({ list, breakdown, miles
 
       <div className="flex gap-3">
         <button onClick={() => onPlay(list.id)} disabled={total === 0} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
-          Study
+          {t('dashboard.study')}
         </button>
         <button onClick={() => onEdit(list.id)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
-          Edit
+          {t('dashboard.edit')}
         </button>
       </div>
     </div>

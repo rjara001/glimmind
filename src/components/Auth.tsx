@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { auth, googleProvider, signInWithPopup, signInWithRedirect, isConfigured } from '../firebase';
 import { useToast } from './layout/Toast';
 import {
@@ -16,10 +17,11 @@ interface AuthProps {
 export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const handleGoogleLogin = async () => {
     if (!isConfigured) {
-      showToast('Firebase is not configured correctly.', 'error');
+      showToast(t('auth.firebase_is_not_configured_correctly'), 'error');
       return;
     }
     if (isLoggingIn) return;
@@ -81,12 +83,12 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
             </svg>
           </div>
           <h1 className="text-[1.9rem] font-extrabold tracking-tight text-slate-900 mb-1.5">Glimmind</h1>
-          <p className="text-[0.85rem] text-slate-500 font-medium">Recuerda lo que aprendes, no solo lo practicas.</p>
+          <p className="text-[0.85rem] text-slate-500 font-medium">{t('auth.recuerda_lo_que_aprendes_no_solo_lo_practi')}</p>
         </div>
 
         <div className="bg-white rounded-[20px] p-8 border border-slate-200 shadow-xl shadow-slate-900/5">
-          <h2 className="text-[1.05rem] font-bold text-slate-900 text-center mb-1">Empezar</h2>
-          <p className="text-[0.8rem] text-slate-500 text-center mb-7">Elige cómo quieres entrar</p>
+          <h2 className="text-[1.05rem] font-bold text-slate-900 text-center mb-1">{t('auth.empezar')}</h2>
+          <p className="text-[0.8rem] text-slate-500 text-center mb-7">{t('auth.elige_como_quieres_entrar')}</p>
 
           <div className="flex flex-col gap-3 mb-6">
             <button
@@ -100,7 +102,7 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span>Conectando...</span>
+                  <span>{t('auth.conectando')}</span>
                 </>
               ) : (
                 <>
@@ -110,7 +112,7 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  <span>Continuar con Google</span>
+                  <span>{t('auth.continuar_con_google')}</span>
                 </>
               )}
             </button>
@@ -124,24 +126,24 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
                 <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2"/>
                 <path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              <span>Continuar como invitado</span>
+              <span>{t('auth.continuar_como_invitado')}</span>
             </button>
           </div>
 
           <div className="bg-indigo-50/50 border border-slate-200 rounded-[10px] p-3 flex gap-2.5 items-start mb-5">
             <span className="text-indigo-500 text-sm leading-relaxed flex-shrink-0">💡</span>
             <p className="text-[0.72rem] text-slate-500 leading-relaxed">
-              <strong className="text-slate-900 font-semibold">Modo invitado:</strong> tus mazos y progreso son temporales.
-              Se guardan solo en este navegador, no se sincronizan y no se pasan a tu cuenta si te registras.
-              Se perderán si borras los datos del navegador o usas otro dispositivo.{' '}
-              <strong className="text-slate-900 font-semibold">Con Google:</strong> tus mazos quedan guardados en tu cuenta.
+              <strong className="text-slate-900 font-semibold">{t('auth.modo_invitado')}</strong>{' '}
+              {t('auth.tus_mazos_y_progreso_son_temporales_se_guar')}{' '}
+              <strong className="text-slate-900 font-semibold">{t('auth.con_google')}</strong>{' '}
+              {t('auth.tus_mazos_quedan_guardados_en_tu_cuenta')}
             </p>
           </div>
 
           <p className="text-center text-[0.72rem] text-slate-400 leading-relaxed">
-            Al continuar, aceptas nuestros{' '}
-            <a href="/terms" className="text-indigo-500 hover:underline font-medium">Términos</a> y{' '}
-            <a href="/privacy" className="text-indigo-500 hover:underline font-medium">Política de Privacidad</a>.
+            {t('auth.al_continuar_aceptas_nuestros')}{' '}
+            <a href="/terms" className="text-indigo-500 hover:underline font-medium">{t('auth.terminos')}</a> y{' '}
+            <a href="/privacy" className="text-indigo-500 hover:underline font-medium">{t('auth.politica_de_privacidad')}</a>.
           </p>
         </div>
 
@@ -150,7 +152,7 @@ export const Auth: React.FC<AuthProps> = ({ onLoginDev }) => {
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
-            Volver al inicio
+            {t('auth.volver_al_inicio')}
           </Link>
         </div>
       </div>

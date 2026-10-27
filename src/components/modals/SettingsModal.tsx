@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVoskModelContext } from '../../context/VoskModelContext';
 import { VoiceLanguage } from '../../types';
 import { SettingsModalProps } from '../../types/settings-modal-props';
@@ -62,6 +63,7 @@ import { logEvent } from '../../services/errorReporting';
     onUpdateList,
     onClose,
   }) => {
+    const { t } = useTranslation();
     const tier = useGameStore((state) => state.quota?.tier);
     const [draft, setDraft] = useState(() =>
       normalizeVoiceSettings(list.settings || ({} as ListSettings), tier)
@@ -73,7 +75,7 @@ import { logEvent } from '../../services/errorReporting';
     useEffect(() => {
       // 1. Log de apertura del modal
       logEvent('settings.modal_opened', {
-        message: 'Settings modal opened',
+        message: t('settings.settings_modal_opened'),
         extra: {
           listId: list.id,
           mobileContext: getMobileContext(),
@@ -94,7 +96,7 @@ import { logEvent } from '../../services/errorReporting';
           window.speechSynthesis.removeEventListener('voiceschanged', load);
         };
       }
-    }, [list.id]);
+    }, [list.id, t]);
 
   // Dentro de SettingsModal:
   const handleAccept = async () => {
@@ -112,7 +114,7 @@ import { logEvent } from '../../services/errorReporting';
       await onUpdateList(updatedList);
 
       await logEvent('settings.flow_completed', {
-        message: 'Settings flow finished successfully',
+        message: t('settings.settings_flow_finished_successfully'),
       });
 
       onClose();
@@ -123,12 +125,14 @@ import { logEvent } from '../../services/errorReporting';
       
       if (!isHandledBackendError) {
         await logEvent('settings.flow_failed', {
-          message: `Flow failed: ${error?.message || String(error)}`,
+          message: t('settings.flow_failed', {
+            error: error?.message || String(error),
+          }),
           error,
         });
       } else {
         await logEvent('settings.flow_completed', {
-          message: 'Settings flow finished successfully (local-only due to backend error)',
+          message: t('settings.settings_flow_finished_successfully_local_'),
         });
       }
     } finally {
@@ -137,7 +141,7 @@ import { logEvent } from '../../services/errorReporting';
   };
     const handleClose = () => {
       logEvent('settings.modal_cancelled', {
-        message: 'User closed modal without saving',
+        message: t('settings.user_closed_modal_without_saving'),
         extra: { listId: list.id },
       }).catch(() => {});
       onClose();
@@ -147,17 +151,15 @@ import { logEvent } from '../../services/errorReporting';
       async (lang: VoiceLanguage | string | undefined, voiceId?: string) => {
         if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
           await logEvent('settings.tts_unavailable', {
-            message: 'speechSynthesis not available in this mobile engine',
+            message: t('settings.speechsynthesis_not_available_in_this_mobi'),
             extra: { mobileContext: getMobileContext() },
           });
           return;
         }
 
         const text = lang?.startsWith('es')
-          ? 'Hola, soy Glimmind'
-          : lang?.startsWith('en')
-          ? 'Hello, I am Glimmind'
-          : 'Hello, I am Glimmind';
+          ? t('settings.hola_soy_glimmind')
+          : t('settings.hello_i_am_glimmind');
 
         const rate = (draft.voiceRate as number) ?? 1;
         const pitch = (draft.voicePitch as number) ?? 1;
@@ -176,7 +178,7 @@ import { logEvent } from '../../services/errorReporting';
           window.speechSynthesis.speak(utterance);
         } catch (err) {
           await logEvent('settings.tts_error', {
-            message: err instanceof Error ? err.message : 'TTS error',
+            message: err instanceof Error ? err.message : t('settings.tts_error'),
             error: err,
             extra: {
               context: 'playTestVoice',
@@ -185,7 +187,7 @@ import { logEvent } from '../../services/errorReporting';
           });
         }
       },
-      [draft.voiceRate, draft.voicePitch, voices]
+      [draft.voiceRate, draft.voicePitch, voices, t]
     );
 
     const isReversed = draft.flipOrder === 'reversed';
@@ -197,8 +199,8 @@ import { logEvent } from '../../services/errorReporting';
     const isIgnoringArticles = draft.ignoreArticles === true;
 
     const conceptParts = list.concept.split('/');
-    const termLabel = conceptParts[0] || 'Término';
-    const defLabel = conceptParts[1] || 'Definición';
+    const termLabel = conceptParts[0] || t('settings.termino');
+    const defLabel = conceptParts[1] || t('settings.definicion');
 
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
@@ -207,7 +209,7 @@ import { logEvent } from '../../services/errorReporting';
           style={{ scrollbarWidth: 'none' }}
         >
           <h3 className="text-3xl font-black text-slate-900 mb-6 sm:mb-8 tracking-tighter text-center">
-            Settings
+            {t('settings.settings')}
           </h3>
 
           <div className="space-y-4 mb-8">
@@ -307,7 +309,7 @@ import { logEvent } from '../../services/errorReporting';
               disabled={isSubmitting}
               className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-indigo-700 transition active:scale-95 shadow-xl shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Saving...' : 'Accept & Close'}
+              {isSubmitting ? 'Saving...' : t('settings.accept_close')}
             </button>
 
             <button
@@ -315,7 +317,7 @@ import { logEvent } from '../../services/errorReporting';
               disabled={isSubmitting}
               className="w-full bg-slate-100 text-slate-500 py-3 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest hover:bg-slate-200 transition active:scale-95 disabled:opacity-50"
             >
-              Cancel
+              {t('settings.cancel')}
             </button>
           </div>
         </div>
