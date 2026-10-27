@@ -32,12 +32,6 @@ const getInitialLanguage = (): string => {
       return saved;
     }
   }
-  if (typeof navigator !== 'undefined' && navigator.language) {
-    const lang = navigator.language.split('-')[0];
-    if (lang === 'en' || lang === 'es') {
-      return lang;
-    }
-  }
   return 'es';
 };
 
