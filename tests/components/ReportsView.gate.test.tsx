@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FEATURE_FLAGS, isFeatureEnabled } from '@/constants/featureFlags';
 import { Navbar } from '@/components/Navbar';
 import { AppHeader } from '@/components/layout/AppHeader';
+import i18n from '@/i18n';
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -18,6 +19,13 @@ vi.mock('@/context/AuthContext', () => ({
 }));
 
 describe('feature flag: reports', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await act(async () => {
+      await i18n.changeLanguage('es');
+    });
+  });
+
   describe('isFeatureEnabled', () => {
     it('reports is disabled', () => {
       expect(FEATURE_FLAGS.reports).toBe(false);
@@ -26,10 +34,6 @@ describe('feature flag: reports', () => {
   });
 
   describe('Navbar (desktop nav)', () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     it('does not render the Reports item while the flag is off', () => {
       render(
         <MemoryRouter initialEntries={['/dashboard']}>

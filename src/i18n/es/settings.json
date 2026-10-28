@@ -40,5 +40,7 @@
   "maximo_de_tarjetas_por_mazo": "Máximo de tarjetas por mazo",
   "al_importar_texto_csv_o_youtube_si_superas": "Al importar texto, CSV o YouTube, si superás este límite se dividirá automáticamente en varios mazos.",
   "valor_actual": "Valor actual:",
-  "tarjetas_por_mazo": "tarjetas por mazo"
+  "tarjetas_por_mazo": "tarjetas por mazo",
+  "idioma_ui": "Idioma de la interfaz",
+  "selecciona_tu_idioma_preferido": "Selecciona tu idioma preferido para la interfaz de la aplicación."
 }

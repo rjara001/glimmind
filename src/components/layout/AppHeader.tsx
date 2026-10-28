@@ -2,6 +2,7 @@ import React from 'react';
 import { APP_VERSION } from '../../constants/version';
 import { isFeatureEnabled } from '../../constants/featureFlags';
 import { UserMenu } from './UserMenu';
+import { LanguageSelector } from './LanguageSelector';
 import type { AppUser } from '../../types';
 
 const ADMIN_EMAILS = ['rjara001@gmail.com', 'peptio@gmail.com'];
@@ -35,6 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">v{APP_VERSION}</span>
         </div>
         <div className="flex items-center gap-2">
+          <LanguageSelector variant="compact" />
           <button
             onClick={onShowQuickAdd}
             aria-label="Add value"
