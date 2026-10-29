@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { alignWords, levenshteinDistance, normalize } from '../../utils/wordAlignment';
 import {
   LANDING_VALIDATION_EXPECTED,
@@ -14,6 +15,7 @@ const STATUS_ICON: Record<AlignedWord['status'], string> = {
 };
 
 export const LandingValidationAnalysis: React.FC = () => {
+  const { t } = useTranslation('common');
   const alignment = useMemo(
     () => alignWords(LANDING_VALIDATION_USER_INPUT, LANDING_VALIDATION_EXPECTED),
     []
@@ -44,19 +46,25 @@ export const LandingValidationAnalysis: React.FC = () => {
     setExpandedIndex((prev) => (prev === index ? null : index));
   };
 
+  const statusLabel = (status: AlignedWord['status']) => {
+    if (status === 'correct') return t('analysis_correct');
+    if (status === 'similar') return t('analysis_similar');
+    return t('analysis_incorrect');
+  };
+
   return (
     <div className="landing-analysis">
       <div className="landing-analysis-header">
         <div className="landing-analysis-header-info">
           <div className="landing-analysis-score">
             <span className="landing-analysis-score-pct">{score.similarity}%</span>
-            <span className="landing-analysis-score-lbl">Score</span>
+            <span className="landing-analysis-score-lbl">{t('analysis_score')}</span>
           </div>
           <div>
-            <h3 className="landing-analysis-title">Análisis de tu respuesta</h3>
+            <h3 className="landing-analysis-title">{t('analysis_title')}</h3>
             <p className="landing-analysis-subtitle">
-              Umbral para aprobar: <strong>{LANDING_VALIDATION_THRESHOLD_PERCENT}%</strong>
-              {!passed && ' · No alcanzaste'}
+              {t('analysis_threshold')} <strong>{LANDING_VALIDATION_THRESHOLD_PERCENT}%</strong>
+              {!passed && ` · ${t('analysis_not_passed')}`}
             </p>
           </div>
         </div>
@@ -64,20 +72,20 @@ export const LandingValidationAnalysis: React.FC = () => {
 
       <div className="landing-analysis-body">
         <div className="landing-analysis-section">
-          <div className="landing-analysis-label">📝 Frase completa</div>
+          <div className="landing-analysis-label">📝 {t('analysis_full_sentence')}</div>
           <div className="landing-analysis-sentence">{LANDING_VALIDATION_EXPECTED}</div>
         </div>
 
         <div className="landing-analysis-section">
-          <div className="landing-analysis-label">🔍 Comparación palabra por palabra</div>
+          <div className="landing-analysis-label">🔍 {t('analysis_comparison')}</div>
 
           <table className="landing-analysis-table">
             <thead>
               <tr>
-                <th aria-label="Índice" />
-                <th>Tu respuesta</th>
-                <th>Sistema</th>
-                <th className="landing-analysis-th-status">Estado</th>
+                <th aria-label={t('analysis_status')} />
+                <th>{t('analysis_your_answer')}</th>
+                <th>{t('analysis_system')}</th>
+                <th className="landing-analysis-th-status">{t('analysis_status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,13 +102,7 @@ export const LandingValidationAnalysis: React.FC = () => {
                       <td className="landing-analysis-status">
                         <span
                           className={`landing-analysis-badge landing-analysis-badge-${word.status}`}
-                          aria-label={
-                            word.status === 'correct'
-                              ? 'Correcto'
-                              : word.status === 'similar'
-                                ? 'Similar'
-                                : 'Incorrecto'
-                          }
+                          aria-label={statusLabel(word.status)}
                         >
                           {STATUS_ICON[word.status]}
                         </span>
@@ -110,7 +112,7 @@ export const LandingValidationAnalysis: React.FC = () => {
                             className="landing-analysis-expand"
                             onClick={() => handleToggle(wordIndex)}
                             aria-expanded={isOpen}
-                            aria-label={`Ver detalle de la palabra ${word.index}`}
+                            aria-label={`${t('analysis_detail_word')} ${word.index}`}
                           >
                             {isOpen ? '▲' : '▼'}
                           </button>
@@ -128,7 +130,7 @@ export const LandingValidationAnalysis: React.FC = () => {
 
                             <div className="landing-analysis-chars">
                               <div className="landing-analysis-char-row">
-                                <span className="landing-analysis-char-label">Tú</span>
+                                <span className="landing-analysis-char-label">{t('analysis_you')}</span>
                                 {word.charDiff.map((diff, i) => (
                                   <span
                                     key={`user-${i}`}
@@ -139,7 +141,7 @@ export const LandingValidationAnalysis: React.FC = () => {
                                 ))}
                               </div>
                               <div className="landing-analysis-char-row">
-                                <span className="landing-analysis-char-label">Sistema</span>
+                                <span className="landing-analysis-char-label">{t('analysis_system')}</span>
                                 {word.charDiff.map((diff, i) => (
                                   <span
                                     key={`sys-${i}`}
@@ -165,7 +167,7 @@ export const LandingValidationAnalysis: React.FC = () => {
           </table>
 
           <div className="landing-analysis-summary">
-            <span>Palabras correctas</span>
+            <span>{t('analysis_correct_words')}</span>
             <span>
               <strong>{alignment.stats.correct}</strong> / {alignment.stats.total}
             </span>
@@ -173,33 +175,33 @@ export const LandingValidationAnalysis: React.FC = () => {
         </div>
 
         <div className="landing-analysis-section">
-          <div className="landing-analysis-label">📊 Desglose del puntaje</div>
+          <div className="landing-analysis-label">📊 {t('analysis_distance')}</div>
           <div className="landing-analysis-breakdown">
             <div className="landing-analysis-stat">
-              <span className="landing-analysis-stat-lbl">Distancia</span>
+              <span className="landing-analysis-stat-lbl">{t('analysis_distance')}</span>
               <span className="landing-analysis-stat-val">{score.distance}</span>
-              <span className="landing-analysis-stat-sub">caracteres de diferencia</span>
+              <span className="landing-analysis-stat-sub">{t('analysis_chars_diff')}</span>
             </div>
             <div className="landing-analysis-stat">
-              <span className="landing-analysis-stat-lbl">Caracteres</span>
+              <span className="landing-analysis-stat-lbl">{t('analysis_chars_total')}</span>
               <span className="landing-analysis-stat-val">{score.chars}</span>
-              <span className="landing-analysis-stat-sub">en total</span>
+              <span className="landing-analysis-stat-sub">{t('analysis_total')}</span>
             </div>
             <div className="landing-analysis-stat">
-              <span className="landing-analysis-stat-lbl">Diferencias</span>
+              <span className="landing-analysis-stat-lbl">{t('analysis_differences')}</span>
               <span className="landing-analysis-stat-val landing-analysis-stat-val-warn">
                 {diffCount}
               </span>
               <span className="landing-analysis-stat-sub">
-                palabra{diffCount !== 1 ? 's' : ''} incorrecta{diffCount !== 1 ? 's' : ''}
+                {diffCount !== 1 ? t('analysis_wrong_words') : t('analysis_wrong_word')}
               </span>
             </div>
             <div className="landing-analysis-stat">
-              <span className="landing-analysis-stat-lbl">Umbral</span>
+              <span className="landing-analysis-stat-lbl">{t('analysis_threshold_label')}</span>
               <span className="landing-analysis-stat-val landing-analysis-stat-val-threshold">
                 {LANDING_VALIDATION_THRESHOLD_PERCENT}%
               </span>
-              <span className="landing-analysis-stat-sub">necesario para aprobar</span>
+              <span className="landing-analysis-stat-sub">{t('analysis_needed_pass')}</span>
             </div>
           </div>
         </div>
@@ -207,8 +209,8 @@ export const LandingValidationAnalysis: React.FC = () => {
 
       <div className="landing-analysis-footer">
         <span className="landing-analysis-footer-info">
-          💡 Necesitas <strong>{LANDING_VALIDATION_THRESHOLD_PERCENT}%</strong> de coincidencia. Tuviste{' '}
-          <strong>{score.similarity}%</strong>.
+          💡 {t('analysis_need_match')} <strong>{LANDING_VALIDATION_THRESHOLD_PERCENT}%</strong>
+          {t('analysis_match_had')} <strong>{score.similarity}%</strong>.
         </span>
       </div>
     </div>

@@ -43,7 +43,7 @@ describe('LanguageSelector & Language Switching', () => {
     });
 
     expect(i18n.language).toBe('en');
-    expect(localStorage.getItem('glimmind_language')).toBe('en');
+    expect(localStorage.getItem('glimmind_lang')).toBe('en');
     expect(document.documentElement.lang).toBe('en');
   });
 
@@ -63,7 +63,7 @@ describe('LanguageSelector & Language Switching', () => {
     expect(i18n.language).toBe('en');
     expect(enButton).toHaveAttribute('aria-pressed', 'true');
     expect(esButton).toHaveAttribute('aria-pressed', 'false');
-    expect(localStorage.getItem('glimmind_language')).toBe('en');
+    expect(localStorage.getItem('glimmind_lang')).toBe('en');
     expect(document.documentElement.lang).toBe('en');
   });
 });

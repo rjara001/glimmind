@@ -1,11 +1,14 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './landing.css';
 import { LandingDemo } from './LandingDemo';
 import { LandingValidationAnalysis } from './LandingValidationAnalysis';
 import { PREMIUM_LANDING_NEXT_PATH, PREMIUM_LANDING_NEXT_QUERY } from '../../constants/premium';
 import { CYCLE_RULE_CHIPS } from '../../utils/cycle-rules';
+import { LandingLanguageSelector } from './LandingLanguageSelector';
 
 export const LandingPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
 
   const onStart = () => navigate('/login');
@@ -18,16 +21,17 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="landing-root">
+      <LandingLanguageSelector />
       <div className="landing-hero">
         <div className="landing-hero-inner">
-          <div className="landing-tag">Sistema de 4 ciclos</div>
-          <h1>Mientras Duolingo te da puntos, <em>Glimmind te hace recordar</em>.</h1>
+          <div className="landing-tag">{t('hero_tag')}</div>
+          <h1>{t('hero_title_1')} <em>{t('hero_title_2')}</em>{t('hero_title_3')}</h1>
           <p className="landing-sub">
-            Sistema de 4 ciclos · Validación difusa · Voz. Aprende el vocabulario que realmente necesitas.
+            {t('hero_sub')}
           </p>
           <div className="landing-buttons">
-            <button className="landing-btn landing-btn-primary" onClick={onStart}>Empezar gratis</button>
-            <button className="landing-btn landing-btn-secondary" onClick={onDemo}>Ver demo</button>
+            <button className="landing-btn landing-btn-primary" onClick={onStart}>{t('btn_start')}</button>
+            <button className="landing-btn landing-btn-secondary" onClick={onDemo}>{t('btn_demo')}</button>
           </div>
         </div>
       </div>
@@ -37,11 +41,10 @@ export const LandingPage: React.FC = () => {
       <div className="landing-section">
         <div className="landing-section-head">
           <div className="landing-section-num">01</div>
-          <h2>Cómo se mueve una palabra</h2>
+          <h2>{t('section_title')}</h2>
         </div>
         <p className="landing-section-lead">
-          Con Siguiente la palabra sube de ciclo. Si la aciertas a la primera, queda aprendida.
-          Sin fechas ocultas ni algoritmos: ves en qué ciclo está cada palabra y por qué está ahí.
+          {t('section_lead')}
         </p>
         <div className="landing-flow-wrap">
           <div className="landing-flow-arrows" aria-hidden="true">
@@ -100,28 +103,28 @@ export const LandingPage: React.FC = () => {
 
           <div className="landing-flow">
             <div className="landing-flow-step landing-nueva">
-              <div className="landing-step-num">STAGE 01</div>
-              <div className="landing-step-name">NUEVA</div>
-              <div className="landing-step-desc">Todavía no ha avanzado de ciclo.</div>
+              <div className="landing-step-num">{t('stage_label_1')}</div>
+              <div className="landing-step-name">{t('stage_new')}</div>
+              <div className="landing-step-desc">{t('stage_new_desc')}</div>
             </div>
             <div className="landing-flow-step landing-vista">
-              <div className="landing-step-num">STAGE 02</div>
-              <div className="landing-step-name">VISTA</div>
-              <div className="landing-step-desc">Avanzó una vez y sigue en camino.</div>
+              <div className="landing-step-num">{t('stage_label_2')}</div>
+              <div className="landing-step-name">{t('stage_view')}</div>
+              <div className="landing-step-desc">{t('stage_view_desc')}</div>
             </div>
             <div className="landing-flow-step landing-reconocida">
-              <div className="landing-step-num">STAGE 03</div>
-              <div className="landing-step-name">RECONOCIDA</div>
-              <div className="landing-step-desc">Avanzó dos veces. Ya debería sonarte.</div>
+              <div className="landing-step-num">{t('stage_label_3')}</div>
+              <div className="landing-step-name">{t('stage_recognized')}</div>
+              <div className="landing-step-desc">{t('stage_recognized_desc')}</div>
             </div>
             <div className="landing-flow-step landing-frecuente">
-              <div className="landing-step-num">STAGE 04</div>
-              <div className="landing-step-name">FRECUENTE</div>
-              <div className="landing-step-desc">Avanzó tres veces: es el ciclo tope.</div>
+              <div className="landing-step-num">{t('stage_label_4')}</div>
+              <div className="landing-step-name">{t('stage_frequent')}</div>
+              <div className="landing-step-desc">{t('stage_frequent_desc')}</div>
             </div>
           </div>
           <div className="landing-rule">
-            <div className="landing-rule-title">La regla, completa</div>
+            <div className="landing-rule-title">{t('rule_title')}</div>
             <div className="landing-rule-chips">
               {CYCLE_RULE_CHIPS.map((chip) => (
                 <span key={chip} className="landing-rule-chip">
@@ -136,133 +139,135 @@ export const LandingPage: React.FC = () => {
       <div className="landing-section">
         <div className="landing-section-head">
           <div className="landing-section-num">02</div>
-          <h2>Validación difusa</h2>
+          <h2>{t('validation_title')}</h2>
         </div>
         <p className="landing-section-lead">
-          Si el 80% de los caracteres coincide, cuenta como acierto. Y cuando no llegas, te decimos{' '}
-          <strong>exactamente dónde fallaste</strong>.
+          {t('validation_lead')} <strong>{t('missed_where')}</strong>.
         </p>
         <LandingValidationAnalysis />
       </div>
 
       <div className="landing-why">
-        <div className="landing-kicker">Por qué Glimmind</div>
-        <h2>Para quienes quieren recordar, no coleccionar puntos.</h2>
+        <div className="landing-kicker">{t('why_title')}</div>
+        <h2>{t('why_sub')}</h2>
         <p className="landing-lead">
-          No vas a aprender 5.000 palabras en una semana. Vas a aprender las que necesitas. Y vas a recordarlas.
+          {t('why_desc')}
         </p>
 
         <div className="landing-why-grid">
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-blue">🔄</div>
-            <h3>La palabra no desaparece</h3>
+            <h3>{t('why_1_title')}</h3>
             <p>
-              En otras apps fallas una vez y la palabra se va. Aquí <strong>entra a un ciclo</strong>.
-              Y después a otro. <strong>Hasta que se queda</strong>. Sin intervalos arbitrarios.
+              {t('why_1_p1')} <strong>{t('why_1_s1')}</strong>.
+              {t('why_1_p2')} <strong>{t('why_1_s2')}</strong>.
+              {t('why_1_p3')}
             </p>
           </div>
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-violet">🎮</div>
-            <h3>Dos formas de practicar</h3>
+            <h3>{t('why_2_title')}</h3>
             <p>
-              <strong>Modo examen:</strong> escribes la respuesta y el sistema valida.
-              <strong>Modo práctica:</strong> piensas, revelas y te autoevalúas.
-              <em>Cambia cuando quieras.</em>
+              <strong>{t('why_2_label_exam')}</strong> {t('why_2_exam')}
+              <strong>{t('why_2_label_practice')}</strong> {t('why_2_practice')}
+              <em>{t('why_2_note')}</em>
             </p>
           </div>
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-emerald">✅</div>
-            <h3>No te castigamos por un typo</h3>
+            <h3>{t('why_3_title')}</h3>
             <p>
-              Escribiste <strong>dividens</strong>, el sistema esperaba <strong>dividends</strong>.
-              Coincidencia: <em>93%</em>. Cuenta como acierto. Recordar no es un examen de ortografía.
+              {t('why_3_p1')} <strong>{t('why_3_word1')}</strong>, {t('why_3_p2')} <strong>{t('why_3_word2')}</strong>.
+              <em>{t('why_3_match')}</em> {t('why_3_desc')}
             </p>
           </div>
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-rose">🎙️</div>
-            <h3>Aprende hablando, no solo escribiendo</h3>
+            <h3>{t('why_4_title')}</h3>
             <p>
-              Practica <strong>manos libres</strong>. Di la respuesta en voz alta y el sistema la escucha.
-              <strong>Funciona sin conexión</strong>. Comandos: revelar, pasar, parar.
+              {t('why_4_p1')} <strong>{t('why_4_s1')}</strong>.
+              {t('why_4_p2')}
+              <strong>{t('why_4_offline')}</strong>. {t('why_4_p3')}
             </p>
           </div>
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-amber">📱</div>
-            <h3>En tu navegador, tu tablet, tu teléfono</h3>
+            <h3>{t('why_5_title')}</h3>
             <p>
-              Web, iOS y Android. <strong>El mismo progreso en todos lados</strong>.
-              <em>Funciona offline</em>. Si tienes cuenta, sincroniza.
+              {t('why_5_p1')} <strong>{t('why_5_s1')}</strong>. <em>{t('why_4_offline')}</em>.
+              {t('why_5_sync')}
             </p>
           </div>
           <div className="landing-why-card">
             <div className="landing-icon landing-icon-slate">🔒</div>
-            <h3>Tus datos se quedan contigo</h3>
+            <h3>{t('why_6_title')}</h3>
             <p>
-              Todo <strong>vive en tu dispositivo</strong>. La nube es opcional.
-              <em>Sin tracking, sin anuncios, sin vender tus datos.</em>
+              {t('why_6_p1')} <strong>{t('why_6_s1')}</strong>.
+              {t('why_6_p2')}
+              <em>{t('why_6_note')}</em>
             </p>
           </div>
         </div>
       </div>
 
       <div className="landing-pricing">
-        <div className="landing-kicker">Precios</div>
-        <h2>Simple y honesto.</h2>
+        <div className="landing-kicker">{t('pricing_title')}</div>
+        <h2>{t('pricing_sub')}</h2>
         <p className="landing-lead">
-          Empieza gratis. Actualiza cuando lo necesites. Sin sorpresas.
+          {t('pricing_desc')}
         </p>
 
         <div className="landing-plans">
           <div className="landing-plan landing-plan-free">
-            <div className="landing-plan-name">Free</div>
+            <div className="landing-plan-name">{t('plan_free')}</div>
             <div className="landing-plan-price">
-              <span className="landing-amount">€0</span>
-              <span className="landing-period">para siempre</span>
+              <span className="landing-amount">{t('price_free')}</span>
+              <span className="landing-period">{t('price_free_period')}</span>
             </div>
-            <p className="landing-plan-desc">Para empezar sin compromiso.</p>
+            <p className="landing-plan-desc">{t('plan_free_desc')}</p>
             <ul className="landing-plan-features">
-              <li><span className="landing-check">✓</span><span><strong>1.000 tarjetas</strong> activas</span></li>
-              <li><span className="landing-check">✓</span><span><strong>Mazos ilimitados</strong></span></li>
-              <li><span className="landing-check">✓</span><span>Modo examen y práctica</span></li>
-              <li><span className="landing-check">✓</span><span>Estudio con voz (navegador)</span></li>
-              <li><span className="landing-check">✓</span><span>Tus datos viven en tu dispositivo</span></li>
-              <li><span className="landing-check">✓</span><span>Sincronización con Google</span></li>
-              <li><span className="landing-check">✓</span><span>Importa desde CSV, texto o YouTube</span></li>
+              <li><span className="landing-check">✓</span><span><strong>{t('feature_1000_cards')}</strong></span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_unlimited_decks')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_modes')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_voice_browser')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_local_data')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_google_sync')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_import')}</span></li>
             </ul>
-            <button className="landing-plan-cta landing-plan-cta-free" onClick={onStart}>Empezar gratis</button>
+            <button className="landing-plan-cta landing-plan-cta-free" onClick={onStart}>{t('btn_start')}</button>
           </div>
 
           <div className="landing-plan landing-plan-premium">
-            <div className="landing-plan-badge">Más elegido</div>
-            <div className="landing-plan-name">Premium</div>
+            <div className="landing-plan-badge">{t('plan_popular')}</div>
+            <div className="landing-plan-name">{t('plan_premium')}</div>
             <div className="landing-plan-price">
-              <span className="landing-amount">€4,99</span>
-              <span className="landing-period">una vez</span>
+              <span className="landing-amount">{t('price_premium')}</span>
+              <span className="landing-period">{t('price_premium_period')}</span>
             </div>
-            <p className="landing-plan-desc">Para quienes estudian en serio. Pagás una sola vez.</p>
+            <p className="landing-plan-desc">{t('plan_premium_desc')}</p>
             <ul className="landing-plan-features">
-              <li><span className="landing-check">✓</span><span><strong>5.000 tarjetas</strong> activas</span></li>
-              <li><span className="landing-check">✓</span><span><strong>Todo lo de Free</strong></span></li>
-              <li><span className="landing-check">✓</span><span>Sincronización prioritaria</span></li>
-              <li><span className="landing-check">✓</span><span><strong>Voces HD</strong> (Chirp 3)</span></li>
-              <li><span className="landing-check">✓</span><span>Estadísticas avanzadas</span></li>
-              <li><span className="landing-check">✓</span><span>Exporta todos tus datos</span></li>
-              <li><span className="landing-check">✓</span><span>Soporte prioritario</span></li>
+              <li><span className="landing-check">✓</span><span><strong>{t('feature_5000_cards')}</strong></span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_all_free')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_priority_sync')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_hd_voices')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_advanced_stats')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_export_data')}</span></li>
+              <li><span className="landing-check">✓</span><span>{t('feature_support')}</span></li>
             </ul>
-            <button className="landing-plan-cta landing-plan-cta-premium" onClick={onUpgrade}>Probar Premium</button>
+            <button className="landing-plan-cta landing-plan-cta-premium" onClick={onUpgrade}>{t('btn_premium')}</button>
           </div>
         </div>
 
         <div className="landing-pricing-note">
           <span className="landing-dot"></span>
-          <span>Sin anuncios. Sin tracking. Sin vender tus datos.</span>
+          <span>{t('no_ads_tracking')}</span>
         </div>
       </div>
 
       <div className="landing-closing">
-        <h2>¿Listo para recordar de verdad?</h2>
-        <p>Crea tu primer mazo gratis. Toma menos de un minuto.</p>
-        <button className="landing-btn landing-btn-primary" onClick={onStart}>Crear mi primer mazo →</button>
+        <h2>{t('closing_title')}</h2>
+        <p>{t('closing_desc')}</p>
+        <button className="landing-btn landing-btn-primary" onClick={onStart}>{t('btn_create_deck')}</button>
       </div>
 
       <footer className="landing-footer">
@@ -270,59 +275,58 @@ export const LandingPage: React.FC = () => {
           <div className="landing-footer-brand">
             <div className="landing-logo">
               <div className="landing-logo-icon">G</div>
-              <span className="landing-logo-text">Glimmind</span>
+              <span className="landing-logo-text">{t('appName')}</span>
             </div>
             <p>
-              Flashcards con 4 ciclos visibles para aprender idiomas.
-              Construido con React, Firebase y ciencia.
+              {t('footer_desc')}
             </p>
             <div className="landing-footer-social">
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">GH</a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">X</a>
-              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord">DC</a>
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_github')}>GH</a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_twitter')}>X</a>
+              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_discord')}>DC</a>
             </div>
           </div>
           <div className="landing-footer-col">
-            <h4>Producto</h4>
+            <h4>{t('footer_product')}</h4>
             <ul>
-              <li><a href="/login">Dashboard</a></li>
-              <li><a href="/login">Precios</a></li>
-              <li><a href="/privacy">Novedades</a></li>
-              <li><a href="/terms">Roadmap</a></li>
+              <li><a href="/login">{t('footer_dashboard')}</a></li>
+              <li><a href="/login">{t('footer_pricing')}</a></li>
+              <li><a href="/privacy">{t('footer_news')}</a></li>
+              <li><a href="/terms">{t('footer_roadmap')}</a></li>
             </ul>
           </div>
           <div className="landing-footer-col">
-            <h4>Recursos</h4>
+            <h4>{t('footer_resources')}</h4>
             <ul>
-              <li><a href="/privacy">Documentación</a></li>
-              <li><a href="/terms">Guías</a></li>
-              <li><a href="/cookies">Estado del servicio</a></li>
-              <li><a href="/privacy">Contacto</a></li>
+              <li><a href="/privacy">{t('footer_docs')}</a></li>
+              <li><a href="/terms">{t('footer_guides')}</a></li>
+              <li><a href="/cookies">{t('footer_status')}</a></li>
+              <li><a href="/privacy">{t('footer_contact')}</a></li>
             </ul>
           </div>
           <div className="landing-footer-col">
-            <h4>Legal</h4>
+            <h4>{t('footer_legal')}</h4>
             <ul>
-              <li><a href="/privacy">Privacidad</a></li>
-              <li><a href="/terms">Términos</a></li>
-              <li><a href="/cookies">Cookies</a></li>
-              <li><a href="/privacy">GDPR</a></li>
+              <li><a href="/privacy">{t('footer_privacy')}</a></li>
+              <li><a href="/terms">{t('footer_terms')}</a></li>
+              <li><a href="/cookies">{t('footer_cookies')}</a></li>
+              <li><a href="/privacy">{t('footer_gdpr')}</a></li>
             </ul>
           </div>
         </div>
         <div className="landing-footer-bottom">
           <div className="landing-footer-bottom-inner">
             <div className="landing-copyright">
-              © 2026 Glimmind. Todos los derechos reservados.
+              © 2026 {t('appName')}. {t('footer_rights')}
             </div>
             <div className="landing-legal">
-              <a href="/privacy">Privacidad</a>
-              <a href="/terms">Términos</a>
-              <a href="/cookies">Cookies</a>
+              <a href="/privacy">{t('footer_privacy')}</a>
+              <a href="/terms">{t('footer_terms')}</a>
+              <a href="/privacy">Cookies</a>
             </div>
             <div className="landing-status">
               <span className="landing-dot"></span>
-              <span>Todos los sistemas operativos</span>
+              <span>{t('footer_systems')}</span>
             </div>
           </div>
         </div>

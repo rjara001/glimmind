@@ -23,12 +23,18 @@ import enOnboarding from './en/onboarding.json';
 import enSettings from './en/settings.json';
 import enErrors from './en/errors.json';
 
-const LANGUAGE_KEY = 'glimmind_language';
+import ptCommon from './pt/common.json';
+import frCommon from './fr/common.json';
+import deCommon from './de/common.json';
+import zhCommon from './zh/common.json';
+
+const LANGUAGE_KEY = 'glimmind_lang';
+const SUPPORTED_LANGUAGES = ['es', 'en', 'pt', 'fr', 'de', 'zh'] as const;
 
 const getInitialLanguage = (): string => {
   if (typeof window !== 'undefined' && window.localStorage) {
     const saved = localStorage.getItem(LANGUAGE_KEY);
-    if (saved && (saved === 'es' || saved === 'en')) {
+    if (saved && SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number])) {
       return saved;
     }
   }
@@ -63,10 +69,22 @@ void i18n.use(initReactI18next).init({
       settings: enSettings,
       errors: enErrors,
     },
+    pt: {
+      common: ptCommon,
+    },
+    fr: {
+      common: frCommon,
+    },
+    de: {
+      common: deCommon,
+    },
+    zh: {
+      common: zhCommon,
+    },
   },
   lng: initialLang,
   fallbackLng: 'es',
-  supportedLngs: ['es', 'en'],
+  supportedLngs: SUPPORTED_LANGUAGES,
   defaultNS: 'common',
   compatibilityJSON: 'v4',
   interpolation: { escapeValue: false },

@@ -15,30 +15,139 @@
   --landing-footer-muted: #64748b;
 }
 
+/* =========================================
+   SELECTOR DE IDIOMA (DROPDOWN)
+   ========================================= */
+.lang-switcher-container {
+  pointer-events: auto;
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+}
+
+.lang-switcher-btn {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 8px 16px;
+  color: white;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.lang-switcher-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.lang-switcher-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s;
+}
+
+.lang-switcher-btn.open svg {
+  transform: rotate(180deg);
+}
+
+.lang-dropdown {
+  position: fixed;
+  pointer-events: auto;
+  top: 64px;
+  right: 24px;
+  z-index: 9999;
+  background: white;
+  border-radius: var(--landing-radius);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  border: 1px solid var(--landing-border);
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  min-width: 140px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.lang-dropdown.show {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.lang-option {
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--landing-text);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.1s;
+}
+
+.lang-option:hover {
+  background: #f1f5f9;
+}
+
+.lang-option.active {
+  background: #eff6ff;
+  color: var(--landing-primary);
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .landing-hero {
-  background: linear-gradient(135deg, var(--landing-primary) 0%, var(--landing-primary-dark) 50%, var(--landing-accent) 100%);
   color: white;
   padding: 100px 24px 160px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .landing-hero::before {
   content: '';
   position: absolute;
-  top: -50%; left: -50%;
-  width: 200%; height: 200%;
-  background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 40%);
+  top: 0; left: 50%; right: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  height: 100%;
+  background: linear-gradient(to right, var(--landing-primary) 0%, var(--landing-primary-dark) 50%, var(--landing-accent) 100%),
+            radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 40%);
   pointer-events: none;
+  z-index: 0;
 }
 
 .landing-hero::after {
   content: '';
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0; left: 50%; right: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  margin-right: -50vw;
   height: 100px;
   background: var(--landing-bg);
   clip-path: polygon(0 100%, 100% 30%, 100% 100%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .landing-hero-inner {
@@ -99,28 +208,32 @@
 }
 
 .landing-btn-primary {
-  background: var(--landing-text);
-  color: white;
+  background: var(--landing-accent-yellow) !important;
+  color: var(--landing-text) !important;
+  font-weight: 700 !important;
+  border: none;
 }
 
 .landing-btn-primary:hover {
-  background: #1e293b;
-  transform: translateY(-1px);
+  background: #facc15 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(253, 224, 71, 0.25) !important;
 }
 
 .landing-btn-secondary {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  backdrop-filter: blur(10px);
+  background: transparent !important;
+  color: white !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
 }
 
 .landing-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .landing-screenshot-wrap {
   max-width: 720px;
-  margin: -100px auto 0;
+  margin: -120px auto 0;
   padding: 0 24px;
   position: relative;
   z-index: 2;
@@ -130,7 +243,7 @@
   background: white;
   border-radius: var(--landing-radius-lg);
   padding: 28px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.2);
   border: 1px solid var(--landing-border);
 }
 
@@ -198,7 +311,7 @@
 }
 
 .landing-input-row .landing-btn-validate {
-  background: #6366f1;
+  background: var(--landing-primary) !important;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -1089,7 +1202,7 @@
 }
 
 .landing-plan-premium {
-  background: linear-gradient(135deg, var(--landing-primary) 0%, var(--landing-primary-dark) 100%);
+  background: linear-gradient(to right, var(--landing-primary) 0%, var(--landing-primary-dark) 100%);
   color: white;
   box-shadow: 0 24px 64px rgba(99, 102, 241, 0.25);
 }
@@ -1226,7 +1339,7 @@
   max-width: 900px;
   margin: 100px auto 0;
   padding: 80px 40px;
-  background: linear-gradient(135deg, var(--landing-text), #1e293b);
+  background: linear-gradient(to right, var(--landing-text), #1e293b);
   border-radius: 24px;
   color: white;
   text-align: center;
@@ -1283,9 +1396,12 @@
 }
 
 .landing-footer {
-  background: var(--landing-footer-bg);
+  background: linear-gradient(to right, #0a0a0f, #1a1040, #0a0a0f);
   color: var(--landing-footer-text);
   margin-top: 100px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 
 .landing-footer-top {
@@ -1307,7 +1423,7 @@
 .landing-footer-brand .landing-logo-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, var(--landing-primary), var(--landing-primary-dark));
+  background: linear-gradient(to right, var(--landing-primary), var(--landing-primary-dark));
   border-radius: 8px;
   display: flex;
   align-items: center;
