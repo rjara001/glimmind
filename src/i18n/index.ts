@@ -27,14 +27,15 @@ import ptCommon from './pt/common.json';
 import frCommon from './fr/common.json';
 import deCommon from './de/common.json';
 import zhCommon from './zh/common.json';
+import { SUPPORTED_LANGUAGES } from '../constants/app';
 
 const LANGUAGE_KEY = 'glimmind_lang';
-const SUPPORTED_LANGUAGES = ['es', 'en', 'pt', 'fr', 'de', 'zh'] as const;
+const SUPPORTED_LANGUAGE_CODES = SUPPORTED_LANGUAGES.map((l) => l.code);
 
 const getInitialLanguage = (): string => {
   if (typeof window !== 'undefined' && window.localStorage) {
     const saved = localStorage.getItem(LANGUAGE_KEY);
-    if (saved && SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number])) {
+    if (saved && SUPPORTED_LANGUAGE_CODES.includes(saved)) {
       return saved;
     }
   }
@@ -84,7 +85,7 @@ void i18n.use(initReactI18next).init({
   },
   lng: initialLang,
   fallbackLng: 'es',
-  supportedLngs: SUPPORTED_LANGUAGES,
+  supportedLngs: SUPPORTED_LANGUAGE_CODES,
   defaultNS: 'common',
   compatibilityJSON: 'v4',
   interpolation: { escapeValue: false },

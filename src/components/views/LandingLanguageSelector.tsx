@@ -1,15 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-
-const LANDING_LANGUAGES: { code: string; label: string; flag: string }[] = [
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'zh', label: '中文', flag: '🇨🇳' },
-];
+import { SUPPORTED_LANGUAGES } from '../../constants/app';
 
 export const LandingLanguageSelector: React.FC = () => {
   const { i18n: i18nInstance, t } = useTranslation('common');
@@ -18,7 +10,7 @@ export const LandingLanguageSelector: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentLang =
-    LANDING_LANGUAGES.find((l) => l.code === i18nInstance.language) || LANDING_LANGUAGES[0];
+    SUPPORTED_LANGUAGES.find((l) => l.code === i18nInstance.language) || SUPPORTED_LANGUAGES[0];
 
   const handleLanguageChange = (code: string) => {
     void i18nInstance.changeLanguage(code);
@@ -92,7 +84,7 @@ export const LandingLanguageSelector: React.FC = () => {
 
   const dropdown = (
     <div ref={dropdownRef} className={`lang-dropdown ${isOpen ? 'show' : ''}`}>
-      {LANDING_LANGUAGES.map((lang) => (
+      {SUPPORTED_LANGUAGES.map((lang) => (
         <button
           key={lang.code}
           type="button"

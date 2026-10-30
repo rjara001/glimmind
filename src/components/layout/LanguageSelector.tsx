@@ -1,15 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../../constants/app';
 
 export interface LanguageSelectorProps {
   variant?: 'compact' | 'full';
   className?: string;
 }
-
-const LANGUAGES = [
-  { code: 'es', label: 'Español', flag: '🇪🇸', short: 'ES' },
-  { code: 'en', label: 'English', flag: '🇬🇧', short: 'EN' },
-] as const;
 
 export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   variant = 'compact',
@@ -19,8 +15,11 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentLangCode = i18n.language?.startsWith('en') ? 'en' : 'es';
-  const currentLang = LANGUAGES.find((l) => l.code === currentLangCode) || LANGUAGES[0];
+  const currentLangCode = i18n.language || 'es';
+  const currentLang =
+    SUPPORTED_LANGUAGES.find((l) => l.code === currentLangCode) ||
+    SUPPORTED_LANGUAGES.find((l) => l.code === currentLangCode.slice(0, 2)) ||
+    SUPPORTED_LANGUAGES[0];
 
   const handleLanguageChange = (code: string) => {
     void i18n.changeLanguage(code);
@@ -52,9 +51,9 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
   if (variant === 'full') {
     return (
-      <div className={`grid grid-cols-2 gap-3 ${className}`}>
-        {LANGUAGES.map((lang) => {
-          const isSelected = currentLangCode === lang.code;
+      <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 ${className}`}>
+        {SUPPORTED_LANGUAGES.map((lang) => {
+          const isSelected = currentLang.code === lang.code;
           return (
             <button
               key={lang.code}
@@ -115,12 +114,12 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-1.5 w-36 rounded-2xl bg-white shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute right-0 mt-1.5 w-40 rounded-2xl bg-white shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in slide-in-from-top-1 duration-150"
           role="menu"
           aria-orientation="vertical"
         >
-          {LANGUAGES.map((lang) => {
-            const isSelected = currentLangCode === lang.code;
+          {SUPPORTED_LANGUAGES.map((lang) => {
+            const isSelected = currentLang.code === lang.code;
             return (
               <button
                 key={lang.code}
