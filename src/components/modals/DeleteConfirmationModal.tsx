@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   itemName,
   isLoading = false,
 }) => {
+  const { t } = useTranslation(['common', 'dashboard']);
+
   if (!isOpen) return null;
 
   return (
@@ -27,15 +30,15 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
-            <h2 className="text-2xl font-black">Eliminar mazo</h2>
+            <h2 className="text-2xl font-black">{t('eliminar_mazo', 'Eliminar mazo')}</h2>
           </div>
-          <p className="text-rose-100 font-medium">Esta acción no se puede deshacer.</p>
+          <p className="text-rose-100 font-medium">{t('esta_accion_no_se_puede_deshacer', 'Esta acción no se puede deshacer.')}</p>
         </div>
 
         <div className="p-8 bg-slate-50" style={{ scrollbarWidth: 'none' }}>
           <p className="text-slate-700 mb-6">
-            ¿Estás seguro de que quieres eliminar <span className="font-bold text-rose-600">"{itemName}"</span>?
-            Se eliminarán todas sus tarjetas permanentemente.
+            {t('estas_seguro_de_que_quieres_eliminar', '¿Estás seguro de que quieres eliminar')} <span className="font-bold text-rose-600">"{itemName}"</span>?
+            {' '}{t('se_eliminaran_todas_sus_tarjetas_permanent', 'Se eliminarán todas sus tarjetas permanentemente.')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -44,14 +47,14 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
               disabled={isLoading}
               className="flex-[2] bg-rose-600 text-white py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-rose-700 disabled:bg-slate-300 disabled:shadow-none transition active:scale-95"
             >
-              {isLoading ? 'Eliminando...' : 'Sí, eliminar'}
+              {isLoading ? t('eliminando', 'Eliminando...') : t('si_eliminar', 'Sí, eliminar')}
             </button>
             <button
               onClick={onClose}
               disabled={isLoading}
               className="flex-1 py-3 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition disabled:opacity-50"
             >
-              Cancelar
+              {t('cancelar', 'Cancelar')}
             </button>
           </div>
         </div>

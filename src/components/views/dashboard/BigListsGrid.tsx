@@ -9,6 +9,8 @@ interface BigListsGridProps {
   onDelete: (id: string) => void;
 }
 
+import { useTranslation } from "react-i18next";
+
 export function BigListsGrid({
   lists,
   milestones,
@@ -16,11 +18,13 @@ export function BigListsGrid({
   onEdit,
   onDelete,
 }: BigListsGridProps) {
+  const { t } = useTranslation(["common", "dashboard"]);
+
   if (lists.length === 0) return null;
 
   return (
     <div className="mb-8">
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Listas en digestión</h3>
+      <h3 className="text-lg font-bold text-gray-900 mb-4">{t("listas_en_digestion", "Listas en digestión")}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {lists.map((list) => {
           const active = (list.associations || []).filter((a) => !a.isArchived);

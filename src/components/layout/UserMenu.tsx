@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppUser } from '../../types';
+import { SUPPORTED_LANGUAGES } from '../../constants/app';
 
 interface UserMenuProps {
   user: AppUser;
@@ -11,9 +12,14 @@ interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({ user, onNavigate, onLogout }) => {
   const { t, i18n } = useTranslation(['nav', 'common']);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLangSubmenuOpen, setIsLangSubmenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const currentLangCode = i18n.language?.startsWith('en') ? 'en' : 'es';
+  const currentLangCode = i18n.language || 'es';
+  const currentLang =
+    SUPPORTED_LANGUAGES.find((l) => l.code === currentLangCode) ||
+    SUPPORTED_LANGUAGES.find((l) => l.code === currentLangCode.slice(0, 2)) ||
+    SUPPORTED_LANGUAGES[0];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -21,11 +27,15 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onNavigate, onLogout }
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setIsLangSubmenuOpen(false);
       }
     };
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setIsLangSubmenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -36,9 +46,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onNavigate, onLogout }
     };
   }, [isOpen]);
 
-  const toggleLanguage = () => {
-    const nextLang = currentLangCode === 'es' ? 'en' : 'es';
-    void i18n.changeLanguage(nextLang);
+  const handleSelectLanguage = (code: string) => {
+    void i18n.changeLanguage(code);
+    setIsLangSubmenuOpen(false);
   };
 
   return (
@@ -81,22 +91,68 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onNavigate, onLogout }
             {t('ajustes_3', 'Ajustes')}
           </button>
 
-          <button
-            onClick={toggleLanguage}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.6 9h16.8M3.6 15h16.8" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11.5 3a17 17 0 000 18M12.5 3a17 17 0 010 18" />
-              </svg>
-              <span>{t('idioma', 'Idioma')}</span>
-            </div>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 uppercase">
-              {currentLangCode}
-            </span>
-          </button>
+          <div>
+            <button
+              onClick={() => setIsLangSubmenuOpen(!isLangSubmenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              aria-expanded={isLangSubmenuOpen}
+            >
+              <div className="flex items-center gap-2.5">
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.6 9h16.8M3.6 15h16.8" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.5 3a17 17 0 000 18M12.5 3a17 17 0 010 18" />
+                </svg>
+                <span>{t('idioma', 'Idioma')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 uppercase flex items-center gap-1">
+                  <span>{currentLang.flag}</span>
+                  <span>{currentLang.short}</span>
+                </span>
+                <svg
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isLangSubmenuOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {isLangSubmenuOpen && (
+              <div className="bg-slate-50/80 border-y border-slate-100 py-1">
+                {SUPPORTED_LANGUAGES.map((lang) => {
+                  const isSelected = currentLang.code === lang.code;
+                  return (
+                    <button
+                      key={lang.code}
+                      onClick={() => handleSelectLanguage(lang.code)}
+                      className={`w-full flex items-center justify-between px-8 py-2 text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-indigo-50 text-indigo-600 font-semibold'
+                          : 'text-slate-700 hover:bg-slate-100/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span role="img" aria-hidden="true" className="text-sm">
+                          {lang.flag}
+                        </span>
+                        <span>{lang.label}</span>
+                      </div>
+                      {isSelected && (
+                        <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="border-t border-slate-100 mt-1 pt-1">
             <button

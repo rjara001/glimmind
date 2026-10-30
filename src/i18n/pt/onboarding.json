@@ -1,0 +1,16 @@
+{
+  "prefieres_cargar_tu_propio_material": "🛠️ Prefer loading your own material?",
+  "crea_tu_propia_lista_con_el_metodo_que_prefieras": "Create your own deck using your preferred method.",
+  "csv_copiar_y_pegar": "CSV / Copy & Paste",
+  "pega_desde_excel_o_google_sheets": "Paste from Excel or Google Sheets",
+  "popular": "Popular",
+  "generar_con_ia": "Generate with AI",
+  "crea_listas_por_temas_automaticamente": "Create topic decks automatically",
+  "carga_manual": "Manual Entry",
+  "formulario_directo_termino_por_termino": "Direct term-by-term form",
+  "desde_youtube": "From YouTube",
+  "pega_una_url_y_generamos_vocabulario_automaticamente": "Paste a URL and we'll extract vocabulary automatically",
+  "texto_libre": "Free Text",
+  "pega_un_articulo_transcripcion_o_texto_y_generamos_vocabulario_automaticamente": "Paste an article, transcript or text and we'll extract vocabulary automatically",
+  "crear_lista_personalizada": "+ Create Custom Deck"
+}

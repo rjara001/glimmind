@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameMode } from '../../types';
 
 interface GameControlsProps {
@@ -22,6 +23,7 @@ interface GameControlsProps {
 }
 
 export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canGoBack, onCheckAnswer, onReveal, onCorrect, revealed, gameMode, isTransitioning, attemptCount, showRevealWarning, onTryAttempt, onConfirmReveal, globalCycle, currentCycle, historyIndex }) => {
+  const { t } = useTranslation('game');
   const isPracticeMode = gameMode === 'training';
   const isFromFutureCycle = currentCycle > globalCycle;
   const isInHistoryMode = historyIndex !== -1;
@@ -44,10 +46,10 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
           disabled={!canGoBack}
           tabIndex={1}
           className={`${baseButtonClass} ${canGoBack ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' : 'bg-slate-100 text-slate-300 cursor-not-allowed'} disabled:opacity-50 disabled:cursor-not-allowed order-1 text-[9px] sm:text-[8px]`}
-          aria-label="Atrás"
-          title="Atrás"
+          aria-label={t('atras', 'Atrás')}
+          title={t('atras', 'Atrás')}
         >
-          Atrás
+          {t('atras', 'Atrás')}
         </button>
 
         <button
@@ -56,7 +58,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
           tabIndex={2}
           className={`${baseButtonClass} bg-slate-50 border border-slate-200 text-slate-500 hover:bg-white hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed order-2 text-[9px] sm:text-[8px]`}
         >
-          Siguiente
+          {t('siguiente_2', 'Siguiente')}
         </button>
 
         {!isPracticeMode && (
@@ -66,7 +68,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
             tabIndex={3}
             className={`${baseButtonClass} shadow-sm ${revealed || isInHistoryMode ? 'bg-indigo-100 text-indigo-300 border border-indigo-200 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'} disabled:opacity-50 disabled:cursor-not-allowed order-3 text-[9px] sm:text-[8px]`}
           >
-            Validar
+            {t('validar', 'Validar')}
           </button>
         )}
 
@@ -85,7 +87,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
             tabIndex={3}
             className={`${baseButtonClass} bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed order-3 text-[9px] sm:text-[8px]`}
           >
-            Revelar
+            {t('revelar_2', 'Revelar')}
           </button>
         )}
 
@@ -96,7 +98,7 @@ export const GameControls: React.FC<GameControlsProps> = ({ onNext, onPrev, canG
             tabIndex={4}
             className={`${baseButtonClass} shadow-md gap-2 ${isTransitioning || isInHistoryMode ? 'bg-slate-100 text-slate-300 cursor-not-allowed border border-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'} order-4 text-[9px] sm:text-[8px]`}
           >
-            Correcta
+            {t('correcta', 'Correcta')}
           </button>
         )}
 
