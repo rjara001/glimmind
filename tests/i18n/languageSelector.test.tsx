@@ -21,7 +21,7 @@ describe('LanguageSelector & Language Switching', () => {
   it('renders compact LanguageSelector and opens dropdown', () => {
     render(<LanguageSelector variant="compact" />);
 
-    const trigger = screen.getByRole('button', { name: /idioma/i });
+    const trigger = screen.getByRole('button', { name: /idioma|language/i });
     expect(trigger).toBeInTheDocument();
     expect(screen.getByText('ES')).toBeInTheDocument();
 
@@ -34,7 +34,7 @@ describe('LanguageSelector & Language Switching', () => {
   it('changes language to English when selected from compact selector', async () => {
     render(<LanguageSelector variant="compact" />);
 
-    const trigger = screen.getByRole('button', { name: /idioma/i });
+    const trigger = screen.getByRole('button', { name: /idioma|language/i });
     fireEvent.click(trigger);
 
     const enOption = screen.getByText('English');
