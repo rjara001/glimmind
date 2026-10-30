@@ -9,9 +9,11 @@ import { AttemptAnalysisModal } from "../../modals/AttemptAnalysisModal";
 import { REVEAL_AUTO_NEXT_SECONDS } from "../../../constants/app";
 import type { CardStageProps } from "../../../types/game-view";
 import { RevealWarning } from "./RevealWarning";
+import { useTranslation } from "react-i18next";
 import { EditDeckButton } from "./EditDeckButton";
 
 export function CardStage(props: CardStageProps) {
+  const { t } = useTranslation("game");
   const {
     cycleColorName,
     cycleColorClass,
@@ -85,13 +87,13 @@ export function CardStage(props: CardStageProps) {
     <>
       <div className="w-full max-w-2xl flex justify-between items-center mb-2 px-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">Pending:</span>
+          <span className="text-xs font-semibold text-slate-500">{t("pending", "Pendientes:")}</span>
           <span className={`text-sm font-bold ${cycleColorClass}`}>
             {cycleStats.pending}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">Correct:</span>
+          <span className="text-xs font-semibold text-slate-500">{t("correct", "Correctos:")}</span>
           <span className="text-sm font-bold text-emerald-600">
             {cycleStats.correct}
           </span>

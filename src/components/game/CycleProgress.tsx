@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { computeStateBreakdown } from '../../utils/progress';
-import { CYCLE_LABELS, CYCLE_COLORS } from '../../utils/cycle-colors';
+import { getCycleLabel, getLearnedLabel, CYCLE_COLORS } from '../../utils/cycle-colors';
 import { CYCLE_RULE_CHIPS } from '../../utils/cycle-rules';
 import { CycleMiniBar } from './CycleMiniBar';
 import type { CycleProgressProps } from '../../types/cycle-progress-props';
@@ -31,6 +32,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
   cycleMiniStats,
   isMobile = true,
 }) => {
+  const { t } = useTranslation(['game', 'nav', 'common']);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const breakdown = useMemo(
@@ -53,28 +55,28 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
   const stageBoxes: StageBox[] = [
     {
       key: 'nueva',
-      label: CYCLE_LABELS[1],
+      label: getCycleLabel(1),
       count: breakdown.nuevas,
       colorGroup: 'nueva',
       isActive: activeCycle === 1,
     },
     {
       key: 'vista',
-      label: CYCLE_LABELS[2],
+      label: getCycleLabel(2),
       count: breakdown.vistas,
       colorGroup: 'vista',
       isActive: activeCycle === 2,
     },
     {
       key: 'reconocida',
-      label: CYCLE_LABELS[3],
+      label: getCycleLabel(3),
       count: breakdown.reconocidas,
       colorGroup: 'reconocida',
       isActive: activeCycle === 3,
     },
     {
       key: 'frecuente',
-      label: CYCLE_LABELS[4],
+      label: getCycleLabel(4),
       count: breakdown.frecuentes,
       colorGroup: 'frecuente',
       isActive: activeCycle === 4,
@@ -97,15 +99,15 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
           <div className="min-w-[280px]">
             <div className="inline-flex items-center gap-2.5 bg-[#eef2f6] px-4 py-1.5 rounded-full text-sm font-medium text-[#1a2634] mb-3">
               <span>🔄</span>
-              <span>Ciclo {activeCycle} · {CYCLE_LABELS[activeCycle]}</span>
+              <span>{t('ciclo', 'Ciclo')} {activeCycle} · {getCycleLabel(activeCycle)}</span>
               <span className="bg-[#1a2634] text-white rounded-full px-3 text-xs font-semibold leading-[22px]">
-                {cyclePendientes} pendientes
+                {cyclePendientes} {t('pendientes', 'pendientes')}
               </span>
             </div>
 
             <div className="mb-3">
               <div className="flex justify-between text-xs text-slate-500 mb-1">
-                <span>Progreso total</span>
+                <span>{t('progreso_total', 'Progreso total')}</span>
                 <span className="font-bold text-blue-600">{progressPercentage}%</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -119,7 +121,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
             <div className="flex justify-center mb-3">
               <div className={`${APRENDIDA_BG} ${APRENDIDA_BORDER} border rounded-full px-4 py-1 inline-flex items-center gap-1.5 font-medium ${APRENDIDA_TEXT} text-sm`}>
                 <span>✅</span>
-                <span>APRENDIDAS</span>
+                <span>{getLearnedLabel()}</span>
                 <span className="font-bold text-base">{breakdown.aprendidas}</span>
               </div>
             </div>
@@ -137,9 +139,9 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
 
             <div className="mt-3 border-t border-[#edf2f7] pt-2.5 flex justify-between flex-wrap gap-1 text-xs text-[#4f6a84]">
               <span>
-                📦 Total: {totalAssociations} · {CYCLE_LABELS[1]} {breakdown.nuevas} · {CYCLE_LABELS[2]} {breakdown.vistas} · {CYCLE_LABELS[3]} {breakdown.reconocidas} · {CYCLE_LABELS[4]} {breakdown.frecuentes}
+                📦 Total: {totalAssociations} · {getCycleLabel(1)} {breakdown.nuevas} · {getCycleLabel(2)} {breakdown.vistas} · {getCycleLabel(3)} {breakdown.reconocidas} · {getCycleLabel(4)} {breakdown.frecuentes}
               </span>
-              <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 ciclo {activeCycle} de 4</span>
+              <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 {t('ciclo', 'ciclo')} {activeCycle} {t('de_4', 'de 4')}</span>
             </div>
           </div>
         </div>
@@ -188,14 +190,14 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
           <div className={`mt-1 flex items-center gap-1.5 border rounded-full px-3.5 py-1 text-sm font-medium ${APRENDIDA_BG} ${APRENDIDA_BORDER} ${APRENDIDA_TEXT}`}>
             <span>✅</span>
             <span ref={learnedCountRef} className="font-bold text-base">{breakdown.aprendidas}</span>
-            <span className="text-xs">aprendidas</span>
+            <span className="text-xs">{t('aprendidas_lc', 'aprendidas')}</span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             className="bg-none border-none cursor-pointer text-xl text-[#6b85a0] px-2 py-1 rounded-full hover:bg-[#eef2f6] transition-colors mt-1"
-            aria-label={isExpanded ? 'Colapsar' : 'Expandir'}
+            aria-label={isExpanded ? t('colapsar', 'Colapsar') : t('expandir', 'Expandir')}
             aria-expanded={isExpanded}
             aria-controls="cycle-progress-details"
           >
@@ -209,15 +211,15 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
   return (
     <section className="w-full max-w-[560px] lg:w-auto lg:max-w-[520px] mx-auto shrink-0 bg-white rounded-2xl border border-[#e9edf2] shadow-sm overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-[#eef2f6]">
-        <h2 className="text-sm font-semibold text-[#4a617a]">Progreso por ciclo</h2>
+        <h2 className="text-sm font-semibold text-[#4a617a]">{t('progreso_por_ciclo', 'Progreso por ciclo')}</h2>
         <span className="inline-flex flex-wrap items-center gap-2 bg-[#eef2f6] rounded-full px-3 py-1 text-xs font-medium text-[#1a2634]">
           <span>
-            Ciclo {activeCycle} · {CYCLE_LABELS[activeCycle]}
+            {t('ciclo', 'Ciclo')} {activeCycle} · {getCycleLabel(activeCycle)}
           </span>
           <span className="bg-[#1a2634] text-white rounded-full px-2 py-0.5 text-xs font-semibold leading-4">
-            {cyclePendientes} pendientes
+            {cyclePendientes} {t('pendientes', 'pendientes')}
           </span>
-          <span className="font-normal text-[#94a3b8]">de 4</span>
+          <span className="font-normal text-[#94a3b8]">{t('de_4', 'de 4')}</span>
         </span>
       </header>
 
@@ -258,7 +260,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${APRENDIDA_BG} ${APRENDIDA_BORDER} ${APRENDIDA_TEXT}`}
         >
-          <span>APRENDIDAS</span>
+          <span>{getLearnedLabel()}</span>
           <span ref={learnedCountRef} className="font-bold text-sm">
             {breakdown.aprendidas}
           </span>
@@ -273,7 +275,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
           aria-controls="cycle-progress-details"
           className="bg-none border-none cursor-pointer text-xs font-medium text-[#94a3b8] px-2 py-1 rounded-full hover:bg-[#eef2f6] transition-colors"
         >
-          {isExpanded ? 'Ocultar detalles ▲' : 'Toca para ver detalles ▼'}
+          {isExpanded ? t('ocultar_detalles', 'Ocultar detalles ▲') : t('toca_para_ver_detalles', 'Toca para ver detalles ▼')}
         </button>
       </div>
 

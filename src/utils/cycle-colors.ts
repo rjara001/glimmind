@@ -1,24 +1,38 @@
 import type { StateKey } from '../types/progress';
 
-export const CYCLE_LABELS: Record<number, string> = {
-  1: 'NUEVA',
-  2: 'VISTA',
-  3: 'RECONOCIDA',
-  4: 'FRECUENTE',
-};
+import i18n from '../i18n';
+
+export function getCycleLabel(cycle: number): string {
+  switch (cycle) {
+    case 1:
+      return i18n.t('game:cycle_nueva', 'NUEVA');
+    case 2:
+      return i18n.t('game:cycle_vista', 'VISTA');
+    case 3:
+      return i18n.t('game:cycle_reconocida', 'RECONOCIDA');
+    case 4:
+      return i18n.t('game:cycle_frecuente', 'FRECUENTE');
+    default:
+      return i18n.t('game:cycle_nueva', 'NUEVA');
+  }
+}
+
+export function getLearnedLabel(): string {
+  return i18n.t('game:cycle_aprendida', 'APRENDIDAS');
+}
+
+export const CYCLE_LABELS: Record<number, string> = new Proxy({}, {
+  get: (_target, prop) => getCycleLabel(Number(prop))
+});
 
 export const LEARNED_LABEL = 'APRENDIDAS';
 
-/**
- * Single source of truth for the five state names. The four cycle labels come
- * straight from CYCLE_LABELS so a screen can never rename one of them alone.
- */
 export const STATE_LABELS: Record<StateKey, string> = {
-  nuevas: CYCLE_LABELS[1],
-  vistas: CYCLE_LABELS[2],
-  reconocidas: CYCLE_LABELS[3],
-  frecuentes: CYCLE_LABELS[4],
-  aprendidas: LEARNED_LABEL,
+  nuevas: 'NUEVA',
+  vistas: 'VISTA',
+  reconocidas: 'RECONOCIDA',
+  frecuentes: 'FRECUENTE',
+  aprendidas: 'APRENDIDAS',
 };
 
 export interface CycleColorPalette {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CycleMiniBarProps } from '../../types/cycle-mini-bar-props';
 import { CYCLE_LABELS, CYCLE_COLORS, cycleToColorKey } from '../../utils/cycle-colors';
 
@@ -14,6 +15,7 @@ export const CycleMiniBar: React.FC<CycleMiniBarProps> = ({
   total,
   isComplete = false,
 }) => {
+  const { t } = useTranslation('game');
   const label = CYCLE_LABELS[cycle] ?? '';
   const colors = CYCLE_COLORS[cycleToColorKey(cycle)];
   const pct = total > 0 ? (correct / total) * 100 : 0;
@@ -26,7 +28,7 @@ export const CycleMiniBar: React.FC<CycleMiniBarProps> = ({
       <div className="text-xs font-semibold uppercase text-[#64748b]">{label}</div>
       <div className="flex items-center justify-center gap-2 mt-0.5 text-xs font-medium text-[#4a617a]">
         <span>
-          {pending} <span className="font-normal text-[#94a3b8]">pend.</span>
+          {pending} <span className="font-normal text-[#94a3b8]">{t('pend', 'pend.')}</span>
         </span>
         <span className="font-bold text-[#059669]">{correct}</span>
       </div>
