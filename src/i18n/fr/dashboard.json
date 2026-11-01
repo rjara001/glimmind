@@ -56,5 +56,10 @@
   "incorrecta": "Incorrect",
   "evento_valor": "Value {{value}} of \"{{term}}\": \"{{before}}\" → \"{{after}}\"",
   "nivel_superior": "Higher level",
-  "otra_lista": "another deck"
+  "otra_lista": "another deck",
+  "tu_progreso": "Votre Progression",
+  "total_palabras": "Total de Mots",
+  "aprendidas": "Apprises",
+  "por_aprender": "À Apprendre",
+  "completado": "Terminé"
 }

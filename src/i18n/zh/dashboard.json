@@ -56,5 +56,10 @@
   "incorrecta": "Incorrect",
   "evento_valor": "Value {{value}} of \"{{term}}\": \"{{before}}\" → \"{{after}}\"",
   "nivel_superior": "Higher level",
-  "otra_lista": "another deck"
+  "otra_lista": "another deck",
+  "tu_progreso": "您的学习进度",
+  "total_palabras": "总词数",
+  "aprendidas": "已掌握",
+  "por_aprender": "待学习",
+  "completado": "已完成"
 }
