@@ -6,12 +6,16 @@ interface RecentListsStripProps {
   onPlay: (id: string) => void;
 }
 
+import { useTranslation } from "react-i18next";
+
 export function RecentListsStrip({ lists, onPlay }: RecentListsStripProps) {
+  const { t } = useTranslation(["dashboard", "common"]);
+
   if (lists.length === 0) return null;
 
   return (
     <div className="mb-8">
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Listas Recientes</h3>
+      <h3 className="text-lg font-bold text-gray-900 mb-4">{t("listas_recientes", "Listas Recientes")}</h3>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {lists.map((list) => {
           const allAssociations = list.associations || [];
@@ -37,7 +41,7 @@ export function RecentListsStrip({ lists, onPlay }: RecentListsStripProps) {
                 <span
                   className={`text-xs font-medium ${isComplete ? "text-emerald-600" : "text-slate-500"}`}
                 >
-                  logro {achievementPercent}%
+                  {t("logro", "logro")} {achievementPercent}%
                 </span>
               </div>
             </button>
