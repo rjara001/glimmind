@@ -161,20 +161,5 @@
   "analysis_threshold_label": "Threshold",
   "analysis_needed_pass": "needed to pass",
   "analysis_need_match": "You need",
-  "analysis_match_had": "Übereinstimmung. Sie hatten",
-  "tus_listas_de_estudio": "Your Study Lists",
-  "welcome_back": "Welcome back!",
-  "sign_in": "Sign in",
-  "sign_up": "Sign up",
-  "editing_deck": "EDITING DECK",
-  "add_name_to_deck": "Add a name to your deck to be able to save it",
-  "name_for_deck_dashboard": "Add a name to identify it easily in your dashboard",
-  "adding": "Adding...",
-  "add_card": "+ Add card",
-  "deck_created": "Deck created",
-  "cards_added": "Added {count} cards to your space!",
-  "calculando_limites": "Calculating limits…",
-  "memoriza_asociaciones_de_palabras_rapidame": "Memorize word associations quickly.",
-  "desde_youtube": "From YouTube",
-  "catalogo_de_barajas": "Deck Catalog"
+  "analysis_match_had": "Übereinstimmung. Sie hatten"
 }

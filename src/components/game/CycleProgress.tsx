@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { computeStateBreakdown } from '../../utils/progress';
-import { getCycleLabel, getLearnedLabel, CYCLE_COLORS } from '../../utils/cycle-colors';
+import { CYCLE_LABELS, LEARNED_LABEL, CYCLE_COLORS } from '../../utils/cycle-colors';
 import { CYCLE_RULE_CHIPS } from '../../utils/cycle-rules';
 import { CycleMiniBar } from './CycleMiniBar';
 import type { CycleProgressProps } from '../../types/cycle-progress-props';
@@ -52,31 +52,48 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
     ? Math.round((breakdown.aprendidas / totalAssociations) * 100)
     : 0;
 
+  const getTranslatedCycleLabel = (cycle: number) => {
+    switch (cycle) {
+      case 1:
+        return t('cycle_nueva', CYCLE_LABELS[1]);
+      case 2:
+        return t('cycle_vista', CYCLE_LABELS[2]);
+      case 3:
+        return t('cycle_reconocida', CYCLE_LABELS[3]);
+      case 4:
+        return t('cycle_frecuente', CYCLE_LABELS[4]);
+      default:
+        return CYCLE_LABELS[cycle] ?? '';
+    }
+  };
+
+  const translatedLearnedLabel = t('cycle_aprendida', LEARNED_LABEL);
+
   const stageBoxes: StageBox[] = [
     {
       key: 'nueva',
-      label: getCycleLabel(1),
+      label: getTranslatedCycleLabel(1),
       count: breakdown.nuevas,
       colorGroup: 'nueva',
       isActive: activeCycle === 1,
     },
     {
       key: 'vista',
-      label: getCycleLabel(2),
+      label: getTranslatedCycleLabel(2),
       count: breakdown.vistas,
       colorGroup: 'vista',
       isActive: activeCycle === 2,
     },
     {
       key: 'reconocida',
-      label: getCycleLabel(3),
+      label: getTranslatedCycleLabel(3),
       count: breakdown.reconocidas,
       colorGroup: 'reconocida',
       isActive: activeCycle === 3,
     },
     {
       key: 'frecuente',
-      label: getCycleLabel(4),
+      label: getTranslatedCycleLabel(4),
       count: breakdown.frecuentes,
       colorGroup: 'frecuente',
       isActive: activeCycle === 4,
@@ -99,7 +116,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
           <div className="min-w-[280px]">
             <div className="inline-flex items-center gap-2.5 bg-[#eef2f6] px-4 py-1.5 rounded-full text-sm font-medium text-[#1a2634] mb-3">
               <span>🔄</span>
-              <span>{t('ciclo', 'Ciclo')} {activeCycle} · {getCycleLabel(activeCycle)}</span>
+              <span>{t('ciclo', 'Ciclo')} {activeCycle} · {getTranslatedCycleLabel(activeCycle)}</span>
               <span className="bg-[#1a2634] text-white rounded-full px-3 text-xs font-semibold leading-[22px]">
                 {cyclePendientes} {t('pendientes', 'pendientes')}
               </span>
@@ -121,7 +138,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
             <div className="flex justify-center mb-3">
               <div className={`${APRENDIDA_BG} ${APRENDIDA_BORDER} border rounded-full px-4 py-1 inline-flex items-center gap-1.5 font-medium ${APRENDIDA_TEXT} text-sm`}>
                 <span>✅</span>
-                <span>{getLearnedLabel()}</span>
+                <span>{translatedLearnedLabel}</span>
                 <span className="font-bold text-base">{breakdown.aprendidas}</span>
               </div>
             </div>
@@ -139,7 +156,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
 
             <div className="mt-3 border-t border-[#edf2f7] pt-2.5 flex justify-between flex-wrap gap-1 text-xs text-[#4f6a84]">
               <span>
-                📦 Total: {totalAssociations} · {getCycleLabel(1)} {breakdown.nuevas} · {getCycleLabel(2)} {breakdown.vistas} · {getCycleLabel(3)} {breakdown.reconocidas} · {getCycleLabel(4)} {breakdown.frecuentes}
+                📦 Total: {totalAssociations} · {getTranslatedCycleLabel(1)} {breakdown.nuevas} · {getTranslatedCycleLabel(2)} {breakdown.vistas} · {getTranslatedCycleLabel(3)} {breakdown.reconocidas} · {getTranslatedCycleLabel(4)} {breakdown.frecuentes}
               </span>
               <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 {t('ciclo', 'ciclo')} {activeCycle} {t('de_4', 'de 4')}</span>
             </div>
@@ -214,7 +231,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
         <h2 className="text-sm font-semibold text-[#4a617a]">{t('progreso_por_ciclo', 'Progreso por ciclo')}</h2>
         <span className="inline-flex flex-wrap items-center gap-2 bg-[#eef2f6] rounded-full px-3 py-1 text-xs font-medium text-[#1a2634]">
           <span>
-            {t('ciclo', 'Ciclo')} {activeCycle} · {getCycleLabel(activeCycle)}
+            {t('ciclo', 'Ciclo')} {activeCycle} · {getTranslatedCycleLabel(activeCycle)}
           </span>
           <span className="bg-[#1a2634] text-white rounded-full px-2 py-0.5 text-xs font-semibold leading-4">
             {cyclePendientes} {t('pendientes', 'pendientes')}
@@ -260,7 +277,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${APRENDIDA_BG} ${APRENDIDA_BORDER} ${APRENDIDA_TEXT}`}
         >
-          <span>{getLearnedLabel()}</span>
+          <span>{translatedLearnedLabel}</span>
           <span ref={learnedCountRef} className="font-bold text-sm">
             {breakdown.aprendidas}
           </span>

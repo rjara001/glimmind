@@ -3,7 +3,6 @@ import { PrebuiltDeck } from '../../types/prebuilt-deck';
 import { prebuiltDeckService } from '../../services/prebuiltDeckService';
 import { useGameStore } from '../../store/gameStore';
 import { useDeckValidation } from '../../hooks/dashboard/useDeckValidation';
-import { useTranslation } from 'react-i18next';
 import { useToast } from '../layout/Toast';
 import { DeckCard } from './DeckCard';
 import { DeckPreviewModal } from './DeckPreviewModal';
@@ -22,7 +21,6 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
   onCreateCustom,
   isLoading: isLoadingProp,
 }) => {
-  const { t } = useTranslation();
   const { showToast } = useToast();
   // Hook reactivo (no getState)
   const lists = useGameStore((state) => state.lists);
@@ -101,7 +99,7 @@ export const DeckStoreOnboarding: React.FC<DeckStoreOnboardingProps> = ({
 
     try {
       await onAddDeck(filteredDeck);
-      showToast(t('cards_added', { interpolate: { count: filteredAssociations.length } }), 'success');
+      showToast(`¡Se agregaron ${filteredAssociations.length} tarjetas a tu espacio!`, 'success');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Error al agregar tarjetas', 'error');
     } finally {

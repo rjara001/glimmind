@@ -1,5 +1,4 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
 
 interface ListEditorToolbarProps {
   searchTerm: string;
@@ -32,7 +31,6 @@ export const ListEditorToolbar: React.FC<ListEditorToolbarProps> = ({
   onToggleBulk,
   isLoading,
 }) => {
-  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 flex-wrap">
       <div className="relative flex-1 min-w-[200px]">
@@ -105,10 +103,10 @@ export const ListEditorToolbar: React.FC<ListEditorToolbarProps> = ({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            {t('adding')}
+            Añadiendo...
           </>
         ) : (
-          t('add_card')
+          "+ Añadir tarjeta"
         )}
       </button>
       <button

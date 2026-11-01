@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { LandingPage } from './components/views/LandingPage';
 import { Dashboard } from './components/views/Dashboard';
 import { GameView } from './components/views/GameView';
@@ -36,7 +35,6 @@ import type { VocabularyResult } from './types/youtube-deck';
 import type { VocabularySourceMeta } from './components/modals/VocabularyPreview';
 
 const AppContent: React.FC = () => {
-  const { t } = useTranslation();
   const { showToast } = useToast();
   const { user, logout, setUser } = useAuth();
   const [searchParams] = useSearchParams();
@@ -195,11 +193,9 @@ const AppContent: React.FC = () => {
         if (ids && ids.length > 0) {
           setCurrentList(ids[0]);
           showToast(
-          t('deck_created', {
-            defaultValue: ids.length === 1 ? 'Mazo creado' : `${ids.length} mazos creados`,
-          }),
-          'success',
-        );
+            ids.length === 1 ? 'Mazo creado' : `${ids.length} mazos creados`,
+            'success',
+          );
         }
         setPendingYouTube(null);
       })();

@@ -1,5 +1,4 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
 
 interface ListEditorNameSectionProps {
   name: string;
@@ -16,11 +15,10 @@ export const ListEditorNameSection: React.FC<ListEditorNameSectionProps> = ({
   nameError,
   hasName,
 }) => {
-  const { t } = useTranslation();
   return (
     <div className="px-6 py-5 border-b border-slate-100">
       <div className="text-[0.65rem] font-semibold text-[#64748b] uppercase tracking-[0.06em] mb-1.5">
-        {t('editing_deck')}
+        📚 EDITANDO MAZO
       </div>
       <div
         className={`flex items-center gap-2 rounded-2xl px-4 py-1 transition ${
@@ -50,8 +48,8 @@ export const ListEditorNameSection: React.FC<ListEditorNameSectionProps> = ({
         }`}
       >
         {nameError
-          ? t('add_name_to_deck')
-          : t('name_for_deck_dashboard')}
+          ? "⚠️ Ponle un nombre a tu mazo para poder guardarlo"
+          : "💡 Ponle un nombre para identificarlo fácilmente en tu dashboard"}
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-import { useTranslation } from "react-i18next";
-
 interface DashboardToolbarProps {
   onOpenYouTube: () => void;
   onOpenDeckStore: () => void;
@@ -11,6 +9,8 @@ interface DashboardToolbarProps {
   quotaLoading?: boolean;
 }
 
+import { useTranslation } from "react-i18next";
+
 export function DashboardToolbar({
   onOpenYouTube,
   onOpenDeckStore,
@@ -21,26 +21,15 @@ export function DashboardToolbar({
   isSplitting,
   quotaLoading,
 }: DashboardToolbarProps) {
-  const { t, i18n } = useTranslation('common');
-
-  // Diagnóstico para la consola del navegador:
-  console.log("Idioma actual:", i18n.language);
-  console.log("¿Existe en dashboard?:", i18n.exists('dashboard:tus_listas_de_estudio'));
-  console.log("¿Existe en common?:", i18n.exists('common:tus_listas_de_estudio'));
-  console.log("¿Existe en nav?:", i18n.exists('nav:tus_listas_de_estudio'));
-
+  const { t } = useTranslation(['dashboard', 'nav', 'common']);
   const isLoading = isCreating || isSplitting;
   const effectiveCreateTitle = quotaLoading ? t('calculando_limites', 'Calculando límites…') : createTitle;
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 overflow-hidden">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">
-          {t('tus_listas_de_estudio', 'Tus Listas de Estudio')}
-        </h2>
-        <p className="text-gray-500 mt-1">
-          {t('memoriza_asociaciones_de_palabras_rapidame', 'Memoriza asociaciones de palabras rápidamente.')}
-        </p>
+        <h2 className="text-3xl font-bold text-gray-900">{t('tus_listas_de_estudio', 'Tus Listas de Estudio')}</h2>
+        <p className="text-gray-500 mt-1">{t('memoriza_asociaciones_de_palabras_rapidame', 'Memoriza asociaciones de palabras rápidamente.')}</p>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 md:overflow-visible md:pb-0 md:w-auto">
         {quotaLoading && (
