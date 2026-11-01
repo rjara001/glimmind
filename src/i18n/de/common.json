@@ -161,5 +161,20 @@
   "analysis_threshold_label": "Schwelle",
   "analysis_needed_pass": "benötigt um zu bestehen",
   "analysis_need_match": "Sie brauchen",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "tus_listas_de_estudio": "Ihre Lernlisten",
+  "welcome_back": "Willkommen zurück!",
+  "sign_in": "Anmelden",
+  "sign_up": "Registrieren",
+  "editing_deck": "DECK BEARBEITEN",
+  "add_name_to_deck": "Gib deinem Deck einen Namen, um es zu speichern",
+  "name_for_deck_dashboard": "Gib einen Namen, um es leicht in Ihrem Dashboard zu identifizieren",
+  "adding": "Hinzufügen...",
+  "add_card": "+ Karte hinzufügen",
+  "deck_created": "Deck erstellt",
+  "cards_added": "Karten hinzugefügt {count}",
+  "calculando_limites": "Calculando límites…",
+  "memoriza_asociaciones_de_palabras_rapidame": "Memoriza asociaciones de palabras rápidamente.",
+  "desde_youtube": "Desde YouTube",
+  "catalogo_de_barajas": "Catálogo de Barajas"
 }

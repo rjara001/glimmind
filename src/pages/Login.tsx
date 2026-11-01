@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/layout/Toast';
 
 export const Login: React.FC = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +32,7 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      showToast('Welcome back!', 'success');
+      showToast(t('welcome_back'), 'success');
       navigate(from, { replace: true });
     } catch {
       // Error handled by auth context effect
@@ -54,8 +56,8 @@ export const Login: React.FC = () => {
               <path d="M19 12h2" />
             </svg>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-1.5 tracking-tight">Welcome back</h1>
-          <p className="text-slate-500 font-medium text-sm">Sign in to continue to Glimmind</p>
+          <h1>{t('welcome_back')}</h1>
+          <p>{t('sign_in')} to continue to Glimmind</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 space-y-5">
@@ -128,14 +130,14 @@ export const Login: React.FC = () => {
                 <span>Signing in...</span>
               </>
             ) : (
-              'Sign in'
+              t('sign_in')
             )}
           </button>
 
           <p className="text-center text-sm text-slate-500">
             Don't have an account?{' '}
             <a href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">
-              Sign up
+              {t('sign_up')}
             </a>
           </p>
         </form>
