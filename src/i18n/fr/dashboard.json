@@ -42,5 +42,19 @@
   "memoriza_asociaciones_de_palabras_rapidame": "Mémorisez des associations de mots rapidement.",
   "desde_youtube": "Depuis YouTube",
   "catalogo_de_barajas": "Catalogue de Decks",
-  "nueva_lista": "Nouveau Deck"
+  "nueva_lista": "Nouveau Deck",
+  "tipo_tarjeta_creada": "Card created",
+  "tipo_tarjeta_editada": "Card edited",
+  "tipo_tarjeta_archivada": "Card archived",
+  "tipo_tarjeta_restaurada": "Card restored",
+  "tipo_tarjeta_eliminada": "Card deleted",
+  "tipo_tarjeta_movida": "Card moved",
+  "tipo_tarjeta_revelada": "Card revealed",
+  "tipo_respuesta": "Answer",
+  "tipo_nivel_alcanzado": "Level reached",
+  "correcta": "Correct",
+  "incorrecta": "Incorrect",
+  "evento_valor": "Value {{value}} of \"{{term}}\": \"{{before}}\" → \"{{after}}\"",
+  "nivel_superior": "Higher level",
+  "otra_lista": "another deck"
 }

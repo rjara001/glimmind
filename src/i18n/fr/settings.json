@@ -29,5 +29,18 @@
   "valor_actual": "Valeur actuelle:",
   "tarjetas_por_mazo": "cartes par deck",
   "idioma_ui": "Langue de l'Interface",
-  "selecciona_tu_idioma_preferido": "Sélectionnez votre langue préférée pour l'interface."
+  "selecciona_tu_idioma_preferido": "Sélectionnez votre langue préférée pour l'interface.",
+  "preferencias_generales_de_tu_entorno": "General environment preferences.",
+  "activo_a_partir_de_ahora_se_registra_la_ac": "Active. Card activity is now recorded and Activity, Summary, and Ranking views are available.",
+  "activo_se_registra_la_actividad_de_tus_tar": "Active. Card activity is recorded and the Activity view will be available.",
+  "desactivado_por_defecto_tus_tarjetas_no_re": "Disabled by default. Your cards do not record activity or game counters.",
+  "guarda_los_audios_de_tus_intentos_en_modo_": "Saves audio of your voice study attempts. Files are deleted automatically.",
+  "funcion_premium_actualiza_tu_plan_para_gua": "Premium feature. Upgrade your plan to store your audio in the cloud.",
+  "activo_las_grabaciones_se_suben_a_la_nube_": "Active. Recordings are uploaded to the cloud and automatically deleted.",
+  "desactivado_por_defecto_no_se_guardan_audi": "Disabled by default. No audio is stored.",
+  "fallback_de_reconocimiento_de_voz": "Voice STT Fallback",
+  "si_el_reconocimiento_del_navegador_falla_h": "If browser recognition fails up to 3 times in a row, external recognition activates automatically.",
+  "activo_tenes_hasta_3_intentos_antes_de_que": "Active. You have up to 3 attempts before external recognition is tried.",
+  "desactivado_por_defecto_si_falla_el_recono": "Disabled by default. If browser recognition fails, the answer is marked incorrect.",
+  "al_importar_texto_csv_o_youtube_si_superas": "When importing text, CSV, or YouTube, exceeding this limit automatically splits into multiple decks."
 }
