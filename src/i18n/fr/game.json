@@ -83,5 +83,5 @@
   "cycle_rule_2": "✅ Correct dans le cycle 2 ou plus → reste",
   "cycle_rule_3": "➡ Suivant → passe au cycle suivant",
   "total": "Total",
-  "autoplay": "AutoPlay"
+  "autoplay": "Lecture Auto"
 }

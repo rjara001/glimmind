@@ -83,5 +83,5 @@
   "cycle_rule_2": "✅ 周期 2 或更高正确 → 保留",
   "cycle_rule_3": "➡ 下一个 → 进入下一周期",
   "total": "总计",
-  "autoplay": "AutoPlay"
+  "autoplay": "自动播放"
 }
