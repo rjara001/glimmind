@@ -73,5 +73,13 @@
   "ignore_articles": "Artikel ignorieren",
   "ignore_articles_desc": "der, die, das, the, at, to... nicht erforderlich",
   "similarity_threshold": "Ähnlichkeitsschwelle",
-  "saving": "Speichern..."
+  "saving": "Speichern...",
+  "cmd_reveal": "aufdecken",
+  "cmd_pass": "überspringen",
+  "cmd_continue": "weiter",
+  "cmd_stop": "stoppen",
+  "default_reveal_keywords": "aufdecken, zeigen, reveal, show",
+  "default_pass_keywords": "überspringen, weiter, pass, next",
+  "default_continue_keywords": "weiter, fortfahren, continue",
+  "default_stop_keywords": "stop, stoppen, anhalten, halt"
 }

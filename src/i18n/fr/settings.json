@@ -73,5 +73,13 @@
   "ignore_articles": "Ignorer les articles",
   "ignore_articles_desc": "le, la, the, at, to... non requis",
   "similarity_threshold": "Seuil de similarité",
-  "saving": "Enregistrement..."
+  "saving": "Enregistrement...",
+  "cmd_reveal": "révéler",
+  "cmd_pass": "passer",
+  "cmd_continue": "continuer",
+  "cmd_stop": "arrêter",
+  "default_reveal_keywords": "révéler, montrer, reveal, show",
+  "default_pass_keywords": "passer, suivant, pass, next",
+  "default_continue_keywords": "continuer, en avant, continue",
+  "default_stop_keywords": "stop, arrêter, pause, halte"
 }

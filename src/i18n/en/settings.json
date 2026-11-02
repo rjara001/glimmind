@@ -73,5 +73,13 @@
   "ignore_articles": "Ignore articles",
   "ignore_articles_desc": "the, at, to, el, la... not required",
   "similarity_threshold": "Similarity threshold",
-  "saving": "Saving..."
+  "saving": "Saving...",
+  "cmd_reveal": "reveal",
+  "cmd_pass": "pass",
+  "cmd_continue": "continue",
+  "cmd_stop": "stop",
+  "default_reveal_keywords": "reveal, show, revelar, mostrar",
+  "default_pass_keywords": "pass, next, skip, pasar, siguiente",
+  "default_continue_keywords": "continue, next, forward, continuar, adelante",
+  "default_stop_keywords": "stop, halt, pause, detener, parar"
 }

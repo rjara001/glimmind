@@ -17,9 +17,14 @@ export const VoiceCommandsSection: React.FC<VoiceCommandsSectionProps> = ({
   const getCommandValue = (id: VoiceCommandId): string => {
     const raw = (draft.voiceCommands as Record<string, string[]>)?.[id];
     if (raw === undefined) {
-      return DEFAULT_VOICE_COMMANDS[id].join(', ');
+      const defaultKey = `default_${id}_keywords`;
+      return t(defaultKey, DEFAULT_VOICE_COMMANDS[id].join(', '));
     }
     return raw.join(', ');
+  };
+
+  const getCommandLabel = (id: VoiceCommandId): string => {
+    return t(`cmd_${id}`, id);
   };
 
   const setCommandValue = (id: VoiceCommandId, value: string) => {
@@ -52,14 +57,14 @@ export const VoiceCommandsSection: React.FC<VoiceCommandsSectionProps> = ({
       ).map((id) => (
         <div key={id} className="mb-2">
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-            {id}
+            {getCommandLabel(id)}
           </label>
           <input
             type="text"
             value={getCommandValue(id)}
             onChange={(e) => setCommandValue(id, e.target.value)}
             className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-            aria-label={t('voice_command_label', 'Voice command {{id}}', { id })}
+            aria-label={`Voice command ${id}`}
           />
         </div>
       ))}
