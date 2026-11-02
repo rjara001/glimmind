@@ -66,5 +66,15 @@
   "voice_on": "语音 开启",
   "grabacion_temporal_activa_los_audios_se_su": "临时录音开启：音频已上传并会自动删除。",
   "try": "尝试",
-  "reveal": "显示答案"
+  "reveal": "显示答案",
+  "cycle_nueva": "新词",
+  "cycle_vista": "已见",
+  "cycle_reconocida": "已识别",
+  "cycle_frecuente": "常见",
+  "cycle_aprendida": "已学会",
+  "pendientes": "待处理",
+  "aprendidas_lc": "已学会",
+  "ciclo": "周期",
+  "colapsar": "折叠",
+  "expandir": "展开"
 }

@@ -66,5 +66,15 @@
   "voice_on": "Voz LIGADA",
   "grabacion_temporal_activa_los_audios_se_su": "Gravação temporária ativa: os áudios são enviados para a nuvem e excluídos automaticamente.",
   "try": "Tentar",
-  "reveal": "Revelar"
+  "reveal": "Revelar",
+  "cycle_nueva": "NOVA",
+  "cycle_vista": "VISTA",
+  "cycle_reconocida": "RECONHECIDA",
+  "cycle_frecuente": "FREQUENTE",
+  "cycle_aprendida": "APRENDIDAS",
+  "pendientes": "pendentes",
+  "aprendidas_lc": "aprendidas",
+  "ciclo": "Ciclo",
+  "colapsar": "Recolher",
+  "expandir": "Expandir"
 }

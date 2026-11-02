@@ -66,5 +66,15 @@
   "voice_on": "Voz ON",
   "grabacion_temporal_activa_los_audios_se_su": "Grabación temporal activa: los audios se suben a la nube y se eliminan automáticamente.",
   "try": "Probar",
-  "reveal": "Revelar"
+  "reveal": "Revelar",
+  "cycle_nueva": "NUEVA",
+  "cycle_vista": "VISTA",
+  "cycle_reconocida": "RECONOCIDA",
+  "cycle_frecuente": "FRECUENTE",
+  "cycle_aprendida": "APRENDIDAS",
+  "pendientes": "pendientes",
+  "aprendidas_lc": "aprendidas",
+  "ciclo": "Ciclo",
+  "colapsar": "Colapsar",
+  "expandir": "Expandir"
 }

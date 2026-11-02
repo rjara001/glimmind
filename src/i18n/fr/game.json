@@ -31,9 +31,9 @@
   "detener": "Arrêter",
   "comando": "Commande",
   "pend": "en att.",
-  "progreso_total": "Progrès total",
+  "progreso_total": "Progression totale",
   "aprendidas": "APPRISES",
-  "progreso_por_ciclo": "Progrès par cycle",
+  "progreso_por_ciclo": "Progression par cycle",
   "de_4": "sur 4",
   "ocultar_detalles": "Masquer les détails ▲",
   "toca_para_ver_detalles": "Appuyez pour voir les détails ▼",
@@ -66,5 +66,15 @@
   "voice_on": "Voix ON",
   "grabacion_temporal_activa_los_audios_se_su": "Enregistrement temporaire actif : les audios sont envoyés sur le cloud et supprimés automatiquement.",
   "try": "Essayer",
-  "reveal": "Révéler"
+  "reveal": "Révéler",
+  "cycle_nueva": "NOUVELLE",
+  "cycle_vista": "VUE",
+  "cycle_reconocida": "RECONNUE",
+  "cycle_frecuente": "FRÉQUENTE",
+  "cycle_aprendida": "APPRISES",
+  "pendientes": "en attente",
+  "aprendidas_lc": "apprises",
+  "ciclo": "Cycle",
+  "colapsar": "Réduire",
+  "expandir": "Développer"
 }

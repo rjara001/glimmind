@@ -35,7 +35,7 @@
   "aprendidas": "GELERNT",
   "progreso_por_ciclo": "Fortschritt nach Zyklus",
   "de_4": "von 4",
-  "ocultar_detalles": "Details verbergen ▲",
+  "ocultar_detalles": "Details ausblenden ▲",
   "toca_para_ver_detalles": "Tippen für Details ▼",
   "aprendidas_2": "✅ GELERNT",
   "sesion_completada": "Sitzung abgeschlossen!",
@@ -66,5 +66,15 @@
   "voice_on": "Sprache AN",
   "grabacion_temporal_activa_los_audios_se_su": "Temporäre Aufnahme aktiv: Audios werden hochgeladen und automatisch gelöscht.",
   "try": "Versuchen",
-  "reveal": "Aufdecken"
+  "reveal": "Aufdecken",
+  "cycle_nueva": "NEU",
+  "cycle_vista": "GESEHEN",
+  "cycle_reconocida": "ERKANNT",
+  "cycle_frecuente": "HÄUFIG",
+  "cycle_aprendida": "GELERNT",
+  "pendientes": "ausstehend",
+  "aprendidas_lc": "gelernt",
+  "ciclo": "Zyklus",
+  "colapsar": "Einklappen",
+  "expandir": "Ausklappen"
 }
