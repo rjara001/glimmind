@@ -83,5 +83,9 @@
   "cycle_rule_2": "✅ 周期 2 或更高正确 → 保留",
   "cycle_rule_3": "➡ 下一个 → 进入下一周期",
   "total": "总计",
-  "autoplay": "自动播放"
+  "autoplay": "自动播放",
+  "termino": "词条",
+  "definicion": "定义",
+  "tu_respuesta": "您的回答",
+  "intentos": "尝试次数"
 }

@@ -199,8 +199,12 @@ import { logEvent } from '../../services/errorReporting';
     const isIgnoringArticles = draft.ignoreArticles === true;
 
     const conceptParts = list.concept.split('/');
-    const termLabel = conceptParts[0] || 'Término';
-    const defLabel = conceptParts[1] || 'Definición';
+    const rawTerm = conceptParts[0]?.trim();
+    const rawDef = conceptParts[1]?.trim();
+    const isDefaultConcept = !rawTerm || !rawDef || (rawTerm.toLowerCase() === 'término' || rawTerm.toLowerCase() === 'term') && (rawDef.toLowerCase() === 'definición' || rawDef.toLowerCase() === 'definition');
+
+    const termLabel = isDefaultConcept ? t('termino', 'Término') : rawTerm;
+    const defLabel = isDefaultConcept ? t('definicion', 'Definición') : rawDef;
 
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FlowTracker } from "../../utils/breadcrumbs";
 import { joinDefinitions, parseDefinitions } from "../../utils/normalizeAssociation";
 import type { Association, AssociationList, Attempt, GameCycle, GameState } from "../../types";
@@ -95,9 +96,19 @@ export function useGameViewGameplay({
       : joinDefinitions(currentAssociation.definition)
     : "";
 
+  const { t } = useTranslation("game");
   const conceptParts = list.concept.split("/");
-  const labelTerm = isReversed ? conceptParts[1] || "Definición" : conceptParts[0] || "Término";
-  const labelDef = isReversed ? conceptParts[0] || "Término" : conceptParts[1] || "Definición";
+  const rawPart1 = conceptParts[0]?.trim();
+  const rawPart2 = conceptParts[1]?.trim();
+  const isDefaultConcept = !rawPart1 || !rawPart2 ||
+    ((rawPart1.toLowerCase() === 'término' || rawPart1.toLowerCase() === 'term') &&
+     (rawPart2.toLowerCase() === 'definición' || rawPart2.toLowerCase() === 'definition'));
+
+  const resolvedPart1 = isDefaultConcept ? t('termino', 'Término') : rawPart1;
+  const resolvedPart2 = isDefaultConcept ? t('definicion', 'Definición') : rawPart2;
+
+  const labelTerm = isReversed ? resolvedPart2 : resolvedPart1;
+  const labelDef = isReversed ? resolvedPart1 : resolvedPart2;
   const voiceTermLang = isReversed ? list.settings.voiceDefLang : list.settings.voiceTermLang;
   const voiceDefLang = isReversed ? list.settings.voiceTermLang : list.settings.voiceDefLang;
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { maskHint, getAutoHintMode } from '../../utils/maskHint';
 import { getLanguageFlag } from '../../services/voice/languageFlags';
 
@@ -43,6 +44,7 @@ export const CardContent: React.FC<CardContentProps> = ({
   voiceDefLang,
   shakeClass = '',
 }) => {
+  const { t } = useTranslation('game');
   const isDefinitionHidden = isPracticeMode && !revealed && !showHints;
   const showDefinitions = revealed || isNearComplete;
   const effectiveHintMode = showHints ? getAutoHintMode(currentCycle) : false;
@@ -69,7 +71,7 @@ export const CardContent: React.FC<CardContentProps> = ({
             <input
               ref={inputRef}
               type="text"
-              aria-label="Tu respuesta"
+              aria-label={t('tu_respuesta', 'Tu respuesta')}
               tabIndex={1}
               value={userInput}
               onChange={(e) => onUserInput(e.target.value)}
@@ -82,7 +84,7 @@ export const CardContent: React.FC<CardContentProps> = ({
                    {maskHint(displayDef, effectiveHintMode)}
                  </p>
                  {showAttemptCounter && typeof attemptCount === 'number' && (
-                   <span className="block text-[10px] text-slate-400 font-medium mt-1">intentos: {attemptCount}</span>
+                   <span className="block text-[10px] text-slate-400 font-medium mt-1">{t('intentos', 'intentos')}: {attemptCount}</span>
                  )}
                </div>
              )}

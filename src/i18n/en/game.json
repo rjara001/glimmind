@@ -83,5 +83,9 @@
   "cycle_rule_2": "✅ Correct in cycle 2 or more → stays",
   "cycle_rule_3": "➡ Next → advances cycle",
   "total": "Total",
-  "autoplay": "AutoPlay"
+  "autoplay": "AutoPlay",
+  "termino": "Term",
+  "definicion": "Definition",
+  "tu_respuesta": "Your answer",
+  "intentos": "attempts"
 }
