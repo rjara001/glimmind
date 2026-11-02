@@ -82,5 +82,6 @@
   "cycle_rule_1": "⬇ Richtig in Zyklus 1 → GELERNT",
   "cycle_rule_2": "✅ Richtig in Zyklus 2 oder mehr → bleibt",
   "cycle_rule_3": "➡ Weiter → wechselt den Zyklus",
-  "total": "Gesamt"
+  "total": "Gesamt",
+  "autoplay": "AutoPlay"
 }

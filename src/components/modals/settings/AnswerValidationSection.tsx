@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { RangeSliderField } from './RangeSliderField';
 import { ToggleSection } from './ToggleSection';
 
@@ -19,17 +20,19 @@ export const AnswerValidationSection: React.FC<AnswerValidationSectionProps> = (
   threshold,
   onThresholdChange,
 }) => {
+  const { t } = useTranslation('settings');
+
   return (
     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-        Answer Validation
+        {t('answer_validation', 'Answer Validation')}
       </p>
 
       <div className="flex items-center justify-between gap-4 mb-5">
         <div>
-          <p className="text-xs font-bold text-slate-700">Ignore articles</p>
+          <p className="text-xs font-bold text-slate-700">{t('ignore_articles', 'Ignore articles')}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
-            the, at, to, el, la... not required
+            {t('ignore_articles_desc', 'the, at, to, el, la... not required')}
           </p>
         </div>
         <ToggleSection
@@ -41,7 +44,7 @@ export const AnswerValidationSection: React.FC<AnswerValidationSectionProps> = (
       </div>
 
       <RangeSliderField
-        label="Similarity threshold"
+        label={t('similarity_threshold', 'Similarity threshold')}
         value={Math.round(threshold * 100)}
         onChange={(value) => onThresholdChange(value / 100)}
         min={THRESHOLD_MIN}

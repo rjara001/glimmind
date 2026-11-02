@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { VoiceCommandId } from '../../../types';
 import { DEFAULT_VOICE_COMMANDS } from '../../../services/voice/stt/commands';
 
@@ -11,6 +12,8 @@ export const VoiceCommandsSection: React.FC<VoiceCommandsSectionProps> = ({
   draft,
   onDraftChange,
 }) => {
+  const { t } = useTranslation('settings');
+
   const getCommandValue = (id: VoiceCommandId): string => {
     const raw = (draft.voiceCommands as Record<string, string[]>)?.[id];
     if (raw === undefined) {
@@ -37,10 +40,10 @@ export const VoiceCommandsSection: React.FC<VoiceCommandsSectionProps> = ({
   return (
     <div className="pt-3 border-t border-slate-200">
       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-        Voice commands
+        {t('voice_commands', 'Voice commands')}
       </p>
       <p className="text-[10px] text-slate-400 mb-3">
-        Comma-separated keywords, recognized in the answer language.
+        {t('voice_commands_desc', 'Comma-separated keywords, recognized in the answer language.')}
       </p>
       {(
         Object.keys(
@@ -56,7 +59,7 @@ export const VoiceCommandsSection: React.FC<VoiceCommandsSectionProps> = ({
             value={getCommandValue(id)}
             onChange={(e) => setCommandValue(id, e.target.value)}
             className="w-full bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
-            aria-label={`Voice command ${id}`}
+            aria-label={t('voice_command_label', 'Voice command {{id}}', { id })}
           />
         </div>
       ))}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChirpVoices } from '../../../hooks/voice/tts/useChirpVoices';
 import {
   isChirpVoiceId,
@@ -76,6 +77,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
   defLabel,
   onPlayTestVoice,
 }) => {
+  const { t } = useTranslation('settings');
   const {
     voices: chirpVoices,
     isLoading: chirpVoicesLoading,
@@ -88,14 +90,14 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
   return (
     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-8">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-        Voice
+        {t('voice', 'Voice')}
       </p>
 
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
-          <p className="text-xs font-bold text-slate-700">Enable voice</p>
+          <p className="text-xs font-bold text-slate-700">{t('enable_voice', 'Enable voice')}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
-            Pronounce the word and listen to your answer
+            {t('pronounce_word_listen', 'Pronounce the word and listen to your answer')}
           </p>
         </div>
         <button
@@ -103,7 +105,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
           className={`w-10 h-6 rounded-full relative transition-colors flex-shrink-0 ${
             isVoiceEnabled ? 'bg-indigo-400' : 'bg-slate-200'
           }`}
-          aria-label="Toggle voice"
+          aria-label={t('toggle_voice', 'Toggle voice')}
         >
           <div
             className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${
@@ -117,7 +119,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
         <div className="space-y-3">
           <div>
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-              TTS Provider
+              {t('tts_provider', 'TTS Provider')}
             </label>
             <ProviderToggle
               value={ttsProvider}
@@ -130,14 +132,14 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
             />
             {ttsProvider === 'chirp' && (
               <p className="text-[10px] text-slate-400 mt-1.5">
-                Calidad premium · fallback automático a browser si se agota la cuota
+                {t('tts_chirp_note', 'Calidad premium · fallback automático a browser si se agota la cuota')}
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-              STT Provider
+              {t('stt_provider', 'STT Provider')}
             </label>
             <ProviderToggle
               value={sttProvider}
@@ -151,20 +153,20 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
             />
             {sttProvider === 'chiptt' && (
               <p className="text-[10px] text-slate-400 mt-1.5">
-                Calidad premium · requiere grabación de audio
+                {t('stt_chiptt_note', 'Calidad premium · requiere grabación de audio')}
               </p>
             )}
             {sttProvider === 'vosk' && (
               <p className="text-[10px] text-slate-400 mt-1.5">
                 {isVoskReady
-                  ? 'Reconocimiento offline · requiere conexión solo para descargar el modelo (~41MB)'
-                  : 'Requiere conexión a internet para descargar el modelo'}
+                  ? t('stt_vosk_ready_note', 'Reconocimiento offline · requiere conexión solo para descargar el modelo (~41MB)')
+                  : t('stt_vosk_download_note', 'Requiere conexión a internet para descargar el modelo')}
               </p>
             )}
           </div>
 
           <SelectField
-            label={`Idioma de ${termLabel}`}
+            label={t('lang_of', 'Idioma de {{label}}', { label: termLabel })}
             value={(draft.voiceTermLang as string) || 'es'}
             onChange={(value) => updateDraft({ voiceTermLang: value })}
             ariaLabel={`Idioma de ${termLabel}`}
@@ -177,7 +179,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
           </SelectField>
 
           <SelectField
-            label={`Idioma de ${defLabel}`}
+            label={t('lang_of', 'Idioma de {{label}}', { label: defLabel })}
             value={(draft.voiceDefLang as string) || 'es'}
             onChange={(value) => updateDraft({ voiceDefLang: value })}
             ariaLabel={`Idioma de ${defLabel}`}
@@ -190,7 +192,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
           </SelectField>
 
           <VoiceSelect
-            label={`Voz de ${termLabel}`}
+            label={t('voice_of', 'Voz de {{label}}', { label: termLabel })}
             value={(draft.voiceTermId as string) || ''}
             onChange={(value) => updateDraft({ voiceTermId: value || undefined })}
             ttsProvider={ttsProvider}
@@ -206,11 +208,11 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
               }
               onPlayTestVoice(lang, voiceId);
             }}
-            ariaLabel={`Voz de ${termLabel}`}
+            ariaLabel={t('voice_of', 'Voz de {{label}}', { label: termLabel })}
           />
 
           <VoiceSelect
-            label={`Voz de ${defLabel}`}
+            label={t('voice_of', 'Voz de {{label}}', { label: defLabel })}
             value={(draft.voiceDefId as string) || ''}
             onChange={(value) => updateDraft({ voiceDefId: value || undefined })}
             ttsProvider={ttsProvider}
@@ -226,11 +228,11 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
               }
               onPlayTestVoice(lang, voiceId);
             }}
-            ariaLabel={`Voz de ${defLabel}`}
+            ariaLabel={t('voice_of', 'Voz de {{label}}', { label: defLabel })}
           />
 
           <RangeSliderField
-            label="Velocidad"
+            label={t('speed', 'Velocidad')}
             value={(draft.voiceRate as number) ?? 1}
             onChange={(value) => updateDraft({ voiceRate: value })}
             min={0.5}
@@ -241,7 +243,7 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
           />
 
           <RangeSliderField
-            label="Tono"
+            label={t('pitch', 'Tono')}
             value={(draft.voicePitch as number) ?? 1}
             onChange={(value) => updateDraft({ voicePitch: value })}
             min={0.5}
@@ -281,6 +283,8 @@ const VoiceSelect: React.FC<VoiceSelectProps> = ({
   onTest,
   ariaLabel,
 }) => {
+  const { t } = useTranslation('settings');
+
   return (
     <div>
       <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
@@ -293,12 +297,12 @@ const VoiceSelect: React.FC<VoiceSelectProps> = ({
           className="flex-1 bg-white border-2 border-indigo-100 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
           aria-label={ariaLabel}
         >
-          <option value="">Auto (por idioma)</option>
+          <option value="">{t('auto_by_lang', 'Auto (por idioma)')}</option>
           {ttsProvider === 'chirp'
             ? chirpVoicesLoading
               ? (
                   <option value="" disabled>
-                    Cargando voces...
+                    {t('loading_voices', 'Cargando voces...')}
                   </option>
                 )
               : chirpVoices
@@ -318,7 +322,7 @@ const VoiceSelect: React.FC<VoiceSelectProps> = ({
           type="button"
           onClick={onTest}
           className="px-3 py-2.5 rounded-xl bg-white border-2 border-indigo-100 text-xs font-black text-indigo-600 active:scale-95 transition-all"
-          aria-label={`Probar voz de ${label}`}
+          aria-label={t('test_voice_of', 'Probar voz de {{label}}', { label })}
         >
           🔊
         </button>

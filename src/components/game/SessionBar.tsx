@@ -73,7 +73,7 @@ export const SessionBar: React.FC<SessionBarProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.25 12h15.5M4.25 12A2.25 2.25 0 016.5 9.75v4.5A2.25 2.25 0 014.25 12zM4.25 12l3.25 3.25M4.25 12L6 9.75" />
             </svg>
           )}
-          <span className="hidden sm:inline">{isPresentationActive ? t('listo', 'Listo') : 'AutoPlay'}</span>
+          <span className="hidden sm:inline">{isPresentationActive ? t('listo', 'Listo') : t('autoplay', 'AutoPlay')}</span>
         </button>
       )}
       {onRestart && (

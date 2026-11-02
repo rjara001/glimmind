@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface GameModeSectionProps {
   isPracticeMode: boolean;
@@ -9,10 +10,12 @@ export const GameModeSection: React.FC<GameModeSectionProps> = ({
   isPracticeMode,
   onModeChange,
 }) => {
+  const { t } = useTranslation('settings');
+
   return (
     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-        Game Mode
+        {t('game_mode', 'Game Mode')}
       </p>
       <div className="flex gap-2">
         <button
@@ -23,7 +26,7 @@ export const GameModeSection: React.FC<GameModeSectionProps> = ({
               : 'bg-white text-slate-500 border border-slate-200'
           }`}
         >
-          Practice
+          {t('practice', 'Practice')}
         </button>
         <button
           onClick={() => onModeChange('real')}
@@ -33,7 +36,7 @@ export const GameModeSection: React.FC<GameModeSectionProps> = ({
               : 'bg-white text-slate-500 border border-slate-200'
           }`}
         >
-          Real
+          {t('real', 'Real')}
         </button>
       </div>
     </div>

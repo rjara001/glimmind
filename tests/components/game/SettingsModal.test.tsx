@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import i18n from 'i18next';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SettingsModal } from '@/components/modals/SettingsModal';
 import { AssociationList } from '@/types';
@@ -18,8 +19,9 @@ describe('SettingsModal - Answer Validation', () => {
   const mockOnUpdateList = vi.fn();
   const mockOnClose = vi.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await i18n.changeLanguage('en');
   });
 
   it('renders the answer validation section with the current threshold', () => {

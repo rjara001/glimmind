@@ -82,5 +82,6 @@
   "cycle_rule_1": "⬇ Correto no ciclo 1 → APRENDIDAS",
   "cycle_rule_2": "✅ Correto no ciclo 2 ou mais → permanece",
   "cycle_rule_3": "➡ Próximo → avança de ciclo",
-  "total": "Total"
+  "total": "Total",
+  "autoplay": "AutoPlay"
 }
