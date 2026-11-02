@@ -78,5 +78,9 @@
   "colapsar": "折叠",
   "expandir": "展开",
   "cola": "队列",
-  "en_ciclo": "在第 4 周期"
+  "en_ciclo": "在第 4 周期",
+  "cycle_rule_1": "⬇ 周期 1 正确 → 已学会",
+  "cycle_rule_2": "✅ 周期 2 或更高正确 → 保留",
+  "cycle_rule_3": "➡ 下一个 → 进入下一周期",
+  "total": "总计"
 }

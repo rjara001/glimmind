@@ -78,5 +78,9 @@
   "colapsar": "Collapse",
   "expandir": "Expand",
   "cola": "Queue",
-  "en_ciclo": "in Cycle"
+  "en_ciclo": "in Cycle",
+  "cycle_rule_1": "⬇ Correct in cycle 1 → LEARNED",
+  "cycle_rule_2": "✅ Correct in cycle 2 or more → stays",
+  "cycle_rule_3": "➡ Next → advances cycle",
+  "total": "Total"
 }

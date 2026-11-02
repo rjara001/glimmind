@@ -69,6 +69,12 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
 
   const translatedLearnedLabel = t('cycle_aprendida', LEARNED_LABEL);
 
+  const translatedRuleChips = [
+    t('cycle_rule_1', CYCLE_RULE_CHIPS[0]),
+    t('cycle_rule_2', CYCLE_RULE_CHIPS[1]),
+    t('cycle_rule_3', CYCLE_RULE_CHIPS[2]),
+  ];
+
   const stageBoxes: StageBox[] = [
     {
       key: 'nueva',
@@ -144,7 +150,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
             </div>
 
             <div className="flex flex-wrap gap-1.5 bg-[#f8faff] rounded-2xl p-4 border border-[#e9edf2]">
-              {CYCLE_RULE_CHIPS.map((chip) => (
+              {translatedRuleChips.map((chip) => (
                 <span
                   key={chip}
                   className="bg-white border border-[#e9edf2] px-2.5 py-1 rounded-full text-xs text-[#4a617a]"
@@ -156,7 +162,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
 
             <div className="mt-3 border-t border-[#edf2f7] pt-2.5 flex justify-between flex-wrap gap-1 text-xs text-[#4f6a84]">
               <span>
-                📦 Total: {totalAssociations} · {getTranslatedCycleLabel(1)} {breakdown.nuevas} · {getTranslatedCycleLabel(2)} {breakdown.vistas} · {getTranslatedCycleLabel(3)} {breakdown.reconocidas} · {getTranslatedCycleLabel(4)} {breakdown.frecuentes}
+                📦 {t('total', 'Total')}: {totalAssociations} · {getTranslatedCycleLabel(1)} {breakdown.nuevas} · {getTranslatedCycleLabel(2)} {breakdown.vistas} · {getTranslatedCycleLabel(3)} {breakdown.reconocidas} · {getTranslatedCycleLabel(4)} {breakdown.frecuentes}
               </span>
               <span className="bg-[#f0f4fc] px-3 rounded-full">🔄 {t('ciclo', 'ciclo')} {activeCycle} {t('de_4', 'de 4')}</span>
             </div>
@@ -283,7 +289,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
           </span>
         </span>
 
-        <span className="text-xs text-[#94a3b8]">Total: {totalAssociations}</span>
+        <span className="text-xs text-[#94a3b8]">{t('total', 'Total')}: {totalAssociations}</span>
 
         <button
           type="button"
@@ -303,7 +309,7 @@ export const CycleProgress: React.FC<CycleProgressProps> = ({
         }`}
       >
         <div className="flex flex-wrap gap-1.5 bg-[#f8faff] rounded-xl border border-[#e9edf2] px-3 py-2.5">
-          {CYCLE_RULE_CHIPS.map((chip) => (
+          {translatedRuleChips.map((chip) => (
             <span
               key={chip}
               className="bg-white border border-[#e9edf2] px-2.5 py-1 rounded-full text-xs text-[#4a617a]"

@@ -78,5 +78,9 @@
   "colapsar": "Colapsar",
   "expandir": "Expandir",
   "cola": "Cola",
-  "en_ciclo": "en Ciclo"
+  "en_ciclo": "en Ciclo",
+  "cycle_rule_1": "⬇ Correcto en ciclo 1 → APRENDIDAS",
+  "cycle_rule_2": "✅ Correcto en ciclo 2 o más → se queda",
+  "cycle_rule_3": "➡ Siguiente → pasa de ciclo",
+  "total": "Total"
 }
