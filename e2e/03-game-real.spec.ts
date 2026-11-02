@@ -36,7 +36,7 @@ test('real mode grades typed answers and finishes the session', async ({ page })
   // Remaining three cards: wait for the queue to advance before answering so
   // the 600 ms auto-advance transition never races the next interaction.
   for (let i = 0; i < 3; i += 1) {
-    await expect(visibleText(page, `Queue ${i + 2}/4`)).toBeVisible();
+    await expect(visibleText(page, new RegExp(`(Queue|Cola) ${i + 2}/4`))).toBeVisible();
     const term = await currentCardTerm(page);
     await submitAnswer(page, DEFINITIONS_BY_TERM[term]);
     await expect(page.getByText('✓ Correcto')).toBeVisible();

@@ -65,7 +65,7 @@ export async function switchGameModeToReal(page: Page): Promise<void> {
 }
 
 /** SessionBar renders twice (mobile + desktop); only one copy is visible. */
-export function visibleText(page: Page, text: string) {
+export function visibleText(page: Page, text: string | RegExp) {
   return page.getByText(text).filter({ visible: true });
 }
 

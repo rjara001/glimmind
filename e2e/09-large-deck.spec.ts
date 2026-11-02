@@ -21,8 +21,8 @@ test('guest imports a large deck and plays it', async ({ page }) => {
   await expect(page.getByText(`0 / ${ROW_COUNT}`).first()).toBeVisible();
 
   await openGame(page);
-  await expect(visibleText(page, `Queue 1/${ROW_COUNT}`)).toBeVisible();
+  await expect(visibleText(page, new RegExp(`(Queue|Cola) 1/${ROW_COUNT}`))).toBeVisible();
 
   await page.getByRole('button', { name: 'Correcta' }).click();
-  await expect(visibleText(page, `Queue 2/${ROW_COUNT}`)).toBeVisible();
+  await expect(visibleText(page, new RegExp(`(Queue|Cola) 2/${ROW_COUNT}`))).toBeVisible();
 });

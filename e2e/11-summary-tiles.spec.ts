@@ -37,7 +37,7 @@ test('a finished session shows one tile per cycle state with values that reconci
 
   for (let i = 0; i < DECK_SIZE; i += 1) {
     if (i > 0) {
-      await expect(visibleText(page, `Queue ${i + 1}/${DECK_SIZE}`)).toBeVisible();
+      await expect(visibleText(page, new RegExp(`(Queue|Cola) ${i + 1}/${DECK_SIZE}`))).toBeVisible();
     }
     const term = await currentCardTerm(page);
     await submitAnswer(page, DEFINITIONS_BY_TERM[term]);

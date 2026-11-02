@@ -6,7 +6,7 @@ test('mobile guest creates a deck and finishes a practice session', async ({ pag
   await createDeckFromPaste(page, 'Mazo Móvil');
   await openGame(page);
 
-  await expect(visibleText(page, 'Queue 1/4')).toBeVisible();
+  await expect(visibleText(page, /(Queue|Cola) 1\/4/)).toBeVisible();
 
   for (let i = 0; i < 4; i += 1) {
     await page.getByRole('button', { name: 'Correcta' }).click();

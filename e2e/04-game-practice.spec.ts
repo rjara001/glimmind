@@ -12,7 +12,7 @@ test('practice mode run, restart without archiving and back to the panel', async
   await openGame(page);
 
   await expect(visibleText(page, 'Modo Práctica')).toBeVisible();
-  await expect(visibleText(page, 'Queue 1/4')).toBeVisible();
+  await expect(visibleText(page, /(Queue|Cola) 1\/4/)).toBeVisible();
 
   for (let i = 0; i < 4; i += 1) {
     await page.getByRole('button', { name: 'Correcta' }).click();
@@ -22,7 +22,7 @@ test('practice mode run, restart without archiving and back to the panel', async
   await expect(page.getByText(/Has aprendido 4 items/)).toBeVisible();
 
   await page.getByRole('button', { name: /Reiniciar sin archivar/ }).click();
-  await expect(visibleText(page, 'Queue 1/4')).toBeVisible();
+  await expect(visibleText(page, /(Queue|Cola) 1\/4/)).toBeVisible();
 
   // Returning to panel via Navbar must return to /dashboard even on the first play of a
   // session (U-03 double-push guard).
