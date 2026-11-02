@@ -76,5 +76,7 @@
   "aprendidas_lc": "aprendidas",
   "ciclo": "Ciclo",
   "colapsar": "Recolher",
-  "expandir": "Expandir"
+  "expandir": "Expandir",
+  "cola": "Fila",
+  "en_ciclo": "no Ciclo"
 }

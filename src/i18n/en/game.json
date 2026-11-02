@@ -76,5 +76,7 @@
   "aprendidas_lc": "learned",
   "ciclo": "Cycle",
   "colapsar": "Collapse",
-  "expandir": "Expand"
+  "expandir": "Expand",
+  "cola": "Queue",
+  "en_ciclo": "in Cycle"
 }

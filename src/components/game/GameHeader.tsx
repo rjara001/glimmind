@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameHeaderProps } from '../../types/game-header-props';
 import { SessionBar } from './SessionBar';
 
@@ -10,6 +11,8 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   onBack,
   ...sessionBarProps
 }) => {
+  const { t } = useTranslation('game');
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 mb-4 px-2">
       <div className="flex items-center gap-3">
@@ -19,9 +22,13 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
         <div className="flex flex-col">
           <h2 className="text-xl font-bold text-slate-800 leading-none">{listName}</h2>
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-xs font-semibold text-slate-400">Queue {currentIndex + 1}/{queueLength}</span>
+            <span className="text-xs font-semibold text-slate-400">
+              {t('cola', 'Cola')} {currentIndex + 1}/{queueLength}
+            </span>
             <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-            <span className="text-xs font-semibold text-emerald-500">{cycle4Count} in Cycle 4</span>
+            <span className="text-xs font-semibold text-emerald-500">
+              {cycle4Count} {t('en_ciclo', 'en Ciclo')} 4
+            </span>
           </div>
         </div>
       </div>
