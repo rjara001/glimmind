@@ -1,5 +1,5 @@
 {
-  "pairs": "对",
+  "pairs": "对词条",
   "pct_dominado": "已掌握 {{percent}}%",
   "segment_label": "{{label}}: {{count}}",
   "hitos": "里程碑",
@@ -63,5 +63,8 @@
   "por_aprender": "待学习",
   "completado": "已完成",
   "continuar_ultima_sesion": "继续上次学习",
-  "continuar": "继续"
+  "continuar": "继续",
+  "listas_recientes": "最近列表",
+  "logro": "掌握度",
+  "valor_1_valor_2": "词条 1 / 词条 2"
 }

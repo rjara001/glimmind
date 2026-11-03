@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AssociationList } from "../../../types";
 import { DeleteConfirmationModal } from "../../modals/DeleteConfirmationModal";
 import { computeStateBreakdown } from "../../../utils/progress";
@@ -11,6 +12,7 @@ interface ListCardProps {
 }
 
 export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
+  const { t } = useTranslation("dashboard");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -44,7 +46,9 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition group">
         <div className="flex justify-between items-start mb-4">
           <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">
-            {list.concept}
+            {list.concept?.toLowerCase() === "valor 1 / valor 2" || list.concept?.toLowerCase() === "value 1 / value 2"
+              ? t("valor_1_valor_2", list.concept)
+              : list.concept}
           </span>
           <button
             onClick={handleDeleteClick}
@@ -62,7 +66,7 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-1 truncate max-w-[200px]" title={list.name}>{list.name}</h3>
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-gray-500 text-sm">{activeAssociations.length} pairs</p>
+          <p className="text-gray-500 text-sm">{activeAssociations.length} {t("pairs", "pairs")}</p>
         </div>
         <div className="flex items-center gap-2 mb-4">
           <span
@@ -73,7 +77,7 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
           <span
             className={`text-xs font-medium px-2 py-0.5 rounded ${isComplete ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}
           >
-            logro {achievementPercent}%
+            {t("logro", "logro")} {achievementPercent}%
           </span>
         </div>
         <div className="flex gap-3">
@@ -82,13 +86,13 @@ export function ListCard({ list, onPlay, onEdit, onDelete }: ListCardProps) {
             disabled={!canPlay}
             className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
           >
-            Study
+            {t("study", "Study")}
           </button>
           <button
             onClick={() => onEdit(list.id)}
             className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
           >
-            Edit
+            {t("edit", "Edit")}
           </button>
         </div>
       </div>
