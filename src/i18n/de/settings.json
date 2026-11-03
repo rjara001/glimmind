@@ -81,5 +81,7 @@
   "default_reveal_keywords": "aufdecken, zeigen, reveal, show",
   "default_pass_keywords": "überspringen, weiter, pass, next",
   "default_continue_keywords": "weiter, fortfahren, continue",
-  "default_stop_keywords": "stop, stoppen, anhalten, halt"
+  "default_stop_keywords": "stop, stoppen, anhalten, halt",
+  "valor_1": "Wert 1",
+  "valor_2": "Wert 2"
 }

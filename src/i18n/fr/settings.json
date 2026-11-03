@@ -81,5 +81,7 @@
   "default_reveal_keywords": "révéler, montrer, reveal, show",
   "default_pass_keywords": "passer, suivant, pass, next",
   "default_continue_keywords": "continuer, en avant, continue",
-  "default_stop_keywords": "stop, arrêter, pause, halte"
+  "default_stop_keywords": "stop, arrêter, pause, halte",
+  "valor_1": "Valeur 1",
+  "valor_2": "Valeur 2"
 }

@@ -87,5 +87,7 @@
   "termino": "Term",
   "definicion": "Definition",
   "tu_respuesta": "Your answer",
-  "intentos": "attempts"
+  "intentos": "attempts",
+  "valor_1": "Value 1",
+  "valor_2": "Value 2"
 }

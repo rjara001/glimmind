@@ -81,5 +81,7 @@
   "default_reveal_keywords": "揭晓, 显示, 答案, reveal, show",
   "default_pass_keywords": "跳过, 下一个, pass, next",
   "default_continue_keywords": "继续, 前进, continue",
-  "default_stop_keywords": "停止, 暂停, stop"
+  "default_stop_keywords": "停止, 暂停, stop",
+  "valor_1": "值 1",
+  "valor_2": "值 2"
 }

@@ -100,12 +100,24 @@ export function useGameViewGameplay({
   const conceptParts = list.concept.split("/");
   const rawPart1 = conceptParts[0]?.trim();
   const rawPart2 = conceptParts[1]?.trim();
-  const isDefaultConcept = !rawPart1 || !rawPart2 ||
+  const isDefaultTermDef = !rawPart1 || !rawPart2 ||
     ((rawPart1.toLowerCase() === 'término' || rawPart1.toLowerCase() === 'term') &&
      (rawPart2.toLowerCase() === 'definición' || rawPart2.toLowerCase() === 'definition'));
 
-  const resolvedPart1 = isDefaultConcept ? t('termino', 'Término') : rawPart1;
-  const resolvedPart2 = isDefaultConcept ? t('definicion', 'Definición') : rawPart2;
+  const isDefaultValue1Value2 = rawPart1 && rawPart2 &&
+    ((rawPart1.toLowerCase() === 'valor 1' || rawPart1.toLowerCase() === 'valor1' || rawPart1.toLowerCase() === 'value 1' || rawPart1.toLowerCase() === 'value1') &&
+     (rawPart2.toLowerCase() === 'valor 2' || rawPart2.toLowerCase() === 'valor2' || rawPart2.toLowerCase() === 'value 2' || rawPart2.toLowerCase() === 'value2'));
+
+  let resolvedPart1 = rawPart1;
+  let resolvedPart2 = rawPart2;
+
+  if (isDefaultValue1Value2) {
+    resolvedPart1 = t('valor_1', 'Valor 1');
+    resolvedPart2 = t('valor_2', 'Valor 2');
+  } else if (isDefaultTermDef) {
+    resolvedPart1 = t('termino', 'Término');
+    resolvedPart2 = t('definicion', 'Definición');
+  }
 
   const labelTerm = isReversed ? resolvedPart2 : resolvedPart1;
   const labelDef = isReversed ? resolvedPart1 : resolvedPart2;

@@ -201,10 +201,22 @@ import { logEvent } from '../../services/errorReporting';
     const conceptParts = list.concept.split('/');
     const rawTerm = conceptParts[0]?.trim();
     const rawDef = conceptParts[1]?.trim();
-    const isDefaultConcept = !rawTerm || !rawDef || (rawTerm.toLowerCase() === 'término' || rawTerm.toLowerCase() === 'term') && (rawDef.toLowerCase() === 'definición' || rawDef.toLowerCase() === 'definition');
+    const isDefaultTermDef = !rawTerm || !rawDef || (rawTerm.toLowerCase() === 'término' || rawTerm.toLowerCase() === 'term') && (rawDef.toLowerCase() === 'definición' || rawDef.toLowerCase() === 'definition');
 
-    const termLabel = isDefaultConcept ? t('termino', 'Término') : rawTerm;
-    const defLabel = isDefaultConcept ? t('definicion', 'Definición') : rawDef;
+    const isDefaultValue1Value2 = rawTerm && rawDef &&
+      ((rawTerm.toLowerCase() === 'valor 1' || rawTerm.toLowerCase() === 'valor1' || rawTerm.toLowerCase() === 'value 1' || rawTerm.toLowerCase() === 'value1') &&
+       (rawDef.toLowerCase() === 'valor 2' || rawDef.toLowerCase() === 'valor2' || rawDef.toLowerCase() === 'value 2' || rawDef.toLowerCase() === 'value2'));
+
+    let termLabel = rawTerm;
+    let defLabel = rawDef;
+
+    if (isDefaultValue1Value2) {
+      termLabel = t('valor_1', 'Valor 1');
+      defLabel = t('valor_2', 'Valor 2');
+    } else if (isDefaultTermDef) {
+      termLabel = t('termino', 'Término');
+      defLabel = t('definicion', 'Definición');
+    }
 
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
