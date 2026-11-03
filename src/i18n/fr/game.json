@@ -89,5 +89,13 @@
   "tu_respuesta": "Votre réponse",
   "intentos": "tentatives",
   "valor_1": "Valeur 1",
-  "valor_2": "Valeur 2"
+  "valor_2": "Valeur 2",
+  "repasos": "révisions",
+  "meta_diaria": "Objectif quotidien",
+  "racha": "Série",
+  "iniciada_el": "Commencé le {{date}}",
+  "hoy_por_estado": "Aujourd'hui par statut",
+  "cambiar_meta": "Changer d'objectif",
+  "dia": "jour",
+  "dias": "jours"
 }

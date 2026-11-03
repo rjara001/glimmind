@@ -89,5 +89,13 @@
   "tu_respuesta": "Your answer",
   "intentos": "attempts",
   "valor_1": "Value 1",
-  "valor_2": "Value 2"
+  "valor_2": "Value 2",
+  "repasos": "reviews",
+  "meta_diaria": "Daily goal",
+  "racha": "Streak",
+  "iniciada_el": "Started on {{date}}",
+  "hoy_por_estado": "Today by status",
+  "cambiar_meta": "Change goal",
+  "dia": "day",
+  "dias": "days"
 }

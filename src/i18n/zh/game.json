@@ -89,5 +89,13 @@
   "tu_respuesta": "您的回答",
   "intentos": "尝试次数",
   "valor_1": "值 1",
-  "valor_2": "值 2"
+  "valor_2": "值 2",
+  "repasos": "复习",
+  "meta_diaria": "每日目标",
+  "racha": "连胜",
+  "iniciada_el": "开始于 {{date}}",
+  "hoy_por_estado": "今日状态",
+  "cambiar_meta": "更改目标",
+  "dia": "天",
+  "dias": "天"
 }

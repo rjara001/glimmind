@@ -89,5 +89,13 @@
   "tu_respuesta": "Sua resposta",
   "intentos": "tentativas",
   "valor_1": "Valor 1",
-  "valor_2": "Valor 2"
+  "valor_2": "Valor 2",
+  "repasos": "revisões",
+  "meta_diaria": "Meta diária",
+  "racha": "Sequência",
+  "iniciada_el": "Iniciada em {{date}}",
+  "hoy_por_estado": "Hoje por estado",
+  "cambiar_meta": "Alterar meta",
+  "dia": "dia",
+  "dias": "dias"
 }
