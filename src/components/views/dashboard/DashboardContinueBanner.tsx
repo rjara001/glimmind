@@ -13,7 +13,7 @@ export function DashboardContinueBanner({
   lastPlayedId,
   onPlay,
 }: DashboardContinueBannerProps) {
-  const { t } = useTranslation(["common", "dashboard"]);
+  const { t } = useTranslation("dashboard");
 
   return (
     <div className="mb-8 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">

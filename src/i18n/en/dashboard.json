@@ -56,5 +56,7 @@
   "total_palabras": "Total Words",
   "aprendidas": "Learned",
   "por_aprender": "To Learn",
-  "completado": "Completed"
+  "completado": "Completed",
+  "continuar_ultima_sesion": "Continue last session",
+  "continuar": "Continue"
 }

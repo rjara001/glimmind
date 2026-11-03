@@ -61,5 +61,7 @@
   "total_palabras": "总词数",
   "aprendidas": "已掌握",
   "por_aprender": "待学习",
-  "completado": "已完成"
+  "completado": "已完成",
+  "continuar_ultima_sesion": "继续上次学习",
+  "continuar": "继续"
 }
