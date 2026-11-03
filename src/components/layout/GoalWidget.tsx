@@ -11,18 +11,18 @@ const RING_RADIUS = 40;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export const GoalWidget: React.FC<GoalWidgetProps> = ({ progress, onSetTarget }) => {
-  const { t } = useTranslation(['nav', 'game', 'dashboard', 'common']);
+  const { t } = useTranslation(['game', 'nav', 'dashboard', 'common']);
   const goalProgress = Math.min(progress.goalProgress, progress.goalTarget);
   const percent = progress.goalTarget > 0 ? Math.round((goalProgress / progress.goalTarget) * 100) : 0;
   const ringOffset = RING_CIRCUMFERENCE - (percent / 100) * RING_CIRCUMFERENCE;
   const today = progress.log[todayKey()] || emptyDailyProgress();
 
   const stateItems: { key: keyof StateBreakdown; label: string; dotClass: string }[] = [
-    { key: 'nuevas', label: t('cycle_nueva', STATE_LABELS.nuevas), dotClass: 'bg-slate-400' },
-    { key: 'vistas', label: t('cycle_vista', STATE_LABELS.vistas), dotClass: 'bg-sky-500' },
-    { key: 'reconocidas', label: t('cycle_reconocida', STATE_LABELS.reconocidas), dotClass: 'bg-yellow-400' },
-    { key: 'frecuentes', label: t('cycle_frecuente', STATE_LABELS.frecuentes), dotClass: 'bg-rose-500' },
-    { key: 'aprendidas', label: t('cycle_aprendida', STATE_LABELS.aprendidas), dotClass: 'bg-emerald-500' },
+    { key: 'nuevas', label: t('cycle_nueva', { ns: 'game', defaultValue: STATE_LABELS.nuevas }), dotClass: 'bg-slate-400' },
+    { key: 'vistas', label: t('cycle_vista', { ns: 'game', defaultValue: STATE_LABELS.vistas }), dotClass: 'bg-sky-500' },
+    { key: 'reconocidas', label: t('cycle_reconocida', { ns: 'game', defaultValue: STATE_LABELS.reconocidas }), dotClass: 'bg-yellow-400' },
+    { key: 'frecuentes', label: t('cycle_frecuente', { ns: 'game', defaultValue: STATE_LABELS.frecuentes }), dotClass: 'bg-rose-500' },
+    { key: 'aprendidas', label: t('cycle_aprendida', { ns: 'game', defaultValue: STATE_LABELS.aprendidas }), dotClass: 'bg-emerald-500' },
   ];
 
   return (
