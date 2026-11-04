@@ -161,5 +161,8 @@
   "analysis_threshold_label": "Seuil",
   "analysis_needed_pass": "nécessaire pour réussir",
   "analysis_need_match": "Vous avez besoin de",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ Correct",
+  "feedback_incorrect": "✗ Incorrect",
+  "similarity_label": "Similarité"
 }

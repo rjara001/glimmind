@@ -1,15 +1,18 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { LandingDemo } from '@/components/views/LandingDemo';
-import { LANDING_DEMO_DECK } from '@/constants/landingDemoDeck';
+import { LANDING_DEMO_DECK, LANDING_DEMO_DECKS } from '@/constants/landingDemoDeck';
 import { getAutoHintMode, maskHint } from '@/utils/maskHint';
+import i18n from '@/i18n';
 
-const getInput = () => screen.getByLabelText('Escribe tu respuesta') as HTMLInputElement;
-const getNextButton = () => screen.getByRole('button', { name: /siguiente/i });
-const getRevealButton = () => screen.getByRole('button', { name: /revelar/i });
+const getInput = () => screen.getByRole('textbox') as HTMLInputElement;
+const getNextButton = () => screen.getByRole('button', { name: /(siguiente|next|próximo|suivant|weiter|下一个)/i });
+const getRevealButton = () => screen.getByRole('button', { name: /(revelar|reveal|révéler|aufdecken|显示)/i });
+const getValidateButton = () => screen.getByRole('button', { name: /(validar|validate|valider|validieren|验证)/i });
+
 const validate = (answer: string) => {
   fireEvent.change(getInput(), { target: { value: answer } });
-  fireEvent.click(screen.getByRole('button', { name: 'VALIDAR' }));
+  fireEvent.click(getValidateButton());
 };
 
 const advanceTo = (index: number) => {
@@ -20,6 +23,12 @@ const advanceTo = (index: number) => {
 };
 
 describe('LandingDemo', () => {
+  beforeEach(async () => {
+    await act(async () => {
+      await i18n.changeLanguage('es');
+    });
+  });
+
   it('renders the first card of the deck', () => {
     render(<LandingDemo />);
 
@@ -93,7 +102,7 @@ describe('LandingDemo', () => {
   it('ignores validation when the input is empty', () => {
     render(<LandingDemo />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'VALIDAR' }));
+    fireEvent.click(getValidateButton());
 
     expect(screen.queryByText('✓ Correcto')).not.toBeInTheDocument();
     expect(screen.queryByText('✗ Incorrecto')).not.toBeInTheDocument();
@@ -153,5 +162,39 @@ describe('LandingDemo', () => {
     fireEvent.submit(getInput().closest('form') as HTMLFormElement);
 
     expect(screen.getByText('✓ Correcto')).toBeInTheDocument();
+  });
+
+  it('renders localized deck and UI for English', async () => {
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    render(<LandingDemo />);
+
+    expect(screen.getByText('Basic English')).toBeInTheDocument();
+    expect(screen.getByText('NEW')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'VALIDATE' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reveal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next →' })).toBeInTheDocument();
+
+    validate(LANDING_DEMO_DECKS.en[0].definition);
+    expect(screen.getByText('✓ Correct')).toBeInTheDocument();
+    expect(screen.getByText('Similarity: 100%')).toBeInTheDocument();
+  });
+
+  it('renders localized deck and UI for French', async () => {
+    await act(async () => {
+      await i18n.changeLanguage('fr');
+    });
+
+    render(<LandingDemo />);
+
+    expect(screen.getByText('Anglais de base')).toBeInTheDocument();
+    expect(screen.getByText('NOUVEAU')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'VALIDER' })).toBeInTheDocument();
+
+    validate(LANDING_DEMO_DECKS.fr[0].definition);
+    expect(screen.getByText('✓ Correct')).toBeInTheDocument();
+    expect(screen.getByText('Similarité: 100%')).toBeInTheDocument();
   });
 });

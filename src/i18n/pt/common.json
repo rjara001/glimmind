@@ -161,5 +161,8 @@
   "analysis_threshold_label": "Limiar",
   "analysis_needed_pass": "necessário para aprovar",
   "analysis_need_match": "Você precisa",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ Correto",
+  "feedback_incorrect": "✗ Incorreto",
+  "similarity_label": "Similaridade"
 }

@@ -161,5 +161,8 @@
   "analysis_threshold_label": "Threshold",
   "analysis_needed_pass": "needed to pass",
   "analysis_need_match": "You need",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ Correct",
+  "feedback_incorrect": "✗ Incorrect",
+  "similarity_label": "Similarity"
 }

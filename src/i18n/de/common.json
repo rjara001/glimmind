@@ -161,5 +161,8 @@
   "analysis_threshold_label": "Schwelle",
   "analysis_needed_pass": "benötigt um zu bestehen",
   "analysis_need_match": "Sie brauchen",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ Richtig",
+  "feedback_incorrect": "✗ Falsch",
+  "similarity_label": "Ähnlichkeit"
 }

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { LANDING_DEMO_DECK } from '../../constants/landingDemoDeck';
+import { useTranslation } from 'react-i18next';
+import { getLandingDemoDeck, LANDING_DEMO_DECK } from '../../constants/landingDemoDeck';
 import { SIMILARITY_THRESHOLD } from '../../constants/deckValidation';
 import { calculateSimilarity } from '../../utils/similarity';
 import { getAutoHintMode, maskHint } from '../../utils/maskHint';
@@ -18,6 +19,7 @@ export interface LandingDemoState extends LandingDemoStats {
   lastAttempt: string;
   isRevealed: boolean;
   hasAttempted: boolean;
+  deckLength: number;
   handleInputChange: (value: string) => void;
   handleValidate: () => void;
   handleReveal: () => void;
@@ -26,6 +28,7 @@ export interface LandingDemoState extends LandingDemoStats {
 }
 
 export function useLandingDemo(): LandingDemoState {
+  const { i18n } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
   const [feedback, setFeedback] = useState<DemoFeedback>('none');
@@ -35,7 +38,11 @@ export function useLandingDemo(): LandingDemoState {
   const [correctCount, setCorrectCount] = useState(0);
   const [attemptCount, setAttemptCount] = useState(0);
 
-  const card = LANDING_DEMO_DECK[currentIndex];
+  const deck = useMemo(() => getLandingDemoDeck(i18n.language), [i18n.language]);
+  const deckLength = deck.length || LANDING_DEMO_DECK_LENGTH;
+
+  const safeIndex = currentIndex % deckLength;
+  const card = deck[safeIndex] || LANDING_DEMO_DECK[0];
 
   const hint = useMemo(
     () => maskHint(card.definition, getAutoHintMode(card.cycle)),
@@ -79,9 +86,9 @@ export function useLandingDemo(): LandingDemoState {
   }, []);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % LANDING_DEMO_DECK_LENGTH);
+    setCurrentIndex((prev) => (prev + 1) % deckLength);
     resetAttempt();
-  }, [resetAttempt]);
+  }, [deckLength, resetAttempt]);
 
   const handleReset = useCallback(() => {
     setCurrentIndex(0);
@@ -91,10 +98,10 @@ export function useLandingDemo(): LandingDemoState {
   }, [resetAttempt]);
 
   return {
-    currentIndex,
+    currentIndex: safeIndex,
     card,
     hint,
-    progress: currentIndex + 1,
+    progress: safeIndex + 1,
     inputValue,
     feedback,
     similarity,
@@ -104,6 +111,7 @@ export function useLandingDemo(): LandingDemoState {
     correctCount,
     attemptCount,
     accuracy,
+    deckLength,
     handleInputChange,
     handleValidate,
     handleReveal,

@@ -161,5 +161,8 @@
   "analysis_threshold_label": "阈值",
   "analysis_needed_pass": "需要通过",
   "analysis_need_match": "您需要",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ 正确",
+  "feedback_incorrect": "✗ 错误",
+  "similarity_label": "相似度"
 }

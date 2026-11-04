@@ -161,5 +161,8 @@
   "analysis_threshold_label": "Umbral",
   "analysis_needed_pass": "necesario para aprobar",
   "analysis_need_match": "Necesitas",
-  "analysis_match_had": "Übereinstimmung. Sie hatten"
+  "analysis_match_had": "Übereinstimmung. Sie hatten",
+  "feedback_correct": "✓ Correcto",
+  "feedback_incorrect": "✗ Incorrecto",
+  "similarity_label": "Similitud"
 }
