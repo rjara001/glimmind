@@ -122,7 +122,6 @@
   "why_2_label_practice": "Practice mode:",
   "why_3_p1": "You wrote",
   "why_3_word1": "dividens",
-  "why_3_p2": "the system expected",
   "why_3_word2": "dividends",
   "why_4_p1": "Practice hands-free.",
   "why_4_s1": "hands-free",
@@ -164,5 +163,9 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ Correct",
   "feedback_incorrect": "✗ Incorrect",
-  "similarity_label": "Similarity"
+  "similarity_label": "Similarity",
+  "total_palabras": "Total Words",
+  "aprendidas": "Learned",
+  "por_aprender": "To Learn",
+  "completado": "Completed"
 }

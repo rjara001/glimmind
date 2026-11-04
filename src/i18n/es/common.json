@@ -55,7 +55,7 @@
   "why_5_title": "En tu navegador, tu tablet, tu teléfono",
   "why_5_desc": "Web, iOS y Android. El mismo progreso en todos lados.",
   "why_5_sync": "Si tienes cuenta, sincroniza.",
-  "why_6_title": "Tus datos se quedan contigo",
+  "why_6_title": "Tus datos se qued contigo",
   "why_6_desc": "Todo vive en tu dispositivo. La nube es opcional.",
   "why_6_note": "Sin tracking, sin anuncios, sin vender tus datos.",
   "pricing_title": "Precios",
@@ -122,7 +122,6 @@
   "why_2_label_practice": "Modo práctica:",
   "why_3_p1": "Escribiste",
   "why_3_word1": "dividens",
-  "why_3_p2": "el sistema esperaba",
   "why_3_word2": "dividends",
   "why_4_p1": "Practica",
   "why_4_s1": "manos libres",
@@ -133,7 +132,7 @@
   "why_5_s1": "El mismo progreso en todos lados",
   "why_6_p1": "Todo",
   "why_6_s1": "vive en tu dispositivo",
-  "why_6_p2": "La nube es opcional.",
+  "why_6_s2": "La nube es opcional.",
   "cycle_view": "VISTA",
   "landing_sub": "Prueba con un typo. Si coincide el 80% de los caracteres, cuenta como acierto.",
   "analysis_score": "Puntuación",
@@ -164,5 +163,9 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ Correcto",
   "feedback_incorrect": "✗ Incorrecto",
-  "similarity_label": "Similitud"
+  "similarity_label": "Similitud",
+  "total_palabras": "Total Palabras",
+  "aprendidas": "Aprendidas",
+  "por_aprender": "Por Aprender",
+  "completado": "Completado"
 }

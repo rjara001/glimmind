@@ -86,7 +86,7 @@
   "feature_support": "Prioritäts-Support",
   "btn_premium": "Premium testen",
   "no_ads_tracking": "Keine Werbung. Kein Tracking. Kein Verkauf Ihrer Daten.",
-  "closing_title": "Bereit wirklich zu merken?",
+  "closing_title": "Bereid wirklich zu merken?",
   "closing_desc": "Erstellen Sie Ihren ersten Deck kostenlos. Weniger als eine Minute.",
   "btn_create_deck": "Erstelle meinen ersten Deck",
   "footer_desc": "Flashcards mit sichtbaren 4 Zyklen zum Sprachenlernen. Gebaut mit React, Firebase und Wissenschaft.",
@@ -122,7 +122,6 @@
   "why_2_label_practice": "Übungsmodus:",
   "why_3_p1": "Sie haben geschrieben",
   "why_3_word1": "dividens",
-  "why_3_p2": "das System erwartete",
   "why_3_word2": "dividends",
   "why_4_p1": "Üben Sie hands-free.",
   "why_4_s1": "händfrei",
@@ -164,5 +163,9 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ Richtig",
   "feedback_incorrect": "✗ Falsch",
-  "similarity_label": "Ähnlichkeit"
+  "similarity_label": "Ähnlichkeit",
+  "total_palabras": "Total Palabras",
+  "aprendidas": "Aprendidas",
+  "por_aprender": "Por Aprender",
+  "completado": "Completado"
 }

@@ -122,7 +122,6 @@
   "why_2_label_practice": "Mode pratique :",
   "why_3_p1": "Vous avez écrit",
   "why_3_word1": "dividens",
-  "why_3_p2": "le système attendait",
   "why_3_word2": "dividends",
   "why_4_p1": "Pratique les mains libres.",
   "why_4_s1": "les mains libres",
@@ -133,7 +132,7 @@
   "why_5_s1": "Mêmes progrès partout",
   "why_6_p1": "Tout",
   "why_6_s1": "vit sur votre appareil",
-  "why_6_p2": "Le cloud est optionnel.",
+  "why_6_s2": "Le cloud est optionnel.",
   "cycle_view": "AFFICHÉE",
   "landing_sub": "Essayez avec une faute. Si 80% des caractères correspondent, c'est considéré comme correct.",
   "analysis_score": "Score",
@@ -164,5 +163,9 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ Correct",
   "feedback_incorrect": "✗ Incorrect",
-  "similarity_label": "Similarité"
+  "similarity_label": "Similarité",
+  "total_palabras": "Total Palabras",
+  "aprendidas": "Aprendidas",
+  "por_aprender": "Por Aprender",
+  "completado": "Completado"
 }

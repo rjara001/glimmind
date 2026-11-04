@@ -122,7 +122,6 @@
   "why_2_label_practice": "练习模式：",
   "why_3_p1": "你写了",
   "why_3_word1": "dividens",
-  "why_3_p2": "系统期望的是",
   "why_3_word2": "dividends",
   "why_4_p1": "免手练习。",
   "why_4_s1": "免手",
@@ -133,7 +132,7 @@
   "why_5_s1": "随处同步进度",
   "why_6_p1": "所有数据",
   "why_6_s1": "都存在你的设备上",
-  "why_6_p2": "云端是可选的。",
+  "why_6_s2": "云端是可选的。",
   "cycle_view": "已查看",
   "landing_sub": "试试输入错误。如果80%的字符匹配，则计为正确。",
   "analysis_score": "分数",
@@ -164,5 +163,9 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ 正确",
   "feedback_incorrect": "✗ 错误",
-  "similarity_label": "相似度"
+  "similarity_label": "相似度",
+  "total_palabras": "Total Palabras",
+  "aprendidas": "Aprendidas",
+  "por_aprender": "Por Aprender",
+  "completado": "Completado"
 }
