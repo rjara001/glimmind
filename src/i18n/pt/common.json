@@ -164,5 +164,8 @@
   "analysis_match_had": "Übereinstimmung. Sie hatten",
   "feedback_correct": "✓ Correto",
   "feedback_incorrect": "✗ Incorreto",
-  "similarity_label": "Similaridade"
+  "similarity_label": "Similaridade",
+  "cycle_rule_1": "⬇ Correto no ciclo 1 → APRENDIDAS",
+  "cycle_rule_2": "✅ Correto no ciclo 2 ou mais → permanece",
+  "cycle_rule_3": "➡ Próximo → avança de ciclo"
 }
