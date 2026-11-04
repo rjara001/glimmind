@@ -1,5 +1,11 @@
 import 'i18next';
 import type common from '../i18n/es/common.json';
+import type de from '../i18n/de/common.json';
+import type en from '../i18n/en/common.json';
+import type es from '../i18n/es/common.json';
+import type fr from '../i18n/fr/common.json';
+import type pt from '../i18n/pt/common.json';
+import type zh from '../i18n/zh/common.json';
 import type nav from '../i18n/es/nav.json';
 import type auth from '../i18n/es/auth.json';
 import type dashboard from '../i18n/es/dashboard.json';
@@ -15,6 +21,12 @@ declare module 'i18next' {
     defaultNS: 'common';
     resources: {
       common: typeof common;
+      de: typeof de;
+      en: typeof en;
+      es: typeof es;
+      fr: typeof fr;
+      pt: typeof pt;
+      zh: typeof zh;
       nav: typeof nav;
       auth: typeof auth;
       dashboard: typeof dashboard;
