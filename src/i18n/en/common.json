@@ -167,5 +167,8 @@
   "total_palabras": "Total Words",
   "aprendidas": "Learned",
   "por_aprender": "To Learn",
-  "completado": "Completed"
+  "completado": "Completed",
+  "cycle_rule_1": "⬇ Correct in cycle 1 → LEARNED",
+  "cycle_rule_2": "✅ Correct in cycle 2 or more → stays",
+  "cycle_rule_3": "➡ Next → advances cycle"
 }

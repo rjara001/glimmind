@@ -167,5 +167,8 @@
   "total_palabras": "Total Palabras",
   "aprendidas": "Aprendidas",
   "por_aprender": "Por Aprender",
-  "completado": "Completado"
+  "completado": "Completado",
+  "cycle_rule_1": "⬇ Correct dans le cycle 1 → APPRISES",
+  "cycle_rule_2": "✅ Correct dans le cycle 2 ou plus → reste",
+  "cycle_rule_3": "➡ Suivant → passe au cycle suivant"
 }

@@ -167,5 +167,8 @@
   "total_palabras": "Total Palabras",
   "aprendidas": "Aprendidas",
   "por_aprender": "Por Aprender",
-  "completado": "Completado"
+  "completado": "Completado",
+  "cycle_rule_1": "⬇ 周期 1 正确 → 已学会",
+  "cycle_rule_2": "✅ 周期 2 或更高正确 → 保留",
+  "cycle_rule_3": "➡ 下一个 → 进入下一周期"
 }

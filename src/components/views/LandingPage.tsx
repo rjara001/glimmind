@@ -126,11 +126,9 @@ export const LandingPage: React.FC = () => {
           <div className="landing-rule">
             <div className="landing-rule-title">{t('rule_title')}</div>
             <div className="landing-rule-chips">
-              {CYCLE_RULE_CHIPS.map((chip) => (
-                <span key={chip} className="landing-rule-chip">
-                  {chip}
-                </span>
-              ))}
+              <span className="landing-rule-chip">{t('cycle_rule_1', CYCLE_RULE_CHIPS[0])}</span>
+              <span className="landing-rule-chip">{t('cycle_rule_2', CYCLE_RULE_CHIPS[1])}</span>
+              <span className="landing-rule-chip">{t('cycle_rule_3', CYCLE_RULE_CHIPS[2])}</span>
             </div>
           </div>
         </div>

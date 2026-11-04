@@ -169,5 +169,8 @@
   "total_palabras": "Total Palabras",
   "aprendidas": "Aprendidas",
   "por_aprender": "Por Aprender",
-  "completado": "Completado"
+  "completado": "Completado",
+  "cycle_rule_1": "⬇ Correcto en ciclo 1 → APRENDIDAS",
+  "cycle_rule_2": "✅ Correcto en ciclo 2 o más → se queda",
+  "cycle_rule_3": "➡ Siguiente → pasa de ciclo"
 }

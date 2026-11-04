@@ -167,5 +167,8 @@
   "total_palabras": "Total Palabras",
   "aprendidas": "Aprendidas",
   "por_aprender": "Por Aprender",
-  "completado": "Completado"
+  "completado": "Completado",
+  "cycle_rule_1": "⬇ Richtig in Zyklus 1 → GELERNT",
+  "cycle_rule_2": "✅ Richtig in Zyklus 2 oder mehr → bleibt",
+  "cycle_rule_3": "➡ Weiter → wechselt den Zyklus"
 }
