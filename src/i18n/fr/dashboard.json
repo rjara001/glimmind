@@ -6,7 +6,7 @@
   "proximo": "Suivant: {{percent}}%",
   "lista_dominada_al_100": "Deck 100% maîtrisé !",
   "study": "Étudier",
-  "edit": "Modifier",
+  "edit": "Éditer",
   "llegaste_a_tu_limite_de_tarjetas": "Limite de {{maxCards}} cartes atteinte",
   "cargando_mazos": "Chargement des decks…",
   "no_se_pudieron_actualizar_tus_mazos": "Impossible de mettre à jour vos decks",
@@ -63,8 +63,5 @@
   "por_aprender": "À Apprendre",
   "completado": "Terminé",
   "continuar_ultima_sesion": "Continuer la dernière session",
-  "continuar": "Continuer",
-  "listas_recientes": "Listes Récentes",
-  "logro": "succès",
-  "valor_1_valor_2": "Valeur 1 / Valeur 2"
+  "continuar": "Continuer"
 }

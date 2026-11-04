@@ -1,12 +1,12 @@
 {
-  "pairs": "pares",
+  "pairs": "pairs",
   "pct_dominado": "{{percent}}% dominado",
   "segment_label": "{{label}}: {{count}}",
   "hitos": "Hitos",
   "proximo": "Próximo: {{percent}}%",
   "lista_dominada_al_100": "¡Lista dominada al 100%!",
-  "study": "Estudiar",
-  "edit": "Editar",
+  "study": "Study",
+  "edit": "Edit",
   "llegaste_a_tu_limite_de_tarjetas": "Llegaste a tu límite de {{maxCards}} tarjetas",
   "cargando_mazos": "Cargando mazos…",
   "no_se_pudieron_actualizar_tus_mazos": "No se pudieron actualizar tus mazos",
@@ -58,8 +58,5 @@
   "por_aprender": "Por Aprender",
   "completado": "Completado",
   "continuar_ultima_sesion": "Continuar última sesión",
-  "continuar": "Continuar",
-  "listas_recientes": "Listas Recientes",
-  "logro": "logro",
-  "valor_1_valor_2": "Valor 1 / Valor 2"
+  "continuar": "Continuar"
 }
