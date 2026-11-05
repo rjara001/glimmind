@@ -279,6 +279,8 @@ export const LandingPage: React.FC = () => {
             <p>
               {t('footer_desc')}
             </p>
+            {/* Social links temporarily commented out until official accounts are active */}
+            {/*
             <div className="landing-footer-social">
               <a
                 href="https://x.com/glimmind"
@@ -289,6 +291,7 @@ export const LandingPage: React.FC = () => {
                 𝕏
               </a>
             </div>
+            */}
           </div>
           <div className="landing-footer-col">
             <h4>{t('footer_product')}</h4>
