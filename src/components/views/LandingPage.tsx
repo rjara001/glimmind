@@ -18,6 +18,7 @@ export const LandingPage: React.FC = () => {
   // the real checkout is triggered.
   const onUpgrade = () => navigate(`/login?${PREMIUM_LANDING_NEXT_QUERY}=${PREMIUM_LANDING_NEXT_PATH}`);
   const onDemo = () => document.querySelector('.landing-screenshot-wrap')?.scrollIntoView({ behavior: 'smooth' });
+  const onPricing = () => document.querySelector('.landing-pricing')?.scrollIntoView({ behavior: 'smooth' });
 
   return (
     <div className="landing-root">
@@ -279,27 +280,31 @@ export const LandingPage: React.FC = () => {
               {t('footer_desc')}
             </p>
             <div className="landing-footer-social">
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_github')}>GH</a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_twitter')}>X</a>
-              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label={t('footer_discord')}>DC</a>
+              <a
+                href="https://x.com/glimmind"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('footer_twitter')}
+              >
+                𝕏
+              </a>
             </div>
           </div>
           <div className="landing-footer-col">
             <h4>{t('footer_product')}</h4>
             <ul>
               <li><a href="/login">{t('footer_dashboard')}</a></li>
-              <li><a href="/login">{t('footer_pricing')}</a></li>
-              <li><a href="/privacy">{t('footer_news')}</a></li>
-              <li><a href="/terms">{t('footer_roadmap')}</a></li>
+              <li><button type="button" onClick={onPricing} className="landing-footer-btn-link">{t('footer_pricing')}</button></li>
+              <li><a href="/docs">{t('footer_docs')}</a></li>
+              <li><a href="/faq">FAQ</a></li>
             </ul>
           </div>
           <div className="landing-footer-col">
             <h4>{t('footer_resources')}</h4>
             <ul>
-              <li><a href="/privacy">{t('footer_docs')}</a></li>
-              <li><a href="/terms">{t('footer_guides')}</a></li>
-              <li><a href="/cookies">{t('footer_status')}</a></li>
-              <li><a href="/privacy">{t('footer_contact')}</a></li>
+              <li><a href="/docs">{t('footer_guides')}</a></li>
+              <li><a href="/support">{t('footer_contact')}</a></li>
+              <li><a href="/privacy">{t('footer_security', 'Seguridad')}</a></li>
             </ul>
           </div>
           <div className="landing-footer-col">
@@ -320,11 +325,18 @@ export const LandingPage: React.FC = () => {
             <div className="landing-legal">
               <a href="/privacy">{t('footer_privacy')}</a>
               <a href="/terms">{t('footer_terms')}</a>
-              <a href="/privacy">Cookies</a>
+              <a href="/cookies">{t('footer_cookies')}</a>
             </div>
-            <div className="landing-status">
-              <span className="landing-dot"></span>
-              <span>{t('footer_systems')}</span>
+            <div className="landing-trust-pills flex items-center gap-2 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-1 bg-slate-800/60 px-2.5 py-1 rounded-full text-slate-300 border border-slate-700/50">
+                🔒 TLS 1.3 / AES-256
+              </span>
+              <span className="inline-flex items-center gap-1 bg-slate-800/60 px-2.5 py-1 rounded-full text-slate-300 border border-slate-700/50">
+                🛡️ GDPR Ready
+              </span>
+              <span className="inline-flex items-center gap-1 bg-slate-800/60 px-2.5 py-1 rounded-full text-slate-300 border border-slate-700/50">
+                ⚡ Local-First
+              </span>
             </div>
           </div>
         </div>

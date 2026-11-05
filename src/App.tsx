@@ -12,6 +12,9 @@ import { AdminUsageView } from './components/views/AdminUsageView';
 import { PrivacyPolicy } from './components/views/PrivacyPolicy';
 import { TermsOfService } from './components/views/TermsOfService';
 import { CookiePolicy } from './components/views/CookiePolicy';
+import { DocsView } from './components/views/DocsView';
+import { FAQView } from './components/views/FAQView';
+import { SupportView } from './components/views/SupportView';
 import { ToastProvider, useToast } from './components/layout/Toast';
 import { CelebrationOverlay } from './components/layout/CelebrationOverlay';
 import { GuestBanner } from './components/layout/GuestBanner';
@@ -360,6 +363,10 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/docs" element={<DocsView />} />
+          <Route path="/faq" element={<FAQView />} />
+          <Route path="/support" element={<SupportView />} />
+          <Route path="/contact" element={<SupportView />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/cookies" element={<CookiePolicy />} />

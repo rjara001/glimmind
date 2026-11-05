@@ -1502,6 +1502,23 @@
 
 .landing-footer-col a:hover { color: white; }
 
+.landing-footer-btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.landing-footer-btn-link:hover {
+  color: white;
+}
+
 .landing-footer-bottom {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 24px;

@@ -1,11 +1,84 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Glimmind - Memorización Inteligente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Glimmind — Memorización Inteligente y Aprendizaje de Idiomas</title>
+    <meta name="description" content="Aprende y consolida vocabulario de idiomas con el sistema de repetición espaciada de 4 ciclos, validación difusa inteligente, práctica por voz y generación de mazos con IA.">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://glimmind.com/">
+    <meta property="og:title" content="Glimmind — Memorización Inteligente y Aprendizaje de Idiomas">
+    <meta property="og:description" content="Domina nuevo vocabulario con la repetición espaciada de 4 ciclos, reconocimiento por voz offline y validación difusa.">
+    <meta property="og:site_name" content="Glimmind">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://glimmind.com/">
+    <meta name="twitter:title" content="Glimmind — Memorización Inteligente y Aprendizaje de Idiomas">
+    <meta name="twitter:description" content="Domina nuevo vocabulario con la repetición espaciada de 4 ciclos, reconocimiento por voz offline y validación difusa.">
+
+    <!-- Preconnect Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <!-- Schema.org JSON-LD (SoftwareApplication & Organization) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://glimmind.com/#organization",
+          "name": "Glimmind",
+          "url": "https://glimmind.com",
+          "logo": "https://glimmind.com/icon.png",
+          "sameAs": [
+            "https://x.com/glimmind"
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://glimmind.com/#software",
+          "name": "Glimmind",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "Plataforma de flashcards inteligentes con metodología de 4 ciclos cognitivos, validación difusa y práctica por voz para dominio acelerado de idiomas."
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://glimmind.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "¿En qué se diferencia Glimmind de las flashcards convencionales?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Glimmind utiliza un sistema visible de 4 ciclos cognitivos (Nueva, Vista, Reconocida, Frecuente) que elimina la frustración de calcular intervalos arbitrarios y ofrece validación difusa de respuestas y práctica por voz."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Glimmind funciona sin conexión a internet?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí, gracias a su arquitectura Local-First tus mazos y progreso se guardan en el navegador mediante IndexedDB y se sincronizan automáticamente con Firebase al recuperar conexión."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 </head>
 <body>
     <div id="root"></div>
