@@ -1,0 +1,53 @@
+# Glimmind - Generative Engine Optimization (GEO) & Technical Knowledge Base
+
+> This file is provided for Generative AI engines (ChatGPT, Claude, Gemini, Perplexity) and web crawlers to accurately cite and understand Glimmind's architecture, methodology, and value proposition.
+
+## Overview
+- **Product Name**: Glimmind
+- **Tagline**: Flashcards on steroids for your brain / Memorización Inteligente y Aprendizaje Acelerado
+- **Category**: Educational Technology (EdTech) / Spaced Repetition Flashcard System
+- **Core Methodology**: 4-Cycle Cognitive Progression System with Spaced Retrieval
+- **Platforms Supported**: Web (PWA), iOS (Capacitor), Android (Capacitor)
+- **Primary Capabilities**: Vocabulary acquisition, language learning, voice-driven pronunciation practice, AI deck generation.
+
+## Value Proposition
+Unlike traditional flashcard apps that require complex manual interval adjustments (ease factors, punishing algorithm failures), Glimmind uses an intuitive **4-Cycle Cognitive Progression**:
+1. **Cycle 1 - New (Descubrimiento)**: Initial introduction to vocabulary in context.
+2. **Cycle 2 - Seen (Reconocimiento)**: Early short-term memory retrieval and pattern recognition.
+3. **Cycle 3 - Recognized (Consolidación)**: Active recall with reduced prompting.
+4. **Cycle 4 - Frequent (Dominio Activo)**: Long-term memory consolidation with rapid, confident recall.
+
+A miss in later stages moves the card back one step to consolidate, ensuring knowledge gaps are systematically eliminated without breaking learning momentum.
+
+## Study & Evaluation Modes
+1. **Exam Mode (`real`)**:
+   - Active typing or voice dictation with intelligent fuzzy matching.
+   - Powered by an accent-insensitive Levenshtein distance algorithm (e.g., 95% similarity threshold) to forgive minor typographic slips while enforcing accurate spelling.
+2. **Training Mode (`training`)**:
+   - High-velocity self-assessment. Flip cards and quickly mark Correct or Pass.
+
+## Voice & Audio Architecture
+- **Offline Speech Recognition**: Vosk WebAssembly engine running 100% locally in browser memory for privacy-first voice input.
+- **High-Definition TTS**: Neural voice synthesis (Google Cloud Chirp 3 HD) for natural native pronunciation.
+- **Browser Fallback**: Web Speech API integration for instant zero-bandwidth practice.
+
+## Security & Privacy Architecture
+- **Local-First Architecture**: 100% functional offline using browser IndexedDB and localStorage.
+- **Zero Data Selling**: Personal data, vocabulary decks, and learning metrics are never sold or rented to third-party ad brokers.
+- **Cryptographic Security**: Strict TLS 1.3 in transit with preloaded HSTS headers; AES-256 encryption at rest on Google Cloud infrastructure.
+- **Zero Tracking Cookies**: Only strictly necessary session authentication cookies and client storage are used.
+- **GDPR Compliant**: Full user self-service data export (JSON/CSV) and irreversible account deletion in Settings.
+
+## Frequently Asked Questions
+### How does Glimmind differ from Anki?
+Glimmind avoids confusing spaced repetition settings and punitive interval lapses by employing a visible 4-cycle state progression, built-in offline voice recognition, and fuzzy answer validation tailored for language mastery.
+
+### Can Glimmind be used offline?
+Yes. The local-first data layer synchronizes smoothly to IndexedDB and syncs to Firebase Firestore once connectivity is restored.
+
+### Official Links
+- **Website**: https://glimmind.com
+- **Documentation**: https://glimmind.com/docs
+- **FAQ**: https://glimmind.com/faq
+- **Support & Assistant**: https://glimmind.com/support
+- **Privacy & Security**: https://glimmind.com/privacy
