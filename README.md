@@ -209,21 +209,41 @@ Quotas are enforced in `functions/index.js` via a `users/{uid}/meta/main` docume
 
 ## Deployment
 
+### Continuous Deployment (GitHub Actions)
+
+Pushing changes to `main` triggers `.github/workflows/deploy.yml`. It runs tests first, builds the frontend, and automatically deploys Firestore rules/indexes, Storage rules, Cloud Functions, and Firebase Hosting.
+
+#### Required GitHub Secrets (`Settings` → `Secrets and variables` → `Actions`):
+
+- **Firebase Service Account:**
+  - `FIREBASE_SERVICE_ACCOUNT_FLADYCARD_22A3E` (or `FIREBASE_SERVICE_ACCOUNT`): Full JSON key of the Firebase / Google Cloud service account with deploy permissions (Firebase Admin / Editor).
+- **Frontend Environment Variables:**
+  - `VITE_FIREBASE_API_KEY`
+  - `VITE_FIREBASE_AUTH_DOMAIN`
+  - `VITE_FIREBASE_PROJECT_ID` (defaults to `fladycard-22a3e` if omitted)
+  - `VITE_FIREBASE_STORAGE_BUCKET`
+  - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+  - `VITE_FIREBASE_APP_ID`
+  - `VITE_STRIPE_PUBLISHABLE_KEY` (optional / fallback in client)
+
+### Manual Deployment
+
 1. Set the Gemini API key secret (server-side, never exposed to the client):
    ```
-   firebase functions:secrets:set GEMINI_API_KEY --project <project>
+   firebase functions:secrets:set GEMINI_API_KEY --project fladycard-22a3e
    ```
 2. Set the admin UID secret (comma-separated list of UIDs allowed to call `setUserQuota`):
    ```
-   firebase functions:secrets:set ADMIN_UIDS --project <project>
+   firebase functions:secrets:set ADMIN_UIDS --project fladycard-22a3e
    ```
-3. Build the app and deploy functions + hosting:
+3. Build the app and deploy:
    ```
-   firebase deploy --only functions,hosting --project <project>
+   npm run build
+   firebase deploy --only hosting,functions,firestore,storage --project fladycard-22a3e
    ```
 4. To promote a user to premium:
    ```
-   curl -X POST https://us-central1-<project>.cloudfunctions.net/setUserQuota \
+   curl -X POST https://us-central1-fladycard-22a3e.cloudfunctions.net/setUserQuota \
      -H "Authorization: Bearer <idToken>" \
      -H "Content-Type: application/json" \
      -d '{"uid":"<target-user-uid>","tier":"premium"}'

@@ -26,7 +26,6 @@ dist-ssr
 /functions/commands.md
 /functions/kill-ports.sh
 .firebase/
-.firebaserc
 .env
 # `.env` above only matches the exact filename; copies such as .env.local.backup
 # or .env.backup were being committed. Ignore the whole family.
