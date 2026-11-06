@@ -8,11 +8,22 @@ on:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Tests & Checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check version bumped
+        run: |
+          if ! git diff --name-only HEAD~1 HEAD | grep -qE "package\.json|src/constants/version\.ts"; then
+            echo "❌ ERROR: Version not bumped in package.json or src/constants/version.ts"
+            echo "Run: npm run version:bump"
+            exit 1
+          fi
+          echo "✅ Version bumped in both files"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,10 +77,7 @@ jobs:
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
         run: npm run build
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Deploy to Firebase
+      - name: Authenticate and Deploy to Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FLADYCARD_22A3E || secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'fladycard-22a3e' }}
@@ -82,4 +90,5 @@ jobs:
           echo "$FIREBASE_SERVICE_ACCOUNT" > "$HOME/gcp-key.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcp-key.json"
 
+          npm install -g firebase-tools
           firebase deploy --only hosting,functions,firestore,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
