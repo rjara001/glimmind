@@ -4,6 +4,7 @@ import { GUEST_UID } from '../constants/app';
 import type { MyfeedinWindow } from '../types/feedback-widget';
 
 const WIDGET_SRC = 'https://myfeedin.com/widget.js';
+const TENANT_ID = 'tenant_randus';
 const PROJECT_ID = 'Tr3zskqgT2MchZXwwkP9';
 const WIDGET_POSITION = 'bottom-left';
 const WIDGET_COLOR = '#2563eb';
@@ -49,6 +50,7 @@ export const FeedbackWidget: React.FC = () => {
     script.id = SCRIPT_ID;
     script.src = WIDGET_SRC;
     script.async = true;
+    script.setAttribute('data-tenant', TENANT_ID);
     script.setAttribute('data-project', PROJECT_ID);
     script.setAttribute('data-position', WIDGET_POSITION);
     script.setAttribute('data-color', WIDGET_COLOR);
