@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Background fire-red gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DC2626" />
+      <stop offset="100%" stop-color="#991B1B" />
+    </linearGradient>
+    <!-- Fire yellow gradient -->
+    <linearGradient id="fireYellow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="25%" stop-color="#FEF08A" />
+      <stop offset="60%" stop-color="#FACC15" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <!-- Shadow for glowing depth -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#7F1D1D" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded Red Background -->
+  <rect width="64" height="64" rx="14" fill="url(#bgGrad)" />
+
+  <!-- Double MM Letter in Fire Yellow -->
+  <g fill="url(#fireYellow)" filter="url(#glow)">
+    <text
+      x="32"
+      y="42"
+      font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+      font-size="25"
+      font-weight="900"
+      letter-spacing="-1.5"
+      text-anchor="middle"
+    >MM</text>
+  </g>
+</svg>

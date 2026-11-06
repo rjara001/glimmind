@@ -4,7 +4,8 @@
 
 set -e
 
-PROJECT_ROOT="/Users/rodrigo.jara/dev-personal/glimmind"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PACKAGE_JSON="$PROJECT_ROOT/package.json"
 VERSION_TS="$PROJECT_ROOT/src/constants/version.ts"
 
@@ -28,13 +29,20 @@ get_ts_version() {
 
 set_package_version() {
   local new_version="$1"
-  # macOS sed requires '' for -i
-  sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$new_version\"/" "$PACKAGE_JSON"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$new_version\"/" "$PACKAGE_JSON"
+  else
+    sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$new_version\"/" "$PACKAGE_JSON"
+  fi
 }
 
 set_ts_version() {
   local new_version="$1"
-  sed -i '' "s/APP_VERSION = '.*'/APP_VERSION = '$new_version'/" "$VERSION_TS"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s/APP_VERSION = '.*'/APP_VERSION = '$new_version'/" "$VERSION_TS"
+  else
+    sed -i "s/APP_VERSION = '.*'/APP_VERSION = '$new_version'/" "$VERSION_TS"
+  fi
 }
 
 validate_semver() {
